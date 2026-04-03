@@ -1,0 +1,44 @@
+{
+  "name": "theme-switcher",
+  "title": "Theme Switcher",
+  "description": "Hotswap your entire desktop theme — Ghostty, borders, dark mode, wallpaper, Neovim",
+  "icon": "command-icon.png",
+  "author": "harry",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "switch-theme",
+      "title": "Switch Theme",
+      "description": "Pick a theme to apply across your system",
+      "mode": "view"
+    },
+    {
+      "name": "paste-terminal-safe",
+      "title": "Paste Terminal Safe",
+      "description": "Paste text normally, or paste a temp file path when the clipboard contains an image",
+      "mode": "no-view"
+    },
+    {
+      "name": "clipboard-history",
+      "title": "Clipboard History",
+      "description": "Open clipboard history with terminal-aware paste behavior",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.93.3",
+    "@raycast/utils": "^1.19.1"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.13.14",
+    "@types/react": "19.0.12",
+    "eslint": "^9.23.0",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint"
+  }
+}

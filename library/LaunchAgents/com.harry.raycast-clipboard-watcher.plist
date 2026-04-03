@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.harry.raycast-clipboard-watcher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Library/Developer/CommandLineTools/usr/bin/swift</string>
+    <string>$(HOME)/.config/raycast/extensions/theme-switcher/clipboard-watcher.swift</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$(HOME)/Library/Logs/raycast-clipboard-watcher.log</string>
+  <key>StandardErrorPath</key>
+  <string>$(HOME)/Library/Logs/raycast-clipboard-watcher.log</string>
+  <key>WorkingDirectory</key>
+  <string>$(HOME)</string>
+</dict>
+</plist>

@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+PLUGIN_DIR="$CONFIG_DIR/plugins"
+THEME_FILE="$CONFIG_DIR/theme.sh"
+ACCENT_COLOR="0xff80ff80"
+TEXT_COLOR="0xffffffff"
+
+if [ -f "$THEME_FILE" ]; then
+  # Theme file provides ACCENT_COLOR and TEXT_COLOR variables.
+  source "$THEME_FILE"
+fi
+
+sketchybar --bar position=top \
+  margin=0 \
+  y_offset=0 \
+  corner_radius=0 \
+  height=34 \
+  color=0x00000000 \
+  topmost=window
+
+sketchybar --default \
+  padding_left=8 \
+  padding_right=8 \
+  icon.font="JetBrainsMono Nerd Font:Regular:14.0" \
+  label.font="JetBrainsMono Nerd Font:Regular:14.0" \
+  background.drawing=off \
+  icon.color="$TEXT_COLOR" \
+  label.color="$TEXT_COLOR" \
+  icon.padding_right=6 \
+  icon.highlight_color="$ACCENT_COLOR" \
+  label.highlight_color="$ACCENT_COLOR"
+
+sketchybar --add item hover_watcher center \
+  --set hover_watcher \
+    drawing=off \
+    updates=on \
+    script="$PLUGIN_DIR/hover_watcher.sh" \
+  --subscribe hover_watcher mouse.entered.global mouse.exited.global
+
+for i in $(seq 1 6); do
+  sketchybar --add space space.$i left \
+    --set space.$i \
+    associated_space=$i \
+    background.drawing=off \
+    icon=$i \
+    icon.color="$TEXT_COLOR" \
+    label.color="$TEXT_COLOR" \
+    icon.highlight_color="$ACCENT_COLOR" \
+    label.highlight_color="$ACCENT_COLOR" \
+    script="$PLUGIN_DIR/spaces.sh"
+done
+
+sketchybar --add item clock right \
+  --set clock background.drawing=off icon="󰥔" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/clock.sh"
+
+sketchybar --add item battery right \
+  --set battery background.drawing=off icon="󰁹" update_freq=120 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/battery.sh"
+
+sketchybar --add item ram right \
+  --set ram background.drawing=off icon="󰍛" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/ram.sh"
+
+sketchybar --add item cpu right \
+  --set cpu background.drawing=off icon="󰘚" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/cpu.sh"
+
+sketchybar --update

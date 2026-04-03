@@ -1,0 +1,164 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -ne 1 ]; then
+  echo "usage: $0 /absolute/or/relative/path/to/image" >&2
+  exit 1
+fi
+
+IMG="$(python3 - <<'PY' "$1"
+import pathlib, sys
+print(pathlib.Path(sys.argv[1]).expanduser().resolve())
+PY
+)"
+
+if [ ! -f "$IMG" ]; then
+  echo "image not found: $IMG" >&2
+  exit 1
+fi
+
+WALLPAPER_INDEX="$HOME/Library/Application Support/com.apple.wallpaper/Store/Index.plist"
+
+set_with_desktoppr() {
+  /usr/local/bin/desktoppr all "$IMG" >/dev/null 2>&1
+}
+
+set_with_finder() {
+  /usr/bin/osascript - "$IMG" >/dev/null 2>&1 <<'APPLESCRIPT'
+on run argv
+  set imagePath to POSIX file (item 1 of argv)
+  tell application "Finder"
+    set desktop picture to imagePath
+  end tell
+end run
+APPLESCRIPT
+}
+
+set_with_system_events() {
+  /usr/bin/osascript - "$IMG" >/dev/null 2>&1 <<'APPLESCRIPT'
+on run argv
+  set imagePath to POSIX file (item 1 of argv)
+  tell application "System Events"
+    repeat with d in desktops
+      set picture of d to imagePath
+    end repeat
+  end tell
+end run
+APPLESCRIPT
+}
+
+set_with_wallpaper_store() {
+  python3 - <<'PY' "$WALLPAPER_INDEX" "$IMG"
+import datetime as dt
+import plistlib
+import sys
+import time
+from pathlib import Path
+
+index_path = Path(sys.argv[1]).expanduser()
+image_path = Path(sys.argv[2]).expanduser().resolve()
+
+if not index_path.is_file():
+    raise SystemExit(1)
+
+raw = index_path.read_bytes()
+root = plistlib.loads(raw)
+now = dt.datetime.now()
+uri = image_path.as_uri()
+
+def desktop_choice():
+    return {
+        "Configuration": plistlib.dumps(
+            {"type": "imageFile", "url": {"relative": uri}},
+            fmt=plistlib.FMT_BINARY,
+            sort_keys=False,
+        ),
+        "Files": [],
+        "Provider": "com.apple.wallpaper.choice.image",
+    }
+
+def update_desktop(node):
+    if not isinstance(node, dict):
+        return
+    desktop = node.get("Desktop")
+    if not isinstance(desktop, dict):
+        return
+    content = desktop.setdefault("Content", {})
+    content["Choices"] = [desktop_choice()]
+    desktop["LastSet"] = now
+    desktop["LastUse"] = now
+
+updated = 0
+
+for top_key in ("SystemDefault", "AllSpacesAndDisplays"):
+    top = root.get(top_key)
+    if isinstance(top, dict):
+        before = updated
+        update_desktop(top)
+        if updated == before and isinstance(top.get("Desktop"), dict):
+            updated += 1
+
+for display in root.get("Displays", {}).values():
+    if isinstance(display, dict):
+        update_desktop(display)
+        if isinstance(display.get("Desktop"), dict):
+            updated += 1
+
+for space in root.get("Spaces", {}).values():
+    if not isinstance(space, dict):
+        continue
+    default = space.get("Default")
+    if isinstance(default, dict):
+        update_desktop(default)
+        if isinstance(default.get("Desktop"), dict):
+            updated += 1
+    for display in space.get("Displays", {}).values():
+        if isinstance(display, dict):
+            update_desktop(display)
+            if isinstance(display.get("Desktop"), dict):
+                updated += 1
+
+backup = index_path.with_name(f"{index_path.name}.bak.{int(time.time())}")
+backup.write_bytes(raw)
+index_path.write_bytes(plistlib.dumps(root, fmt=plistlib.FMT_BINARY, sort_keys=False))
+
+if updated == 0:
+    raise SystemExit(1)
+PY
+}
+
+refresh_wallpaper_agents() {
+  /bin/launchctl kickstart -k "gui/$(id -u)/com.apple.wallpaper.agent" >/dev/null 2>&1 || true
+  /bin/launchctl kickstart -k "gui/$(id -u)/com.apple.Dock.agent" >/dev/null 2>&1 || true
+  /usr/bin/killall WallpaperAgent >/dev/null 2>&1 || true
+  /usr/bin/killall Dock >/dev/null 2>&1 || true
+}
+
+applied=0
+
+if set_with_wallpaper_store; then
+  applied=1
+  refresh_wallpaper_agents
+  sleep 1
+fi
+
+if set_with_desktoppr; then
+  applied=1
+fi
+
+if [ "$applied" -ne 1 ]; then
+  if set_with_finder; then
+    applied=1
+  fi
+fi
+
+if [ "$applied" -ne 1 ]; then
+  if set_with_system_events; then
+    applied=1
+  fi
+fi
+
+if [ "$applied" -ne 1 ]; then
+  echo "failed to set wallpaper via the wallpaper store, desktoppr, Finder, or System Events" >&2
+  exit 1
+fi

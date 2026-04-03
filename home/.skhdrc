@@ -1,0 +1,84 @@
+# Launch terminal
+ctrl - return : /bin/bash -lc 'open -na Ghostty; sleep 0.25; id=$(yabai -m query --windows | jq -r '\''map(select(.app == "Ghostty")) | sort_by(.id) | last | .id // empty'\''); [ -n "$id" ] && yabai -m window --focus "$id"'
+
+# Quit application
+# In Chrome, Cmd+Q should close the current profile window instead of quitting every profile.
+cmd - q [
+    "Google Chrome" : osascript -e 'tell application "System Events" to keystroke "w" using {command down, shift down}'
+    *               : osascript -e 'tell application (path to frontmost application as text) to quit'
+]
+
+# Toggle fullscreen
+ctrl - f : yabai -m window --toggle zoom-fullscreen
+
+# Toggle top bar and remove top padding
+cmd + shift - space : /Users/harry/.config/yabai/toggle_top_bar.sh
+
+# Open Raycast
+cmd + ctrl - space : open 'raycast://extensions/harry/theme-switcher/switch-theme'
+
+# Open Google Chrome profile picker
+cmd + shift - b : open -na 'Google Chrome' --args --profile-picker
+
+# Focus windows
+cmd - left   : yabai -m window --focus west
+cmd - down   : yabai -m window --focus south
+cmd - up     : yabai -m window --focus north
+cmd - right  : yabai -m window --focus east
+
+# Reorder windows
+cmd + shift - left  : yabai -m window --swap west; yabai -m window --focus west
+cmd + shift - down  : yabai -m window --swap south; yabai -m window --focus south
+cmd + shift - up    : yabai -m window --swap north; yabai -m window --focus north
+cmd + shift - right : yabai -m window --swap east; yabai -m window --focus east
+
+# Switch workspaces
+cmd - 1 : yabai -m space --focus 1
+cmd - 2 : yabai -m space --focus 2
+cmd - 3 : yabai -m space --focus 3
+cmd - 4 : yabai -m space --focus 4
+cmd - 5 : yabai -m space --focus 5
+ctrl - 1 : yabai -m space --focus 1
+ctrl - 2 : yabai -m space --focus 2
+ctrl - 3 : yabai -m space --focus 3
+ctrl - 4 : yabai -m space --focus 4
+ctrl - 5 : yabai -m space --focus 5
+
+# Move window to workspace and follow focus
+cmd + shift - 1 : yabai -m window --space 1; yabai -m space --focus 1
+cmd + shift - 2 : yabai -m window --space 2; yabai -m space --focus 2
+cmd + shift - 3 : yabai -m window --space 3; yabai -m space --focus 3
+cmd + shift - 4 : yabai -m window --space 4; yabai -m space --focus 4
+cmd + shift - 5 : yabai -m window --space 5; yabai -m space --focus 5
+ctrl + shift - 1 : yabai -m window --space 1; yabai -m space --focus 1
+ctrl + shift - 2 : yabai -m window --space 2; yabai -m space --focus 2
+ctrl + shift - 3 : yabai -m window --space 3; yabai -m space --focus 3
+ctrl + shift - 4 : yabai -m window --space 4; yabai -m space --focus 4
+ctrl + shift - 5 : yabai -m window --space 5; yabai -m space --focus 5
+
+# Toggle focused window floating / tiled
+ctrl - t : yabai -m window --toggle float
+
+# Toggle split direction
+ctrl - j : yabai -m window --toggle split
+cmd - j  : yabai -m window --toggle split
+
+# Resize focused window
+ctrl - 0x18 : yabai -m window --ratio rel:0.05
+ctrl - 0x1B : yabai -m window --ratio rel:-0.05
+
+# Screenshot (interactive, to clipboard)
+ctrl + shift - s : screencapture -i -c -x
+
+# Clipboard history:
+# - Ghostty uses the custom Raycast command with terminal-aware image paste
+# - All other apps fall through to Raycast's built-in Clipboard History hotkey
+cmd - v [
+    "Ghostty" : /opt/homebrew/bin/node /Users/harry/.config/raycast/extensions/theme-switcher/paste-latest-history-ghostty.js
+    *         ~
+]
+
+cmd + shift - v [
+    "Ghostty" : open 'raycast://extensions/harry/theme-switcher/clipboard-history'
+    *         ~
+]

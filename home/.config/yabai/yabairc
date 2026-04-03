@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Load scripting addition
+sudo yabai --load-sa
+yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+
+# BSP layout
+yabai -m config layout bsp
+yabai -m config window_placement second_child
+yabai -m config auto_balance on
+
+# Padding and gaps
+yabai -m config top_padding    8
+yabai -m config bottom_padding 8
+yabai -m config left_padding   8
+yabai -m config right_padding  8
+yabai -m config window_gap     8
+
+# Mouse follows focus
+yabai -m config mouse_follows_focus on
+yabai -m config mouse_modifier ctrl
+yabai -m config mouse_action1 move
+yabai -m config mouse_action2 resize
+yabai -m config mouse_drop_action stack
+
+# Active window border (via JankyBorders)
+borders active_color=0xffe1e1e1 inactive_color=0x00000000 width=6.0 &
+
+# Float system apps that don't tile well
+yabai -m rule --add app="^System Settings$" manage=off
+yabai -m rule --add app="^Calculator$" manage=off
+yabai -m rule --add app="^Finder$" manage=off title="^Copy$|^Move$|^Delete$|^Trash$"
