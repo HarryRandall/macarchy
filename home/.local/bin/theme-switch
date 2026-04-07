@@ -1,0 +1,218 @@
+#!/bin/bash
+set -euo pipefail
+
+export USER="${USER:-$(id -un)}"
+export HOME="${HOME:-/Users/harry}"
+
+THEMES_DIR="$HOME/.themes"
+GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
+RAYCAST_BUNDLE_ID="com.raycast.macos"
+
+# --- Usage ---
+if [ -z "${1:-}" ]; then
+    echo "Usage: theme-switch <theme-name>"
+    echo "Available themes:"
+    for d in "$THEMES_DIR"/*/; do
+        basename "$d"
+    done
+    exit 1
+fi
+
+THEME="$1"
+THEME_DIR="$THEMES_DIR/$THEME"
+
+if [ ! -d "$THEME_DIR" ]; then
+    echo "Error: theme '$THEME' not found in $THEMES_DIR"
+    exit 1
+fi
+
+if [ ! -f "$THEME_DIR/theme.env" ]; then
+    echo "Error: no theme.env in $THEME_DIR"
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+source "$THEME_DIR/theme.env"
+
+ghostty_color() {
+    local key="$1"
+    local fallback="$2"
+    local value=""
+
+    if [ -f "$THEME_DIR/ghostty.conf" ]; then
+        value="$(awk -F'= ' -v key="$key" '$1 == key { print $2; exit }' "$THEME_DIR/ghostty.conf")"
+    fi
+
+    if [ -n "$value" ]; then
+        printf '%s\n' "$value"
+    else
+        printf '%s\n' "$fallback"
+    fi
+}
+
+ghostty_palette() {
+    local index="$1"
+    local fallback="$2"
+    local value=""
+
+    if [ -f "$THEME_DIR/ghostty.conf" ]; then
+        value="$(awk -F'= ' -v key="palette = $index" '$1 == key { print $2; exit }' "$THEME_DIR/ghostty.conf")"
+    fi
+
+    if [ -n "$value" ]; then
+        printf '%s\n' "$value"
+    else
+        printf '%s\n' "$fallback"
+    fi
+}
+
+to_macos_color() {
+    local hex="$1"
+    if [[ "$hex" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+        printf '0xff%s\n' "${hex#\#}"
+    else
+        printf '%s\n' "$hex"
+    fi
+}
+
+get_sketchybar_text_color() {
+    if [ -n "${SKETCHYBAR_TEXT_COLOR:-}" ]; then
+        printf '%s\n' "$SKETCHYBAR_TEXT_COLOR"
+        return
+    fi
+
+    if [ "${DARK_MODE:-}" = "false" ]; then
+        to_macos_color "$(ghostty_color "foreground" "#000000")"
+    else
+        to_macos_color "$(ghostty_color "foreground" "#ffffff")"
+    fi
+}
+
+get_sketchybar_accent_color() {
+    if [ -n "${BORDER_ACTIVE:-}" ]; then
+        printf '%s\n' "$BORDER_ACTIVE"
+    else
+        to_macos_color "$(ghostty_palette 4 "$(ghostty_color "foreground" "#ffffff")")"
+    fi
+}
+
+get_raycast_theme_id() {
+    if [ "${DARK_MODE:-}" = "true" ]; then
+        printf 'bundled-raycast-dark\n'
+    else
+        printf 'bundled-raycast-light\n'
+    fi
+}
+
+echo "Switching to theme: $THEME"
+
+# --- 1. macOS Dark/Light Mode ---
+if [ -n "${DARK_MODE:-}" ]; then
+    if osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $DARK_MODE" 2>/dev/null; then
+        echo "  Dark mode: $DARK_MODE"
+    else
+        echo "  Dark mode: skipped"
+    fi
+fi
+
+# --- 2. Wallpaper (all screens + all spaces via Finder) ---
+if [ -n "${WALLPAPER:-}" ] && [ -f "$THEME_DIR/$WALLPAPER" ]; then
+    if "$HOME/.local/bin/set-wallpaper" "$THEME_DIR/$WALLPAPER"; then
+        echo "  Wallpaper: $WALLPAPER"
+    else
+        echo "  Wallpaper: skipped (set-wallpaper failed)"
+    fi
+else
+    echo "  Wallpaper: skipped (no file at $THEME_DIR/${WALLPAPER:-})"
+fi
+
+# --- 3. Ghostty (inline palette into main config, then reload all windows) ---
+if [ -f "$THEME_DIR/ghostty.conf" ] && [ -f "$GHOSTTY_CONFIG" ]; then
+    # Strip old palette/color lines and config-file refs from main config
+    TMP=$(mktemp)
+    grep -v "^background " "$GHOSTTY_CONFIG" \
+        | grep -v "^foreground " \
+        | grep -v "^cursor-color " \
+        | grep -v "^selection-background " \
+        | grep -v "^selection-foreground " \
+        | grep -v "^palette " \
+        | grep -v "^theme " \
+        | grep -v "^config-file.*\.themes/" \
+        | grep -v "^# --- THEME COLORS" \
+        > "$TMP" || true
+
+    # Append theme colors
+    echo "" >> "$TMP"
+    echo "# --- THEME COLORS ($THEME) ---" >> "$TMP"
+    cat "$THEME_DIR/ghostty.conf" >> "$TMP"
+
+    cp "$TMP" "$GHOSTTY_CONFIG" && rm "$TMP"
+
+    # Reload Ghostty app-wide. The signal path reaches the main process;
+    # the menu click remains as a fallback for builds that ignore the signal.
+    pkill -USR2 -x ghostty 2>/dev/null || pkill -USR2 -x Ghostty 2>/dev/null || true
+    sleep 0.2
+    osascript -e '
+        tell application "System Events"
+            if exists process "ghostty" then
+                tell process "ghostty"
+                    click menu item "Reload Configuration" of menu "Ghostty" of menu bar 1
+                end tell
+            end if
+        end tell' 2>/dev/null || true
+    echo "  Ghostty: reload requested for all windows"
+fi
+
+# --- 4. Neovim (running instances + LazyVim config) ---
+if [ -n "${NVIM_COLORSCHEME:-}" ]; then
+    SWITCHED_NVIM=0
+    while IFS= read -r -d '' sock; do
+        if [ -S "$sock" ]; then
+            nvim --server "$sock" --remote-send "<Cmd>colorscheme $NVIM_COLORSCHEME<CR>" 2>/dev/null && SWITCHED_NVIM=$((SWITCHED_NVIM + 1))
+        fi
+    done < <(find /tmp -path '*/nvim.*/0' -print0 2>/dev/null)
+    LAZYVIM_COLORSCHEME_FILE="$HOME/.config/nvim/lua/plugins/colorscheme.lua"
+    if [ -f "$LAZYVIM_COLORSCHEME_FILE" ]; then
+        cat > "$LAZYVIM_COLORSCHEME_FILE" <<EOF
+return {
+  { "LazyVim/LazyVim", opts = { colorscheme = "$NVIM_COLORSCHEME" } },
+}
+EOF
+    fi
+    echo "  Neovim: $NVIM_COLORSCHEME ($SWITCHED_NVIM running instances updated)"
+fi
+
+# --- 5. JankyBorders ---
+if [ -n "${BORDER_ACTIVE:-}" ]; then
+    pkill -x borders 2>/dev/null || true
+    sleep 0.2
+    borders active_color="$BORDER_ACTIVE" inactive_color="${BORDER_INACTIVE:-0x00000000}" width="${BORDER_WIDTH:-6.0}" &
+    disown
+    echo "  Borders: active=$BORDER_ACTIVE"
+fi
+
+# --- 6. SketchyBar ---
+SKETCHYBAR_ACCENT="$(get_sketchybar_accent_color)"
+SKETCHYBAR_TEXT="$(get_sketchybar_text_color)"
+"$HOME/.local/bin/apply-sketchybar-theme" "$SKETCHYBAR_ACCENT" "$SKETCHYBAR_TEXT" || true
+echo "  SketchyBar: accent=$SKETCHYBAR_ACCENT text=$SKETCHYBAR_TEXT bar=0x00000000"
+
+if /opt/homebrew/bin/sketchybar --reload; then
+    echo "  SketchyBar reload: ok"
+else
+    echo "  SketchyBar reload: failed"
+fi
+
+# --- 7. Raycast ---
+RAYCAST_THEME_ID="$(get_raycast_theme_id)"
+/usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastShouldFollowSystemAppearance -bool true
+/usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeId -string "$RAYCAST_THEME_ID"
+/usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeIdDarkAppearance -string "bundled-raycast-dark"
+/usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeIdLightAppearance -string "bundled-raycast-light"
+/usr/bin/killall cfprefsd >/dev/null 2>&1 || true
+echo "  Raycast: $RAYCAST_THEME_ID"
+
+# --- 8. Save current theme ---
+echo "$THEME" > "$THEMES_DIR/.current"
+
+echo "Done! Theme '$THEME' applied."

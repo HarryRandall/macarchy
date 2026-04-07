@@ -22,6 +22,8 @@ Omarchy-inspired macOS dotfiles for a tiling, themed desktop built around `yabai
 - `home/.config/nvim`: Neovim config
 - `home/.config/raycast/extensions/theme-switcher`: custom Raycast theme and clipboard extension
 - `home/.themes`: theme packs, wallpapers, Ghostty palettes
+- `home/.local/bin/theme-switch`: main theme switcher used by Raycast and the terminal
+- `home/.local/bin/apply-sketchybar-theme`: writes SketchyBar colors and reloads the bar
 - `home/.local/bin/set-wallpaper`: wallpaper helper used by the theme switcher
 - `home/.gitconfig`: Git defaults
 - `home/.vimrc`: Vim defaults
@@ -137,11 +139,13 @@ Shortcuts were intentionally left out of this repo. If you want them on another 
 - Terminal appearance: Ghostty + `home/.themes/*/ghostty.conf`
 - Shell and terminal extras: `fish`, `fastfetch`, `btop`, `neofetch`
 - Wallpapers and theme switching: Raycast `theme-switcher` + `home/.themes`
+- SketchyBar theming: `home/.local/bin/theme-switch` + `home/.local/bin/apply-sketchybar-theme`
 - Current theme selector: `home/.themes/.current`
 
 ## Notes
 
 - The top bar is a transparent `sketchybar` layout with spaces on the left and status items on the right.
+- SketchyBar accent color follows `BORDER_ACTIVE`. Top-bar text defaults to the theme foreground, and any theme can override it with `SKETCHYBAR_TEXT_COLOR` in `home/.themes/*/theme.env`.
 - `cmd + shift + space` toggles the top bar.
 - `cmd + ctrl + space` opens the Raycast theme switcher command.
 - `cmd + v` in Ghostty is intercepted by the Raycast clipboard helper.

@@ -1,0 +1,56 @@
+#!/bin/bash
+set -euo pipefail
+
+export USER="${USER:-$(id -un)}"
+export HOME="${HOME:-/Users/harry}"
+
+if [ "$#" -lt 1 ]; then
+  echo "usage: $0 ACCENT_COLOR [TEXT_COLOR] [BAR_COLOR]" >&2
+  exit 1
+fi
+
+ACCENT="$1"
+TEXT="${2:-$ACCENT}"
+BAR="${3:-0x00000000}"
+
+if ! command -v sketchybar >/dev/null 2>&1; then
+  if [ -x /opt/homebrew/bin/sketchybar ]; then
+    SKETCHYBAR_BIN="/opt/homebrew/bin/sketchybar"
+  else
+    exit 0
+  fi
+else
+  SKETCHYBAR_BIN="$(command -v sketchybar)"
+fi
+
+THEME_FILE="$HOME/.config/sketchybar/theme.sh"
+
+ensure_theme_file() {
+  if [ -f "$THEME_FILE" ]; then
+    return
+  fi
+
+  cat > "$THEME_FILE" <<'EOF'
+#!/usr/bin/env bash
+EOF
+}
+
+upsert_var() {
+  local key="$1"
+  local value="$2"
+
+  if grep -q "^${key}=" "$THEME_FILE"; then
+    /usr/bin/sed -i '' "s|^${key}=.*|${key}=\"${value}\"|" "$THEME_FILE"
+  else
+    printf '%s="%s"\n' "$key" "$value" >> "$THEME_FILE"
+  fi
+}
+
+ensure_theme_file
+upsert_var "ACCENT_COLOR" "$ACCENT"
+upsert_var "TEXT_COLOR" "$TEXT"
+upsert_var "BAR_COLOR" "$BAR"
+
+chmod +x "$THEME_FILE"
+
+"$SKETCHYBAR_BIN" --reload >/dev/null 2>&1 || true
