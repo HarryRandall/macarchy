@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export USER="${USER:-$(id -un)}"
-export HOME="${HOME:-/Users/harry}"
+export HOME="${HOME:-$(cd ~"$USER" && pwd)}"
 
 if [ "$#" -lt 1 ]; then
   echo "usage: $0 ACCENT_COLOR [TEXT_COLOR] [BAR_COLOR]" >&2

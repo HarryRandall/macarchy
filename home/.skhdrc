@@ -12,10 +12,10 @@ cmd - q [
 ctrl - f : yabai -m window --toggle zoom-fullscreen
 
 # Toggle top bar and remove top padding
-cmd + shift - space : /Users/harry/.config/yabai/toggle_top_bar.sh
+cmd + shift - space : /bin/bash "$HOME/.config/yabai/toggle_top_bar.sh"
 
 # Open Raycast
-cmd + ctrl - space : open 'raycast://extensions/harry/theme-switcher/switch-theme'
+cmd + ctrl - space : open -a Raycast
 
 # Open Google Chrome profile picker
 cmd + shift - b : open -na 'Google Chrome' --args --profile-picker
@@ -56,8 +56,8 @@ ctrl + shift - 3 : yabai -m window --space 3; yabai -m space --focus 3
 ctrl + shift - 4 : yabai -m window --space 4; yabai -m space --focus 4
 ctrl + shift - 5 : yabai -m window --space 5; yabai -m space --focus 5
 
-# Toggle focused window floating / tiled
-ctrl - t : yabai -m window --toggle float
+# Toggle focused window floating / tiled and persist per-app preference
+ctrl - t : /bin/bash "$HOME/.config/yabai/toggle_float_persist.sh"
 
 # Toggle split direction
 ctrl - j : yabai -m window --toggle split
@@ -71,14 +71,8 @@ ctrl - 0x1B : yabai -m window --ratio rel:-0.05
 ctrl + shift - s : screencapture -i -c -x
 
 # Clipboard history:
-# - Ghostty uses the custom Raycast command with terminal-aware image paste
-# - All other apps fall through to Raycast's built-in Clipboard History hotkey
-cmd - v [
-    "Ghostty" : /opt/homebrew/bin/node /Users/harry/.config/raycast/extensions/theme-switcher/paste-latest-history-ghostty.js
-    *         ~
-]
+# - Default paste falls through to the application
+# - Use cmd+shift+v to open Raycast and pick from clipboard history
+cmd - v : ~
 
-cmd + shift - v [
-    "Ghostty" : open 'raycast://extensions/harry/theme-switcher/clipboard-history'
-    *         ~
-]
+cmd + shift - v : open -a Raycast

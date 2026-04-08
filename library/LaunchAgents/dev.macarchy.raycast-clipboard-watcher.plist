@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.harry.raycast-clipboard-watcher</string>
+  <string>dev.macarchy.raycast-clipboard-watcher</string>
   <key>ProgramArguments</key>
   <array>
     <string>/Library/Developer/CommandLineTools/usr/bin/swift</string>

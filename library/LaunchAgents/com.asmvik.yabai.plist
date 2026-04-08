@@ -23,9 +23,9 @@
  	     <true/>
     </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/yabai_harry.out.log</string>
+    <string>/tmp/yabai.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/yabai_harry.err.log</string>
+    <string>/tmp/yabai.err.log</string>
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>Nice</key>

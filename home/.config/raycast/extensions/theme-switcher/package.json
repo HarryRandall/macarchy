@@ -3,7 +3,7 @@
   "title": "Theme Switcher",
   "description": "Hotswap your entire desktop theme — Ghostty, borders, dark mode, wallpaper, Neovim",
   "icon": "command-icon.png",
-  "author": "harry",
+  "author": "macarchy",
   "license": "MIT",
   "commands": [
     {

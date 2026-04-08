@@ -23,9 +23,9 @@
  	     <true/>
     </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/skhd_harry.out.log</string>
+    <string>/tmp/skhd.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/skhd_harry.err.log</string>
+    <string>/tmp/skhd.err.log</string>
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>Nice</key>

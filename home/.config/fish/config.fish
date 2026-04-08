@@ -3,8 +3,10 @@ alias ls "eza --icons"
 alias treelist "tree -a -I '.git'"
 alias n "nvim"
 alias sail './vendor/bin/sail'
-alias comp2700 'ssh -p 8888 admin2700@localhost'
-alias comp2700_sftp 'sftp -P 8888 admin2700@localhost'
+
+# Optional SSH shortcut examples:
+# alias devbox 'ssh user@example-host'
+# alias devbox_sftp 'sftp user@example-host'
 
 # Keep processes running after closing the terminal
 function stay
@@ -102,5 +104,10 @@ alias python python3
 alias pip pip3
 
 function weather
-    /Users/harry/.local/bin/weathr $argv
+    if test -x "$HOME/.local/bin/weathr"
+        "$HOME/.local/bin/weathr" $argv
+    else
+        echo "weathr is not installed" >&2
+        return 1
+    end
 end

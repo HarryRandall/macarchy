@@ -2,31 +2,31 @@
 
 PLUGIN_DIR="$CONFIG_DIR/plugins"
 THEME_FILE="$CONFIG_DIR/theme.sh"
-ACCENT_COLOR="0xff80ff80"
-TEXT_COLOR="0xffffffff"
 
 if [ -f "$THEME_FILE" ]; then
-  # Theme file provides ACCENT_COLOR and TEXT_COLOR variables.
   source "$THEME_FILE"
+else
+  echo "SketchyBar theme file not found: $THEME_FILE" >&2
+  exit 1
 fi
 
-sketchybar --bar position=top \
-  margin=0 \
-  y_offset=0 \
-  corner_radius=0 \
-  height=34 \
-  color=0x00000000 \
-  topmost=window
+sketchybar --bar position="$BAR_POSITION" \
+  margin="$BAR_MARGIN" \
+  y_offset="$BAR_Y_OFFSET" \
+  corner_radius="$BAR_CORNER_RADIUS" \
+  height="$BAR_HEIGHT" \
+  color="$BAR_COLOR" \
+  topmost="$BAR_TOPMOST"
 
 sketchybar --default \
-  padding_left=8 \
-  padding_right=8 \
-  icon.font="JetBrainsMono Nerd Font:Regular:14.0" \
-  label.font="JetBrainsMono Nerd Font:Regular:14.0" \
-  background.drawing=off \
+  padding_left="$ITEM_PADDING_LEFT" \
+  padding_right="$ITEM_PADDING_RIGHT" \
+  icon.font="$ICON_FONT" \
+  label.font="$LABEL_FONT" \
+  background.drawing="$ITEM_BACKGROUND_DRAWING" \
   icon.color="$TEXT_COLOR" \
   label.color="$TEXT_COLOR" \
-  icon.padding_right=6 \
+  icon.padding_right="$ICON_PADDING_RIGHT" \
   icon.highlight_color="$ACCENT_COLOR" \
   label.highlight_color="$ACCENT_COLOR"
 
@@ -37,11 +37,11 @@ sketchybar --add item hover_watcher center \
     script="$PLUGIN_DIR/hover_watcher.sh" \
   --subscribe hover_watcher mouse.entered.global mouse.exited.global
 
-for i in $(seq 1 6); do
+for i in $(seq 1 "$SPACE_COUNT"); do
   sketchybar --add space space.$i left \
     --set space.$i \
     associated_space=$i \
-    background.drawing=off \
+    background.drawing="$ITEM_BACKGROUND_DRAWING" \
     icon=$i \
     icon.color="$TEXT_COLOR" \
     label.color="$TEXT_COLOR" \
@@ -51,15 +51,15 @@ for i in $(seq 1 6); do
 done
 
 sketchybar --add item clock right \
-  --set clock background.drawing=off icon="󰥔" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/clock.sh"
+  --set clock background.drawing="$ITEM_BACKGROUND_DRAWING" icon="$CLOCK_ICON" update_freq="$CLOCK_UPDATE_FREQ" icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/clock.sh"
 
 sketchybar --add item battery right \
-  --set battery background.drawing=off icon="󰁹" update_freq=120 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/battery.sh"
+  --set battery background.drawing="$ITEM_BACKGROUND_DRAWING" icon="$BATTERY_ICON" update_freq="$BATTERY_UPDATE_FREQ" icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/battery.sh"
 
 sketchybar --add item ram right \
-  --set ram background.drawing=off icon="󰍛" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/ram.sh"
+  --set ram background.drawing="$ITEM_BACKGROUND_DRAWING" icon="$RAM_ICON" update_freq="$RAM_UPDATE_FREQ" icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/ram.sh"
 
 sketchybar --add item cpu right \
-  --set cpu background.drawing=off icon="󰘚" update_freq=10 icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/cpu.sh"
+  --set cpu background.drawing="$ITEM_BACKGROUND_DRAWING" icon="$CPU_ICON" update_freq="$CPU_UPDATE_FREQ" icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR" script="$PLUGIN_DIR/cpu.sh"
 
 sketchybar --update

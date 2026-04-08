@@ -2,10 +2,13 @@
 set -euo pipefail
 
 export USER="${USER:-$(id -un)}"
-export HOME="${HOME:-/Users/harry}"
+export HOME="${HOME:-$(cd ~"$USER" && pwd)}"
 
 THEMES_DIR="$HOME/.themes"
 GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
+BTOP_CONFIG="$HOME/.config/btop/btop.conf"
+BTOP_THEME_DIR="$HOME/.config/btop/themes"
+BTOP_THEME_NAME="active-theme"
 RAYCAST_BUNDLE_ID="com.raycast.macos"
 
 # --- Usage ---
@@ -40,7 +43,7 @@ ghostty_color() {
     local value=""
 
     if [ -f "$THEME_DIR/ghostty.conf" ]; then
-        value="$(awk -F'= ' -v key="$key" '$1 == key { print $2; exit }' "$THEME_DIR/ghostty.conf")"
+        value="$(grep -E "^${key}[[:space:]]*=[[:space:]]*#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E "s/^${key}[[:space:]]*=[[:space:]]*//" | head -n 1)"
     fi
 
     if [ -n "$value" ]; then
@@ -56,7 +59,7 @@ ghostty_palette() {
     local value=""
 
     if [ -f "$THEME_DIR/ghostty.conf" ]; then
-        value="$(awk -F'= ' -v key="palette = $index" '$1 == key { print $2; exit }' "$THEME_DIR/ghostty.conf")"
+        value="$(grep -E "^palette[[:space:]]*=[[:space:]]*$index=#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E 's/^palette[[:space:]]*=[[:space:]]*[0-9]+=//' | head -n 1)"
     fi
 
     if [ -n "$value" ]; then
@@ -96,12 +99,133 @@ get_sketchybar_accent_color() {
     fi
 }
 
+get_sketchybar_bar_color() {
+    if [ -n "${SKETCHYBAR_BAR_COLOR:-}" ]; then
+        printf '%s\n' "$SKETCHYBAR_BAR_COLOR"
+    else
+        printf '0x00000000\n'
+    fi
+}
+
 get_raycast_theme_id() {
     if [ "${DARK_MODE:-}" = "true" ]; then
         printf 'bundled-raycast-dark\n'
     else
         printf 'bundled-raycast-light\n'
     fi
+}
+
+map_btop_theme() {
+    printf '%s\n' "$BTOP_THEME_NAME"
+}
+
+write_btop_theme() {
+    mkdir -p "$BTOP_THEME_DIR"
+
+    local bg fg selection accent muted green yellow red cyan purple orange
+    bg="$(ghostty_color "background" "#000000")"
+    fg="$(ghostty_color "foreground" "#ffffff")"
+    selection="$(ghostty_color "selection-background" "$bg")"
+    accent="$(ghostty_palette 4 "$fg")"
+    muted="$(ghostty_palette 8 "$fg")"
+    green="$(ghostty_palette 2 "$accent")"
+    yellow="$(ghostty_palette 3 "$accent")"
+    red="$(ghostty_palette 1 "$accent")"
+    cyan="$(ghostty_palette 6 "$accent")"
+    purple="$(ghostty_palette 5 "$accent")"
+    orange="$(ghostty_palette 11 "$yellow")"
+
+    cat > "$BTOP_THEME_DIR/$BTOP_THEME_NAME.theme" <<EOF
+# Auto-generated from theme-switch for $THEME
+theme[main_bg]=""
+theme[main_fg]="$fg"
+theme[title]="$fg"
+theme[hi_fg]="$accent"
+theme[selected_bg]="$selection"
+theme[selected_fg]="$fg"
+theme[inactive_fg]="$muted"
+theme[proc_misc]="$cyan"
+theme[cpu_box]="$muted"
+theme[mem_box]="$muted"
+theme[net_box]="$muted"
+theme[proc_box]="$muted"
+theme[div_line]="$muted"
+theme[temp_start]="$green"
+theme[temp_mid]="$yellow"
+theme[temp_end]="$red"
+theme[cpu_start]="$green"
+theme[cpu_mid]="$yellow"
+theme[cpu_end]="$red"
+theme[free_start]="$green"
+theme[free_mid]="$cyan"
+theme[free_end]="$accent"
+theme[cached_start]="$cyan"
+theme[cached_mid]="$accent"
+theme[cached_end]="$purple"
+theme[available_start]="$green"
+theme[available_mid]="$yellow"
+theme[available_end]="$orange"
+theme[used_start]="$yellow"
+theme[used_mid]="$orange"
+theme[used_end]="$red"
+theme[download_start]="$accent"
+theme[download_mid]="$cyan"
+theme[download_end]="$green"
+theme[upload_start]="$yellow"
+theme[upload_mid]="$orange"
+theme[upload_end]="$red"
+theme[process_start]="$green"
+theme[process_mid]="$yellow"
+theme[process_end]="$red"
+EOF
+}
+
+reload_btop_instances() {
+    if pkill -USR2 -x btop 2>/dev/null; then
+        return 0
+    fi
+
+    local found=1
+    while IFS= read -r tty; do
+        [ -n "$tty" ] || continue
+        [ "$tty" = "??" ] && continue
+        if [ -w "/dev/$tty" ]; then
+            printf '\022' > "/dev/$tty" || true
+            found=0
+        fi
+    done < <(ps -axo tty=,comm= 2>/dev/null | awk '$2 ~ /(^|\/)btop$/ { print $1 }' | sort -u)
+
+    return $found
+}
+
+map_nvim_colorscheme() {
+    local theme_name="${1:-}"
+    case "$theme_name" in
+        flexoki-light)
+            printf 'flexoki-light\n'
+            ;;
+        kanagawa)
+            printf 'kanagawa-wave\n'
+            ;;
+        catppuccin)
+            printf 'catppuccin\n'
+            ;;
+        retro-82)
+            printf 'gruvbox\n'
+            ;;
+        lumon)
+            printf 'rose-pine-dawn\n'
+            ;;
+        matte-black|vantablack|hackerman)
+            printf 'tokyonight-night\n'
+            ;;
+        osaka-jade)
+            printf 'rose-pine-main\n'
+            ;;
+        *)
+            printf '%s\n' "${NVIM_COLORSCHEME:-tokyonight}"
+            ;;
+    esac
 }
 
 echo "Switching to theme: $THEME"
@@ -165,21 +289,22 @@ fi
 
 # --- 4. Neovim (running instances + LazyVim config) ---
 if [ -n "${NVIM_COLORSCHEME:-}" ]; then
+    NVIM_THEME="$(map_nvim_colorscheme "$THEME")"
     SWITCHED_NVIM=0
     while IFS= read -r -d '' sock; do
         if [ -S "$sock" ]; then
-            nvim --server "$sock" --remote-send "<Cmd>colorscheme $NVIM_COLORSCHEME<CR>" 2>/dev/null && SWITCHED_NVIM=$((SWITCHED_NVIM + 1))
+            nvim --server "$sock" --remote-send "<Cmd>colorscheme $NVIM_THEME<CR>" 2>/dev/null && SWITCHED_NVIM=$((SWITCHED_NVIM + 1))
         fi
     done < <(find /tmp -path '*/nvim.*/0' -print0 2>/dev/null)
     LAZYVIM_COLORSCHEME_FILE="$HOME/.config/nvim/lua/plugins/colorscheme.lua"
     if [ -f "$LAZYVIM_COLORSCHEME_FILE" ]; then
         cat > "$LAZYVIM_COLORSCHEME_FILE" <<EOF
 return {
-  { "LazyVim/LazyVim", opts = { colorscheme = "$NVIM_COLORSCHEME" } },
+  { "LazyVim/LazyVim", opts = { colorscheme = "$NVIM_THEME" } },
 }
 EOF
     fi
-    echo "  Neovim: $NVIM_COLORSCHEME ($SWITCHED_NVIM running instances updated)"
+    echo "  Neovim: $NVIM_THEME ($SWITCHED_NVIM running instances updated)"
 fi
 
 # --- 5. JankyBorders ---
@@ -191,11 +316,24 @@ if [ -n "${BORDER_ACTIVE:-}" ]; then
     echo "  Borders: active=$BORDER_ACTIVE"
 fi
 
-# --- 6. SketchyBar ---
+# --- 6. btop ---
+if [ -f "$BTOP_CONFIG" ]; then
+    BTOP_THEME="$(map_btop_theme "$THEME")"
+    write_btop_theme
+    /usr/bin/sed -i '' "s/^color_theme = .*/color_theme = \"$BTOP_THEME\"/" "$BTOP_CONFIG"
+    if reload_btop_instances; then
+        echo "  btop: theme=$BTOP_THEME (reload requested)"
+    else
+        echo "  btop: theme=$BTOP_THEME"
+    fi
+fi
+
+# --- 7. SketchyBar ---
 SKETCHYBAR_ACCENT="$(get_sketchybar_accent_color)"
 SKETCHYBAR_TEXT="$(get_sketchybar_text_color)"
-"$HOME/.local/bin/apply-sketchybar-theme" "$SKETCHYBAR_ACCENT" "$SKETCHYBAR_TEXT" || true
-echo "  SketchyBar: accent=$SKETCHYBAR_ACCENT text=$SKETCHYBAR_TEXT bar=0x00000000"
+SKETCHYBAR_BAR="$(get_sketchybar_bar_color)"
+"$HOME/.local/bin/apply-sketchybar-theme" "$SKETCHYBAR_ACCENT" "$SKETCHYBAR_TEXT" "$SKETCHYBAR_BAR" || true
+echo "  SketchyBar: accent=$SKETCHYBAR_ACCENT text=$SKETCHYBAR_TEXT bar=$SKETCHYBAR_BAR"
 
 if /opt/homebrew/bin/sketchybar --reload; then
     echo "  SketchyBar reload: ok"
@@ -203,7 +341,7 @@ else
     echo "  SketchyBar reload: failed"
 fi
 
-# --- 7. Raycast ---
+# --- 8. Raycast ---
 RAYCAST_THEME_ID="$(get_raycast_theme_id)"
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastShouldFollowSystemAppearance -bool true
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeId -string "$RAYCAST_THEME_ID"
@@ -212,7 +350,7 @@ RAYCAST_THEME_ID="$(get_raycast_theme_id)"
 /usr/bin/killall cfprefsd >/dev/null 2>&1 || true
 echo "  Raycast: $RAYCAST_THEME_ID"
 
-# --- 8. Save current theme ---
+# --- 9. Save current theme ---
 echo "$THEME" > "$THEMES_DIR/.current"
 
 echo "Done! Theme '$THEME' applied."
