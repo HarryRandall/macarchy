@@ -1,0 +1,176 @@
+/*  .S_SSSs     .S     S.    .S_SSSs     .S    S.     sSSs   .S_sSSs     .S   .S_sSSs      sSSSSs   */
+/* .SS~SSSSS   .SS     SS.  .SS~SSSSS   .SS    SS.   d%%SP  .SS~YS%%b   .SS  .SS~YS%%b    d%%%%SP   */
+/* S%S   SSSS  S%S     S%S  S%S   SSSS  S%S    S&S  d%S'    S%S   `S%b  S%S  S%S   `S%b  d%S'       */
+/* S%S    S%S  S%S     S%S  S%S    S%S  S%S    d*S  S%S     S%S    S%S  S%S  S%S    S%S  S%S        */
+/* S%S SSSS%S  S%S     S%S  S%S SSSS%S  S&S   .S*S  S&S     S%S    S&S  S&S  S%S    S&S  S&S        */
+/* S&S  SSS%S  S&S     S&S  S&S  SSS%S  S&S_sdSSS   S&S_Ss  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S~YSSY%b  S&S~SP  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S    `S%  S&S     S&S    S&S  S&S  S&S    S&S  S&S sSSs   */
+/* S*S    S&S  S*S     S*S  S*S    S&S  S*S     S%  S*b     S*S    S*S  S*S  S*S    S*S  S*b `S%%   */
+/* S*S    S*S  S*S  .  S*S  S*S    S*S  S*S     S&  S*S.    S*S    S*S  S*S  S*S    S*S  S*S   S%   */
+/* S*S    S*S  S*S_sSs_S*S  S*S    S*S  S*S     S&   SSSbs  S*S    S*S  S*S  S*S    S*S   SS_sSSS   */
+/* SSS    S*S  SSS~SSS~S*S  SSS    S*S  S*S     SS    YSSP  S*S    SSS  S*S  S*S    SSS    Y~YSSY   */
+/*        SP                       SP   SP                  SP          SP   SP                     */
+/*        Y                        Y    Y                   Y           Y    Y                      */
+/*                                                                                                  */
+
+@define-color selected-text #141010;
+@define-color text #dacbe6;
+@define-color base #141010;
+@define-color border #976add;
+@define-color foreground #dacbe6;
+@define-color background #141010;
+@define-color input #1a1416;
+@define-color selected-box #211818;
+@define-color selected-border #ffff00;
+@define-color amber #f88416;
+@define-color blue #2976d1;
+@define-color cyan #449392;
+@define-color purple #976add;
+@define-color muted #ab9191;
+
+window {
+    background-color: transparent;
+    background-image: linear-gradient(
+        180deg,
+        rgba(212, 43, 91, 0.18) 0%,
+        rgba(255, 255, 0, 0.20) 28%,
+        rgba(41, 118, 209, 0.12) 82%,
+        rgba(20, 16, 16, 0.00) 100%
+    );
+    backdrop-filter: blur(2px);
+    border: none;
+    padding: 0;
+    box-shadow: none;
+}
+
+.search-container {
+    background: alpha(@background, 0.96);
+    border: none;
+    padding: 14px 18px;
+}
+
+window .box-wrapper {
+    background: linear-gradient(180deg, alpha(@base, 0.98), alpha(@input, 0.98));
+    border: none;
+    padding: 18px 22px;
+    box-shadow: none;
+    background-image:
+        linear-gradient(90deg, @selected-border, @selected-border),
+        linear-gradient(90deg, @selected-border, @selected-border),
+        linear-gradient(180deg, @selected-border 0%, @amber 24%, @purple 54%, @blue 78%, @selected-border 100%),
+        linear-gradient(180deg, @selected-border 0%, @amber 24%, @purple 54%, @blue 78%, @selected-border 100%),
+        linear-gradient(180deg, alpha(@base, 0.98), alpha(@input, 0.98));
+    background-size:
+        100% 2px,
+        100% 2px,
+        2px 100%,
+        2px 100%,
+        calc(100% - 4px) calc(100% - 4px);
+    background-position:
+        top left,
+        bottom left,
+        top left,
+        top right,
+        center;
+    background-repeat: no-repeat;
+}
+
+#entry entry,
+.input {
+    background-color: @input;
+    color: @foreground;
+    border: 1px solid alpha(@blue, 0.55);
+    padding: 12px 16px;
+    background-image: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+#entry entry:selected,
+.input:selected {
+    color: @foreground;
+}
+
+#entry *,
+window .box-wrapper #entry,
+window .box-wrapper #entry * {
+    background: @input;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none;
+    outline: none;
+}
+
+label,
+.label,
+.text {
+    color: @text;
+}
+
+.description,
+.dim,
+.subtext {
+    color: @muted;
+}
+
+child {
+    padding: 3px 0;
+}
+
+child .item-box {
+    background: alpha(@base, 0.92);
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    padding: 0px 12px;
+}
+
+child:hover .item-box {
+    background: alpha(@blue, 0.10);
+    border-top-color: alpha(@blue, 0.55);
+    border-bottom-color: alpha(@purple, 0.4);
+}
+
+child:selected .item-box {
+    background: linear-gradient(90deg, @selected-border, @amber 58%, @border);
+    border-top-color: @selected-border;
+    border-bottom-color: @border;
+}
+
+child:selected .item-text,
+child:selected .text,
+child:selected label {
+    color: @selected-text;
+}
+
+child:hover .item-text,
+child:hover .text,
+child:hover label {
+    color: @foreground;
+}
+
+scrollbar {
+    background: transparent;
+}
+
+scrollbar slider {
+    background: alpha(@border, 0.6);
+    min-width: 6px;
+}
+
+scrollbar slider:hover {
+    background: @cyan;
+}
+
+/* ░░      ░░░  ░░░░░░░░       ░░                               */
+/* ▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒                               */
+/* ▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓                               */
+/* █  ████  ██  ████████  ████  █                               */
+/* ██      ███        ██       ██                               */
+/*                                                              */
+/* ░        ░░░      ░░░       ░░░░      ░░░       ░░░░      ░░ */
+/* ▒▒▒▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒ */
+/* ▓▓▓▓▓▓▓  ▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓ */
+/* █  ████  ██  ████  ██  ████  ██  ████  ██  ████  ██  ████  █ */
+/* ██      ████      ███       ████      ███       ████      ██ */
+/*                                                              */

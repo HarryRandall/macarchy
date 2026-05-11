@@ -1,0 +1,108 @@
+#  .S_SSSs     .S     S.    .S_SSSs     .S    S.     sSSs   .S_sSSs     .S   .S_sSSs      sSSSSs  
+# .SS~SSSSS   .SS     SS.  .SS~SSSSS   .SS    SS.   d%%SP  .SS~YS%%b   .SS  .SS~YS%%b    d%%%%SP  
+# S%S   SSSS  S%S     S%S  S%S   SSSS  S%S    S&S  d%S'    S%S   `S%b  S%S  S%S   `S%b  d%S'      
+# S%S    S%S  S%S     S%S  S%S    S%S  S%S    d*S  S%S     S%S    S%S  S%S  S%S    S%S  S%S       
+# S%S SSSS%S  S%S     S%S  S%S SSSS%S  S&S   .S*S  S&S     S%S    S&S  S&S  S%S    S&S  S&S       
+# S&S  SSS%S  S&S     S&S  S&S  SSS%S  S&S_sdSSS   S&S_Ss  S&S    S&S  S&S  S&S    S&S  S&S       
+# S&S    S&S  S&S     S&S  S&S    S&S  S&S~YSSY%b  S&S~SP  S&S    S&S  S&S  S&S    S&S  S&S       
+# S&S    S&S  S&S     S&S  S&S    S&S  S&S    `S%  S&S     S&S    S&S  S&S  S&S    S&S  S&S sSSs  
+# S*S    S&S  S*S     S*S  S*S    S&S  S*S     S%  S*b     S*S    S*S  S*S  S*S    S*S  S*b `S%%  
+# S*S    S*S  S*S  .  S*S  S*S    S*S  S*S     S&  S*S.    S*S    S*S  S*S  S*S    S*S  S*S   S%  
+# S*S    S*S  S*S_sSs_S*S  S*S    S*S  S*S     S&   SSSbs  S*S    S*S  S*S  S*S    S*S   SS_sSSS  
+# SSS    S*S  SSS~SSS~S*S  SSS    S*S  S*S     SS    YSSP  S*S    SSS  S*S  S*S    SSS    Y~YSSY  
+#        SP                       SP   SP                  SP          SP   SP                    
+#        Y                        Y    Y                   Y           Y    Y                     
+#                                                                                                 
+
+# Main background, empty for terminal default, need to be empty if you want transparent background
+theme[main_bg]=""
+
+# Main text color
+theme[main_fg]="#dacbe6"
+
+
+# Title color for boxes
+theme[title]="#ead94d"
+
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="#c92b50"
+
+
+# Background color of selected item in processes box
+theme[selected_bg]="#976add"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="#dacbe6"
+
+
+# Color of inactive/disabled text
+theme[inactive_fg]="#ab9191"
+
+# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
+theme[proc_misc]="#f88416"
+
+
+# Box outline and divider line color
+theme[cpu_box]="#ead94d"
+
+theme[mem_box]="#f88416"
+
+theme[net_box]="#449392"
+
+theme[proc_box]="#976add"
+
+theme[div_line]="#ab9191"
+
+# Gradient for all meters and graphs
+theme[temp_start]="#c0daf6"
+theme[temp_mid]="#ead94d"
+theme[temp_end]="#f88416"
+
+
+theme[cpu_start]="#2976d1"
+theme[cpu_mid]="#ead94d"
+theme[cpu_end]="#f88416"
+
+
+theme[free_start]="#449392"
+theme[free_mid]="#2976d1"
+theme[free_end]="#c0daf6"
+
+
+theme[cached_start]="#ead94d"
+theme[cached_mid]="#f88416"
+theme[cached_end]="#f56728"
+
+
+theme[available_start]="#449392"
+theme[available_mid]="#ead94d"
+theme[available_end]="#fffbd4"
+
+
+theme[used_start]="#ead94d"
+theme[used_mid]="#f88416"
+theme[used_end]="#d42b5b"
+
+
+theme[download_start]="#2976d1"
+theme[download_mid]="#ead94d"
+theme[download_end]="#fffbd4"
+
+
+theme[upload_start]="#976add"
+theme[upload_mid]="#c92b50"
+theme[upload_end]="#f88416"
+
+# ░░      ░░░  ░░░░░░░░       ░░                              
+# ▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒                              
+# ▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓                              
+# █  ████  ██  ████████  ████  █                              
+# ██      ███        ██       ██                              
+#                                                             
+# ░        ░░░      ░░░       ░░░░      ░░░       ░░░░      ░░
+# ▒▒▒▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒
+# ▓▓▓▓▓▓▓  ▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓
+# █  ████  ██  ████  ██  ████  ██  ████  ██  ████  ██  ████  █
+# ██      ████      ███       ████      ███       ████      ██
+#                                                             

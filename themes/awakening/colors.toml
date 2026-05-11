@@ -1,0 +1,64 @@
+#  .S_SSSs     .S     S.    .S_SSSs     .S    S.     sSSs   .S_sSSs     .S   .S_sSSs      sSSSSs  
+# .SS~SSSSS   .SS     SS.  .SS~SSSSS   .SS    SS.   d%%SP  .SS~YS%%b   .SS  .SS~YS%%b    d%%%%SP  
+# S%S   SSSS  S%S     S%S  S%S   SSSS  S%S    S&S  d%S'    S%S   `S%b  S%S  S%S   `S%b  d%S'      
+# S%S    S%S  S%S     S%S  S%S    S%S  S%S    d*S  S%S     S%S    S%S  S%S  S%S    S%S  S%S       
+# S%S SSSS%S  S%S     S%S  S%S SSSS%S  S&S   .S*S  S&S     S%S    S&S  S&S  S%S    S&S  S&S       
+# S&S  SSS%S  S&S     S&S  S&S  SSS%S  S&S_sdSSS   S&S_Ss  S&S    S&S  S&S  S&S    S&S  S&S       
+# S&S    S&S  S&S     S&S  S&S    S&S  S&S~YSSY%b  S&S~SP  S&S    S&S  S&S  S&S    S&S  S&S       
+# S&S    S&S  S&S     S&S  S&S    S&S  S&S    `S%  S&S     S&S    S&S  S&S  S&S    S&S  S&S sSSs  
+# S*S    S&S  S*S     S*S  S*S    S&S  S*S     S%  S*b     S*S    S*S  S*S  S*S    S*S  S*b `S%%  
+# S*S    S*S  S*S  .  S*S  S*S    S*S  S*S     S&  S*S.    S*S    S*S  S*S  S*S    S*S  S*S   S%  
+# S*S    S*S  S*S_sSs_S*S  S*S    S*S  S*S     S&   SSSbs  S*S    S*S  S*S  S*S    S*S   SS_sSSS  
+# SSS    S*S  SSS~SSS~S*S  SSS    S*S  S*S     SS    YSSP  S*S    SSS  S*S  S*S    SSS    Y~YSSY  
+#        SP                       SP   SP                  SP          SP   SP                    
+#        Y                        Y    Y                   Y           Y    Y                     
+#                                                                                                 
+
+# Accent and UI colors
+accent = "#1d52a1"
+active_border_color = "#ffff00"
+active_tab_background = "#1d52a1"
+
+# Cursor colors
+cursor = "#fffbd4"
+
+# Primary colors
+foreground = "#dacbe6"
+background = "#141010"
+
+# Selection colors
+selection_foreground = "#141010"
+selection_background = "#1d52a1"
+
+# Normal colors (ANSI 0-7)
+color0 = "#141010"
+color1 = "#f56728"
+color2 = "#ffff00"
+color3 = "#c92b50"
+color4 = "#2976d1"
+color5 = "#976add"
+color6 = "#449392"
+color7 = "#dacbe6"
+
+# Bright colors (ANSI 8-15)
+color8 = "#ab9191"
+color9 = "#f88416"
+color10 = "#ead94d"
+color11 = "#d42b5b"
+color12 = "#979dd5"
+color13 = "#976add"
+color14 = "#c0daf6"
+color15 = "#fffbd4"
+
+# ░░      ░░░  ░░░░░░░░       ░░                              
+# ▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒                              
+# ▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓                              
+# █  ████  ██  ████████  ████  █                              
+# ██      ███        ██       ██                              
+#                                                             
+# ░        ░░░      ░░░       ░░░░      ░░░       ░░░░      ░░
+# ▒▒▒▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒
+# ▓▓▓▓▓▓▓  ▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓
+# █  ████  ██  ████  ██  ████  ██  ████  ██  ████  ██  ████  █
+# ██      ████      ███       ████      ███       ████      ██
+#                                                             

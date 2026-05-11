@@ -1,0 +1,324 @@
+/*  .S_SSSs     .S     S.    .S_SSSs     .S    S.     sSSs   .S_sSSs     .S   .S_sSSs      sSSSSs   */
+/* .SS~SSSSS   .SS     SS.  .SS~SSSSS   .SS    SS.   d%%SP  .SS~YS%%b   .SS  .SS~YS%%b    d%%%%SP   */
+/* S%S   SSSS  S%S     S%S  S%S   SSSS  S%S    S&S  d%S'    S%S   `S%b  S%S  S%S   `S%b  d%S'       */
+/* S%S    S%S  S%S     S%S  S%S    S%S  S%S    d*S  S%S     S%S    S%S  S%S  S%S    S%S  S%S        */
+/* S%S SSSS%S  S%S     S%S  S%S SSSS%S  S&S   .S*S  S&S     S%S    S&S  S&S  S%S    S&S  S&S        */
+/* S&S  SSS%S  S&S     S&S  S&S  SSS%S  S&S_sdSSS   S&S_Ss  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S~YSSY%b  S&S~SP  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S    `S%  S&S     S&S    S&S  S&S  S&S    S&S  S&S sSSs   */
+/* S*S    S&S  S*S     S*S  S*S    S&S  S*S     S%  S*b     S*S    S*S  S*S  S*S    S*S  S*b `S%%   */
+/* S*S    S*S  S*S  .  S*S  S*S    S*S  S*S     S&  S*S.    S*S    S*S  S*S  S*S    S*S  S*S   S%   */
+/* S*S    S*S  S*S_sSs_S*S  S*S    S*S  S*S     S&   SSSbs  S*S    S*S  S*S  S*S    S*S   SS_sSSS   */
+/* SSS    S*S  SSS~SSS~S*S  SSS    S*S  S*S     SS    YSSP  S*S    SSS  S*S  S*S    SSS    Y~YSSY   */
+/*        SP                       SP   SP                  SP          SP   SP                     */
+/*        Y                        Y    Y                   Y           Y    Y                      */
+/*                                                                                                  */
+
+/**
+* @name Omarchy Awakening Vencord
+* @author @oldjobobo
+* @version 0.3.0
+* @description Standalone Awakening Discord theme for Vencord
+**/
+
+/* Palette and theme tokens */
+:root {
+    --color00: #141010;
+    --color01: #f56728;
+    --color02: #ffff00;
+    --color03: #c92b50;
+    --color04: #2976d1;
+    --color05: #976add;
+    --color06: #449392;
+    --color07: #dacbe6;
+    --color08: #ab9191;
+    --color09: #f88416;
+    --color10: #ead94d;
+    --color11: #d42b5b;
+    --color12: #979dd5;
+    --color13: #976add;
+    --color14: #c0daf6;
+    --color15: #fffbd4;
+
+    --aw-surface-0: color-mix(in srgb, var(--color00) 96%, black);
+    --aw-surface-1: var(--color00);
+    --aw-surface-2: color-mix(in srgb, var(--color08) 18%, var(--color00));
+    --aw-surface-3: color-mix(in srgb, var(--color05) 24%, var(--color00));
+    --aw-surface-4: color-mix(in srgb, var(--color04) 42%, var(--color00));
+
+    --aw-text: var(--color07);
+    --aw-text-strong: var(--color15);
+    --aw-message-text: var(--aw-text);
+    --aw-message-username: var(--color10);
+    --aw-text-muted: color-mix(in srgb, var(--color08) 68%, var(--aw-text));
+    --aw-text-faint: color-mix(in srgb, var(--color08) 82%, var(--aw-text));
+
+    --aw-accent: #1d52a1;
+    --aw-accent-strong: var(--color04);
+    --aw-active: var(--color02);
+    --aw-heat: var(--color09);
+    --aw-support: var(--color05);
+    --aw-danger: var(--color03);
+
+    --aw-channel: color-mix(in srgb, var(--aw-text-muted) 78%, var(--color08));
+    --aw-channel-unread: var(--aw-text);
+    --aw-channel-selected: var(--aw-text-strong);
+    --aw-channel-hover-bg: color-mix(in srgb, var(--aw-accent) 14%, var(--aw-surface-2));
+    --aw-channel-selected-bg: linear-gradient(90deg, color-mix(in srgb, var(--aw-active) 18%, var(--aw-surface-2)) 0%, color-mix(in srgb, var(--aw-support) 14%, var(--aw-surface-2)) 100%);
+    --aw-mention-bg: linear-gradient(90deg, color-mix(in srgb, var(--aw-active) 18%, var(--aw-surface-1)) 0%, color-mix(in srgb, var(--aw-heat) 12%, var(--aw-surface-1)) 48%, color-mix(in srgb, var(--aw-support) 10%, var(--aw-surface-1)) 100%);
+    --aw-glow: 0 0 18px color-mix(in srgb, var(--aw-accent) 16%, transparent);
+    --aw-panel-edge: color-mix(in srgb, var(--aw-accent) 16%, transparent);
+    --aw-panel-edge-strong: color-mix(in srgb, var(--aw-active) 20%, transparent);
+    --aw-panel-fill: linear-gradient(180deg, color-mix(in srgb, var(--aw-surface-2) 84%, var(--aw-surface-1)) 0%, color-mix(in srgb, var(--aw-surface-1) 94%, black) 100%);
+    --aw-app-glow: radial-gradient(circle at top, color-mix(in srgb, var(--aw-accent) 10%, transparent) 0%, transparent 46%);
+
+    --font-primary: "IBM Plex Sans", "Figtree", "gg sans", sans-serif;
+    --font-display: "Space Grotesk", "IBM Plex Sans", "gg sans", sans-serif;
+    --aw-letter-spacing: 0.15px;
+}
+
+/* Core Discord variable map */
+.theme-dark,
+.theme-darker,
+.theme-midnight,
+.visual-refresh {
+    --background-primary: var(--aw-surface-1) !important;
+    --background-secondary: var(--aw-surface-0) !important;
+    --background-secondary-alt: var(--aw-surface-1) !important;
+    --background-tertiary: var(--aw-surface-0) !important;
+    --background-accent: var(--aw-surface-3) !important;
+    --background-floating: var(--aw-surface-2) !important;
+
+    --background-base-lowest: var(--aw-surface-0) !important;
+    --background-base-lower: var(--aw-surface-0) !important;
+    --background-base-low: var(--aw-surface-1) !important;
+    --background-base-tertiary: var(--aw-surface-0) !important;
+    --background-surface-high: var(--aw-surface-2) !important;
+    --background-surface-higher: var(--aw-surface-2) !important;
+    --background-surface-highest: var(--aw-surface-3) !important;
+    --bg-surface-raised: var(--aw-surface-2) !important;
+    --bg-surface-overlay: var(--aw-surface-1) !important;
+
+    --background-modifier-accent: color-mix(in srgb, var(--aw-surface-3) 72%, transparent) !important;
+    --background-modifier-hover: var(--aw-channel-hover-bg) !important;
+    --background-modifier-active: color-mix(in srgb, var(--aw-accent) 20%, var(--aw-surface-2)) !important;
+    --background-modifier-selected: var(--aw-channel-selected-bg) !important;
+    --background-mentioned: var(--aw-mention-bg) !important;
+    --background-mentioned-hover: linear-gradient(90deg, color-mix(in srgb, var(--aw-active) 26%, var(--aw-surface-1)) 0%, color-mix(in srgb, var(--aw-heat) 18%, var(--aw-surface-1)) 48%, color-mix(in srgb, var(--aw-support) 14%, var(--aw-surface-1)) 100%) !important;
+    --mention-background: var(--aw-mention-bg) !important;
+    --mention-foreground: var(--aw-text-strong) !important;
+
+    --text-normal: var(--aw-text) !important;
+    --text-primary: var(--aw-text) !important;
+    --text-secondary: color-mix(in srgb, var(--aw-text-strong) 52%, var(--aw-text-muted)) !important;
+    --text-muted: var(--aw-text-muted) !important;
+    --header-primary: var(--aw-text-strong) !important;
+    --header-secondary: var(--aw-text-muted) !important;
+    --interactive-normal: var(--aw-text) !important;
+    --interactive-hover: var(--aw-text-strong) !important;
+    --interactive-active: var(--aw-text-strong) !important;
+    --interactive-muted: var(--aw-channel) !important;
+
+    --channels-default: var(--aw-channel) !important;
+    --channels-default-muted: var(--aw-text-faint) !important;
+    --channels-default-unread: var(--aw-channel-unread) !important;
+    --channel-icon: var(--aw-accent-strong) !important;
+    --channel-text-area-placeholder: var(--aw-text-muted) !important;
+    --channeltextarea-background: var(--aw-surface-2) !important;
+    --chat-background-default: var(--aw-surface-1) !important;
+    --input-background: var(--aw-surface-2) !important;
+    --input-border: color-mix(in srgb, var(--aw-accent) 38%, var(--aw-surface-3)) !important;
+    --input-border-focus: var(--aw-accent-strong) !important;
+
+    --brand-500: var(--aw-accent) !important;
+    --brand-560: color-mix(in srgb, var(--aw-accent) 24%, var(--aw-surface-1)) !important;
+    --text-link: var(--aw-accent-strong) !important;
+    --focus-primary: var(--aw-active) !important;
+
+    --button-filled-brand-background: color-mix(in srgb, var(--aw-accent) 74%, var(--aw-surface-1)) !important;
+    --button-filled-brand-background-hover: color-mix(in srgb, var(--aw-accent-strong) 78%, var(--aw-surface-1)) !important;
+    --button-filled-brand-text: var(--aw-text-strong) !important;
+    --button-secondary-background: var(--aw-surface-3) !important;
+    --button-secondary-background-hover: var(--aw-surface-4) !important;
+    --button-secondary-text: var(--aw-text-strong) !important;
+    --button-danger-background: var(--aw-danger) !important;
+    --button-danger-background-hover: color-mix(in srgb, var(--aw-danger) 82%, var(--aw-text-strong)) !important;
+    --button-danger-text: var(--color00) !important;
+
+    --status-positive: var(--aw-active) !important;
+    --status-warning: var(--aw-heat) !important;
+    --status-danger: var(--aw-danger) !important;
+    --text-positive: var(--aw-active) !important;
+    --text-warning: var(--aw-heat) !important;
+    --text-negative: var(--aw-danger) !important;
+    --scrollbar-thin-thumb: var(--aw-surface-3) !important;
+    --scrollbar-auto-thumb: var(--aw-surface-3) !important;
+    --scrollbar-thin-track: transparent !important;
+    --scrollbar-auto-track: transparent !important;
+}
+
+/* Global texture and typography */
+body {
+    letter-spacing: var(--aw-letter-spacing);
+}
+
+[class*="appMount"]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: var(--aw-app-glow);
+    opacity: 0.9;
+}
+
+[class*="title"],
+[class*="topic"],
+[class*="headerText"],
+[class*="nameTag"] {
+    font-family: var(--font-display) !important;
+    letter-spacing: 0.35px;
+}
+
+/* Major surfaces */
+[class*="sidebar"],
+[class*="chatContent"],
+[class*="membersWrap"],
+[class*="container"][class*="themed"] {
+    border: 1px solid var(--aw-panel-edge) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--aw-support) 8%, transparent) !important;
+}
+
+[class*="sidebar"] {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--aw-surface-0) 92%, black) 0%, color-mix(in srgb, var(--aw-surface-2) 58%, var(--aw-surface-0)) 100%) !important;
+}
+
+[class*="chatContent"] {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--aw-surface-1) 92%, black) 0%, color-mix(in srgb, var(--aw-surface-2) 34%, var(--aw-surface-1)) 100%) !important;
+}
+
+[class*="membersWrap"] {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--aw-surface-0) 90%, black) 0%, color-mix(in srgb, var(--aw-surface-3) 32%, var(--aw-surface-0)) 100%) !important;
+}
+
+[class*="panels"],
+[class*="container"][class*="themed"],
+[class*="contentRegionScroller"],
+[class*="standardSidebarView"] {
+    background: var(--aw-panel-fill) !important;
+}
+
+/* Navigation states */
+a[data-list-item-id^="channels___"][aria-selected="true"] {
+    background: var(--aw-channel-selected-bg) !important;
+    border-left: 2px solid var(--aw-active) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--aw-support) 18%, transparent) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+a[data-list-item-id^="channels___"]:hover {
+    background: var(--aw-channel-hover-bg) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+a[data-list-item-id^="channels___"] svg,
+a[data-list-item-id^="channels___"] svg path {
+    color: color-mix(in srgb, var(--aw-accent) 58%, var(--aw-text-muted)) !important;
+    fill: color-mix(in srgb, var(--aw-accent) 58%, var(--aw-text-muted)) !important;
+}
+
+a[data-list-item-id^="channels___"][class*="modeUnread"] svg,
+a[data-list-item-id^="channels___"][class*="modeUnread"] svg path,
+[class*="modeUnread"] [class*="icon__"],
+[class*="modeUnread"] [class*="icon__"] path {
+    color: var(--aw-active) !important;
+    fill: var(--aw-active) !important;
+}
+
+#channels [class*="modeSelected"] [class*="name__"],
+a[data-list-item-id^="channels___"][aria-selected="true"] [class*="name"] * {
+    color: var(--aw-channel-selected) !important;
+}
+
+/* Message composer */
+[class*="channelTextArea"] {
+    background: color-mix(in srgb, var(--aw-surface-2) 88%, var(--aw-surface-1)) !important;
+    border: 1px solid color-mix(in srgb, var(--aw-accent) 28%, transparent) !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+}
+
+[class*="channelTextArea"]:focus-within {
+    border-color: color-mix(in srgb, var(--aw-accent-strong) 68%, var(--aw-accent)) !important;
+    box-shadow: var(--aw-glow) !important;
+}
+
+[class*="channelTextArea"] [class*="scrollableContainer"],
+[class*="channelTextArea"] [class*="themedBackground"] {
+    background: transparent !important;
+}
+
+/* Messages and mentions */
+[id^="chat-messages-"] [class*="messageListItem"]:hover,
+[id^="chat-messages-"] [class*="messageListItem"]:hover > [class*="message"] {
+    background: color-mix(in srgb, var(--aw-accent) 6%, transparent) !important;
+}
+
+[class*="messageContent"],
+[class*="messageContent"] *,
+[class*="markup"] {
+    color: var(--aw-message-text) !important;
+}
+
+[id^="chat-messages-"] [class*="username"],
+[id^="chat-messages-"] [class*="username"] *,
+[id^="chat-messages-"] [class*="repliedMessage"] [class*="username"],
+[id^="chat-messages-"] [class*="repliedMessage"] [class*="username"] * {
+    color: var(--aw-message-username) !important;
+}
+
+div[class*="mentioned"],
+li[class*="mentioned"] {
+    background: var(--aw-mention-bg) !important;
+}
+
+div[class*="mentioned"]::before,
+li[class*="mentioned"]::before {
+    background: var(--aw-active) !important;
+}
+
+/* Unread markers */
+div[class*="unreadBar"],
+span[class*="unreadBar"],
+div[class*="unreadPill"],
+span[class*="unreadPill"] {
+    background: linear-gradient(90deg, var(--aw-active), var(--aw-heat)) !important;
+    color: var(--color00) !important;
+}
+
+/* Popouts and menus */
+[class*="menu"],
+[class*="wrapper"][class*="menu"],
+[class*="autocomplete"],
+[class*="messagesPopoutWrap"],
+[class*="container"][class*="elevation"],
+[class*="root"][class*="small"] {
+    background: var(--aw-panel-fill) !important;
+    border: 1px solid var(--aw-panel-edge-strong) !important;
+    box-shadow: var(--aw-glow) !important;
+}
+
+/* ░░      ░░░  ░░░░░░░░       ░░                               */
+/* ▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒                               */
+/* ▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓                               */
+/* █  ████  ██  ████████  ████  █                               */
+/* ██      ███        ██       ██                               */
+/*                                                              */
+/* ░        ░░░      ░░░       ░░░░      ░░░       ░░░░      ░░ */
+/* ▒▒▒▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒ */
+/* ▓▓▓▓▓▓▓  ▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓ */
+/* █  ████  ██  ████  ██  ████  ██  ████  ██  ████  ██  ████  █ */
+/* ██      ████      ███       ████      ███       ████      ██ */
+/*                                                              */

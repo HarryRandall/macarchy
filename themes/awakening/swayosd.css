@@ -1,0 +1,115 @@
+/*  .S_SSSs     .S     S.    .S_SSSs     .S    S.     sSSs   .S_sSSs     .S   .S_sSSs      sSSSSs   */
+/* .SS~SSSSS   .SS     SS.  .SS~SSSSS   .SS    SS.   d%%SP  .SS~YS%%b   .SS  .SS~YS%%b    d%%%%SP   */
+/* S%S   SSSS  S%S     S%S  S%S   SSSS  S%S    S&S  d%S'    S%S   `S%b  S%S  S%S   `S%b  d%S'       */
+/* S%S    S%S  S%S     S%S  S%S    S%S  S%S    d*S  S%S     S%S    S%S  S%S  S%S    S%S  S%S        */
+/* S%S SSSS%S  S%S     S%S  S%S SSSS%S  S&S   .S*S  S&S     S%S    S&S  S&S  S%S    S&S  S&S        */
+/* S&S  SSS%S  S&S     S&S  S&S  SSS%S  S&S_sdSSS   S&S_Ss  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S~YSSY%b  S&S~SP  S&S    S&S  S&S  S&S    S&S  S&S        */
+/* S&S    S&S  S&S     S&S  S&S    S&S  S&S    `S%  S&S     S&S    S&S  S&S  S&S    S&S  S&S sSSs   */
+/* S*S    S&S  S*S     S*S  S*S    S&S  S*S     S%  S*b     S*S    S*S  S*S  S*S    S*S  S*b `S%%   */
+/* S*S    S*S  S*S  .  S*S  S*S    S*S  S*S     S&  S*S.    S*S    S*S  S*S  S*S    S*S  S*S   S%   */
+/* S*S    S*S  S*S_sSs_S*S  S*S    S*S  S*S     S&   SSSbs  S*S    S*S  S*S  S*S    S*S   SS_sSSS   */
+/* SSS    S*S  SSS~SSS~S*S  SSS    S*S  S*S     SS    YSSP  S*S    SSS  S*S  S*S    SSS    Y~YSSY   */
+/*        SP                       SP   SP                  SP          SP   SP                     */
+/*        Y                        Y    Y                   Y           Y    Y                      */
+/*                                                                                                  */
+
+@define-color background-color #141010;
+@define-color border-yellow #ffff00;
+@define-color border-orange #f88416;
+@define-color border-purple #976add;
+@define-color border-blue #2976d1;
+@define-color label #dacbe6;
+@define-color image #dacbe6;
+@define-color progress #c92b50;
+@define-color progress-trough rgba(171, 145, 145, 0.18);
+
+window:not(:backdrop),
+window:backdrop {
+    background-color: transparent;
+    border: none;
+    border-width: 0;
+    border-radius: 0;
+    padding: 14px;
+    box-shadow: none;
+}
+
+window:not(:backdrop) #container,
+window:backdrop #container {
+    border: none;
+    border-radius: 0;
+    background-color: @background-color;
+    padding: 24px 34px;
+    min-width: 620px;
+    box-shadow: none;
+    background-clip: padding-box;
+    background-image:
+        linear-gradient(90deg, @border-yellow 0%, @border-orange 28%, @border-purple 72%, @border-blue 100%),
+        linear-gradient(90deg, alpha(@border-orange, 0.82) 0%, alpha(@border-purple, 0.82) 100%),
+        linear-gradient(180deg, @border-yellow 0%, @border-orange 100%),
+        linear-gradient(180deg, @border-blue 0%, @border-purple 100%),
+        linear-gradient(@background-color, @background-color);
+    background-size:
+        100% 2px,
+        100% 2px,
+        2px 100%,
+        2px 100%,
+        calc(100% - 4px) calc(100% - 4px);
+    background-position:
+        top left,
+        bottom left,
+        top left,
+        top right,
+        center;
+    background-repeat: no-repeat;
+}
+
+image {
+    color: @image;
+    -gtk-icon-size: 30px;
+    margin: 0 14px 0 0;
+}
+
+label {
+    color: @label;
+    min-width: 44px;
+    margin: 0 0 0 14px;
+    font-size: 35px;
+    font-weight: 700;
+}
+
+progressbar,
+progressbar trough,
+progressbar progress {
+    border-radius: 0;
+}
+
+progressbar {
+    margin: 0;
+    min-width: 430px;
+    min-height: 12px;
+}
+
+progressbar trough {
+    background-color: @progress-trough;
+    border: 1px solid alpha(@border-blue, 0.55);
+    min-height: 12px;
+}
+
+progressbar progress {
+    background-image: linear-gradient(90deg, @border-yellow 0%, @border-orange 35%, @progress 70%, alpha(@border-purple, 0.88) 100%);
+    min-height: 12px;
+}
+
+/* ░░      ░░░  ░░░░░░░░       ░░                               */
+/* ▒  ▒▒▒▒  ▒▒  ▒▒▒▒▒▒▒▒  ▒▒▒▒  ▒                               */
+/* ▓  ▓▓▓▓  ▓▓  ▓▓▓▓▓▓▓▓  ▓▓▓▓  ▓                               */
+/* █  ████  ██  ████████  ████  █                               */
+/* ██      ███        ██       ██                               */
+/*                                                              */
+/* ░        ░░░      ░░░       ░░░░      ░░░       ░░░░      ░░ */
+/* ▒▒▒▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒▒  ▒▒▒▒  ▒ */
+/* ▓▓▓▓▓▓▓  ▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓▓       ▓▓▓  ▓▓▓▓  ▓ */
+/* █  ████  ██  ████  ██  ████  ██  ████  ██  ████  ██  ████  █ */
+/* ██      ████      ███       ████      ███       ████      ██ */
+/*                                                              */
