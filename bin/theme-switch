@@ -92,7 +92,9 @@ get_sketchybar_text_color() {
 }
 
 get_sketchybar_accent_color() {
-    if [ -n "${BORDER_ACTIVE:-}" ]; then
+    if [ -n "${SKETCHYBAR_ACCENT_COLOR:-}" ]; then
+        printf '%s\n' "$SKETCHYBAR_ACCENT_COLOR"
+    elif [ -n "${BORDER_ACTIVE:-}" ]; then
         printf '%s\n' "$BORDER_ACTIVE"
     else
         to_macos_color "$(ghostty_palette 4 "$(ghostty_color "foreground" "#ffffff")")"
