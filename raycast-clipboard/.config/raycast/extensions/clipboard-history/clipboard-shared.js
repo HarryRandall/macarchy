@@ -6,7 +6,7 @@ var import_fs = require("fs");
 var import_os = require("os");
 var import_path = require("path");
 
-var STATE_DIR = (0, import_path.join)((0, import_os.homedir)(), "Library", "Application Support", "com.raycast.macos", "extensions", "theme-switcher");
+var STATE_DIR = (0, import_path.join)((0, import_os.homedir)(), "Library", "Application Support", "com.raycast.macos", "extensions", "clipboard-history");
 var HISTORY_FILE = (0, import_path.join)(STATE_DIR, "clipboard-history.json");
 var IMAGES_DIR = (0, import_path.join)(STATE_DIR, "clipboard-images");
 

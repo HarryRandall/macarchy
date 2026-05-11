@@ -6,7 +6,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const STATE_DIR = path.join(os.homedir(), "Library", "Application Support", "com.raycast.macos", "extensions", "theme-switcher");
+const STATE_DIR = path.join(os.homedir(), "Library", "Application Support", "com.raycast.macos", "extensions", "clipboard-history");
 const HISTORY_FILE = path.join(STATE_DIR, "clipboard-history.json");
 
 function readHistoryState() {

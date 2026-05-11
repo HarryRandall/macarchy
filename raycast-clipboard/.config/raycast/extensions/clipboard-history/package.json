@@ -1,0 +1,37 @@
+{
+  "name": "clipboard-history",
+  "title": "Clipboard History",
+  "description": "Terminal-aware clipboard history for Macarchy",
+  "icon": "command-icon.png",
+  "author": "macarchy",
+  "license": "UNLICENSED",
+  "commands": [
+    {
+      "name": "clipboard-history",
+      "title": "Clipboard History",
+      "description": "Open clipboard history with terminal-aware paste behavior",
+      "mode": "view"
+    },
+    {
+      "name": "paste-terminal-safe",
+      "title": "Paste Terminal Safe",
+      "description": "Paste the latest history item safely into terminal or GUI apps",
+      "mode": "no-view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.93.3"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.13.14",
+    "@types/react": "19.0.12",
+    "eslint": "^9.23.0",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint"
+  }
+}

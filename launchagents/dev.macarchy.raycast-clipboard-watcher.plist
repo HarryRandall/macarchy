@@ -6,18 +6,13 @@
   <string>dev.macarchy.raycast-clipboard-watcher</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Library/Developer/CommandLineTools/usr/bin/swift</string>
-    <string>$(HOME)/.config/raycast/extensions/theme-switcher/clipboard-watcher.swift</string>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>mkdir -p "$HOME/Library/Logs"; exec /Library/Developer/CommandLineTools/usr/bin/swift "$HOME/.config/raycast/extensions/clipboard-history/clipboard-watcher.swift" &gt;&gt; "$HOME/Library/Logs/raycast-clipboard-watcher.log" 2&gt;&amp;1</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
-  <key>StandardOutPath</key>
-  <string>$(HOME)/Library/Logs/raycast-clipboard-watcher.log</string>
-  <key>StandardErrorPath</key>
-  <string>$(HOME)/Library/Logs/raycast-clipboard-watcher.log</string>
-  <key>WorkingDirectory</key>
-  <string>$(HOME)</string>
 </dict>
 </plist>

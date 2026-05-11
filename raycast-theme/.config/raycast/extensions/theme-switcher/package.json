@@ -1,33 +1,20 @@
 {
   "name": "theme-switcher",
   "title": "Theme Switcher",
-  "description": "Hotswap your entire desktop theme — Ghostty, borders, dark mode, wallpaper, Neovim",
+  "description": "Apply Macarchy themes through ~/.local/bin/theme-switch",
   "icon": "command-icon.png",
   "author": "macarchy",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "commands": [
     {
       "name": "switch-theme",
       "title": "Switch Theme",
       "description": "Pick a theme to apply across your system",
       "mode": "view"
-    },
-    {
-      "name": "paste-terminal-safe",
-      "title": "Paste Terminal Safe",
-      "description": "Paste text normally, or paste a temp file path when the clipboard contains an image",
-      "mode": "no-view"
-    },
-    {
-      "name": "clipboard-history",
-      "title": "Clipboard History",
-      "description": "Open clipboard history with terminal-aware paste behavior",
-      "mode": "view"
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.93.3",
-    "@raycast/utils": "^1.19.1"
+    "@raycast/api": "^1.93.3"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.11",

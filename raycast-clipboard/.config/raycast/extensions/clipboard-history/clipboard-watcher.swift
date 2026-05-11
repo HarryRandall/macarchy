@@ -32,7 +32,7 @@ let stateDir = home
   .appendingPathComponent("Application Support", isDirectory: true)
   .appendingPathComponent("com.raycast.macos", isDirectory: true)
   .appendingPathComponent("extensions", isDirectory: true)
-  .appendingPathComponent("theme-switcher", isDirectory: true)
+  .appendingPathComponent("clipboard-history", isDirectory: true)
 let imagesDir = stateDir.appendingPathComponent("clipboard-images", isDirectory: true)
 let historyFile = stateDir.appendingPathComponent("clipboard-history.json", isDirectory: false)
 
