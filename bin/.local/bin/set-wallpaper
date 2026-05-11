@@ -19,8 +19,26 @@ fi
 
 WALLPAPER_INDEX="$HOME/Library/Application Support/com.apple.wallpaper/Store/Index.plist"
 
+desktoppr_bin() {
+  if command -v desktoppr >/dev/null 2>&1; then
+    command -v desktoppr
+    return 0
+  fi
+
+  for candidate in /opt/homebrew/bin/desktoppr /usr/local/bin/desktoppr; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 set_with_desktoppr() {
-  /usr/local/bin/desktoppr all "$IMG" >/dev/null 2>&1
+  local bin
+  bin="$(desktoppr_bin)" || return 1
+  "$bin" all "$IMG" >/dev/null 2>&1
 }
 
 set_with_finder() {
