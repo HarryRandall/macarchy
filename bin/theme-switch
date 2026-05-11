@@ -5,11 +5,75 @@ export USER="${USER:-$(id -un)}"
 export HOME="${HOME:-$(cd ~"$USER" && pwd)}"
 
 THEMES_DIR="$HOME/.themes"
+THEME_BACKGROUND_STATE="$THEMES_DIR/.backgrounds.json"
 GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
 BTOP_CONFIG="$HOME/.config/btop/btop.conf"
 BTOP_THEME_DIR="$HOME/.config/btop/themes"
 BTOP_THEME_NAME="active-theme"
 RAYCAST_BUNDLE_ID="com.raycast.macos"
+FIREFOX_DIR="$HOME/Library/Application Support/Firefox"
+BORDERS_BIN="/opt/homebrew/opt/borders/bin/borders"
+BORDERS_CONFIG="$HOME/.config/borders/bordersrc"
+
+is_valid_theme_background() {
+    local theme_dir="$1"
+    local background="$2"
+
+    [ -n "$background" ] || return 1
+    case "$background" in
+        /*|*../*|../*|*"/.."*)
+            return 1
+            ;;
+    esac
+
+    [ -f "$theme_dir/$background" ]
+}
+
+save_selected_background() {
+    local theme="$1"
+    local background="$2"
+    local tmp
+
+    mkdir -p "$THEMES_DIR"
+    tmp="$(mktemp)"
+    if [ -f "$THEME_BACKGROUND_STATE" ]; then
+        cp "$THEME_BACKGROUND_STATE" "$tmp"
+    else
+        printf '{}\n' > "$tmp"
+    fi
+
+    jq --arg theme "$theme" --arg background "$background" \
+        '.[$theme] = $background' "$tmp" > "$tmp.next"
+    mv "$tmp.next" "$THEME_BACKGROUND_STATE"
+    rm -f "$tmp"
+}
+
+# --- Background-only mode ---
+if [ "${1:-}" = "--background" ]; then
+    THEME="${2:-}"
+    WALLPAPER_CHOICE="${3:-}"
+    THEME_DIR="$THEMES_DIR/$THEME"
+
+    if [ ! -d "$THEME_DIR" ]; then
+        echo "Error: theme '$THEME' not found in $THEMES_DIR"
+        exit 1
+    fi
+
+    if ! is_valid_theme_background "$THEME_DIR" "$WALLPAPER_CHOICE"; then
+        echo "Error: invalid background '$WALLPAPER_CHOICE' for theme '$THEME'"
+        exit 1
+    fi
+
+    save_selected_background "$THEME" "$WALLPAPER_CHOICE"
+
+    if [ "$(cat "$THEMES_DIR/.current" 2>/dev/null || true)" = "$THEME" ]; then
+        "$HOME/.local/bin/set-wallpaper" "$THEME_DIR/$WALLPAPER_CHOICE" >/tmp/theme-switch-wallpaper.log 2>&1 &
+        echo "Wallpaper queued: $THEME/$WALLPAPER_CHOICE"
+    else
+        echo "Wallpaper default saved: $THEME/$WALLPAPER_CHOICE"
+    fi
+    exit 0
+fi
 
 # --- Usage ---
 if [ -z "${1:-}" ]; then
@@ -37,13 +101,29 @@ fi
 # shellcheck source=/dev/null
 source "$THEME_DIR/theme.env"
 
+get_selected_wallpaper() {
+    local selected=""
+
+    if [ -f "$THEME_BACKGROUND_STATE" ]; then
+        selected="$(jq -r --arg theme "$THEME" '.[$theme] // empty' "$THEME_BACKGROUND_STATE" 2>/dev/null || true)"
+        if is_valid_theme_background "$THEME_DIR" "$selected"; then
+            printf '%s\n' "$selected"
+            return
+        fi
+    fi
+
+    printf '%s\n' "${WALLPAPER:-}"
+}
+
+SELECTED_WALLPAPER="$(get_selected_wallpaper)"
+
 ghostty_color() {
     local key="$1"
     local fallback="$2"
     local value=""
 
     if [ -f "$THEME_DIR/ghostty.conf" ]; then
-        value="$(grep -E "^${key}[[:space:]]*=[[:space:]]*#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E "s/^${key}[[:space:]]*=[[:space:]]*//" | head -n 1)"
+        value="$(grep -E "^${key}[[:space:]]*=[[:space:]]*#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E "s/^${key}[[:space:]]*=[[:space:]]*//" | head -n 1 || true)"
     fi
 
     if [ -n "$value" ]; then
@@ -59,7 +139,7 @@ ghostty_palette() {
     local value=""
 
     if [ -f "$THEME_DIR/ghostty.conf" ]; then
-        value="$(grep -E "^palette[[:space:]]*=[[:space:]]*$index=#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E 's/^palette[[:space:]]*=[[:space:]]*[0-9]+=//' | head -n 1)"
+        value="$(grep -E "^palette[[:space:]]*=[[:space:]]*$index=#[0-9A-Fa-f]{6}$" "$THEME_DIR/ghostty.conf" | sed -E 's/^palette[[:space:]]*=[[:space:]]*[0-9]+=//' | head -n 1 || true)"
     fi
 
     if [ -n "$value" ]; then
@@ -78,6 +158,168 @@ to_macos_color() {
     fi
 }
 
+normalize_hex_color() {
+    local color="${1:-}"
+
+    if [[ "$color" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+        printf '#%s\n' "${color#\#}"
+        return 0
+    fi
+
+    if [[ "$color" =~ ^0[xX][0-9A-Fa-f]{8}$ ]]; then
+        printf '#%s\n' "${color:4:6}"
+        return 0
+    fi
+
+    if [[ "$color" =~ ^0[xX][0-9A-Fa-f]{6}$ ]]; then
+        printf '#%s\n' "${color:2:6}"
+        return 0
+    fi
+
+    if [[ "$color" =~ ^[0-9A-Fa-f]{6}$ ]]; then
+        printf '#%s\n' "$color"
+        return 0
+    fi
+
+    return 1
+}
+
+hex_channel_to_decimal() {
+    printf '%d\n' "0x$1"
+}
+
+hex_channel_to_float() {
+    awk -v channel="$1" 'BEGIN { printf "%.6f", channel / 255 }'
+}
+
+hex_to_apple_highlight_color() {
+    local hex="$1"
+    local r g b
+
+    r="$(hex_channel_to_decimal "${hex:1:2}")"
+    g="$(hex_channel_to_decimal "${hex:3:2}")"
+    b="$(hex_channel_to_decimal "${hex:5:2}")"
+
+    printf '%s %s %s Custom\n' \
+        "$(hex_channel_to_float "$r")" \
+        "$(hex_channel_to_float "$g")" \
+        "$(hex_channel_to_float "$b")"
+}
+
+apple_accent_name_for_id() {
+    case "$1" in
+        -1) printf 'Multicolour\n' ;;
+        0) printf 'Red\n' ;;
+        1) printf 'Orange\n' ;;
+        2) printf 'Yellow\n' ;;
+        3) printf 'Green\n' ;;
+        4) printf 'Blue\n' ;;
+        5) printf 'Purple\n' ;;
+        6) printf 'Pink\n' ;;
+        7) printf 'Graphite\n' ;;
+        *) return 1 ;;
+    esac
+}
+
+resolve_apple_accent_id() {
+    local accent="${1:-}"
+    local key
+
+    if [[ "$accent" =~ ^-?[0-9]+$ ]] && [ "$accent" -ge -1 ] && [ "$accent" -le 7 ]; then
+        printf '%s\n' "$accent"
+        return 0
+    fi
+
+    key="$(printf '%s' "$accent" | tr '[:upper:]' '[:lower:]')"
+    key="${key// /}"
+    key="${key//-/}"
+    key="${key//_/}"
+
+    case "$key" in
+        multicolor|multicolour) printf -- '-1\n' ;;
+        red) printf '0\n' ;;
+        orange) printf '1\n' ;;
+        yellow) printf '2\n' ;;
+        green) printf '3\n' ;;
+        blue) printf '4\n' ;;
+        purple) printf '5\n' ;;
+        pink) printf '6\n' ;;
+        graphite|grey|gray) printf '7\n' ;;
+        *) return 1 ;;
+    esac
+}
+
+nearest_apple_accent_id() {
+    local hex="$1"
+    local r g b max min chroma hue
+
+    r="$(hex_channel_to_decimal "${hex:1:2}")"
+    g="$(hex_channel_to_decimal "${hex:3:2}")"
+    b="$(hex_channel_to_decimal "${hex:5:2}")"
+
+    max="$r"
+    [ "$g" -gt "$max" ] && max="$g"
+    [ "$b" -gt "$max" ] && max="$b"
+    min="$r"
+    [ "$g" -lt "$min" ] && min="$g"
+    [ "$b" -lt "$min" ] && min="$b"
+    chroma=$((max - min))
+
+    if [ "$chroma" -lt 24 ]; then
+        printf '7\n'
+        return
+    fi
+
+    if [ "$max" -eq "$r" ]; then
+        hue=$((60 * (g - b) / chroma))
+        [ "$hue" -lt 0 ] && hue=$((hue + 360))
+    elif [ "$max" -eq "$g" ]; then
+        hue=$((120 + 60 * (b - r) / chroma))
+    else
+        hue=$((240 + 60 * (r - g) / chroma))
+    fi
+
+    if [ "$hue" -lt 15 ] || [ "$hue" -ge 345 ]; then
+        printf '0\n'
+    elif [ "$hue" -lt 40 ]; then
+        printf '1\n'
+    elif [ "$hue" -lt 75 ]; then
+        printf '2\n'
+    elif [ "$hue" -lt 165 ]; then
+        printf '3\n'
+    elif [ "$hue" -lt 255 ]; then
+        printf '4\n'
+    elif [ "$hue" -lt 290 ]; then
+        printf '5\n'
+    else
+        printf '6\n'
+    fi
+}
+
+get_theme_accent_hex() {
+    local accent=""
+
+    if [ -n "${SYSTEM_ACCENT_COLOR:-}" ]; then
+        accent="$SYSTEM_ACCENT_COLOR"
+    elif [ -n "${FIREFOX_ACCENT:-}" ]; then
+        accent="$FIREFOX_ACCENT"
+    elif [ -n "${BORDER_ACTIVE:-}" ]; then
+        accent="$BORDER_ACTIVE"
+    else
+        accent="$(ghostty_palette 4 "$(ghostty_color "foreground" "#ffffff")")"
+    fi
+
+    normalize_hex_color "$accent"
+}
+
+flush_macos_preferences() {
+    return 0
+}
+
+keep_macos_accent_and_highlight_static() {
+    echo "  macOS accent/highlight: unchanged"
+}
+
 get_sketchybar_text_color() {
     if [ -n "${SKETCHYBAR_TEXT_COLOR:-}" ]; then
         printf '%s\n' "$SKETCHYBAR_TEXT_COLOR"
@@ -92,9 +334,7 @@ get_sketchybar_text_color() {
 }
 
 get_sketchybar_accent_color() {
-    if [ -n "${SKETCHYBAR_ACCENT_COLOR:-}" ]; then
-        printf '%s\n' "$SKETCHYBAR_ACCENT_COLOR"
-    elif [ -n "${BORDER_ACTIVE:-}" ]; then
+    if [ -n "${BORDER_ACTIVE:-}" ]; then
         printf '%s\n' "$BORDER_ACTIVE"
     else
         to_macos_color "$(ghostty_palette 4 "$(ghostty_color "foreground" "#ffffff")")"
@@ -107,6 +347,87 @@ get_sketchybar_bar_color() {
     else
         printf '0x00000000\n'
     fi
+}
+
+get_border_inactive_color() {
+    local inactive="${BORDER_INACTIVE:-0x22e1e1e1}"
+
+    if [ -z "$inactive" ] || [ "$inactive" = "0x00000000" ]; then
+        printf '0x22e1e1e1\n'
+    else
+        printf '%s\n' "$inactive"
+    fi
+}
+
+write_borders_config() {
+    mkdir -p "$(dirname "$BORDERS_CONFIG")"
+
+    cat > "$BORDERS_CONFIG" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+BORDERS_BIN="/opt/homebrew/opt/borders/bin/borders"
+THEMES_DIR="$HOME/.themes"
+CURRENT_THEME="$(cat "$THEMES_DIR/.current" 2>/dev/null || true)"
+
+if [ -n "$CURRENT_THEME" ] && [ -f "$THEMES_DIR/$CURRENT_THEME/theme.env" ]; then
+  # shellcheck source=/dev/null
+  source "$THEMES_DIR/$CURRENT_THEME/theme.env"
+fi
+
+BORDER_ACTIVE="${BORDER_ACTIVE:-0xff45e8ff}"
+BORDER_INACTIVE="${BORDER_INACTIVE:-0x22e1e1e1}"
+BORDER_WIDTH="${BORDER_WIDTH:-6.0}"
+
+if [ "$BORDER_INACTIVE" = "0x00000000" ]; then
+  BORDER_INACTIVE="0x22e1e1e1"
+fi
+
+exec "$BORDERS_BIN" \
+  style=round \
+  width="$BORDER_WIDTH" \
+  hidpi=on \
+  ax_focus=on \
+  "active_color=glow($BORDER_ACTIVE)" \
+  inactive_color="$BORDER_INACTIVE"
+EOF
+
+    chmod +x "$BORDERS_CONFIG"
+}
+
+apply_borders() {
+    local inactive width active_arg first second
+
+    inactive="$(get_border_inactive_color)"
+    width="${BORDER_WIDTH:-6.0}"
+
+    write_borders_config
+
+    if [ -n "${BORDER_ANIMATION_COLORS:-}" ]; then
+        read -r -a BORDER_COLORS <<< "$BORDER_ANIMATION_COLORS"
+        first="${BORDER_COLORS[0]}"
+        second="${BORDER_COLORS[3]:-${BORDER_COLORS[1]:-$first}}"
+
+        if [ "${BORDER_ANIMATION_EFFECT:-glow}" = "glow" ]; then
+            active_arg="active_color=glow(${first})"
+            echo "  Borders: glow (${first})"
+        else
+            active_arg="active_color=gradient(top_left=${first},bottom_right=${second})"
+            echo "  Borders: gradient"
+        fi
+    else
+        active_arg="active_color=glow(${BORDER_ACTIVE})"
+        echo "  Borders: glow (${BORDER_ACTIVE})"
+    fi
+
+    "$BORDERS_BIN" \
+        style=round \
+        width="$width" \
+        hidpi=on \
+        ax_focus=on \
+        "$active_arg" \
+        inactive_color="$inactive" >/dev/null 2>&1 || \
+        /bin/launchctl kickstart -k "gui/$(id -u)/homebrew.mxcl.borders" >/dev/null 2>&1 || true
 }
 
 get_raycast_theme_id() {
@@ -200,6 +521,81 @@ reload_btop_instances() {
     return $found
 }
 
+# Cursor Agent (and similar TUIs) keep resolved colors until they redraw. Ghostty
+# reload does not restart those processes. SIGWINCH often triggers a full
+# re-layout; if paste/overlay colors are still wrong, restart the agent session.
+reload_cursor_agent_instances() {
+    local pid count=0
+    while IFS= read -r pid; do
+        [ -n "$pid" ] || continue
+        if kill -WINCH "$pid" 2>/dev/null; then
+            count=$((count + 1))
+        fi
+    done < <(pgrep -f '[/]cursor-agent' 2>/dev/null || true)
+    if [ "$count" -gt 0 ]; then
+        echo "  cursor-agent: SIGWINCH to $count process(es) (TUI redraw hint)"
+    fi
+}
+
+stop_border_animation() {
+    local pid_file="$HOME/.cache/borders-gradient-spin.pid"
+    local plist="$HOME/Library/LaunchAgents/com.harry.borders-gradient-spin.plist"
+    /bin/launchctl bootout "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+    if [ -f "$pid_file" ]; then
+        local pid
+        pid="$(cat "$pid_file" 2>/dev/null || true)"
+        if [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null || true
+        fi
+        rm -f "$pid_file"
+    fi
+}
+
+start_border_animation() {
+    local colors="$1"
+    local config="$HOME/.cache/borders-gradient-spin.conf"
+    local plist="$HOME/Library/LaunchAgents/com.harry.borders-gradient-spin.plist"
+    mkdir -p "$HOME/.cache" "$HOME/Library/LaunchAgents"
+
+    cat > "$config" <<EOF
+BORDER_WIDTH="${BORDER_WIDTH:-6.0}"
+BORDER_INACTIVE="${BORDER_INACTIVE:-0x00000000}"
+BORDER_ANIMATION_INTERVAL="${BORDER_ANIMATION_INTERVAL:-0.25}"
+BORDER_ANIMATION_EFFECT="${BORDER_ANIMATION_EFFECT:-gradient}"
+BORDER_BIN="/opt/homebrew/bin/borders"
+BORDER_ANIMATION_COLORS="$colors"
+EOF
+
+    cat > "$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.harry.borders-gradient-spin</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HOME/.local/bin/borders-gradient-spin</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/borders-gradient-spin.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/borders-gradient-spin.log</string>
+</dict>
+</plist>
+EOF
+
+    /bin/launchctl bootstrap "gui/$(id -u)" "$plist" >/dev/null 2>&1 || true
+    /bin/launchctl kickstart -k "gui/$(id -u)/com.harry.borders-gradient-spin" >/dev/null 2>&1 || true
+}
+
 map_nvim_colorscheme() {
     local theme_name="${1:-}"
     case "$theme_name" in
@@ -208,6 +604,27 @@ map_nvim_colorscheme() {
             ;;
         kanagawa)
             printf 'kanagawa-wave\n'
+            ;;
+        nord)
+            printf 'nord\n'
+            ;;
+        aetheria|futurism|aura)
+            printf 'tokyonight-night\n'
+            ;;
+        akane|sakura)
+            printf 'rose-pine-moon\n'
+            ;;
+        midnight|pulsar|firesky|nes|batou|blackgold)
+            printf 'gruvbox\n'
+            ;;
+        blackturq)
+            printf 'nord\n'
+            ;;
+        killer-klownz)
+            printf 'aether\n'
+            ;;
+        florida-man)
+            printf 'catppuccin\n'
             ;;
         catppuccin)
             printf 'catppuccin\n'
@@ -241,18 +658,18 @@ if [ -n "${DARK_MODE:-}" ]; then
     fi
 fi
 
-# --- 2. Wallpaper (all screens + all spaces via Finder) ---
-if [ -n "${WALLPAPER:-}" ] && [ -f "$THEME_DIR/$WALLPAPER" ]; then
-    if "$HOME/.local/bin/set-wallpaper" "$THEME_DIR/$WALLPAPER"; then
-        echo "  Wallpaper: $WALLPAPER"
-    else
-        echo "  Wallpaper: skipped (set-wallpaper failed)"
-    fi
+# --- 2. macOS Accent + Highlight ---
+keep_macos_accent_and_highlight_static
+
+# --- 3. Wallpaper ---
+if [ -n "${SELECTED_WALLPAPER:-}" ] && [ -f "$THEME_DIR/$SELECTED_WALLPAPER" ]; then
+    "$HOME/.local/bin/set-wallpaper" "$THEME_DIR/$SELECTED_WALLPAPER" >/tmp/theme-switch-wallpaper.log 2>&1 &
+    echo "  Wallpaper: queued $SELECTED_WALLPAPER"
 else
-    echo "  Wallpaper: skipped (no file at $THEME_DIR/${WALLPAPER:-})"
+    echo "  Wallpaper: skipped (no file at $THEME_DIR/${SELECTED_WALLPAPER:-})"
 fi
 
-# --- 3. Ghostty (inline palette into main config, then reload all windows) ---
+# --- 4. Ghostty (inline palette into main config, then reload all windows) ---
 if [ -f "$THEME_DIR/ghostty.conf" ] && [ -f "$GHOSTTY_CONFIG" ]; then
     # Strip old palette/color lines and config-file refs from main config
     TMP=$(mktemp)
@@ -274,22 +691,12 @@ if [ -f "$THEME_DIR/ghostty.conf" ] && [ -f "$GHOSTTY_CONFIG" ]; then
 
     cp "$TMP" "$GHOSTTY_CONFIG" && rm "$TMP"
 
-    # Reload Ghostty app-wide. The signal path reaches the main process;
-    # the menu click remains as a fallback for builds that ignore the signal.
+    # Reload Ghostty app-wide without moving focus through the menu bar.
     pkill -USR2 -x ghostty 2>/dev/null || pkill -USR2 -x Ghostty 2>/dev/null || true
-    sleep 0.2
-    osascript -e '
-        tell application "System Events"
-            if exists process "ghostty" then
-                tell process "ghostty"
-                    click menu item "Reload Configuration" of menu "Ghostty" of menu bar 1
-                end tell
-            end if
-        end tell' 2>/dev/null || true
     echo "  Ghostty: reload requested for all windows"
 fi
 
-# --- 4. Neovim (running instances + LazyVim config) ---
+# --- 5. Neovim (running instances + LazyVim config) ---
 if [ -n "${NVIM_COLORSCHEME:-}" ]; then
     NVIM_THEME="$(map_nvim_colorscheme "$THEME")"
     SWITCHED_NVIM=0
@@ -309,16 +716,13 @@ EOF
     echo "  Neovim: $NVIM_THEME ($SWITCHED_NVIM running instances updated)"
 fi
 
-# --- 5. JankyBorders ---
-if [ -n "${BORDER_ACTIVE:-}" ]; then
-    pkill -x borders 2>/dev/null || true
-    sleep 0.2
-    borders active_color="$BORDER_ACTIVE" inactive_color="${BORDER_INACTIVE:-0x00000000}" width="${BORDER_WIDTH:-6.0}" &
-    disown
-    echo "  Borders: active=$BORDER_ACTIVE"
+# --- 6. JankyBorders ---
+if [ -n "${BORDER_ACTIVE:-}" ] || [ -n "${BORDER_ANIMATION_COLORS:-}" ]; then
+    stop_border_animation
+    apply_borders
 fi
 
-# --- 6. btop ---
+# --- 7. btop ---
 if [ -f "$BTOP_CONFIG" ]; then
     BTOP_THEME="$(map_btop_theme "$THEME")"
     write_btop_theme
@@ -330,29 +734,25 @@ if [ -f "$BTOP_CONFIG" ]; then
     fi
 fi
 
-# --- 7. SketchyBar ---
+# --- 8. SketchyBar ---
 SKETCHYBAR_ACCENT="$(get_sketchybar_accent_color)"
 SKETCHYBAR_TEXT="$(get_sketchybar_text_color)"
 SKETCHYBAR_BAR="$(get_sketchybar_bar_color)"
 "$HOME/.local/bin/apply-sketchybar-theme" "$SKETCHYBAR_ACCENT" "$SKETCHYBAR_TEXT" "$SKETCHYBAR_BAR" || true
 echo "  SketchyBar: accent=$SKETCHYBAR_ACCENT text=$SKETCHYBAR_TEXT bar=$SKETCHYBAR_BAR"
 
-if /opt/homebrew/bin/sketchybar --reload; then
-    echo "  SketchyBar reload: ok"
-else
-    echo "  SketchyBar reload: failed"
-fi
-
-# --- 8. Raycast ---
+# --- 9. Raycast ---
 RAYCAST_THEME_ID="$(get_raycast_theme_id)"
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastShouldFollowSystemAppearance -bool true
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeId -string "$RAYCAST_THEME_ID"
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeIdDarkAppearance -string "bundled-raycast-dark"
 /usr/bin/defaults write "$RAYCAST_BUNDLE_ID" raycastCurrentThemeIdLightAppearance -string "bundled-raycast-light"
-/usr/bin/killall cfprefsd >/dev/null 2>&1 || true
+flush_macos_preferences
 echo "  Raycast: $RAYCAST_THEME_ID"
 
-# --- 9. Save current theme ---
+# --- 10. Save current theme ---
 echo "$THEME" > "$THEMES_DIR/.current"
+
+reload_cursor_agent_instances
 
 echo "Done! Theme '$THEME' applied."

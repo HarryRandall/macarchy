@@ -3,7 +3,15 @@
 # Load scripting addition
 sudo yabai --load-sa
 yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+yabai -m signal --add event=space_changed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 yabai -m signal --add event=window_created action="$HOME/.config/yabai/restore_float_state.sh"
+yabai -m signal --add event=window_created action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_destroyed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_minimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_deminimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_focused action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_moved action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=window_resized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 
 # BSP layout
 yabai -m config layout bsp

@@ -10,3 +10,7 @@ btop/themes/active-theme.theme
 raycast-*/node_modules/
 raycast-*/.raycast/
 raycast-*/dist/
+themes/.backgrounds.json
+sketchybar/.state/
+sketchybar/plugins/menu_bar_state
+sketchybar/plugins/top_edge_watcher
