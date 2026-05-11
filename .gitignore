@@ -6,7 +6,7 @@
 *.bak
 
 # Runtime-generated files under installed dotfiles.
-btop/.config/btop/themes/active-theme.theme
-raycast-*/.config/raycast/extensions/*/node_modules/
-raycast-*/.config/raycast/extensions/*/.raycast/
-raycast-*/.config/raycast/extensions/*/dist/
+btop/themes/active-theme.theme
+raycast-*/node_modules/
+raycast-*/.raycast/
+raycast-*/dist/

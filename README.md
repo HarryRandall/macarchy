@@ -6,16 +6,16 @@ The main workflow is theme switching. One command applies the wallpaper, Ghostty
 
 ## Preview
 
-![Matte Black](./media/previews/matte-black-theme.png)
-![Flexoki Light](./media/previews/flexoki-light-theme.png)
-![Lumon](./media/previews/lumon-theme.png)
+![Matte Black](./media/matte-black-theme.png)
+![Flexoki Light](./media/flexoki-light-theme.png)
+![Lumon](./media/lumon-theme.png)
 
 ## Components
 
-Each top-level folder is a component. Most components contain files exactly as they should exist under `$HOME`.
+Each top-level folder is a clean component. The README owns the install mapping, so the repo view stays readable instead of exposing paths like `.config/nvim`.
 
 - `bin/`: local commands, including `theme-switch`, `set-wallpaper`, and `apply-sketchybar-theme`.
-- `themes/`: theme definitions, wallpapers, Ghostty palettes, and the active `.themes/.current` marker.
+- `themes/`: theme definitions, wallpapers, Ghostty palettes, and the active `.current` marker.
 - `yabai/`: window manager config and floating-window persistence helpers.
 - `skhd/`: keyboard bindings for launching apps, moving windows, spaces, screenshots, and Raycast.
 - `sketchybar/`: bar config, plugins, and theme variables.
@@ -50,20 +50,38 @@ The clipboard watcher runs with Swift from the Command Line Tools path:
 /Library/Developer/CommandLineTools/usr/bin/swift
 ```
 
-## Manual Setup
+## Install Map
 
-Copy or sync the components you want into `$HOME`. For the full setup:
+Sync the components you want into their macOS locations:
 
 ```bash
-for component in \
-  bin borders btop fastfetch fish ghostty neofetch nvim raycast-clipboard \
-  raycast-theme sketchybar skhd themes vim yabai
-do
-  rsync -a "$component"/ "$HOME"/
-done
+mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.themes"
+
+rsync -a bin/ "$HOME/.local/bin/"
+rsync -a borders/ "$HOME/.config/borders/"
+rsync -a btop/ "$HOME/.config/btop/"
+rsync -a fastfetch/ "$HOME/.config/fastfetch/"
+rsync -a fish/ "$HOME/.config/fish/"
+rsync -a ghostty/ "$HOME/.config/ghostty/"
+rsync -a neofetch/ "$HOME/.config/neofetch/"
+rsync -a nvim/ "$HOME/.config/nvim/"
+rsync -a sketchybar/ "$HOME/.config/sketchybar/"
+rsync -a themes/ "$HOME/.themes/"
+rsync -a yabai/ "$HOME/.config/yabai/"
+rsync -a vim/.vimrc "$HOME/.vimrc"
+rsync -a skhd/.skhdrc "$HOME/.skhdrc"
 ```
 
-Copy launch agents separately:
+Raycast extensions install under Raycast's local extension directory:
+
+```bash
+mkdir -p "$HOME/.config/raycast/extensions"
+
+rsync -a raycast-theme/ "$HOME/.config/raycast/extensions/theme-switcher/"
+rsync -a raycast-clipboard/ "$HOME/.config/raycast/extensions/clipboard-history/"
+```
+
+Launch agents live separately:
 
 ```bash
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -176,7 +194,7 @@ This can show as `unknown (Custom Configuration)` in `csrutil status`. That is e
 
 ## Theme System
 
-Themes live in `themes/.themes` in the repo and `~/.themes` once installed. Each theme contains:
+Themes live in `themes/` in the repo and `~/.themes` once installed. Each theme contains:
 
 - `ghostty.conf` for terminal colors.
 - `theme.env` for metadata, dark mode, wallpaper, borders, and app-specific theme values.
@@ -208,4 +226,4 @@ Generated files are expected in the installed home directory, not in the repo:
 - The setup assumes Homebrew on Apple Silicon at `/opt/homebrew`, but scripts use `PATH` or fallback lookup where possible.
 - The `skhd` Raycast bindings assume Raycast is installed.
 - The clipboard watcher is intentionally separate from the theme switcher.
-- `media/previews` contains documentation images only; theme wallpapers live under `themes/.themes`.
+- `media/` contains documentation images only; theme wallpapers live under `themes/`.
