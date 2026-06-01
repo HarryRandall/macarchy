@@ -98,9 +98,15 @@ def desktop_choice():
 def update_desktop(node):
     if not isinstance(node, dict):
         return
-    desktop = node.get("Desktop")
-    if not isinstance(desktop, dict):
-        return
+    # Update existing Linked entry (used by Spaces that follow All-Spaces wallpaper)
+    linked = node.get("Linked")
+    if isinstance(linked, dict):
+        content = linked.setdefault("Content", {})
+        content["Choices"] = [desktop_choice()]
+        linked["LastSet"] = now
+        linked["LastUse"] = now
+    # Update or create Desktop entry
+    desktop = node.setdefault("Desktop", {})
     content = desktop.setdefault("Content", {})
     content["Choices"] = [desktop_choice()]
     desktop["LastSet"] = now
@@ -145,35 +151,36 @@ if updated == 0:
 PY
 }
 
-refresh_wallpaper_agents() {
+nudge_wallpaper_agent() {
+  # Re-kicks WallpaperAgent so it re-reads Index.plist and applies the new
+  # image to every Space. Importantly, we do NOT touch Dock — restarting Dock
+  # is what caused the old black flash. WallpaperAgent on its own is silent.
   /bin/launchctl kickstart -k "gui/$(id -u)/com.apple.wallpaper.agent" >/dev/null 2>&1 || true
-  /bin/launchctl kickstart -k "gui/$(id -u)/com.apple.Dock.agent" >/dev/null 2>&1 || true
-  /usr/bin/killall WallpaperAgent >/dev/null 2>&1 || true
-  /usr/bin/killall Dock >/dev/null 2>&1 || true
 }
 
 applied=0
 
-if set_with_wallpaper_store; then
-  applied=1
-  refresh_wallpaper_agents
-  sleep 1
-fi
-
+# 1) desktoppr: instantly paints the *current* Space via the public API. No
+#    flash, no agent restart. Doesn't reach other Spaces by itself.
 if set_with_desktoppr; then
   applied=1
 fi
 
-if [ "$applied" -ne 1 ]; then
-  if set_with_finder; then
-    applied=1
-  fi
+# 2) Plist edit: rewrites Index.plist for every Space / display so when the
+#    user switches Spaces those windows already show the new wallpaper.
+#    Always run alongside desktoppr — they cover different surfaces.
+if set_with_wallpaper_store; then
+  applied=1
+  nudge_wallpaper_agent
 fi
 
-if [ "$applied" -ne 1 ]; then
-  if set_with_system_events; then
-    applied=1
-  fi
+# Fallbacks only if both of the above failed (rare — usually missing tools).
+if [ "$applied" -ne 1 ] && set_with_finder; then
+  applied=1
+fi
+
+if [ "$applied" -ne 1 ] && set_with_system_events; then
+  applied=1
 fi
 
 if [ "$applied" -ne 1 ]; then

@@ -20,6 +20,7 @@ else
   sketchybar --set "$NAME" background.drawing=off \
                          background.color=0x00000000 \
                          background.border_width=0 \
+                         background.border_color=0x00000000 \
                          label.color=$TEXT_COLOR \
                          icon.color=$TEXT_COLOR
 fi

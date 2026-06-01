@@ -4,19 +4,31 @@
 sudo yabai --load-sa
 yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
 yabai -m signal --add event=space_changed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_created action="$HOME/.config/yabai/restore_float_state.sh"
+yabai -m signal --add event=space_created action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+yabai -m signal --add event=space_destroyed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 yabai -m signal --add event=window_created action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+
+# Restore apps with only minimized windows onto the current Space when activated.
+yabai -m signal --add event=application_activated action="$HOME/.config/yabai/restore_minimized_on_current_space.sh"
+
+# Sync persisted float rules so stale per-app rules cannot override the JSON state
+"$HOME/.config/yabai/sync_float_rules.sh"
+
+# Re-apply float preference when windows are created or deminimized
+yabai -m signal --add event=window_created action="$HOME/.config/yabai/apply_float_state.sh"
+yabai -m signal --add event=window_deminimized action="$HOME/.config/yabai/apply_float_state.sh"
+
 yabai -m signal --add event=window_destroyed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 yabai -m signal --add event=window_minimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 yabai -m signal --add event=window_deminimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_focused action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_moved action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_resized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
 
 # BSP layout
 yabai -m config layout bsp
+yabai -m config window_insertion_point focused
 yabai -m config window_placement second_child
-yabai -m config auto_balance on
+yabai -m config split_type auto
+yabai -m config auto_balance off
+yabai -m config insert_feedback_color 0x01000000
 
 # Padding and gaps
 yabai -m config top_padding    8
@@ -31,9 +43,6 @@ yabai -m config mouse_modifier ctrl
 yabai -m config mouse_action1 move
 yabai -m config mouse_action2 resize
 yabai -m config mouse_drop_action stack
-
-# Active window border (via JankyBorders)
-borders active_color=0xffe1e1e1 inactive_color=0x00000000 width=6.0 &
 
 # Float system apps that don't tile well
 yabai -m rule --add app="^System Settings$" manage=off

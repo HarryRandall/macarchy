@@ -41,8 +41,6 @@ sketchybar --default icon.font="SF Pro:Semibold:15.0"   \
 source "$ITEM_DIR/spaces.sh"
 source "$ITEM_DIR/calendar.sh"
 source "$ITEM_DIR/battery.sh"
-source "$ITEM_DIR/volume.sh"
-source "$ITEM_DIR/ram.sh"
-source "$ITEM_DIR/cpu.sh"
+source "$ITEM_DIR/system_metrics.sh"
 
 sketchybar --update

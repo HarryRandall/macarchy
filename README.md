@@ -1,100 +1,66 @@
 # Macarchy
 
-Macarchy is my personal macOS setup: a themed tiling desktop built around `yabai`, `skhd`, SketchyBar, Ghostty, Raycast, Neovim, `btop`, and a small set of local helper scripts.
+My macOS desktop setup: yabai, skhd, SketchyBar, Ghostty, Raycast, Neovim, zsh, btop, borders, and a theme switcher that ties the whole thing together.
 
-The main workflow is theme switching. One command applies the wallpaper, Ghostty palette, Neovim colorscheme, `btop` colors, SketchyBar colors, Raycast appearance, and window border accent.
+This is not an installer. It is the dotfiles and scripts for the setup I actually use.
 
 ## Preview
 
-![Matte Black](./media/matte-black-theme.png)
-![Flexoki Light](./media/flexoki-light-theme.png)
-![Lumon](./media/lumon-theme.png)
+<video src="./media/macarchy-preview.mp4" controls muted playsinline></video>
+
+![Awakening](./media/macarchy-awakening.png)
+![Lumon](./media/macarchy-lumon.png)
 
 ## Components
 
-Each top-level folder is a clean component. The README owns the install mapping, so the repo view stays readable instead of exposing paths like `.config/nvim`.
+- `bin/`: `theme-switch` and `set-wallpaper`.
+- `themes/`: Macarchy themes, wallpapers, Ghostty palettes, and the active `.current` marker.
+- `raycast-theme/`: Raycast extension for switching themes and backgrounds.
+- `yabai/`: yabai config and helper scripts for floating state, space swaps, minimised-window restore, and SketchyBar refreshes.
+- `skhd/`: key bindings for windows, spaces, screenshots, app control, and theme cycling.
+- `sketchybar/`: bar config, items, plugins, and generated theme variables.
+- `ghostty/`, `nvim/`, `zsh/`, `btop/`, `fastfetch/`, `neofetch/`, `borders/`, `vim/`: app configs that follow the active theme where relevant.
+- `launchagents/`: launchd plists for yabai, skhd, and SketchyBar.
+- `media/`: README media only.
 
-- `bin/`: local commands, including `theme-switch`, `set-wallpaper`, and `apply-sketchybar-theme`.
-- `themes/`: theme definitions, wallpapers, Ghostty palettes, and the active `.current` marker.
-- `yabai/`: window manager config and floating-window persistence helpers.
-- `skhd/`: keyboard bindings for launching apps, moving windows, spaces, screenshots, and Raycast.
-- `sketchybar/`: bar config, plugins, and theme variables.
-- `ghostty/`: terminal config.
-- `nvim/`: LazyVim-based Neovim config.
-- `btop/`, `fish/`, `fastfetch/`, `neofetch/`, `borders/`, `vim/`: smaller app configs.
-- `raycast-theme/`: Raycast extension for selecting and applying Macarchy themes.
-- `raycast-clipboard/`: Raycast extension and Swift watcher for clipboard history and terminal-safe paste.
-- `launchagents/`: launchd plists for yabai, skhd, SketchyBar, and the Raycast clipboard watcher.
-- `media/`: repo preview images and other documentation media.
+## Install
 
-There is no installer and no Brewfile on purpose. This repo is a componentized record of my setup, not a generic bootstrap script.
-
-## Dependencies
-
-Install the tools you use from the setup:
+Install the tools:
 
 ```bash
 brew install btop borders desktoppr fastfetch fish jq neofetch neovim ripgrep sketchybar skhd yabai
 brew install --cask ghostty raycast
 ```
 
-Optional but expected by some scripts:
+Sync the repo into the locations the scripts expect:
 
 ```bash
-xcode-select --install
-```
-
-The clipboard watcher runs with Swift from the Command Line Tools path:
-
-```text
-/Library/Developer/CommandLineTools/usr/bin/swift
-```
-
-## Install Map
-
-Sync the components you want into their macOS locations:
-
-```bash
-mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.themes"
+mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.config/themes"
 
 rsync -a bin/ "$HOME/.local/bin/"
 rsync -a borders/ "$HOME/.config/borders/"
 rsync -a btop/ "$HOME/.config/btop/"
 rsync -a fastfetch/ "$HOME/.config/fastfetch/"
-rsync -a fish/ "$HOME/.config/fish/"
 rsync -a ghostty/ "$HOME/.config/ghostty/"
 rsync -a neofetch/ "$HOME/.config/neofetch/"
 rsync -a nvim/ "$HOME/.config/nvim/"
 rsync -a sketchybar/ "$HOME/.config/sketchybar/"
-rsync -a themes/ "$HOME/.themes/"
+rsync -a themes/ "$HOME/.config/themes/"
+rsync -a zsh/themes/ "$HOME/.config/oh-my-zsh/custom/themes/"
 rsync -a yabai/ "$HOME/.config/yabai/"
 rsync -a vim/.vimrc "$HOME/.vimrc"
 rsync -a skhd/.skhdrc "$HOME/.skhdrc"
 ```
 
-Raycast extensions install under Raycast's local extension directory:
-
-```bash
-mkdir -p "$HOME/.config/raycast/extensions"
-
-rsync -a raycast-theme/ "$HOME/.config/raycast/extensions/theme-switcher/"
-rsync -a raycast-clipboard/ "$HOME/.config/raycast/extensions/clipboard-history/"
-```
-
-Launch agents live separately:
+Copy and load the launch agents:
 
 ```bash
 mkdir -p "$HOME/Library/LaunchAgents"
 rsync -a launchagents/ "$HOME/Library/LaunchAgents/"
-```
 
-Load or restart the agents:
-
-```bash
 launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.asmvik.yabai.plist"
 launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.koekeishiya.skhd.plist"
 launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/homebrew.mxcl.sketchybar.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/dev.macarchy.raycast-clipboard-watcher.plist"
 ```
 
 If they are already loaded:
@@ -103,62 +69,41 @@ If they are already loaded:
 launchctl kickstart -k "gui/$(id -u)/com.asmvik.yabai"
 launchctl kickstart -k "gui/$(id -u)/com.koekeishiya.skhd"
 launchctl kickstart -k "gui/$(id -u)/homebrew.mxcl.sketchybar"
-launchctl kickstart -k "gui/$(id -u)/dev.macarchy.raycast-clipboard-watcher"
 ```
 
-Grant Accessibility permissions to `yabai`, `skhd`, Raycast, and Ghostty. Raycast and System Events will also prompt for Automation permissions as the workflows run.
-
-Apply the current theme after syncing:
+Apply the current theme:
 
 ```bash
-"$HOME/.local/bin/theme-switch" "$(cat "$HOME/.themes/.current")"
+"$HOME/.local/bin/theme-switch" "$(cat "$HOME/.config/themes/.current")"
 ```
 
 ## Raycast
 
-There are two separate local Raycast extensions.
-
-Theme switching:
+Install the local Raycast extension:
 
 ```bash
+mkdir -p "$HOME/.config/raycast/extensions"
+rsync -a raycast-theme/ "$HOME/.config/raycast/extensions/theme-switcher/"
+
 cd "$HOME/.config/raycast/extensions/theme-switcher"
 ray develop
 ```
 
-Clipboard history:
+The extension reads themes from `~/.config/themes`, previews the active wallpaper, and calls `~/.local/bin/theme-switch`. The shell script remains the source of truth.
 
-```bash
-cd "$HOME/.config/raycast/extensions/clipboard-history"
-ray develop
-```
+<details>
+<summary>SIP and yabai</summary>
 
-The theme extension is intentionally thin. It lists themes from `~/.themes` and calls `~/.local/bin/theme-switch`, so the shell script remains the single source of truth for applying a theme.
-
-The clipboard extension stores state under:
-
-```text
-~/Library/Application Support/com.raycast.macos/extensions/clipboard-history/
-```
-
-The watcher launch agent starts:
-
-```text
-~/.config/raycast/extensions/clipboard-history/clipboard-watcher.swift
-```
-
-## SIP And Yabai
-
-This setup assumes Apple Silicon with the `yabai` scripting addition and the boot arg:
+This setup assumes Apple Silicon with the `yabai` scripting addition and this boot arg:
 
 ```bash
 sudo nvram boot-args=-arm64e_preview_abi
 ```
 
-The working SIP profile is partial SIP with filesystem, debug, and NVRAM protections disabled, while Authenticated Root is enabled again after any system-volume edits:
+The working SIP profile is partial SIP with filesystem, debug, and NVRAM protections disabled:
 
 ```bash
 csrutil enable --without fs --without debug --without nvram
-csrutil authenticated-root enable
 ```
 
 A full replication sequence for a new Mac:
@@ -169,61 +114,24 @@ A full replication sequence for a new Mac:
 
 ```bash
 csrutil disable
-csrutil authenticated-root disable
 ```
 
 4. Reboot to macOS.
-5. Make any sealed-system-volume edits, such as removing stock apps, then bless a new snapshot.
-6. Set the yabai boot arg:
+5. Set the yabai boot arg:
 
 ```bash
 sudo nvram boot-args=-arm64e_preview_abi
 ```
 
-7. Reboot to Recovery.
-8. Re-enable the intended partial SIP profile and Authenticated Root:
+6. Reboot to Recovery.
+7. Re-enable the intended partial SIP profile:
 
 ```bash
 csrutil enable --without fs --without debug --without nvram
-csrutil authenticated-root enable
 ```
 
-9. Reboot to macOS.
+8. Reboot to macOS.
 
-This can show as `unknown (Custom Configuration)` in `csrutil status`. That is expected for this combination. The practical risk is that macOS updates can fail or revert pieces of the setup, so major updates may require repeating the Recovery steps and reapplying system-volume changes.
+`csrutil status` will show `unknown (Custom Configuration)`. That is expected for this profile.
 
-## Theme System
-
-Themes live in `themes/` in the repo and `~/.themes` once installed. Each theme contains:
-
-- `ghostty.conf` for terminal colors.
-- `theme.env` for metadata, dark mode, wallpaper, borders, and app-specific theme values.
-- `wall.*` for the primary wallpaper.
-- optional `backgrounds/` variants.
-
-The switcher updates:
-
-- macOS light or dark appearance.
-- wallpaper across spaces.
-- Ghostty colors and reload.
-- Neovim colorscheme and running instances.
-- JankyBorders accent.
-- `btop` theme.
-- SketchyBar colors and reload.
-- Raycast appearance.
-- `~/.themes/.current`.
-
-Generated files are expected in the installed home directory, not in the repo:
-
-```text
-~/.config/btop/themes/active-theme.theme
-~/.config/sketchybar/theme.sh
-~/.config/nvim/lua/plugins/colorscheme.lua
-```
-
-## Notes
-
-- The setup assumes Homebrew on Apple Silicon at `/opt/homebrew`, but scripts use `PATH` or fallback lookup where possible.
-- The `skhd` Raycast bindings assume Raycast is installed.
-- The clipboard watcher is intentionally separate from the theme switcher.
-- `media/` contains documentation images only; theme wallpapers live under `themes/`.
+</details>

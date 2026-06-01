@@ -1,3 +1,5 @@
+local theme = require("config.theme")
+
 return {
-  { "LazyVim/LazyVim", opts = { colorscheme = "catppuccin" } },
+  { "LazyVim/LazyVim", opts = { colorscheme = theme.colorscheme() } },
 }

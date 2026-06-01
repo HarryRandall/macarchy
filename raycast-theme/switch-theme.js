@@ -30,7 +30,7 @@ var import_path = require("path");
 var import_child_process = require("child_process");
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
-var THEMES_DIR = (0, import_path.join)((0, import_os.homedir)(), ".themes");
+var THEMES_DIR = (0, import_path.join)((0, import_os.homedir)(), ".config", "themes");
 var THEME_BACKGROUND_STATE = (0, import_path.join)(THEMES_DIR, ".backgrounds.json");
 var GHOSTTY_CONFIG = (0, import_path.join)((0, import_os.homedir)(), ".config", "ghostty", "config");
 var NVIM_COLORSCHEME_FILE = (0, import_path.join)(
@@ -42,12 +42,6 @@ var NVIM_COLORSCHEME_FILE = (0, import_path.join)(
   "colorscheme.lua"
 );
 var CODEX_CONFIG = (0, import_path.join)((0, import_os.homedir)(), ".codex", "config.toml");
-var APPLY_SKETCHYBAR_THEME = (0, import_path.join)(
-  (0, import_os.homedir)(),
-  ".local",
-  "bin",
-  "apply-sketchybar-theme"
-);
 var THEME_SWITCH_BIN = (0, import_path.join)((0, import_os.homedir)(), ".local", "bin", "theme-switch");
 var PATH = `/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin`;
 function parseThemeEnv(dir) {
@@ -239,7 +233,7 @@ function getSketchybarAccent(dir, env) {
 }
 function getThemes() {
   if (!(0, import_fs.existsSync)(THEMES_DIR)) return [];
-  return (0, import_fs.readdirSync)(THEMES_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => {
+  return (0, import_fs.readdirSync)(THEMES_DIR, { withFileTypes: true }).filter((d) => d.isDirectory() || d.isSymbolicLink()).map((d) => {
     const dir = (0, import_path.join)(THEMES_DIR, d.name);
     const env = parseThemeEnv(dir);
     const bgDir = (0, import_path.join)(dir, "backgrounds");
@@ -301,7 +295,7 @@ function runThemeSwitch(args) {
 async function main() {
   const { name } = theme;
   if (!existsSync(THEME_SWITCH_BIN)) process.exit(1);
-  // Run synchronously: theme-switch writes ~/.themes/.current only after Ghostty/Raycast/etc. finish.
+  // Run synchronously: theme-switch writes ~/.config/themes/.current only after Ghostty/Raycast/etc. finish.
   // (Backgrounding with & caused the UI to show "active" before emulators actually reloaded.)
   await runThemeSwitch([name]);
 }
