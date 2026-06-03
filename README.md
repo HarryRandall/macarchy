@@ -1,85 +1,140 @@
 # Macarchy
 
-My macOS desktop setup: yabai, skhd, SketchyBar, Ghostty, Raycast, Neovim, zsh, btop, borders, and a theme switcher that ties the whole thing together.
+My personal macOS desktop setup, built around yabai, skhd, SketchyBar, Ghostty, Raycast, Neovim, zsh, btop, borders, and a few theme scripts.
 
-This is not an installer. It is the dotfiles and scripts for the setup I actually use.
+Mostly config files, small scripts, and app settings for the way I like my Mac set up.
 
 ## Preview
 
-<video src="./media/macarchy-preview.mp4" controls muted playsinline></video>
+![Macarchy preview](./media/macarchy-preview.gif)
 
 ![Awakening](./media/macarchy-awakening.png)
 ![Lumon](./media/macarchy-lumon.png)
 
 ## Components
 
-- `bin/`: `theme-switch` and `set-wallpaper`.
-- `themes/`: Macarchy themes, wallpapers, Ghostty palettes, and the active `.current` marker.
-- `raycast-theme/`: Raycast extension for switching themes and backgrounds.
-- `yabai/`: yabai config and helper scripts for floating state, space swaps, minimised-window restore, and SketchyBar refreshes.
-- `skhd/`: key bindings for windows, spaces, screenshots, app control, and theme cycling.
-- `sketchybar/`: bar config, items, plugins, and generated theme variables.
-- `ghostty/`, `nvim/`, `zsh/`, `btop/`, `fastfetch/`, `neofetch/`, `borders/`, `vim/`: app configs that follow the active theme where relevant.
-- `launchagents/`: launchd plists for yabai, skhd, and SketchyBar.
-- `media/`: README media only.
+- `bin/`: Theme and wallpaper scripts.
+- `themes/`: Theme files, wallpapers, and Ghostty palettes.
+- `raycast-theme/`: Raycast theme switcher extension.
+- `yabai/`: Window manager config and helper scripts.
+- `skhd/`: Keyboard shortcuts.
+- `sketchybar/`: Menu bar config, items, and plugins.
+- `ghostty/`, `nvim/`, `zsh/`, `btop/`, `fastfetch/`, `neofetch/`, `borders/`: App configs.
+- `launchagents/`: Launch agents for background services.
 
 ## Install
 
-Install the tools:
+One-line install:
+
+```bash
+brew install btop borders desktoppr fastfetch fish jq neofetch neovim ripgrep sketchybar skhd yabai && brew install --cask ghostty raycast && mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.config/skhd" "$HOME/.config/zsh" "$HOME/Library/LaunchAgents" && rsync -a bin/ "$HOME/.local/bin/" && rsync -a borders/ "$HOME/.config/borders/" && rsync -a btop/ "$HOME/.config/btop/" && rsync -a fastfetch/ "$HOME/.config/fastfetch/" && rsync -a ghostty/ "$HOME/.config/ghostty/" && rsync -a neofetch/ "$HOME/.config/neofetch/" && rsync -a nvim/ "$HOME/.config/nvim/" && rsync -a sketchybar/ "$HOME/.config/sketchybar/" && rsync -a themes/ "$HOME/.config/themes/" && rsync -a zsh/ "$HOME/.config/zsh/" && printf 'export ZDOTDIR="$HOME/.config/zsh"\n[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"\n' > "$HOME/.zshenv" && rsync -a yabai/ "$HOME/.config/yabai/" && rsync -a skhd/skhdrc "$HOME/.config/skhd/skhdrc" && rsync -a launchagents/ "$HOME/Library/LaunchAgents/" && for service in com.asmvik.yabai com.koekeishiya.skhd homebrew.mxcl.sketchybar; do launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$service.plist" 2>/dev/null || launchctl kickstart -k "gui/$(id -u)/$service"; done && "$HOME/.local/bin/theme-switch" "$(cat "$HOME/.config/themes/.current")"
+```
+
+Step by step:
+
+<details>
+<summary>Tools</summary>
 
 ```bash
 brew install btop borders desktoppr fastfetch fish jq neofetch neovim ripgrep sketchybar skhd yabai
 brew install --cask ghostty raycast
 ```
 
-Sync the repo into the locations the scripts expect:
+</details>
+
+<details>
+<summary>Themes and scripts</summary>
 
 ```bash
-mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.config/themes"
-
+mkdir -p "$HOME/.local/bin" "$HOME/.config/themes" "$HOME/.config/zsh"
 rsync -a bin/ "$HOME/.local/bin/"
+rsync -a themes/ "$HOME/.config/themes/"
+rsync -a zsh/ "$HOME/.config/zsh/"
+printf 'export ZDOTDIR="$HOME/.config/zsh"\n[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"\n' > "$HOME/.zshenv"
+```
+
+</details>
+
+<details>
+<summary>Window management</summary>
+
+```bash
+mkdir -p "$HOME/.config" "$HOME/.config/skhd"
 rsync -a borders/ "$HOME/.config/borders/"
+rsync -a yabai/ "$HOME/.config/yabai/"
+rsync -a skhd/skhdrc "$HOME/.config/skhd/skhdrc"
+```
+
+</details>
+
+<details>
+<summary>SketchyBar</summary>
+
+```bash
+mkdir -p "$HOME/.config"
+rsync -a sketchybar/ "$HOME/.config/sketchybar/"
+```
+
+</details>
+
+<details>
+<summary>App configs</summary>
+
+```bash
+mkdir -p "$HOME/.config"
 rsync -a btop/ "$HOME/.config/btop/"
 rsync -a fastfetch/ "$HOME/.config/fastfetch/"
 rsync -a ghostty/ "$HOME/.config/ghostty/"
 rsync -a neofetch/ "$HOME/.config/neofetch/"
 rsync -a nvim/ "$HOME/.config/nvim/"
-rsync -a sketchybar/ "$HOME/.config/sketchybar/"
-rsync -a themes/ "$HOME/.config/themes/"
-rsync -a zsh/themes/ "$HOME/.config/oh-my-zsh/custom/themes/"
-rsync -a yabai/ "$HOME/.config/yabai/"
-rsync -a vim/.vimrc "$HOME/.vimrc"
-rsync -a skhd/.skhdrc "$HOME/.skhdrc"
 ```
 
-Copy and load the launch agents:
+</details>
+
+<details>
+<summary>Launch agents</summary>
 
 ```bash
 mkdir -p "$HOME/Library/LaunchAgents"
 rsync -a launchagents/ "$HOME/Library/LaunchAgents/"
 
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.asmvik.yabai.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.koekeishiya.skhd.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/homebrew.mxcl.sketchybar.plist"
+for service in com.asmvik.yabai com.koekeishiya.skhd homebrew.mxcl.sketchybar; do
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$service.plist" 2>/dev/null || launchctl kickstart -k "gui/$(id -u)/$service"
+done
 ```
 
-If they are already loaded:
+</details>
 
-```bash
-launchctl kickstart -k "gui/$(id -u)/com.asmvik.yabai"
-launchctl kickstart -k "gui/$(id -u)/com.koekeishiya.skhd"
-launchctl kickstart -k "gui/$(id -u)/homebrew.mxcl.sketchybar"
-```
-
-Apply the current theme:
+<details>
+<summary>Apply the current theme</summary>
 
 ```bash
 "$HOME/.local/bin/theme-switch" "$(cat "$HOME/.config/themes/.current")"
 ```
 
+</details>
+
+<details>
+<summary>Just sync configs</summary>
+
+```bash
+mkdir -p "$HOME/.local/bin" "$HOME/.config" "$HOME/.config/skhd" "$HOME/.config/zsh" && rsync -a bin/ "$HOME/.local/bin/" && rsync -a borders/ "$HOME/.config/borders/" && rsync -a btop/ "$HOME/.config/btop/" && rsync -a fastfetch/ "$HOME/.config/fastfetch/" && rsync -a ghostty/ "$HOME/.config/ghostty/" && rsync -a neofetch/ "$HOME/.config/neofetch/" && rsync -a nvim/ "$HOME/.config/nvim/" && rsync -a sketchybar/ "$HOME/.config/sketchybar/" && rsync -a themes/ "$HOME/.config/themes/" && rsync -a zsh/ "$HOME/.config/zsh/" && printf 'export ZDOTDIR="$HOME/.config/zsh"\n[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"\n' > "$HOME/.zshenv" && rsync -a yabai/ "$HOME/.config/yabai/" && rsync -a skhd/skhdrc "$HOME/.config/skhd/skhdrc"
+```
+
+</details>
+
 ## Raycast
 
-Install the local Raycast extension:
+One-line setup:
+
+```bash
+mkdir -p "$HOME/.config/raycast/extensions" && rsync -a raycast-theme/ "$HOME/.config/raycast/extensions/theme-switcher/" && cd "$HOME/.config/raycast/extensions/theme-switcher" && ray develop
+```
+
+Step by step:
+
+<details>
+<summary>Install the extension</summary>
 
 ```bash
 mkdir -p "$HOME/.config/raycast/extensions"
@@ -89,7 +144,35 @@ cd "$HOME/.config/raycast/extensions/theme-switcher"
 ray develop
 ```
 
+</details>
+
 The extension reads themes from `~/.config/themes`, previews the active wallpaper, and calls `~/.local/bin/theme-switch`. The shell script remains the source of truth.
+
+## Key Bindings
+
+Modifier symbols: `⌘` Command, `⌃` Control, `⇧` Shift. Space numbers use `1` through `9`, with `0` for space 10.
+
+| Shortcut | Action |
+| --- | --- |
+| `⌃↩` | Open Ghostty. |
+| `⌘Q` | Quit the current app. In Chrome, close the current profile window instead. |
+| `⌘W` | In Messages, TablePlus, and Obsidian, quit the app instead of closing a window. |
+| Media keys | Control Spotify, but only when Spotify is already running. |
+| `⌃F` | Toggle fullscreen for the focused window. |
+| `⌘⇧B` or `⌃⇧B` | Open the Firefox profile manager. |
+| `⌘⇧F` | Open the home folder in Finder. |
+| `⌘←/↓/↑/→` or `⌃←/↓/↑/→` | Focus the window in that direction. |
+| `⌘⇧←/↓/↑/→` or `⌃⇧←/↓/↑/→` | Swap the focused window in that direction, then focus it. |
+| `⌘1..0` or `⌃1..0` | Switch to a space. |
+| `⌘⌃1..0` | Swap the current space with another space. |
+| `⌘⇧1..0` or `⌃⇧1..0` | Move the focused window to a space and follow it. |
+| `⌃T` | Toggle floating or tiled mode for the focused window and remember it for that app. |
+| `⌃J` | Toggle the split direction. |
+| `⌃L` | Rotate and rebalance the current layout. |
+| `⌃=` / `⌃-` | Adjust the focused window split ratio. |
+| `⌃⇧S` | Take an interactive screenshot to the clipboard. |
+| `⌘⌃=` or `⌘⌃⇧=` | Switch to the next Macarchy theme. |
+| `⌘⌃-` | Switch to the previous Macarchy theme. |
 
 <details>
 <summary>SIP and yabai</summary>
