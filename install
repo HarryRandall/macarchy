@@ -15,6 +15,7 @@ RAYCAST_SOURCE_DIR="$DATA_HOME/macarchy/raycast-theme"
 MACARCHY_STATE_DIR="$STATE_HOME/macarchy"
 MANIFEST_DIR="$MACARCHY_STATE_DIR/manifests"
 BACKUP_DIR="$MACARCHY_STATE_DIR/backups"
+RAYCAST_RECOVERY_MANIFEST="$MACARCHY_STATE_DIR/recovery/raycast-runtime.tsv"
 BACKUP_RUN_ID="$(date '+%Y%m%d-%H%M%S')-$$"
 BACKUP_COUNTER=0
 DRY_RUN=0
@@ -519,8 +520,58 @@ is_legacy_raycast_runtime_path() {
   return 1
 }
 
+raycast_runtime_relative_path() {
+  local path="$1" directory
+
+  for directory in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    case "$path" in
+      "$directory"/*)
+        printf '%s\n' "${path#"$directory"/}"
+        return 0
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+is_raycast_development_file() {
+  case "$1" in
+    .gitignore|.nvmrc|.prettierrc|README.md|eslint.config.mjs|package-lock.json|raycast-env.d.ts|tsconfig.json|scripts/*|src/*|test/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+record_raycast_runtime_recovery() {
+  local destination="$1" backup="$2" manifest temporary current current_backup checksum
+
+  manifest="$RAYCAST_RECOVERY_MANIFEST"
+  if [ -f "$manifest" ]; then
+    while IFS=$'\t' read -r current current_backup checksum; do
+      [ "$current" = "$destination" ] && return 0
+    done < "$manifest"
+  fi
+
+  checksum="$(file_hash "$backup" 2>/dev/null || true)"
+  [ -n "$checksum" ] || checksum='-'
+  mkdir -p "$(dirname "$manifest")"
+  temporary="$(mktemp "$(dirname "$manifest")/.raycast-runtime.XXXXXX")"
+  [ -f "$manifest" ] && cat "$manifest" > "$temporary"
+  printf '%s\t%s\t%s\n' "$destination" "$backup" "$checksum" >> "$temporary"
+  mv "$temporary" "$manifest"
+  info "Kept Raycast runtime recovery information in: $manifest"
+}
+
 release_legacy_raycast_runtime() {
-  local manifest temporary destination backup expected
+  local manifest temporary destination backup expected relative actual runtime
 
   manifest="$(manifest_path raycast)"
   [ -s "$manifest" ] || return 0
@@ -532,6 +583,35 @@ release_legacy_raycast_runtime() {
 
   while IFS=$'\t' read -r destination backup expected; do
     if is_legacy_raycast_runtime_path "$destination"; then
+      # A dry run still reaches the generic pruning pass. Mark released paths
+      # as seen so that pass does not claim they would be restored or removed.
+      if [ -n "$SEEN_FILE" ]; then
+        printf '%s\n' "$destination" >> "$SEEN_FILE"
+      fi
+
+      relative="$(raycast_runtime_relative_path "$destination" 2>/dev/null || true)"
+      if is_raycast_development_file "$relative" && path_exists "$destination"; then
+        actual="$(file_hash "$destination" 2>/dev/null || true)"
+        if [ "$actual" = "$expected" ]; then
+          if [ "$DRY_RUN" -eq 1 ]; then
+            info "Would remove old Raycast development file: $destination"
+          else
+            rm -f "$destination"
+            info "Removed old Raycast development file: $destination"
+          fi
+        else
+          warn "kept modified old Raycast development file: $destination"
+        fi
+      fi
+
+      if [ "$backup" != '-' ]; then
+        if [ "$DRY_RUN" -eq 1 ]; then
+          info "Would retain Raycast runtime recovery information for: $destination"
+        else
+          record_raycast_runtime_recovery "$destination" "$backup"
+        fi
+      fi
+
       if [ "$DRY_RUN" -eq 1 ]; then
         info "Would stop managing Raycast runtime file: $destination"
       else
@@ -551,6 +631,14 @@ release_legacy_raycast_runtime() {
     else
       rm -f "$temporary" "$manifest"
     fi
+
+    for runtime in \
+      "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+      "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+      "$HOME/.config/raycast/extensions/theme-switcher" \
+      "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+      rmdir "$runtime/scripts" "$runtime/src" "$runtime/test" 2>/dev/null || true
+    done
   fi
 }
 

@@ -79,7 +79,7 @@ ${XDG_DATA_HOME:-~/.local/share}/macarchy/raycast-theme
 
 Install its dependencies and register the command from that directory. Raycast generates the active command under `~/.config/raycast/extensions/theme-switcher` itself. Never run `npm install` in that generated directory. Keeping `node_modules` there gives the command a second React instance and causes an invalid hook error.
 
-The installer moves any legacy runtime `node_modules` into Macarchy's normal backup directory. It leaves Raycast's generated command in place when you update or uninstall the source component.
+The installer moves any legacy runtime `node_modules` into Macarchy's normal backup directory. It leaves Raycast's generated command in place when you update or uninstall the source component. If an older Macarchy install had replaced a pre-existing runtime file, its original backup remains listed in `${XDG_STATE_HOME:-~/.local/state}/macarchy/recovery/raycast-runtime.tsv` for manual recovery.
 
 ## Update
 

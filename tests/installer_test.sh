@@ -294,21 +294,47 @@ chmod +x "$FAKE_BIN/node"
 RAYCAST_SOURCE="$XDG_DATA_HOME/macarchy/raycast-theme"
 LEGACY_RAYCAST_SOURCE="$XDG_CONFIG_HOME/raycast/extensions/theme-switcher"
 RAYCAST_RUNTIME="$HOME/.config/raycast/extensions/theme-switcher"
-mkdir -p "$LEGACY_RAYCAST_SOURCE" "$RAYCAST_RUNTIME/node_modules/react"
+RAYCAST_ORIGINAL_BACKUP="$XDG_STATE_HOME/macarchy/backups/original-raycast/README.md"
+RAYCAST_RECOVERY_MANIFEST="$XDG_STATE_HOME/macarchy/recovery/raycast-runtime.tsv"
+mkdir -p "$LEGACY_RAYCAST_SOURCE/src" "$RAYCAST_RUNTIME/node_modules/react"
+mkdir -p "$(dirname "$RAYCAST_ORIGINAL_BACKUP")"
 printf '%s\n' 'legacy managed source' > "$LEGACY_RAYCAST_SOURCE/package.json"
+printf '%s\n' 'legacy command source' > "$LEGACY_RAYCAST_SOURCE/src/switch-theme.tsx"
+printf '%s\n' 'legacy managed readme' > "$LEGACY_RAYCAST_SOURCE/README.md"
+printf '%s\n' 'original Raycast readme' > "$RAYCAST_ORIGINAL_BACKUP"
 printf '%s\n' 'duplicate React' > "$RAYCAST_RUNTIME/node_modules/react/index.js"
 LEGACY_RAYCAST_HASH="$(shasum -a 256 "$LEGACY_RAYCAST_SOURCE/package.json" | awk '{print $1}')"
-printf '%s\t-\t%s\n' \
+LEGACY_RAYCAST_SOURCE_HASH="$(shasum -a 256 "$LEGACY_RAYCAST_SOURCE/src/switch-theme.tsx" | awk '{print $1}')"
+LEGACY_RAYCAST_README_HASH="$(shasum -a 256 "$LEGACY_RAYCAST_SOURCE/README.md" | awk '{print $1}')"
+printf '%s\t-\t%s\n%s\t-\t%s\n%s\t%s\t%s\n' \
   "$LEGACY_RAYCAST_SOURCE/package.json" "$LEGACY_RAYCAST_HASH" \
+  "$LEGACY_RAYCAST_SOURCE/src/switch-theme.tsx" "$LEGACY_RAYCAST_SOURCE_HASH" \
+  "$LEGACY_RAYCAST_SOURCE/README.md" "$RAYCAST_ORIGINAL_BACKUP" "$LEGACY_RAYCAST_README_HASH" \
   > "$XDG_STATE_HOME/macarchy/manifests/raycast.tsv"
 
 : > "$FAKE_BREW_LOG"
+run_capture "$TEST_ROOT/raycast-dry-run.out" --dry-run raycast
+assert_no_path "$RAYCAST_SOURCE/package.json"
+assert_file "$RAYCAST_RUNTIME/node_modules/react/index.js"
+assert_file "$LEGACY_RAYCAST_SOURCE/src/switch-theme.tsx"
+assert_no_path "$RAYCAST_RECOVERY_MANIFEST"
+assert_contains "$TEST_ROOT/raycast-dry-run.out" 'Would remove old Raycast development file:'
+assert_contains "$TEST_ROOT/raycast-dry-run.out" 'Would retain Raycast runtime recovery information for:'
+if grep -F 'file no longer shipped by raycast' "$TEST_ROOT/raycast-dry-run.out" >/dev/null; then
+  fail 'Raycast migration dry run reached the generic pruning path'
+fi
+
 run_capture "$TEST_ROOT/raycast.out" raycast
 assert_file "$RAYCAST_SOURCE/package.json"
 assert_file "$RAYCAST_SOURCE/.nvmrc"
 assert_file "$RAYCAST_SOURCE/scripts/assert-runtime-clean.mjs"
 assert_contains "$TEST_ROOT/raycast.out" "$RAYCAST_SOURCE"
 assert_contains "$LEGACY_RAYCAST_SOURCE/package.json" 'legacy managed source'
+assert_no_path "$LEGACY_RAYCAST_SOURCE/src/switch-theme.tsx"
+assert_no_path "$LEGACY_RAYCAST_SOURCE/README.md"
+assert_contains "$RAYCAST_RECOVERY_MANIFEST" "$LEGACY_RAYCAST_SOURCE/README.md"
+assert_contains "$RAYCAST_RECOVERY_MANIFEST" "$RAYCAST_ORIGINAL_BACKUP"
+assert_contains "$RAYCAST_ORIGINAL_BACKUP" 'original Raycast readme'
 assert_no_path "$RAYCAST_RUNTIME/node_modules"
 assert_no_path "$RAYCAST_RUNTIME/src"
 assert_no_path "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher"
@@ -337,6 +363,7 @@ assert_no_path "$RAYCAST_SOURCE/package.json"
 assert_contains "$RAYCAST_RUNTIME/switch-theme.js" 'generated command'
 assert_contains "$LEGACY_RAYCAST_SOURCE/package.json" 'legacy managed source'
 assert_no_path "$XDG_STATE_HOME/macarchy/manifests/raycast.tsv"
+assert_contains "$RAYCAST_RECOVERY_MANIFEST" "$RAYCAST_ORIGINAL_BACKUP"
 pass 'keeps Raycast source, runtime and dependencies separate'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
