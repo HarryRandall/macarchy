@@ -483,7 +483,7 @@ function __icon_map() {
    "Finder" | "访达" | "Bloom")
         icon_result=":finder:"
         ;;
-   "Firefox")
+   "Firefox" | "firefox")
         icon_result=":firefox:"
         ;;
    "Firefox Developer Edition" | "Firefox Nightly")
@@ -546,7 +546,7 @@ function __icon_map() {
    "Gemini" | "Google Gemini")
         icon_result=":gemini:"
         ;;
-   "Ghostty")
+   "Ghostty" | "ghostty")
         icon_result=":ghostty:"
         ;;
    "GIMP")

@@ -1,0 +1,1102 @@
+#!/usr/bin/env bash
+
+# macOS still ships Bash 3.2, where nounset treats empty arrays as unbound.
+set -eo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+BIN_HOME="${MACARCHY_BIN_HOME:-$HOME/.local/bin}"
+APPLICATIONS_DIR="${MACARCHY_APPLICATIONS_DIR:-/Applications}"
+RAYCAST_SOURCE_DIR="$DATA_HOME/macarchy/raycast-theme"
+
+MACARCHY_STATE_DIR="$STATE_HOME/macarchy"
+MANIFEST_DIR="$MACARCHY_STATE_DIR/manifests"
+BACKUP_DIR="$MACARCHY_STATE_DIR/backups"
+RAYCAST_RECOVERY_MANIFEST="$MACARCHY_STATE_DIR/recovery/raycast-runtime.tsv"
+BACKUP_RUN_ID="$(date '+%Y%m%d-%H%M%S')-$$"
+BACKUP_COUNTER=0
+DRY_RUN=0
+FORCE=0
+SEEN_FILE=""
+
+COMPONENTS=(
+  window-manager
+  sketchybar
+  terminal
+  shell
+  nvim
+  utilities
+  themes
+  raycast
+)
+
+info() {
+  printf '%s\n' "$*"
+}
+
+warn() {
+  printf 'Warning: %s\n' "$*" >&2
+}
+
+die() {
+  printf 'Error: %s\n' "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./install --list
+  ./install [--dry-run] [--force] install <component...|all>
+  ./install [--dry-run] [--force] <component...|all>
+  ./install status [component...]
+  ./install [--dry-run] uninstall <component...>
+
+The installer copies only the selected configuration. It does not change SIP,
+write sudoers files, start services or apply a theme.
+
+Updates stop if a managed file has local edits. Review the diff first, then use
+--force to replace it while keeping an extra backup of the edited version.
+EOF
+}
+
+component_description() {
+  case "$1" in
+    window-manager) printf '%s' 'yabai, skhd and borders' ;;
+    sketchybar)     printf '%s' 'menu bar configuration and plugins' ;;
+    terminal)       printf '%s' 'Ghostty configuration' ;;
+    shell)          printf '%s' 'zsh configuration and bootstrap' ;;
+    nvim)           printf '%s' 'Neovim and LazyVim configuration' ;;
+    utilities)      printf '%s' 'btop and fastfetch configuration' ;;
+    themes)         printf '%s' 'themes, theme switcher and wallpaper helper' ;;
+    raycast)        printf '%s' 'Raycast theme switcher extension' ;;
+    *) return 1 ;;
+  esac
+}
+
+dependencies_for() {
+  FORMULAE=()
+  CASKS=()
+
+  case "$1" in
+    window-manager)
+      FORMULAE=(asmvik/formulae/yabai asmvik/formulae/skhd FelixKratz/formulae/borders jq)
+      ;;
+    sketchybar)
+      FORMULAE=(FelixKratz/formulae/sketchybar jq)
+      CASKS=(font-sketchybar-app-font)
+      if [ "$(uname -s)" = 'Darwin' ] && [ "$(uname -m)" = 'arm64' ]; then
+        FORMULAE+=(macmon)
+      fi
+      ;;
+    terminal)
+      CASKS=(ghostty)
+      ;;
+    shell)
+      ;;
+    nvim)
+      FORMULAE=(neovim ripgrep)
+      ;;
+    utilities)
+      FORMULAE=(btop fastfetch)
+      ;;
+    themes)
+      FORMULAE=(jq)
+      ;;
+    raycast)
+      FORMULAE=(node)
+      CASKS=(raycast)
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+list_components() {
+  local component formula cask dependency_list
+
+  printf '%-17s %-43s %s\n' 'COMPONENT' 'INCLUDES' 'HOMEBREW DEPENDENCIES'
+  for component in "${COMPONENTS[@]}"; do
+    dependencies_for "$component"
+    dependency_list=""
+    for formula in "${FORMULAE[@]}"; do
+      dependency_list="${dependency_list}${dependency_list:+, }$formula"
+    done
+    for cask in "${CASKS[@]}"; do
+      dependency_list="${dependency_list}${dependency_list:+, }$cask (cask)"
+    done
+    printf '%-17s %-43s %s\n' \
+      "$component" "$(component_description "$component")" "$dependency_list"
+  done
+}
+
+is_component() {
+  local known
+  for known in "${COMPONENTS[@]}"; do
+    [ "$known" = "$1" ] && return 0
+  done
+  return 1
+}
+
+select_components() {
+  local requested candidate existing found
+  SELECTED_COMPONENTS=()
+
+  [ "$#" -gt 0 ] || die 'choose at least one component (use --list to see them)'
+
+  for requested in "$@"; do
+    if [ "$requested" = 'all' ]; then
+      for candidate in "${COMPONENTS[@]}"; do
+        SELECTED_COMPONENTS+=("$candidate")
+      done
+      continue
+    fi
+
+    is_component "$requested" || die "unknown component '$requested' (use --list to see them)"
+
+    found=0
+    for existing in "${SELECTED_COMPONENTS[@]}"; do
+      if [ "$existing" = "$requested" ]; then
+        found=1
+        break
+      fi
+    done
+    [ "$found" -eq 1 ] || SELECTED_COMPONENTS+=("$requested")
+  done
+
+  # `all` may have been combined with another name, so remove duplicates once.
+  UNIQUE_COMPONENTS=()
+  for candidate in "${SELECTED_COMPONENTS[@]}"; do
+    found=0
+    for existing in "${UNIQUE_COMPONENTS[@]}"; do
+      [ "$existing" = "$candidate" ] && found=1 && break
+    done
+    [ "$found" -eq 1 ] || UNIQUE_COMPONENTS+=("$candidate")
+  done
+  SELECTED_COMPONENTS=("${UNIQUE_COMPONENTS[@]}")
+}
+
+brew_formula_installed() {
+  local formula="$1"
+  if "$BREW_BIN" list --formula --versions "${formula##*/}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # A suitable Node installation may come from fnm, nvm or a versioned
+  # Homebrew formula. Do not install a second copy just to build Raycast code.
+  if [ "${formula##*/}" = 'node' ] && command -v node >/dev/null 2>&1; then
+    node -e '
+      const [major, minor, patch] = process.versions.node.split(".").map(Number);
+      process.exit(major > 22 || (major === 22 && (minor > 22 || (minor === 22 && patch >= 2))) ? 0 : 1);
+    ' >/dev/null 2>&1
+    return
+  fi
+
+  return 1
+}
+
+brew_cask_installed() {
+  local cask="$1" app_name=""
+
+  "$BREW_BIN" list --cask "$cask" >/dev/null 2>&1 && return 0
+
+  case "$cask" in
+    ghostty) app_name='Ghostty.app' ;;
+    raycast) app_name='Raycast.app' ;;
+  esac
+
+  [ -n "$app_name" ] \
+    && { [ -d "$APPLICATIONS_DIR/$app_name" ] || [ -d "$HOME/Applications/$app_name" ]; }
+}
+
+install_dependencies() {
+  local component="$1" formula cask
+
+  dependencies_for "$component"
+
+  if [ "${#FORMULAE[@]}" -eq 0 ] && [ "${#CASKS[@]}" -eq 0 ]; then
+    return
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    for formula in "${FORMULAE[@]}"; do
+      info "Would ensure Homebrew formula: $formula"
+    done
+    for cask in "${CASKS[@]}"; do
+      info "Would ensure Homebrew cask: $cask"
+    done
+    return
+  fi
+
+  BREW_BIN="$(command -v brew 2>/dev/null || true)"
+  [ -n "$BREW_BIN" ] || die 'Homebrew is required to install dependencies: https://brew.sh'
+
+  for formula in "${FORMULAE[@]}"; do
+    if brew_formula_installed "$formula"; then
+      info "Dependency already installed: ${formula##*/}"
+    else
+      info "Installing Homebrew formula: $formula"
+      "$BREW_BIN" install "$formula"
+    fi
+  done
+
+  for cask in "${CASKS[@]}"; do
+    if brew_cask_installed "$cask"; then
+      info "Dependency already installed: $cask"
+    else
+      info "Installing Homebrew cask: $cask"
+      "$BREW_BIN" install --cask "$cask"
+    fi
+  done
+}
+
+file_hash() {
+  local file="$1"
+
+  [ -f "$file" ] || return 1
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+  else
+    die 'shasum or sha256sum is required to track installed files'
+  fi
+}
+
+path_exists() {
+  [ -e "$1" ] || [ -L "$1" ]
+}
+
+manifest_path() {
+  printf '%s/%s.tsv\n' "$MANIFEST_DIR" "$1"
+}
+
+lookup_manifest_entry() {
+  local component="$1" destination="$2" manifest current backup checksum
+  manifest="$(manifest_path "$component")"
+  [ -f "$manifest" ] || return 1
+
+  while IFS=$'\t' read -r current backup checksum; do
+    if [ "$current" = "$destination" ]; then
+      printf '%s\t%s\n' "$backup" "$checksum"
+      return 0
+    fi
+  done < "$manifest"
+
+  return 1
+}
+
+record_manifest_entry() {
+  local component="$1" destination="$2" backup="$3" checksum="$4"
+  local manifest temporary current old_backup old_checksum
+
+  mkdir -p "$MANIFEST_DIR"
+  manifest="$(manifest_path "$component")"
+  temporary="$(mktemp "$MANIFEST_DIR/.${component}.XXXXXX")"
+
+  if [ -f "$manifest" ]; then
+    while IFS=$'\t' read -r current old_backup old_checksum; do
+      [ "$current" = "$destination" ] && continue
+      printf '%s\t%s\t%s\n' "$current" "$old_backup" "$old_checksum" >> "$temporary"
+    done < "$manifest"
+  fi
+
+  printf '%s\t%s\t%s\n' "$destination" "$backup" "$checksum" >> "$temporary"
+  mv "$temporary" "$manifest"
+}
+
+backup_current_path() {
+  local component="$1" destination="$2" name backup_parent
+
+  BACKUP_COUNTER=$((BACKUP_COUNTER + 1))
+  name="$(basename "$destination")"
+  backup_parent="$BACKUP_DIR/$BACKUP_RUN_ID/$component"
+  BACKUP_RESULT="$backup_parent/${BACKUP_COUNTER}-$name"
+
+  mkdir -p "$backup_parent"
+  if [ -L "$destination" ]; then
+    cp -Pp "$destination" "$BACKUP_RESULT"
+  else
+    cp -p "$destination" "$BACKUP_RESULT"
+  fi
+  info "Backed up $destination to $BACKUP_RESULT"
+}
+
+copy_file_atomically() {
+  local source="$1" destination="$2" parent temporary
+  parent="$(dirname "$destination")"
+  mkdir -p "$parent"
+  temporary="$(mktemp "$parent/.macarchy.XXXXXX")"
+
+  if [ -L "$source" ]; then
+    rm -f "$temporary"
+    cp -Pp "$source" "$temporary"
+  else
+    cp -p "$source" "$temporary"
+  fi
+  [ -L "$destination" ] && rm -f "$destination"
+  mv "$temporary" "$destination"
+}
+
+install_managed_file() {
+  local component="$1" source="$2" destination="$3"
+  local entry original_backup='-' previous_checksum='' checksum actual had_entry=0
+
+  [ -f "$source" ] || [ -L "$source" ] || die "installer source is missing: $source"
+
+  if [ -n "$SEEN_FILE" ]; then
+    printf '%s\n' "$destination" >> "$SEEN_FILE"
+  fi
+
+  if entry="$(lookup_manifest_entry "$component" "$destination" 2>/dev/null)"; then
+    had_entry=1
+    original_backup="${entry%%$'\t'*}"
+    previous_checksum="${entry#*$'\t'}"
+  fi
+
+  if path_exists "$destination" && [ -d "$destination" ]; then
+    die "cannot replace directory with file: $destination"
+  fi
+
+  checksum="$(file_hash "$source")"
+  if path_exists "$destination" && cmp -s "$source" "$destination"; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+      if [ "$had_entry" -eq 1 ]; then
+        info "Unchanged: $destination"
+      else
+        info "Would register and back up matching file: $destination"
+      fi
+    else
+      if [ "$had_entry" -eq 0 ]; then
+        backup_current_path "$component" "$destination"
+        original_backup="$BACKUP_RESULT"
+      fi
+      record_manifest_entry "$component" "$destination" "$original_backup" "$checksum"
+      info "Unchanged: $destination"
+    fi
+    return
+  fi
+
+  if [ "$had_entry" -eq 1 ] && path_exists "$destination"; then
+    actual="$(file_hash "$destination" 2>/dev/null || true)"
+    if [ "$actual" != "$previous_checksum" ]; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would keep locally modified managed file: $destination"
+        info "Use --force after reviewing the changes if you want to replace it."
+        return
+      fi
+
+      if [ "$FORCE" -eq 0 ]; then
+        die "managed file has local edits: $destination (review it, then rerun with --force to replace it)"
+      fi
+
+      backup_current_path "$component" "$destination"
+      info "Preserved locally edited version before forced update: $BACKUP_RESULT"
+    fi
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    if path_exists "$destination"; then
+      info "Would back up and replace: $destination"
+    else
+      info "Would install: $destination"
+    fi
+    return
+  fi
+
+  if path_exists "$destination" && [ "$had_entry" -eq 0 ]; then
+    backup_current_path "$component" "$destination"
+    original_backup="$BACKUP_RESULT"
+  fi
+
+  copy_file_atomically "$source" "$destination"
+  record_manifest_entry "$component" "$destination" "$original_backup" "$checksum"
+  info "Installed: $destination"
+}
+
+seen_file_contains() {
+  local destination="$1"
+  [ -n "$SEEN_FILE" ] && grep -Fqx -- "$destination" "$SEEN_FILE" 2>/dev/null
+}
+
+prune_removed_managed_files() {
+  local component="$1" manifest temporary destination backup expected actual
+  local unresolved=0
+
+  manifest="$(manifest_path "$component")"
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$MANIFEST_DIR/.${component}-prune.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    if seen_file_contains "$destination"; then
+      if [ "$DRY_RUN" -eq 0 ]; then
+        printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+      fi
+      continue
+    fi
+
+    if path_exists "$destination"; then
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
+      if [ "$actual" != "$expected" ]; then
+        warn "kept locally modified file no longer shipped by $component: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+    fi
+
+    if [ "$backup" != '-' ]; then
+      if ! path_exists "$backup"; then
+        warn "kept $destination because its original backup is missing: $backup"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would restore file no longer shipped by $component: $destination"
+      else
+        restore_backup "$backup" "$destination"
+        info "Restored file no longer shipped by $component: $destination"
+      fi
+    elif path_exists "$destination"; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would remove file no longer shipped by $component: $destination"
+      else
+        rm -f "$destination"
+        info "Removed file no longer shipped by $component: $destination"
+      fi
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+  fi
+
+  [ "$unresolved" -eq 0 ]
+}
+
+should_skip_source_path() {
+  case "$1" in
+    */.DS_Store|*/node_modules/*|*/.raycast/*|*/dist/*|*/raycast-env.d.ts|*/.state/*|*/sketchybar/theme.sh|*/.backgrounds.json|*/.current|*/.shell-env|*/.nvim-colorscheme)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+is_legacy_raycast_runtime_path() {
+  local path="$1" directory
+
+  for directory in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    case "$path" in
+      "$directory"|"$directory"/*) return 0 ;;
+    esac
+  done
+
+  return 1
+}
+
+raycast_runtime_relative_path() {
+  local path="$1" directory
+
+  for directory in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    case "$path" in
+      "$directory"/*)
+        printf '%s\n' "${path#"$directory"/}"
+        return 0
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+is_raycast_development_file() {
+  case "$1" in
+    .gitignore|.nvmrc|.prettierrc|README.md|eslint.config.mjs|package-lock.json|raycast-env.d.ts|tsconfig.json|scripts/*|src/*|test/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+record_raycast_runtime_recovery() {
+  local destination="$1" backup="$2" manifest temporary current current_backup checksum
+
+  manifest="$RAYCAST_RECOVERY_MANIFEST"
+  if [ -f "$manifest" ]; then
+    while IFS=$'\t' read -r current current_backup checksum; do
+      [ "$current" = "$destination" ] && return 0
+    done < "$manifest"
+  fi
+
+  checksum="$(file_hash "$backup" 2>/dev/null || true)"
+  [ -n "$checksum" ] || checksum='-'
+  mkdir -p "$(dirname "$manifest")"
+  temporary="$(mktemp "$(dirname "$manifest")/.raycast-runtime.XXXXXX")"
+  [ -f "$manifest" ] && cat "$manifest" > "$temporary"
+  printf '%s\t%s\t%s\n' "$destination" "$backup" "$checksum" >> "$temporary"
+  mv "$temporary" "$manifest"
+  info "Kept Raycast runtime recovery information in: $manifest"
+}
+
+release_legacy_raycast_runtime() {
+  local manifest temporary destination backup expected relative actual runtime
+
+  manifest="$(manifest_path raycast)"
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$MANIFEST_DIR/.raycast-runtime.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    if is_legacy_raycast_runtime_path "$destination"; then
+      # A dry run still reaches the generic pruning pass. Mark released paths
+      # as seen so that pass does not claim they would be restored or removed.
+      if [ -n "$SEEN_FILE" ]; then
+        printf '%s\n' "$destination" >> "$SEEN_FILE"
+      fi
+
+      relative="$(raycast_runtime_relative_path "$destination" 2>/dev/null || true)"
+      if is_raycast_development_file "$relative" && path_exists "$destination"; then
+        actual="$(file_hash "$destination" 2>/dev/null || true)"
+        if [ "$actual" = "$expected" ]; then
+          if [ "$DRY_RUN" -eq 1 ]; then
+            info "Would remove old Raycast development file: $destination"
+          else
+            rm -f "$destination"
+            info "Removed old Raycast development file: $destination"
+          fi
+        else
+          warn "kept modified old Raycast development file: $destination"
+        fi
+      fi
+
+      if [ "$backup" != '-' ]; then
+        if [ "$DRY_RUN" -eq 1 ]; then
+          info "Would retain Raycast runtime recovery information for: $destination"
+        else
+          record_raycast_runtime_recovery "$destination" "$backup"
+        fi
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would stop managing Raycast runtime file: $destination"
+      else
+        info "Stopped managing Raycast runtime file: $destination"
+      fi
+      continue
+    fi
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+      printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+
+    for runtime in \
+      "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+      "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+      "$HOME/.config/raycast/extensions/theme-switcher" \
+      "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+      rmdir "$runtime/scripts" "$runtime/src" "$runtime/test" 2>/dev/null || true
+    done
+  fi
+}
+
+quarantine_raycast_runtime_dependencies() {
+  local runtime dependencies backup_parent backup
+
+  for runtime in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    dependencies="$runtime/node_modules"
+    path_exists "$dependencies" || continue
+
+    BACKUP_COUNTER=$((BACKUP_COUNTER + 1))
+    backup_parent="$BACKUP_DIR/$BACKUP_RUN_ID/raycast"
+    backup="$backup_parent/${BACKUP_COUNTER}-runtime-node_modules"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "Would move unsafe Raycast runtime dependencies to: $backup"
+      continue
+    fi
+
+    mkdir -p "$backup_parent"
+    mv "$dependencies" "$backup"
+    info "Moved unsafe Raycast runtime dependencies to: $backup"
+  done
+}
+
+install_tree() {
+  local component="$1" source_dir="$2" destination_dir="$3"
+  local source_file relative found=0
+
+  [ -d "$source_dir" ] || die "installer source directory is missing: $source_dir"
+
+  while IFS= read -r -d '' source_file; do
+    should_skip_source_path "$source_file" && continue
+    found=1
+    relative="${source_file#"$source_dir"/}"
+    install_managed_file "$component" "$source_file" "$destination_dir/$relative"
+  done < <(find "$source_dir" \( -type f -o -type l \) -print0)
+
+  [ "$found" -eq 1 ] || warn "no files found in $source_dir"
+}
+
+install_legacy_ghostty_shim() {
+  local legacy_config="$CONFIG_HOME/ghostty/config"
+  local macos_config="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+  local temporary
+
+  # Ghostty still loads the pre-1.2.3 filename after config.ghostty. Replacing
+  # an existing legacy file with a managed, empty shim prevents stale settings
+  # from overriding the new config while allowing uninstall to restore it.
+  if path_exists "$legacy_config" || lookup_manifest_entry terminal "$legacy_config" >/dev/null 2>&1; then
+    temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-ghostty-legacy.XXXXXX")"
+    printf '%s\n' \
+      '# Legacy Ghostty compatibility file managed by Macarchy.' \
+      '# Put local overrides in config.ghostty or a file imported from it.' \
+      > "$temporary"
+    install_managed_file terminal "$temporary" "$legacy_config"
+    rm -f "$temporary"
+  fi
+
+  if [ "$(uname -s)" = 'Darwin' ] && [ -f "$macos_config" ] \
+    && grep -Ev '^[[:space:]]*(#|$)' "$macos_config" >/dev/null 2>&1; then
+    warn "Ghostty also loads $macos_config after the XDG config; settings there may override Macarchy"
+  fi
+}
+
+ensure_skhd_local_config() {
+  local public_config="$CONFIG_HOME/skhd/skhdrc"
+  local local_config="$CONFIG_HOME/skhd/local.skhdrc"
+
+  path_exists "$local_config" && return 0
+
+  # On the first install, keep an existing unmanaged shortcut file active by
+  # loading it as the machine-specific override. A later install must not copy
+  # Macarchy's own managed public file back into that override.
+  if ! lookup_manifest_entry window-manager "$public_config" >/dev/null 2>&1 \
+    && path_exists "$public_config" \
+    && [ ! -d "$public_config" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "Would preserve existing shortcuts in: $local_config"
+      return 0
+    fi
+
+    copy_file_atomically "$public_config" "$local_config"
+    info "Preserved existing shortcuts in: $local_config"
+    return 0
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    info "Would create local shortcut file: $local_config"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$local_config")"
+  printf '%s\n' \
+    '# Machine-specific skhd shortcuts. This file is not managed by Macarchy.' \
+    '# Copy optional bindings from examples/ here and customise them freely.' \
+    > "$local_config"
+  chmod 600 "$local_config"
+  info "Created local shortcut file: $local_config"
+}
+
+install_zsh_bootstrap() {
+  local temporary
+  temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-zshenv.XXXXXX")"
+  printf '%s\n' \
+    '# Macarchy shell bootstrap. Remove this file or run ./install uninstall shell to restore the previous one.' \
+    > "$temporary"
+  printf 'export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-%q}\n' "$CONFIG_HOME" >> "$temporary"
+  printf '%s\n' \
+    'export ZDOTDIR="${ZDOTDIR:-$XDG_CONFIG_HOME/zsh}"' \
+    '[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"' >> "$temporary"
+  install_managed_file shell "$temporary" "$HOME/.zshenv"
+  rm -f "$temporary"
+}
+
+install_component_files() {
+  local component="$1"
+
+  case "$component" in
+    window-manager)
+      ensure_skhd_local_config
+      install_tree "$component" "$REPO_ROOT/yabai" "$CONFIG_HOME/yabai"
+      install_managed_file "$component" "$REPO_ROOT/skhd/skhdrc" "$CONFIG_HOME/skhd/skhdrc"
+      install_tree "$component" "$REPO_ROOT/borders" "$CONFIG_HOME/borders"
+      ;;
+    sketchybar)
+      install_tree "$component" "$REPO_ROOT/sketchybar" "$CONFIG_HOME/sketchybar"
+      ;;
+    terminal)
+      install_managed_file "$component" "$REPO_ROOT/ghostty/config.ghostty" "$CONFIG_HOME/ghostty/config.ghostty"
+      install_legacy_ghostty_shim
+      ;;
+    shell)
+      if path_exists "$HOME/.zshrc" || path_exists "$HOME/.zprofile"; then
+        warn "the shell component sets ZDOTDIR to $CONFIG_HOME/zsh, so existing ~/.zshrc and ~/.zprofile files will no longer load automatically"
+        warn "move any settings you still need into $CONFIG_HOME/zsh/local.zsh after installation"
+      fi
+      install_tree "$component" "$REPO_ROOT/zsh" "$CONFIG_HOME/zsh"
+      install_zsh_bootstrap
+      ;;
+    nvim)
+      install_tree "$component" "$REPO_ROOT/nvim" "$CONFIG_HOME/nvim"
+      ;;
+    utilities)
+      install_tree "$component" "$REPO_ROOT/btop" "$CONFIG_HOME/btop"
+      install_tree "$component" "$REPO_ROOT/fastfetch" "$CONFIG_HOME/fastfetch"
+      ;;
+    themes)
+      install_tree "$component" "$REPO_ROOT/themes" "$CONFIG_HOME/themes"
+      install_managed_file "$component" "$REPO_ROOT/bin/theme-switch" "$BIN_HOME/theme-switch"
+      install_managed_file "$component" "$REPO_ROOT/bin/set-wallpaper" "$BIN_HOME/set-wallpaper"
+      if [ -d "$REPO_ROOT/lib/macarchy" ]; then
+        install_tree "$component" "$REPO_ROOT/lib/macarchy" "$DATA_HOME/macarchy/lib"
+      fi
+      ;;
+    raycast)
+      # Raycast writes compiled commands to ~/.config/raycast/extensions.
+      # Keep source and npm dependencies elsewhere so the command cannot load
+      # a second copy of React from its generated runtime directory.
+      quarantine_raycast_runtime_dependencies
+      release_legacy_raycast_runtime
+      install_tree "$component" "$REPO_ROOT/raycast-theme" "$RAYCAST_SOURCE_DIR"
+      ;;
+  esac
+}
+
+print_next_step() {
+  if [ "$CONFIG_HOME" != "$HOME/.config" ] \
+    && { [ "$1" = 'window-manager' ] || [ "$1" = 'sketchybar' ] || [ "$1" = 'terminal' ]; }; then
+    info "Before using this component, expose the custom config path with: launchctl setenv XDG_CONFIG_HOME '$CONFIG_HOME'"
+  fi
+
+  case "$1" in
+    window-manager)
+      info 'Next: grant Accessibility access, then start only the services you want with `yabai --start-service`, `skhd --start-service` and `brew services start borders`.'
+      info 'SIP and the yabai scripting addition are optional and are never changed by this installer.'
+      ;;
+    sketchybar)
+      info 'Next: start SketchyBar when ready with `brew services start sketchybar`.'
+      ;;
+    themes)
+      info "Next: apply a theme explicitly with '$BIN_HOME/theme-switch' <theme-name>."
+      ;;
+    raycast)
+      info "Next: run \`npm install && npm run dev\` in $RAYCAST_SOURCE_DIR."
+      ;;
+  esac
+}
+
+install_components() {
+  local component result=0
+
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    info ""
+    info "Installing $component"
+    SEEN_FILE="$(mktemp "${TMPDIR:-/tmp}/macarchy-seen.XXXXXX")"
+    install_dependencies "$component"
+    install_component_files "$component"
+    if ! prune_removed_managed_files "$component"; then
+      result=1
+    fi
+    rm -f "$SEEN_FILE"
+    SEEN_FILE=""
+    print_next_step "$component"
+  done
+
+  return "$result"
+}
+
+status_component() {
+  local component="$1" manifest destination backup expected actual
+  local missing=0 modified=0 total=0
+  manifest="$(manifest_path "$component")"
+
+  if [ ! -s "$manifest" ]; then
+    printf '%-17s %s\n' "$component" 'not installed'
+    return 1
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    total=$((total + 1))
+    if ! path_exists "$destination"; then
+      missing=$((missing + 1))
+      continue
+    fi
+    actual="$(file_hash "$destination" 2>/dev/null || true)"
+    [ "$actual" = "$expected" ] || modified=$((modified + 1))
+  done < "$manifest"
+
+  if [ "$missing" -eq 0 ] && [ "$modified" -eq 0 ]; then
+    printf '%-17s installed (%d managed files)\n' "$component" "$total"
+    return 0
+  fi
+
+  printf '%-17s needs attention (%d missing, %d modified, %d managed)\n' \
+    "$component" "$missing" "$modified" "$total"
+  return 1
+}
+
+status_components() {
+  local component result=0
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    if ! status_component "$component"; then
+      result=1
+    fi
+  done
+  return "$result"
+}
+
+restore_backup() {
+  local backup="$1" destination="$2"
+  copy_file_atomically "$backup" "$destination"
+}
+
+uninstall_component() {
+  local component="$1" manifest temporary destination backup expected actual
+  local unresolved=0
+  manifest="$(manifest_path "$component")"
+
+  if [ ! -s "$manifest" ]; then
+    info "$component is not installed by Macarchy."
+    return 0
+  fi
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$MANIFEST_DIR/.${component}-uninstall.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    if path_exists "$destination"; then
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
+      if [ "$actual" != "$expected" ]; then
+        warn "kept modified file: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+    fi
+
+    if [ "$backup" != '-' ]; then
+      if ! path_exists "$backup"; then
+        warn "kept $destination because its original backup is missing: $backup"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would restore: $destination"
+      else
+        restore_backup "$backup" "$destination"
+        info "Restored: $destination"
+      fi
+    elif path_exists "$destination"; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would remove: $destination"
+      else
+        rm -f "$destination"
+        info "Removed: $destination"
+      fi
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ "$unresolved" -eq 0 ]; then
+      rm -f "$temporary" "$manifest"
+      info "Uninstalled $component configuration. Homebrew packages were left in place."
+    else
+      mv "$temporary" "$manifest"
+      warn "$component was only partly uninstalled; resolve modified files and run uninstall again"
+    fi
+  fi
+
+  [ "$unresolved" -eq 0 ]
+}
+
+uninstall_generated_theme_files() {
+  local manifest="$MACARCHY_STATE_DIR/generated/themes.tsv"
+  local temporary destination expected actual
+  local unresolved=0
+
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$(dirname "$manifest")/.themes-uninstall.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination expected; do
+    [ -n "$destination" ] || continue
+
+    if path_exists "$destination"; then
+      if [ -d "$destination" ]; then
+        warn "kept generated path because it is now a directory: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\n' "$destination" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
+      if [ "$actual" != "$expected" ]; then
+        warn "kept modified generated file: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\n' "$destination" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would remove generated theme file: $destination"
+      else
+        rm -f "$destination"
+        info "Removed generated theme file: $destination"
+      fi
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+  fi
+
+  [ "$unresolved" -eq 0 ]
+}
+
+uninstall_components() {
+  local component result=0
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    if ! uninstall_component "$component"; then
+      result=1
+    fi
+    if [ "$component" = 'themes' ] && ! uninstall_generated_theme_files; then
+      result=1
+    fi
+  done
+  return "$result"
+}
+
+main() {
+  local first argument
+  local -a arguments=()
+
+  for argument in "$@"; do
+    case "$argument" in
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --force)
+        FORCE=1
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      --list)
+        arguments+=(list)
+        ;;
+      --)
+        ;;
+      -* )
+        die "unknown option '$argument'"
+        ;;
+      *)
+        arguments+=("$argument")
+        ;;
+    esac
+  done
+
+  if [ "${#arguments[@]}" -eq 0 ]; then
+    usage
+    return 1
+  fi
+
+  first="${arguments[0]}"
+  case "$first" in
+    list)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
+      [ "${#arguments[@]}" -eq 1 ] || die '--list does not accept component names'
+      list_components
+      ;;
+    install)
+      select_components "${arguments[@]:1}"
+      install_components
+      ;;
+    status)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
+      if [ "${#arguments[@]}" -eq 1 ]; then
+        select_components all
+      else
+        select_components "${arguments[@]:1}"
+      fi
+      status_components
+      ;;
+    uninstall)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
+      select_components "${arguments[@]:1}"
+      uninstall_components
+      ;;
+    *)
+      select_components "${arguments[@]}"
+      install_components
+      ;;
+  esac
+}
+
+main "$@"

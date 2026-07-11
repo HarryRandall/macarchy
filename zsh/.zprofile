@@ -1,10 +1,17 @@
-export HOMEBREW_PREFIX="/opt/homebrew"
-export HOMEBREW_CELLAR="/opt/homebrew/Cellar"
-export HOMEBREW_REPOSITORY="/opt/homebrew"
+# Homebrew is installed in different locations on Apple Silicon, Intel and
+# custom setups. Ask Homebrew for its environment instead of fixing one path.
+_macarchy_brew="$(command -v brew 2>/dev/null || true)"
+if [[ -z "$_macarchy_brew" ]]; then
+    for _macarchy_candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        if [[ -x "$_macarchy_candidate" ]]; then
+            _macarchy_brew="$_macarchy_candidate"
+            break
+        fi
+    done
+fi
 
-typeset -gU path fpath
-path=("$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" $path)
-fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
-export PATH FPATH
+if [[ -n "$_macarchy_brew" ]]; then
+    eval "$("$_macarchy_brew" shellenv)"
+fi
 
-export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
+unset _macarchy_brew _macarchy_candidate

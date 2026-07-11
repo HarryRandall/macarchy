@@ -1,0 +1,16 @@
+# Optional Space swapping. These actions require yabai's scripting addition.
+# Copy only the bindings you want into the installed skhdrc.
+
+cmd + ctrl - 1 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 1
+cmd + ctrl - 2 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 2
+cmd + ctrl - 3 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 3
+cmd + ctrl - 4 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 4
+cmd + ctrl - 5 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 5
+cmd + ctrl - 6 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 6
+cmd + ctrl - 7 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 7
+cmd + ctrl - 8 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 8
+cmd + ctrl - 9 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 9
+cmd + ctrl - 0 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 10
+
+# Interactive screenshot to the clipboard.
+ctrl + shift - s : screencapture -i -c -x

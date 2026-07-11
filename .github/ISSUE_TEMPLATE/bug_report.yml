@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible problem with a Macarchy component.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Installer
+        - Window manager
+        - SketchyBar
+        - Terminal
+        - Shell
+        - Neovim
+        - Utilities
+        - Themes
+        - Raycast
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+      placeholder: macOS 26.5, MacBook Pro with M3 Pro
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the command you ran, what you expected and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output
+      description: Remove usernames, home-directory paths, tokens and other private data first.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I used `./install --dry-run` where applicable.
+          required: true
+        - label: I removed personal information from the report.
+          required: true

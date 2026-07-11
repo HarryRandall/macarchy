@@ -1,46 +1,59 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+# Macarchy's bar entry point is intentionally small. Each visible section owns
+# its item definitions and each changing value has a separate plugin script.
 source "$CONFIG_DIR/colors.sh"
 
 PLUGIN_DIR="$CONFIG_DIR/plugins"
 ITEM_DIR="$CONFIG_DIR/items"
 
+configure_bar() {
+  sketchybar --bar \
+    position=top \
+    display=all \
+    height=37 \
+    sticky=on \
+    blur_radius=0 \
+    padding_left=10 \
+    padding_right=10 \
+    color="$BAR_COLOR"
+}
+
+configure_item_defaults() {
+  sketchybar --default \
+    icon.font="SF Pro:Semibold:15.0" \
+    icon.color="$TEXT_COLOR" \
+    icon.padding_left=10 \
+    icon.padding_right=4 \
+    label.font="SF Pro:Semibold:12.0" \
+    label.color="$TEXT_COLOR" \
+    label.y_offset=1 \
+    label.padding_left=4 \
+    label.padding_right=10 \
+    background.drawing=on \
+    background.color=0x00000000 \
+    background.border_color=0x33ffffff \
+    background.border_width=1 \
+    background.corner_radius=5 \
+    background.height=24 \
+    padding_left=5 \
+    padding_right=5
+}
+
+load_items() {
+  local item
+
+  for item in spaces calendar battery system_metrics; do
+    # shellcheck source=/dev/null
+    source "$ITEM_DIR/$item.sh"
+  done
+}
+
 sketchybar --add event yabai_space_labels_refresh
-
 sketchybar --remove '/.*/' >/dev/null 2>&1 || true
-
-sketchybar --bar height=37        \
-                 blur_radius=0    \
-                 display=all      \
-                 position=top     \
-                 sticky=on        \
-                 padding_left=10  \
-                 padding_right=10 \
-                 color=0x00000000
-
 sketchybar --load-font "$HOME/Library/Fonts/sketchybar-app-font.ttf"
 
-sketchybar --default icon.font="SF Pro:Semibold:15.0"   \
-                     icon.color=$TEXT_COLOR             \
-                     label.font="SF Pro:Semibold:12.0"  \
-                     label.color=$TEXT_COLOR            \
-                     background.color=0x00000000        \
-                     background.border_color=0x33ffffff \
-                     background.border_width=1          \
-                     background.drawing=on              \
-                     background.corner_radius=5         \
-                     background.height=24               \
-                     padding_left=5                     \
-                     padding_right=5                    \
-                     label.y_offset=1                   \
-                     label.padding_left=4               \
-                     label.padding_right=10             \
-                     icon.padding_left=10               \
-                     icon.padding_right=4
-
-source "$ITEM_DIR/spaces.sh"
-source "$ITEM_DIR/calendar.sh"
-source "$ITEM_DIR/battery.sh"
-source "$ITEM_DIR/system_metrics.sh"
-
+configure_bar
+configure_item_defaults
+load_items
 sketchybar --update

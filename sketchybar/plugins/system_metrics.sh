@@ -1,101 +1,108 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 CONFIG_ROOT="${CONFIG_DIR:-$HOME/.config/sketchybar}"
-STATE_DIR="$CONFIG_ROOT/.state"
-MACMON_URL="${MACMON_URL:-http://localhost:9090/json}"
-
-mkdir -p "$STATE_DIR"
+MACMON_DATA_FILE="${MACMON_DATA_FILE:-$CONFIG_ROOT/.state/macmon.json}"
+MACMON_URL="${MACMON_URL:-}"
+SKETCHYBAR_BIN="$(command -v "${SKETCHYBAR_BIN:-sketchybar}" 2>/dev/null || true)"
+JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
+CURL_BIN="$(command -v "${CURL_BIN:-curl}" 2>/dev/null || true)"
+MACMON_STREAM="$CONFIG_ROOT/plugins/macmon_stream.sh"
+[ -n "$SKETCHYBAR_BIN" ] || exit 0
 
 read_macmon() {
-  curl --max-time 1 -fsS "$MACMON_URL" 2>/dev/null
+  local modified now
+
+  if [ -n "$MACMON_URL" ]; then
+    [ -n "$CURL_BIN" ] || return 1
+    "$CURL_BIN" --max-time 1 -fsS "$MACMON_URL" 2>/dev/null
+  elif [ -r "$MACMON_DATA_FILE" ]; then
+    # BSD and GNU stat use different flags. Keep the probes separate because
+    # GNU stat can print filesystem details before rejecting BSD's -f format.
+    if ! modified="$(stat -f %m "$MACMON_DATA_FILE" 2>/dev/null)"; then
+      modified="$(stat -c %Y "$MACMON_DATA_FILE" 2>/dev/null || true)"
+    fi
+    now="$(date +%s)"
+    case "$modified" in
+      ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$((now - modified))" -le 15 ] || return 1
+    cat "$MACMON_DATA_FILE"
+  else
+    return 1
+  fi
 }
 
-format_macmon_rows() {
-  /usr/bin/python3 -c '
-import json
-import os
-import re
-import sys
+format_scaled() {
+  local value="$1" scale="$2" suffix="$3" placeholder="$4" fixed_width="${5:-false}"
 
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    d = {}
+  awk -v value="$value" -v scale="$scale" -v suffix="$suffix" \
+      -v placeholder="$placeholder" -v fixed_width="$fixed_width" 'BEGIN {
+    if (value !~ /^-?[0-9]+([.][0-9]+)?$/) {
+      print placeholder
+      exit
+    }
 
-def num(path):
-    cur = d
-    try:
-        for part in path:
-            cur = cur[part]
-        return float(cur)
-    except Exception:
-        return None
-
-def _fmt(n, suffix, fixed=False):
-    if n >= 100:
-        n = 99.9
-    return f"{n:4.1f}{suffix}" if fixed else f"{n:.1f}{suffix}"
-
-def pct(value):
-    return "--.-%" if value is None else _fmt(value * 100, "%")
-
-def temp(value):
-    return "--.-°" if value is None else _fmt(value, "°", True)
-
-def gib(value):
-    return "--.-G" if value is None else _fmt(value / 1073741824, "G", True)
-
-def pressure_memory():
-    output = os.environ.get("MEMORY_PRESSURE_OUTPUT", "")
-    total_match = re.search(r"The system has (\d+)", output)
-    free_match = re.search(r"System-wide memory free percentage:\s*(\d+)%", output)
-    if not total_match or not free_match:
-        return None, None
-
-    total = float(total_match.group(1))
-    pressure_pct = max(0.0, min(100.0, 100.0 - float(free_match.group(1))))
-    return pressure_pct / 100.0, total * pressure_pct / 100.0
-
-ram_total = num(("memory", "ram_total"))
-ram_pct, ram_used = pressure_memory()
-if ram_pct is None:
-    ram_used = num(("memory", "ram_usage"))
-    ram_pct = None if ram_total is None or ram_used is None or ram_total == 0 else ram_used / ram_total
-
-rows = {
-    "cpu_top": pct(num(("cpu_usage_pct",))),
-    "cpu_bottom": temp(num(("temp", "cpu_temp_avg"))),
-    "gpu_top": pct(num(("gpu_usage", 1))),
-    "gpu_bottom": temp(num(("temp", "gpu_temp_avg"))),
-    "ram_top": pct(ram_pct),
-    "ram_bottom": gib(ram_used),
+    number = value * scale
+    if (number >= 99.95) printf "%.0f%s", number, suffix
+    else if (fixed_width == "true") printf "%4.1f%s", number, suffix
+    else printf "%.1f%s", number, suffix
+  }'
 }
 
-for key, value in rows.items():
-    print(f"{key}={value}")
-'
+format_ratio_percent() {
+  local used="$1" total="$2"
+
+  awk -v used="$used" -v total="$total" 'BEGIN {
+    if (used !~ /^[0-9]+([.][0-9]+)?$/ || total !~ /^[0-9]+([.][0-9]+)?$/ || total <= 0) {
+      print "--.-%"
+      exit
+    }
+
+    percentage = used * 100 / total
+    if (percentage >= 99.95) printf "%.0f%%", percentage
+    else printf "%.1f%%", percentage
+  }'
 }
 
-DATA="$(read_macmon)"
-MEMORY_PRESSURE_OUTPUT="$(memory_pressure 2>/dev/null)"
-METRICS="$(printf '%s' "$DATA" | MEMORY_PRESSURE_OUTPUT="$MEMORY_PRESSURE_OUTPUT" format_macmon_rows)"
+cpu_usage="NA"
+cpu_temp="NA"
+gpu_usage="NA"
+gpu_temp="NA"
+ram_used="NA"
+ram_total="NA"
 
-get_row() {
-  local key="$1"
-  printf '%s\n' "$METRICS" | awk -F= -v key="$key" '$1 == key { print substr($0, length(key) + 2); exit }'
-}
+data="$(read_macmon || true)"
+if [ -z "$data" ] && [ -z "$MACMON_URL" ] && [ -x "$MACMON_STREAM" ]; then
+  # The sampler can exit during sleep or after a macmon failure. Starting it is
+  # lock-protected and cheap when an existing worker is still healthy.
+  "$MACMON_STREAM" --start >/dev/null 2>&1 || true
+fi
+if [ -n "$data" ] && [ -n "$JQ_BIN" ]; then
+  values="$(printf '%s' "$data" | "$JQ_BIN" -er '
+    [
+      ((try .cpu_usage_pct catch null) // "NA"),
+      ((try .temp.cpu_temp_avg catch null) // "NA"),
+      ((try .gpu_usage[1] catch null) // "NA"),
+      ((try .temp.gpu_temp_avg catch null) // "NA"),
+      ((try .memory.ram_usage catch null) // "NA"),
+      ((try .memory.ram_total catch null) // "NA")
+    ] | @tsv
+  ' 2>/dev/null || true)"
 
-ARGS=()
-
-if [ -n "$DATA" ]; then
-  ARGS+=(
-    --set cpu.text icon="$(get_row cpu_top)" label="$(get_row cpu_bottom)"
-    --set gpu.text icon="$(get_row gpu_top)" label="$(get_row gpu_bottom)"
-  )
+  if [ -n "$values" ]; then
+    IFS=$'\t' read -r cpu_usage cpu_temp gpu_usage gpu_temp ram_used ram_total <<< "$values"
+  fi
 fi
 
-ARGS+=(--set ram.text icon="$(get_row ram_top)" label="$(get_row ram_bottom)")
-
-if [ "${#ARGS[@]}" -gt 0 ]; then
-  sketchybar "${ARGS[@]}"
-fi
+# ram_usage is macmon's actual used-byte counter. Memory pressure measures how
+# comfortably macOS can satisfy allocations and is not a used-RAM percentage.
+"$SKETCHYBAR_BIN" \
+  --set cpu.text \
+    icon="$(format_scaled "$cpu_usage" 100 % --.-%)" \
+    label="$(format_scaled "$cpu_temp" 1 ° --.-° true)" \
+  --set gpu.text \
+    icon="$(format_scaled "$gpu_usage" 100 % --.-%)" \
+    label="$(format_scaled "$gpu_temp" 1 ° --.-° true)" \
+  --set ram.text \
+    icon="$(format_ratio_percent "$ram_used" "$ram_total")" \
+    label="$(format_scaled "$ram_used" 0.0000000009313225746154785 G --.-G true)"

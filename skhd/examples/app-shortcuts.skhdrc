@@ -1,0 +1,15 @@
+# Optional application shortcuts. Copy the bindings you want into skhdrc.
+
+# Open Ghostty in a new window.
+ctrl - return : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/launch_ghostty.sh"
+
+# Open the home folder in Finder.
+cmd + shift - f : open "$HOME"
+
+# Open Firefox's profile manager.
+cmd + shift - b : open -na 'Firefox' --args -P
+
+# Send media keys to Spotify only when it is already running.
+play     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to playpause'
+next     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+previous : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'

@@ -1,3 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-sketchybar --set "$NAME" label="$(date +'%a %d %b %I:%M %p')"
+calendar_label="$(LC_ALL=C date +'%a %d %b %I:%M %p')"
+sketchybar --set "${NAME:-calendar}" label="$calendar_label"
