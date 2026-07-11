@@ -1,6 +1,7 @@
 local M = {}
 
-M.state_file = vim.fn.expand("~/.config/themes/.nvim-colorscheme")
+local config_home = vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
+M.state_file = config_home .. "/themes/.nvim-colorscheme"
 
 local fallback = "gruvbox"
 
