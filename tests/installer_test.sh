@@ -181,6 +181,8 @@ pass 'uninstall preserves modified files and keeps their manifest entries'
 
 # Window manager dependencies use the maintained taps and no service is started.
 : > "$FAKE_BREW_LOG"
+mkdir -p "$XDG_CONFIG_HOME/skhd"
+printf '%s\n' 'cmd + shift - 1 : legacy-space-command' > "$XDG_CONFIG_HOME/skhd/skhdrc"
 run_capture "$TEST_ROOT/window-manager.out" window-manager
 assert_contains "$FAKE_BREW_LOG" 'install asmvik/formulae/yabai'
 assert_contains "$FAKE_BREW_LOG" 'install asmvik/formulae/skhd'
@@ -191,11 +193,32 @@ fi
 assert_file "$XDG_CONFIG_HOME/yabai/yabairc"
 assert_file "$XDG_CONFIG_HOME/skhd/skhdrc"
 assert_file "$XDG_CONFIG_HOME/skhd/local.skhdrc"
+cmp -s "$REPO_ROOT/skhd/skhdrc" "$XDG_CONFIG_HOME/skhd/skhdrc" \
+  || fail 'public skhd configuration was not installed after preserving shortcuts'
+assert_contains "$XDG_CONFIG_HOME/skhd/local.skhdrc" 'cmd + shift - 1 : legacy-space-command'
+assert_contains "$TEST_ROOT/window-manager.out" 'Preserved existing shortcuts in:'
 if grep -F "$XDG_CONFIG_HOME/skhd/local.skhdrc" "$XDG_STATE_HOME/macarchy/manifests/window-manager.tsv" >/dev/null; then
   fail 'machine-specific skhd shortcuts were added to the managed manifest'
 fi
 assert_contains "$TEST_ROOT/window-manager.out" 'launchctl setenv XDG_CONFIG_HOME'
-pass 'uses current window-manager formulae without starting services'
+pass 'preserves unmanaged shortcuts before installing the window manager'
+
+# An existing local override is user-owned and must survive later installs.
+printf '%s\n' 'cmd + shift - 2 : local-space-command' > "$XDG_CONFIG_HOME/skhd/local.skhdrc"
+run_capture "$TEST_ROOT/window-manager-reinstall.out" window-manager
+assert_contains "$XDG_CONFIG_HOME/skhd/local.skhdrc" 'cmd + shift - 2 : local-space-command'
+pass 'does not overwrite an existing local shortcut file'
+
+# If the local override is missing on a later install, create a fresh template
+# instead of copying the already managed public configuration into it.
+rm "$XDG_CONFIG_HOME/skhd/local.skhdrc"
+run_capture "$TEST_ROOT/window-manager-managed-reinstall.out" window-manager
+assert_file "$XDG_CONFIG_HOME/skhd/local.skhdrc"
+assert_contains "$XDG_CONFIG_HOME/skhd/local.skhdrc" 'This file is not managed by Macarchy.'
+if cmp -s "$REPO_ROOT/skhd/skhdrc" "$XDG_CONFIG_HOME/skhd/local.skhdrc"; then
+  fail 'managed public shortcuts were copied into the local shortcut file'
+fi
+pass 'does not copy managed public shortcuts into the local override'
 
 # SketchyBar's app labels rely on its companion ligature font.
 : > "$FAKE_BREW_LOG"
@@ -208,7 +231,8 @@ assert_contains "$FAKE_BREW_LOG" 'install --cask font-sketchybar-app-font'
 assert_file "$XDG_CONFIG_HOME/sketchybar/sketchybarrc"
 pass 'installs the SketchyBar app font dependency'
 
-# Themes include their shared library but start without mutable runtime state.
+# Themes include their shared library, preserve existing assets and start
+# without mutable runtime state.
 mkdir -p "$XDG_CONFIG_HOME/themes/lumon/backgrounds" "$XDG_CONFIG_HOME/themes/blackgold/backgrounds"
 printf '%s\n' 'DARK_MODE=true' > "$XDG_CONFIG_HOME/themes/lumon/theme.env"
 printf '%s\n' 'old wallpaper' > "$XDG_CONFIG_HOME/themes/lumon/backgrounds/old.jpg"
@@ -218,17 +242,16 @@ assert_file "$XDG_CONFIG_HOME/themes/blackgold/theme.env"
 assert_file "$XDG_DATA_HOME/macarchy/lib/theme.sh"
 assert_file "$MACARCHY_BIN_HOME/theme-switch"
 assert_no_path "$XDG_CONFIG_HOME/themes/.current"
-assert_no_path "$XDG_CONFIG_HOME/themes/lumon"
-assert_no_path "$XDG_CONFIG_HOME/themes/blackgold/backgrounds"
-find "$XDG_STATE_HOME/macarchy/backups" -path '*themes/*legacy-lumon' -type d | grep . >/dev/null \
-  || fail 'legacy renamed theme was not backed up'
-find "$XDG_STATE_HOME/macarchy/backups" -path '*themes/*legacy-blackgold-backgrounds' -type d | grep . >/dev/null \
-  || fail 'legacy wallpaper directory was not backed up'
+assert_contains "$XDG_CONFIG_HOME/themes/lumon/backgrounds/old.jpg" 'old wallpaper'
+assert_contains "$XDG_CONFIG_HOME/themes/blackgold/backgrounds/old.jpg" 'old wallpaper'
+if find "$XDG_STATE_HOME/macarchy/backups" -path '*themes/*legacy-*' -print | grep . >/dev/null; then
+  fail 'existing theme content was moved into a legacy backup'
+fi
 assert_contains "$TEST_ROOT/themes.out" "$MACARCHY_BIN_HOME/theme-switch"
 if grep -F 'desktoppr' "$TEST_ROOT/themes.out" "$FAKE_BREW_LOG" >/dev/null; then
   fail 'themes installed optional desktoppr despite having a system fallback'
 fi
-pass 'installs theme code separately from runtime state'
+pass 'installs theme code without moving existing backgrounds'
 
 # Uninstall removes only unchanged runtime files recorded by theme-switch.
 THEME_RUNTIME="$XDG_STATE_HOME/macarchy/themes/current"

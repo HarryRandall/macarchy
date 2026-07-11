@@ -32,7 +32,7 @@ The default skhd file contains window-management bindings only. Application laun
 
 Optional application launchers, theme controls, screenshots and scripting-addition Space swaps live in [`skhd/examples`](../skhd/examples). They are not loaded by default.
 
-The installed `skhdrc` loads `~/.config/skhd/local.skhdrc`, or the equivalent XDG path. The installer creates that file once and never manages or removes it, so it is the right place for personal app shortcuts and legacy key combinations. Copy examples there rather than editing the managed `skhdrc`.
+The installed `skhdrc` loads `~/.config/skhd/local.skhdrc`, or the equivalent XDG path. On the first install, an existing unmanaged `skhdrc` is preserved there before the public configuration replaces it. Otherwise, the installer creates the local file once. It never manages, replaces or removes that file, so it is the right place for personal app shortcuts and legacy key combinations. Copy examples there rather than editing the managed `skhdrc`.
 
 Floating preferences are stored as a JSON array in `~/.config/yabai/float_state.json`, or the equivalent XDG path. The generated yabai rules are labelled, so reloading the config replaces them instead of adding duplicates.
 

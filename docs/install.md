@@ -88,7 +88,9 @@ If a managed file has local edits, an ordinary update stops before replacing it.
 When upgrading from the old all-in-one setup, the installer also handles two legacy cases:
 
 - An existing Ghostty `config` file is backed up and replaced with a comment-only compatibility file, preventing it from overriding the newer `config.ghostty`.
-- Removed wallpaper directories and renamed bundled themes are moved into the normal backup directory. They are never deleted outright.
+- On the first `window-manager` install, an existing unmanaged `skhdrc` is copied to `local.skhdrc` before the public configuration is installed. An existing `local.skhdrc` is never overwritten.
+
+The `themes` component leaves existing theme directories and wallpaper files in place. If Macarchy ships a file at the same path, that individual file still goes through the normal backup and replacement process.
 
 ## Uninstall
 

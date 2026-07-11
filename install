@@ -542,51 +542,27 @@ install_legacy_ghostty_shim() {
   fi
 }
 
-move_legacy_theme_path() {
-  local relative="$1" source backup_parent backup_target label
-
-  source="$CONFIG_HOME/themes/$relative"
-  path_exists "$source" || return 0
-  label="${relative//\//-}"
-
-  if [ "$DRY_RUN" -eq 1 ]; then
-    info "Would move legacy theme content to a backup: $source"
-    return 0
-  fi
-
-  BACKUP_COUNTER=$((BACKUP_COUNTER + 1))
-  backup_parent="$BACKUP_DIR/$BACKUP_RUN_ID/themes"
-  backup_target="$backup_parent/${BACKUP_COUNTER}-legacy-$label"
-  mkdir -p "$backup_parent"
-  mv "$source" "$backup_target"
-  info "Moved legacy theme content from $source to $backup_target"
-}
-
-migrate_legacy_theme_content() {
-  local relative
-
-  # These paths came from older bundled themes and wallpaper sets. Move them
-  # out of the active theme directory rather than deleting them, as users may
-  # have made local changes or may still want the images.
-  for relative in \
-    awakening \
-    city-783 \
-    midnight \
-    lumon \
-    turbonite \
-    blackgold/backgrounds \
-    carbonfox/backgrounds \
-    matte-black/backgrounds \
-    matte-black/wall.jpg
-  do
-    move_legacy_theme_path "$relative"
-  done
-}
-
 ensure_skhd_local_config() {
+  local public_config="$CONFIG_HOME/skhd/skhdrc"
   local local_config="$CONFIG_HOME/skhd/local.skhdrc"
 
   path_exists "$local_config" && return 0
+
+  # On the first install, keep an existing unmanaged shortcut file active by
+  # loading it as the machine-specific override. A later install must not copy
+  # Macarchy's own managed public file back into that override.
+  if ! lookup_manifest_entry window-manager "$public_config" >/dev/null 2>&1 \
+    && path_exists "$public_config" \
+    && [ ! -d "$public_config" ]; then
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "Would preserve existing shortcuts in: $local_config"
+      return 0
+    fi
+
+    copy_file_atomically "$public_config" "$local_config"
+    info "Preserved existing shortcuts in: $local_config"
+    return 0
+  fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
     info "Would create local shortcut file: $local_config"
@@ -621,9 +597,9 @@ install_component_files() {
 
   case "$component" in
     window-manager)
+      ensure_skhd_local_config
       install_tree "$component" "$REPO_ROOT/yabai" "$CONFIG_HOME/yabai"
       install_managed_file "$component" "$REPO_ROOT/skhd/skhdrc" "$CONFIG_HOME/skhd/skhdrc"
-      ensure_skhd_local_config
       install_tree "$component" "$REPO_ROOT/borders" "$CONFIG_HOME/borders"
       ;;
     sketchybar)
@@ -649,7 +625,6 @@ install_component_files() {
       install_tree "$component" "$REPO_ROOT/fastfetch" "$CONFIG_HOME/fastfetch"
       ;;
     themes)
-      migrate_legacy_theme_content
       install_tree "$component" "$REPO_ROOT/themes" "$CONFIG_HOME/themes"
       install_managed_file "$component" "$REPO_ROOT/bin/theme-switch" "$BIN_HOME/theme-switch"
       install_managed_file "$component" "$REPO_ROOT/bin/set-wallpaper" "$BIN_HOME/set-wallpaper"
