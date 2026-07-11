@@ -18,7 +18,7 @@
       "title": "Theme Switcher",
       "description": "Path to the installed theme-switch command",
       "type": "textfield",
-      "required": true,
+      "required": false,
       "default": "~/.local/bin/theme-switch",
       "placeholder": "~/.local/bin/theme-switch"
     },
@@ -27,7 +27,7 @@
       "title": "Themes Directory",
       "description": "Directory containing the installed themes",
       "type": "textfield",
-      "required": true,
+      "required": false,
       "default": "~/.config/themes",
       "placeholder": "~/.config/themes"
     },
@@ -36,7 +36,7 @@
       "title": "Theme State Directory",
       "description": "Directory containing Macarchy's current theme and wallpaper choices",
       "type": "textfield",
-      "required": true,
+      "required": false,
       "default": "~/.local/state/macarchy/themes",
       "placeholder": "~/.local/state/macarchy/themes"
     }

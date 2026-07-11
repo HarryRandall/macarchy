@@ -8,11 +8,12 @@ const HOME = "/home/example";
 
 test("keeps manifest defaults aligned with runtime defaults", async () => {
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")) as {
-    preferences: Array<{ default?: string; name: keyof typeof DEFAULT_PATHS }>;
+    preferences: Array<{ default?: string; name: keyof typeof DEFAULT_PATHS; required?: boolean }>;
   };
 
   for (const preference of manifest.preferences) {
     assert.equal(preference.default, DEFAULT_PATHS[preference.name]);
+    assert.notEqual(preference.required, true);
   }
 });
 
