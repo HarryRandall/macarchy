@@ -23,7 +23,14 @@ zle -N _macarchy_complete_word
 bindkey '^I' _macarchy_complete_word
 bindkey -M viins '^I' _macarchy_complete_word
 
-export EDITOR="${EDITOR:-nvim}"
+if [[ -z "${EDITOR:-}" ]]; then
+    if command -v nvim >/dev/null 2>&1; then
+        EDITOR=nvim
+    else
+        EDITOR=vi
+    fi
+fi
+export EDITOR
 
 HISTFILE="$ZDOTDIR/.zsh_history"
 HISTSIZE=10000
