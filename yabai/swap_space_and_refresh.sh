@@ -22,15 +22,6 @@ current_space="$("$YABAI_BIN" -m query --spaces --space | "$JQ_BIN" -r '.index /
 
 if [ "$current_space" != "$target_space" ]; then
   "$YABAI_BIN" -m space --swap "$target_space"
-  "$YABAI_BIN" -m space --focus "$target_space"
 fi
-
-# Wait briefly for macOS to report the final Space before rendering once.
-for _attempt in 1 2 3 4 5 6 7 8 9 10
-do
-  focused_space="$("$YABAI_BIN" -m query --spaces --space 2>/dev/null | "$JQ_BIN" -r '.index // empty' || true)"
-  [ "$focused_space" = "$target_space" ] && break
-  sleep 0.05
-done
 
 [ -f "$REFRESH_SCRIPT" ] && /bin/bash "$REFRESH_SCRIPT" || true

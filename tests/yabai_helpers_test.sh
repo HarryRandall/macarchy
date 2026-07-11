@@ -72,10 +72,19 @@ cat > "$FAKE_BIN/sudo" <<'EOF'
 exit "${YABAI_TEST_SUDO_STATUS:-1}"
 EOF
 
-chmod +x "$FAKE_BIN/yabai" "$FAKE_BIN/open" "$FAKE_BIN/sudo"
+cat > "$FAKE_BIN/sketchybar" <<'EOF'
+#!/usr/bin/env bash
+printf 'sketchybar %s\n' "$*" >> "$YABAI_TEST_LOG"
+if [ "$*" = '--query bar' ]; then
+  printf '{"hidden":"%s"}\n' "${SKETCHYBAR_TEST_HIDDEN:-off}"
+fi
+EOF
+
+chmod +x "$FAKE_BIN/yabai" "$FAKE_BIN/open" "$FAKE_BIN/sudo" "$FAKE_BIN/sketchybar"
 export PATH="$FAKE_BIN:/usr/bin:/bin"
 export YABAI_BIN="$FAKE_BIN/yabai"
 export JQ_BIN
+export SKETCHYBAR_BIN="$FAKE_BIN/sketchybar"
 export YABAI_CONFIG_DIR="$TEST_ROOT/config/yabai"
 export YABAI_TEST_LOG="$LOG_FILE"
 export XDG_CACHE_HOME="$TEST_ROOT/cache"
@@ -127,6 +136,23 @@ assert_log 'manage=off'
 if grep -F -- 'grid=' "$LOG_FILE" >/dev/null; then
   fail 'persistent float rule still sets a fixed grid'
 fi
+
+: > "$LOG_FILE"
+"$REPO_ROOT/yabai/swap_space_and_refresh.sh" 5
+assert_log '-m space --swap 5'
+if grep -F -- '-m space --focus 5' "$LOG_FILE" >/dev/null; then
+  fail 'Space swap unexpectedly followed the target Space'
+fi
+
+: > "$LOG_FILE"
+SKETCHYBAR_TEST_HIDDEN=on "$REPO_ROOT/yabai/toggle_sketchybar_visibility.sh"
+grep -F 'sketchybar --bar hidden=off' "$LOG_FILE" >/dev/null \
+  || fail 'hidden SketchyBar was not shown'
+
+: > "$LOG_FILE"
+SKETCHYBAR_TEST_HIDDEN=off "$REPO_ROOT/yabai/toggle_sketchybar_visibility.sh"
+grep -F 'sketchybar --bar hidden=on' "$LOG_FILE" >/dev/null \
+  || fail 'visible SketchyBar was not hidden'
 
 : > "$LOG_FILE"
 "$REPO_ROOT/yabai/examples/restart_borders_after_fullscreen.sh"
