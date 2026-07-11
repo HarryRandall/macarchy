@@ -108,6 +108,15 @@ main() {
   section 'Testing SketchyBar metrics'
   bash "$REPO_ROOT/tests/sketchybar_metrics_test.sh"
 
+  section 'Testing SketchyBar battery state'
+  bash "$REPO_ROOT/tests/sketchybar_battery_test.sh"
+
+  section 'Testing SketchyBar network counters'
+  bash "$REPO_ROOT/tests/sketchybar_network_test.sh"
+
+  section 'Testing SketchyBar Spaces'
+  bash "$REPO_ROOT/tests/sketchybar_spaces_test.sh"
+
   section 'Testing yabai helpers'
   bash "$REPO_ROOT/tests/yabai_helpers_test.sh"
 

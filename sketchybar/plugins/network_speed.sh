@@ -19,16 +19,26 @@ active_interface() {
 
   iface="$(ifconfig 2>/dev/null | awk '
     /^[a-zA-Z0-9]+:/ {
+      if (current != "" && current != "lo0" && active == 1 && has_inet == 1) {
+        print current
+        found = 1
+        exit
+      }
       sub(":", "", $1)
       current = $1
       active = 0
+      has_inet = 0
     }
     /status: active/ {
       active = 1
     }
-    /inet / && current != "lo0" && active == 1 {
-      print current
-      exit
+    /inet / {
+      has_inet = 1
+    }
+    END {
+      if (!found && current != "" && current != "lo0" && active == 1 && has_inet == 1) {
+        print current
+      }
     }
   ')"
 

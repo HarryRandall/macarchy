@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # shellcheck source=/dev/null
 source "${CONFIG_DIR:-$HOME/.config/sketchybar}/colors.sh"
 
 BATTERY_INFO="$(pmset -g batt)"
-PERCENTAGE="$(printf '%s\n' "$BATTERY_INFO" | grep -Eo "\d+%" | cut -d% -f1)"
+PERCENTAGE="$(printf '%s\n' "$BATTERY_INFO" | grep -Eo "[0-9]+%" | cut -d% -f1)"
 POWER_SOURCE="$(printf '%s\n' "$BATTERY_INFO" | awk -F"'" '/Now drawing from/ {print $2; exit}')"
 BATTERY_STATUS="$(printf '%s\n' "$BATTERY_INFO" | awk -F';' '/InternalBattery/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }')"
 
@@ -31,11 +31,26 @@ if [ "$LOW_POWER_MODE" = "" ]; then
     for plist in /Library/Preferences/com.apple.PowerManagement.*.plist; do
       [ -f "$plist" ] || continue
       defaults read "${plist%.plist}" "$EFFECTIVE_POWER_SOURCE" 2>/dev/null |
-        awk '$1 == "LowPowerMode" { gsub(";", "", $3); print $3; exit }' &&
+        awk '
+          $1 == "LowPowerMode" {
+            gsub(";", "", $3)
+            print $3
+            found = 1
+            exit
+          }
+          END { if (!found) exit 1 }
+        ' &&
         break
     done
   )"
 fi
+
+# Older macOS releases use 1 for enabled. Newer releases may store a different
+# positive mode value, so normalise the setting instead of matching one number.
+case "$LOW_POWER_MODE" in
+  ''|0|*[!0-9]*) LOW_POWER_MODE=0 ;;
+  *) LOW_POWER_MODE=1 ;;
+esac
 
 if [ "$PERCENTAGE" = "" ]; then
   exit 0
@@ -59,10 +74,10 @@ fi
 
 ICON_COLOR="${WHITE:-0xffffffff}"
 
-if [ "${LOW_POWER_MODE:-0}" = "1" ]; then
-  ICON_COLOR="${WARNING_COLOR:-0xffFFD60A}"
-elif [ "$PERCENTAGE" -lt 7 ]; then
+if [ "$PERCENTAGE" -lt 7 ]; then
   ICON_COLOR="${DANGER_COLOR:-0xffff453a}"
+elif [ "$LOW_POWER_MODE" = "1" ]; then
+  ICON_COLOR="${WARNING_COLOR:-0xffFFD60A}"
 fi
 
 sketchybar --set "$NAME" icon="$ICON" icon.color="$ICON_COLOR" label="${PERCENTAGE}%"

@@ -43,6 +43,9 @@ done
 
   now="$(date +%s)"
   last="$(cat "$STAMP_FILE" 2>/dev/null || printf '0')"
+  case "$last" in
+    ''|*[!0-9]*) last=0 ;;
+  esac
   if [ "$((now - last))" -lt 3 ]; then
     exit 0
   fi

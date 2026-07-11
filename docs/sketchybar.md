@@ -15,7 +15,7 @@ On Apple Silicon, the installer adds [macmon](https://github.com/vladkens/macmon
 
 One hidden SketchyBar item reads that sample every five seconds and updates CPU, GPU and RAM together. Network speed has its own five-second updater because it compares macOS interface counters over time.
 
-If macmon is unavailable, the sensor values show placeholders. The bar remains usable on Intel Macs, where macmon is not supported.
+If macmon is unavailable, the CPU, GPU and RAM tiles are omitted. The rest of the bar remains usable on Intel Macs, where macmon is not supported.
 
 ## Themes
 

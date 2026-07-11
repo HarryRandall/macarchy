@@ -44,14 +44,22 @@ pgrep -fl 'macmon pipe'
 sketchybar --reload
 ```
 
-Intel Macs intentionally use placeholders for CPU, GPU and RAM sensors. Network and battery items do not need macmon.
+Intel Macs intentionally omit the CPU, GPU and RAM tiles. Network and battery items do not need macmon.
+
+Older Macarchy releases used `macmon serve` on port 9090. The current config uses a local pipe and does not stop an old process automatically. After upgrading, check before ending it:
+
+```sh
+pgrep -fl 'macmon serve'
+```
+
+If that output is the old Macarchy process, stop its listed PID normally and reload SketchyBar. Do not kill an unrelated macmon session.
 
 ## A theme only partly applies
 
 Run it from a terminal to see the failing target:
 
 ```sh
-theme-switch carbonfox
+"$HOME/.local/bin/theme-switch" carbonfox
 ```
 
 The active theme is only recorded after all required writes succeed. Optional applications that are not installed are skipped.

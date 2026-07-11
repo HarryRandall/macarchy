@@ -6,13 +6,22 @@ MACMON_URL="${MACMON_URL:-}"
 SKETCHYBAR_BIN="$(command -v "${SKETCHYBAR_BIN:-sketchybar}" 2>/dev/null || true)"
 JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
 CURL_BIN="$(command -v "${CURL_BIN:-curl}" 2>/dev/null || true)"
+MACMON_STREAM="$CONFIG_ROOT/plugins/macmon_stream.sh"
 [ -n "$SKETCHYBAR_BIN" ] || exit 0
 
 read_macmon() {
+  local modified now
+
   if [ -n "$MACMON_URL" ]; then
     [ -n "$CURL_BIN" ] || return 1
     "$CURL_BIN" --max-time 1 -fsS "$MACMON_URL" 2>/dev/null
   elif [ -r "$MACMON_DATA_FILE" ]; then
+    modified="$(stat -f %m "$MACMON_DATA_FILE" 2>/dev/null || stat -c %Y "$MACMON_DATA_FILE" 2>/dev/null || true)"
+    now="$(date +%s)"
+    case "$modified" in
+      ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$((now - modified))" -le 15 ] || return 1
     cat "$MACMON_DATA_FILE"
   else
     return 1
@@ -59,6 +68,11 @@ ram_used="NA"
 ram_total="NA"
 
 data="$(read_macmon || true)"
+if [ -z "$data" ] && [ -z "$MACMON_URL" ] && [ -x "$MACMON_STREAM" ]; then
+  # The sampler can exit during sleep or after a macmon failure. Starting it is
+  # lock-protected and cheap when an existing worker is still healthy.
+  "$MACMON_STREAM" --start >/dev/null 2>&1 || true
+fi
 if [ -n "$data" ] && [ -n "$JQ_BIN" ]; then
   values="$(printf '%s' "$data" | "$JQ_BIN" -er '
     [

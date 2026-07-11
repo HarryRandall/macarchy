@@ -4,7 +4,7 @@ METRIC_FONT="Menlo:Bold:10.0"
 BIG_ICON_FONT="SF Pro:Semibold:15.0"
 COLOR="${TEXT_COLOR:-0xffffffff}"
 BOX_BORDER="0x55ffffff"
-ICONS_DIR="${CONFIG_DIR:-$HOME/.config/sketchybar}/icons"
+MACMON_BIN="$(command -v macmon 2>/dev/null || true)"
 
 # Fixed-width boxes sized around common metric strings.
 CHAR_W=5
@@ -19,8 +19,6 @@ NET_W=$((NET_TEXT_W + 21))
 METRIC_ICON_W=30
 RAM_ICON_W=24
 NETWORK_ICON_W=17
-METRIC_ICON_SCALE=0.16
-NETWORK_ICON_SCALE=0.13
 
 # Horizontal gap between adjacent metric brackets, applied as padding_left
 # on the bracket itself (outside the border).
@@ -77,8 +75,8 @@ add_spacer() {
     padding_right=0
 }
 
-stacked_metric_image() {
-  local name="$1" image="$2" item_w="$3" text_w="$4"
+stacked_metric_icon() {
+  local name="$1" glyph="$2" item_w="$3" text_w="$4"
   local icon_w="${5:-$METRIC_ICON_W}"
 
   sketchybar --add item "$name.text" right
@@ -86,14 +84,16 @@ stacked_metric_image() {
   sketchybar --add item "$name.icon" right \
     --set "$name.icon" \
     background.border_width=0 \
-    background.drawing=on \
-    background.image="$image" \
-    background.image.scale="$METRIC_ICON_SCALE" \
+    background.drawing=off \
     background.color=0x00000000 \
     padding_left=0 \
     padding_right=0 \
     width="$icon_w" \
-    icon.drawing=off \
+    icon="$glyph" \
+    icon.font="$METRIC_FONT" \
+    icon.color="$COLOR" \
+    icon.padding_left=4 \
+    icon.padding_right=0 \
     label.drawing=off \
     --add bracket "$name.bracket" "$name.icon" "$name.text"
   set_bracket_box "$name.bracket"
@@ -110,13 +110,15 @@ stacked_network() {
     --set network.icon \
     background.border_width=0 \
     background.color=0x00000000 \
-    background.drawing=on \
-    background.image="$ICONS_DIR/network-arrows.png" \
-    background.image.scale="$NETWORK_ICON_SCALE" \
+    background.drawing=off \
     padding_left=0 \
     padding_right=0 \
     width="$NETWORK_ICON_W" \
-    icon.drawing=off \
+    icon="NET" \
+    icon.font="$METRIC_FONT" \
+    icon.color="$COLOR" \
+    icon.padding_left=2 \
+    icon.padding_right=0 \
     label.drawing=off \
     --add bracket network.bracket network.icon network.text
   set_bracket_box network.bracket
@@ -137,13 +139,18 @@ add_system_metrics_updater() {
     --subscribe system_metrics_updater system_woke
 }
 
-# Right-positioned items render in reverse add order.
-# Target LTR within this group: network | ram | gpu | cpu
-stacked_metric_image cpu "$ICONS_DIR/cpu.png" "$VAL_W" "$VAL_TEXT_W"
-add_spacer gap.cpu
-stacked_metric_image gpu "$ICONS_DIR/gpu-rotated-270.png" "$VAL_W" "$VAL_TEXT_W"
-add_spacer gap.gpu
-stacked_metric_image ram "$ICONS_DIR/ram-rotated-270.png" "$VAL_W" "$VAL_TEXT_W" "$RAM_ICON_W"
-add_spacer gap.ram
+# Right-positioned items render in reverse add order. The hardware tiles are
+# optional because macmon supports Apple Silicon only; network speed works on
+# every supported Mac.
+if [ -n "$MACMON_BIN" ]; then
+  stacked_metric_icon cpu CPU "$VAL_W" "$VAL_TEXT_W"
+  add_spacer gap.cpu
+  stacked_metric_icon gpu GPU "$VAL_W" "$VAL_TEXT_W"
+  add_spacer gap.gpu
+  stacked_metric_icon ram RAM "$VAL_W" "$VAL_TEXT_W" "$RAM_ICON_W"
+  add_spacer gap.ram
+fi
 stacked_network
-add_system_metrics_updater
+if [ -n "$MACMON_BIN" ]; then
+  add_system_metrics_updater
+fi

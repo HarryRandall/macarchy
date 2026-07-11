@@ -20,21 +20,23 @@ The default skhd file contains window-management bindings only. Application laun
 
 | Shortcut | Action |
 | --- | --- |
-| `⌃F` | Toggle fullscreen for the focused window |
-| `⌘` or `⌃` + arrow | Focus a window in that direction |
-| `⌘⇧` or `⌃⇧` + arrow | Swap with a window in that direction |
-| `⌘1` to `⌘0` or `⌃1` to `⌃0` | Focus Spaces 1 to 10 |
-| `⌘⌃1` to `⌘⌃0` | Swap the current Space with Spaces 1 to 10 |
-| `⌘⇧1` to `⌘⇧0` or `⌃⇧1` to `⌃⇧0` | Move a window to a Space and follow it |
-| `⌃T` | Toggle floating and remember the choice for that app |
-| `⌃J` | Toggle the BSP split direction |
-| `⌃L` | Rotate and rebalance the current layout |
-| `⌃=` and `⌃-` | Change the focused split ratio |
-| `⌃⇧S` | Capture an area to the clipboard |
+| `⌃⌥F` | Toggle fullscreen for the focused window |
+| `⌃⌥` + arrow | Focus a window in that direction |
+| `⌃⌥⇧` + arrow | Swap with a window in that direction |
+| `⌃⌥1` to `⌃⌥0` | Focus Spaces 1 to 10 |
+| `⌃⌥⇧1` to `⌃⌥⇧0` | Move a window to a Space and follow it |
+| `⌃⌥T` | Toggle floating and remember the choice for that app |
+| `⌃⌥J` | Toggle the BSP split direction |
+| `⌃⌥L` | Rotate and rebalance the current layout |
+| `⌃⌥=` and `⌃⌥-` | Change the focused split ratio |
 
-Optional snippets live in [`skhd/examples`](../skhd/examples). Copy only the bindings you want into your installed `skhdrc`; they are not loaded by default.
+Optional application launchers, theme controls, screenshots and scripting-addition Space swaps live in [`skhd/examples`](../skhd/examples). Copy only the bindings you want into your installed `skhdrc`; they are not loaded by default.
 
 Floating preferences are stored as a JSON array in `~/.config/yabai/float_state.json`, or the equivalent XDG path. The generated yabai rules are labelled, so reloading the config replaces them instead of adding duplicates.
+
+An additional helper under [`yabai/examples`](../yabai/examples) can bring a minimised window onto the current Space when its app is activated. It is not enabled by default because moving a window automatically can be surprising. Wire it to an `application_activated` signal only if that is the behaviour you want.
+
+The same examples directory contains a workaround that restarts JankyBorders after a native fullscreen Space closes. It is also opt-in because it restarts a user service. Add the labelled yabai signals yourself only if you encounter stale border overlays.
 
 ## Optional scripting addition
 

@@ -5,7 +5,6 @@ YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
 JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
 STATE_DIR="${SKETCHYBAR_STATE_DIR:-$CONFIG_ROOT/.state}"
 SPACE_ITEM_STATE="$STATE_DIR/space_items"
-MAX_FALLBACK_SPACES="${MAX_FALLBACK_SPACES:-10}"
 CURRENT_SPACES=""
 
 # shellcheck source=/dev/null
@@ -31,11 +30,7 @@ space_ids() {
     return 0
   fi
 
-  local space=1
-  while [ "$space" -le "$MAX_FALLBACK_SPACES" ]; do
-    printf '%s\n' "$space"
-    space=$((space + 1))
-  done
+  return 1
 }
 
 list_contains() {
@@ -83,16 +78,17 @@ reconcile_spaces() {
   local current_spaces desired_spaces known_spaces space drawing state_tmp
 
   mkdir -p "$STATE_DIR"
-  current_spaces="$(space_ids)"
-  CURRENT_SPACES="$current_spaces"
-  desired_spaces="$(printf '%s\n' "$current_spaces" | awk -v max="$MAX_FALLBACK_SPACES" '
-    { seen[$0] = 1 }
-    END {
-      for (i = 1; i <= max; i++) seen[i] = 1
-      for (space in seen) print space
-    }
-  ' | LC_ALL=C sort -n)"
   known_spaces="$(cat "$SPACE_ITEM_STATE" 2>/dev/null || true)"
+
+  # Keep the existing bar unchanged during a yabai restart. When yabai is not
+  # installed, the rest of SketchyBar still works without ten dead Space items.
+  if ! current_spaces="$(space_ids)"; then
+    CURRENT_SPACES=""
+    return 0
+  fi
+
+  CURRENT_SPACES="$current_spaces"
+  desired_spaces="$current_spaces"
 
   while IFS= read -r space; do
     [ -n "$space" ] || continue
@@ -140,7 +136,7 @@ render_space() {
       icon_strip+=" $(map_app_icon "$app")"
     done <<< "$apps"
   else
-    icon_strip=" —"
+    icon_strip=" -"
   fi
 
   sketchybar --set "space.$space" label="$icon_strip"

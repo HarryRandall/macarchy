@@ -20,7 +20,8 @@ fail() {
   exit 1
 }
 
-mkdir -p "$FAKE_BIN" "$CONFIG_DIR/.state"
+mkdir -p "$FAKE_BIN" "$CONFIG_DIR/.state" "$CONFIG_DIR/plugins"
+ln -s "$REPO_ROOT/sketchybar/plugins/macmon_stream.sh" "$CONFIG_DIR/plugins/macmon_stream.sh"
 
 cat > "$FAKE_BIN/macmon" <<'EOF'
 #!/usr/bin/env bash
@@ -71,5 +72,41 @@ grep -F 'icon=50.0%' "$SKETCHYBAR_LOG" >/dev/null || fail 'GPU percentage was no
 grep -F 'icon=25.0%' "$SKETCHYBAR_LOG" >/dev/null || fail 'RAM percentage was not calculated'
 grep -F 'label= 4.0G' "$SKETCHYBAR_LOG" >/dev/null || fail 'used RAM was not formatted'
 
+stale_sample="$TEST_ROOT/stale.json"
+cp "$CONFIG_DIR/.state/macmon.json" "$stale_sample"
+touch -t 200001010000 "$stale_sample"
+: > "$SKETCHYBAR_LOG"
+SKETCHYBAR_BIN="$FAKE_BIN/sketchybar" \
+  MACMON_DATA_FILE="$stale_sample" \
+  "$REPO_ROOT/sketchybar/plugins/system_metrics.sh"
+grep -F 'icon=--.-%' "$SKETCHYBAR_LOG" >/dev/null || fail 'stale metrics were still displayed'
+
 kill "$first_pid" 2>/dev/null || true
+for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+  [ ! -e "$CONFIG_DIR/.state/macmon-stream.pid" ] && break
+  sleep 0.05
+done
+touch -t 200001010000 "$CONFIG_DIR/.state/macmon.json"
+SKETCHYBAR_BIN="$FAKE_BIN/sketchybar" \
+  MACMON_DATA_FILE="$CONFIG_DIR/.state/macmon.json" \
+  "$REPO_ROOT/sketchybar/plugins/system_metrics.sh"
+for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+  [ -s "$CONFIG_DIR/.state/macmon-stream.pid" ] && break
+  sleep 0.05
+done
+[ -s "$CONFIG_DIR/.state/macmon-stream.pid" ] || fail 'stale metrics did not restart the macmon stream'
+replacement_pid="$(cat "$CONFIG_DIR/.state/macmon-stream.pid")"
+[ "$replacement_pid" != "$first_pid" ] || fail 'macmon stream restart reused the stopped process'
+
+mv "$FAKE_BIN/macmon" "$FAKE_BIN/macmon.disabled"
+: > "$SKETCHYBAR_LOG"
+PLUGIN_DIR="$REPO_ROOT/sketchybar/plugins" \
+  /bin/bash "$REPO_ROOT/sketchybar/items/system_metrics.sh"
+mv "$FAKE_BIN/macmon.disabled" "$FAKE_BIN/macmon"
+grep -F -- '--add item network.text' "$SKETCHYBAR_LOG" >/dev/null \
+  || fail 'network metric was hidden when macmon was unavailable'
+if grep -F -- '--add item cpu.text' "$SKETCHYBAR_LOG" >/dev/null; then
+  fail 'hardware metric placeholders were added without macmon'
+fi
+
 printf 'Local macmon stream and metric formatting passed.\n'

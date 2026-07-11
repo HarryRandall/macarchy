@@ -5,7 +5,7 @@ set -euo pipefail
 target_space="${1:-}"
 
 case "$target_space" in
-  ''|*[!0-9]*)
+  ''|*[!0-9]*|0)
     exit 1
     ;;
 esac

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# When an app is activated with only minimized windows, restore one on the
+# When an app is activated with only minimised windows, restore one on the
 # currently focused Space instead of letting macOS revive it elsewhere.
 
 YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
@@ -11,10 +11,14 @@ CONFIG_ROOT="${YABAI_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/yabai}"
 REFRESH_SCRIPT="$CONFIG_ROOT/trigger_sketchybar_space_labels_refresh.sh"
 
 pid="${YABAI_PROCESS_ID:-}"
-[ -n "$pid" ] || exit 0
+case "$pid" in
+  ''|*[!0-9]*) exit 0 ;;
+esac
 
 current_space="$("$YABAI_BIN" -m query --spaces --space 2>/dev/null | "$JQ_BIN" -r '.index // empty')"
-[ -n "$current_space" ] || exit 0
+case "$current_space" in
+  ''|*[!0-9]*) exit 0 ;;
+esac
 
 windows_json="$("$YABAI_BIN" -m query --windows 2>/dev/null)"
 [ -n "$windows_json" ] || exit 0

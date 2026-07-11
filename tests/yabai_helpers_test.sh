@@ -32,11 +32,29 @@ case "$*" in
   '-m query --spaces --space')
     printf '%s\n' '{"index":3}'
     ;;
+  '-m query --spaces')
+    printf '%s\n' '[{"id":7,"is-native-fullscreen":true}]'
+    ;;
   '-m query --windows')
-    printf '%s\n' '[{"id":42,"pid":77,"app":"Example","is-minimized":true,"is-floating":false}]'
+    if [ "${GHOSTTY_TEST_MODE:-0}" = '1' ]; then
+      query_count="$(cat "$GHOSTTY_TEST_COUNT" 2>/dev/null || printf '0')"
+      query_count=$((query_count + 1))
+      printf '%s\n' "$query_count" > "$GHOSTTY_TEST_COUNT"
+
+      if [ "$query_count" -lt 3 ]; then
+        printf '%s\n' '[{"id":10,"app":"Ghostty","is-floating":false}]'
+      else
+        printf '%s\n' '[{"id":10,"app":"Ghostty","is-floating":false},{"id":99,"app":"Ghostty","is-floating":true}]'
+      fi
+    else
+      printf '%s\n' '[{"id":42,"pid":77,"app":"Example","is-minimized":true,"is-floating":false}]'
+    fi
     ;;
   '-m query --windows --window 42'|'-m query --windows --window')
     printf '%s\n' '{"id":42,"pid":77,"app":"Example","is-minimized":false,"is-floating":false}'
+    ;;
+  '-m query --windows --window 99')
+    printf '%s\n' '{"id":99,"pid":88,"app":"Ghostty","is-minimized":false,"is-floating":true}'
     ;;
   '-m rule --list')
     printf '%s\n' '[]'
@@ -44,17 +62,23 @@ case "$*" in
 esac
 EOF
 
+cat > "$FAKE_BIN/open" <<'EOF'
+#!/usr/bin/env bash
+printf 'open %s\n' "$*" >> "$YABAI_TEST_LOG"
+EOF
+
 cat > "$FAKE_BIN/sudo" <<'EOF'
 #!/usr/bin/env bash
 exit "${YABAI_TEST_SUDO_STATUS:-1}"
 EOF
 
-chmod +x "$FAKE_BIN/yabai" "$FAKE_BIN/sudo"
+chmod +x "$FAKE_BIN/yabai" "$FAKE_BIN/open" "$FAKE_BIN/sudo"
 export PATH="$FAKE_BIN:/usr/bin:/bin"
 export YABAI_BIN="$FAKE_BIN/yabai"
 export JQ_BIN
 export YABAI_CONFIG_DIR="$TEST_ROOT/config/yabai"
 export YABAI_TEST_LOG="$LOG_FILE"
+export XDG_CACHE_HOME="$TEST_ROOT/cache"
 
 printf '%s\n' '["Example"]' > "$YABAI_CONFIG_DIR/float_state.json"
 YABAI_WINDOW_ID=42 "$REPO_ROOT/yabai/apply_float_state.sh"
@@ -64,7 +88,7 @@ if grep -F -- '--float' "$LOG_FILE" >/dev/null; then
 fi
 
 : > "$LOG_FILE"
-YABAI_PROCESS_ID=77 "$REPO_ROOT/yabai/restore_minimized_on_current_space.sh"
+YABAI_PROCESS_ID=77 "$REPO_ROOT/yabai/examples/restore_minimized_on_current_space.sh"
 expected_order="$(printf '%s\n' \
   '-m window 42 --space 3' \
   '-m window --deminimize 42' \
@@ -80,6 +104,24 @@ assert_log '-m window --toggle float'
   || fail 'floating app preference was not saved'
 
 : > "$LOG_FILE"
+export GHOSTTY_TEST_MODE=1
+export GHOSTTY_TEST_COUNT="$TEST_ROOT/ghostty-query-count"
+rm -f "$GHOSTTY_TEST_COUNT"
+GHOSTTY_WINDOW_POLL_ATTEMPTS=4 \
+  GHOSTTY_WINDOW_POLL_DELAY=0 \
+  "$REPO_ROOT/yabai/launch_ghostty.sh"
+unset GHOSTTY_TEST_MODE GHOSTTY_TEST_COUNT
+
+assert_log 'open -na Ghostty'
+assert_log '-m window 99 --toggle float'
+assert_log '-m window --focus 99'
+if grep -F -- '-m window 10' "$LOG_FILE" >/dev/null; then
+  fail 'an existing Ghostty window was selected'
+fi
+[ "$(cat "$TEST_ROOT/ghostty-query-count")" -ge 3 ] \
+  || fail 'Ghostty window creation was not polled'
+
+: > "$LOG_FILE"
 "$REPO_ROOT/yabai/sync_float_rules.sh"
 assert_log 'manage=off'
 if grep -F -- 'grid=' "$LOG_FILE" >/dev/null; then
@@ -87,10 +129,28 @@ if grep -F -- 'grid=' "$LOG_FILE" >/dev/null; then
 fi
 
 : > "$LOG_FILE"
+"$REPO_ROOT/yabai/examples/restart_borders_after_fullscreen.sh"
+grep -F '7' "$XDG_CACHE_HOME/yabai/borders-native-fullscreen-spaces" >/dev/null \
+  || fail 'fullscreen helper did not record its initial state'
+
+: > "$LOG_FILE"
 YABAI_TEST_SUDO_STATUS=1 "$REPO_ROOT/yabai/yabairc"
 assert_log '-m signal --remove macarchy_load_sa'
+assert_log '-m signal --remove macarchy_space_changed'
+assert_log '-m signal --remove macarchy_restore_minimized'
+assert_log '-m signal --remove borders_fullscreen_space_created'
+assert_log '-m signal --remove borders_fullscreen_space_destroyed'
+assert_log '-m signal --remove borders_fullscreen_space_changed'
+assert_log '-m signal --remove macarchy_window_destroyed'
+assert_log '-m signal --remove macarchy_window_minimized'
+if grep -F -- 'event=application_activated' "$LOG_FILE" >/dev/null; then
+  fail 'minimised-window restoration was enabled by default'
+fi
+window_created_signal="$(grep -F 'label=macarchy_window_created' "$LOG_FILE")"
+case "$window_created_signal" in
+  *trigger_sketchybar*) fail 'window creation still requested a duplicate full label refresh' ;;
+esac
 if grep -F -- 'label=macarchy_load_sa' "$LOG_FILE" >/dev/null; then
   fail 'scripting-addition signal was added without a working sudoers rule'
 fi
-
 printf 'yabai helper command ordering and safety checks passed.\n'

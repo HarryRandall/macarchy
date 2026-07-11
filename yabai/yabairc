@@ -6,14 +6,10 @@ YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
 CONFIG_ROOT="${YABAI_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/yabai}"
 REFRESH_SCRIPT="$CONFIG_ROOT/trigger_sketchybar_space_labels_refresh.sh"
 FLOAT_SCRIPT="$CONFIG_ROOT/apply_float_state.sh"
-RESTORE_SCRIPT="$CONFIG_ROOT/restore_minimized_on_current_space.sh"
-BORDERS_SCRIPT="$CONFIG_ROOT/restart_borders_after_fullscreen.sh"
 SYNC_SCRIPT="$CONFIG_ROOT/sync_float_rules.sh"
 
 printf -v refresh_command '/bin/bash %q' "$REFRESH_SCRIPT"
 printf -v float_command '/bin/bash %q' "$FLOAT_SCRIPT"
-printf -v restore_command '/bin/bash %q' "$RESTORE_SCRIPT"
-printf -v borders_command '/bin/bash %q' "$BORDERS_SCRIPT"
 printf -v load_sa_command 'sudo -n %q --load-sa' "$YABAI_BIN"
 
 replace_signal() {
@@ -37,28 +33,33 @@ else
   "$YABAI_BIN" -m signal --remove macarchy_load_sa 2>/dev/null || true
 fi
 
-replace_signal macarchy_space_changed space_changed "$refresh_command"
+# SketchyBar's Space component updates selection itself. Refreshing every app
+# label on an ordinary Space focus causes 1 + 2N yabai queries for no change.
+"$YABAI_BIN" -m signal --remove macarchy_space_changed 2>/dev/null || true
 replace_signal macarchy_space_created space_created "$refresh_command"
 replace_signal macarchy_space_destroyed space_destroyed "$refresh_command"
 
-# Restart JankyBorders after a native fullscreen Space disappears. This clears
-# stale border overlays after Firefox/macOS fullscreen transitions.
-replace_signal borders_fullscreen_space_created space_created "$borders_command"
-replace_signal borders_fullscreen_space_destroyed space_destroyed "$borders_command"
-replace_signal borders_fullscreen_space_changed space_changed "$borders_command"
+# Older versions restarted JankyBorders around fullscreen transitions. Service
+# restarts are now opt-in, so remove any labelled signals left by that config.
+"$YABAI_BIN" -m signal --remove borders_fullscreen_space_created 2>/dev/null || true
+"$YABAI_BIN" -m signal --remove borders_fullscreen_space_destroyed 2>/dev/null || true
+"$YABAI_BIN" -m signal --remove borders_fullscreen_space_changed 2>/dev/null || true
 
-# Restore apps with only minimized windows onto the current Space when activated.
-replace_signal macarchy_restore_minimized application_activated "$restore_command"
+# Older Macarchy versions moved minimised windows on app activation. That is a
+# surprising default, so reloads remove the old signal. An opt-in helper remains
+# under examples for people who prefer that behaviour.
+"$YABAI_BIN" -m signal --remove macarchy_restore_minimized 2>/dev/null || true
 
 # Sync persisted float rules so stale per-app rules cannot override the JSON state.
 [ -f "$SYNC_SCRIPT" ] && /bin/bash "$SYNC_SCRIPT"
 
-# Creation and restoration both affect floating state and the Space label. Using
-# one signal per event avoids racing two independent actions.
-replace_signal macarchy_window_created window_created "$float_command; $refresh_command"
-replace_signal macarchy_window_deminimized window_deminimized "$float_command; $refresh_command"
-replace_signal macarchy_window_destroyed window_destroyed "$refresh_command"
-replace_signal macarchy_window_minimized window_minimized "$refresh_command"
+# SketchyBar's native space_windows_change event owns app-label refreshes.
+# yabai signals only apply the persisted floating preference here, avoiding a
+# second full round of window queries for the same change.
+replace_signal macarchy_window_created window_created "$float_command"
+replace_signal macarchy_window_deminimized window_deminimized "$float_command"
+"$YABAI_BIN" -m signal --remove macarchy_window_destroyed 2>/dev/null || true
+"$YABAI_BIN" -m signal --remove macarchy_window_minimized 2>/dev/null || true
 
 # BSP layout
 "$YABAI_BIN" -m config layout bsp
