@@ -101,8 +101,13 @@ macarchy_theme_load() {
 }
 
 macarchy_theme_list() {
+    local directory
+
     [[ -d "$MACARCHY_THEMES_DIR" ]] || return 0
-    find "$MACARCHY_THEMES_DIR" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -exec basename {} \; | LC_ALL=C sort
+    for directory in "$MACARCHY_THEMES_DIR"/*; do
+        [[ -d "$directory" && -f "$directory/theme.env" ]] || continue
+        basename "$directory"
+    done | LC_ALL=C sort
 }
 
 macarchy_theme_current() {
