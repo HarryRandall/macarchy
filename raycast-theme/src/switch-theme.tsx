@@ -14,8 +14,9 @@ import {
 } from "@raycast/api";
 import { execFile } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
-import { basename, extname, isAbsolute, join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { useCallback, useEffect, useState } from "react";
+import { loadBackgrounds, type Background } from "./backgrounds";
 import { DEFAULT_PATHS, resolvePreferencePath } from "./paths";
 import { normaliseLegacyThemeName } from "./theme-utils";
 
@@ -23,12 +24,6 @@ type Preferences = {
   themeStateDirectory?: string;
   themeSwitcherPath?: string;
   themesDirectory?: string;
-};
-
-type Background = {
-  name: string;
-  path: string;
-  relativePath: string;
 };
 
 type Theme = {
@@ -47,21 +42,12 @@ type ThemeState = {
   themes: Theme[];
 };
 
-const IMAGE_EXTENSIONS = new Set([".heic", ".jpeg", ".jpg", ".png", ".webp"]);
-
 function titleFromName(name: string): string {
   return name
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-}
-
-function titleFromBackgroundName(name: string): string {
-  return basename(name, extname(name))
-    .replace(/^\d+[-_.\s]*/, "")
-    .replace(/[-_.]+/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function isSafeRelativePath(path: string): boolean {
@@ -119,41 +105,6 @@ async function readOptional(path: string): Promise<string> {
     if (code === "ENOENT") return "";
     throw error;
   }
-}
-
-async function loadBackgrounds(themeDirectory: string): Promise<Background[]> {
-  const backgrounds: Background[] = [];
-
-  // Installed packs keep selectable wallpapers in backgrounds/. A root image
-  // is only a fallback for simpler third-party packs, otherwise generated
-  // wall.jpg files would appear as duplicate choices.
-  for (const directory of ["backgrounds", ""]) {
-    let entries;
-    try {
-      entries = await readdir(join(themeDirectory, directory), { withFileTypes: true });
-    } catch (error) {
-      const code = error instanceof Error && "code" in error ? error.code : undefined;
-      if (code === "ENOENT") continue;
-      throw error;
-    }
-
-    for (const entry of entries) {
-      if (!entry.isFile() || entry.name.startsWith(".") || !IMAGE_EXTENSIONS.has(extname(entry.name).toLowerCase())) {
-        continue;
-      }
-
-      const relativePath = directory ? `${directory}/${entry.name}` : entry.name;
-      backgrounds.push({
-        name: titleFromBackgroundName(entry.name),
-        path: join(themeDirectory, relativePath),
-        relativePath,
-      });
-    }
-
-    if (backgrounds.length > 0) break;
-  }
-
-  return backgrounds.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
 async function loadThemeState(themesDirectory: string, themeStateDirectory: string): Promise<ThemeState> {
