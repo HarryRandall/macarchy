@@ -290,8 +290,9 @@ EOF
 chmod +x "$FAKE_BIN/node"
 : > "$FAKE_BREW_LOG"
 run_capture "$TEST_ROOT/raycast.out" raycast
-assert_file "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher/package.json"
-assert_file "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher/.nvmrc"
+assert_file "$XDG_CONFIG_HOME/raycast/extensions/theme-switcher/package.json"
+assert_file "$XDG_CONFIG_HOME/raycast/extensions/theme-switcher/.nvmrc"
+assert_no_path "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher"
 if grep -F 'install --cask raycast' "$FAKE_BREW_LOG" >/dev/null; then
   fail 'installer tried to replace an existing Raycast application'
 fi
