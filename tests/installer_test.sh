@@ -159,6 +159,14 @@ assert_file "$XDG_CONFIG_HOME/yabai/yabairc"
 assert_file "$XDG_CONFIG_HOME/skhd/skhdrc"
 pass 'uses current window-manager formulae without starting services'
 
+# SketchyBar's app labels rely on its companion ligature font.
+: > "$FAKE_BREW_LOG"
+run_capture "$TEST_ROOT/sketchybar.out" sketchybar
+assert_contains "$FAKE_BREW_LOG" 'install FelixKratz/formulae/sketchybar'
+assert_contains "$FAKE_BREW_LOG" 'install --cask font-sketchybar-app-font'
+assert_file "$XDG_CONFIG_HOME/sketchybar/sketchybarrc"
+pass 'installs the SketchyBar app font dependency'
+
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"
 mv "$FAKE_BIN/brew" "$FAKE_BIN/brew.disabled"

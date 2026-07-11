@@ -79,6 +79,7 @@ dependencies_for() {
       ;;
     sketchybar)
       FORMULAE=(FelixKratz/formulae/sketchybar jq)
+      CASKS=(font-sketchybar-app-font)
       ;;
     terminal)
       CASKS=(ghostty)
