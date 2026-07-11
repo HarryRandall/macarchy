@@ -37,12 +37,33 @@ cat > "$FAKE_BIN/pgrep" <<'EOF'
 exit 0
 EOF
 
+cat > "$FAKE_BIN/stat" <<'EOF'
+#!/usr/bin/env bash
+
+# Reproduce GNU stat's partial stdout when passed the BSD-style -f probe.
+if [ "${1:-}" = '-f' ]; then
+  printf 'filesystem details for %s\n' "${3:-unknown}"
+  exit 1
+fi
+
+if [ "${1:-}" = '-c' ] && [ "${2:-}" = '%Y' ]; then
+  if modified="$(/usr/bin/stat -c %Y "$3" 2>/dev/null)"; then
+    printf '%s\n' "$modified"
+  else
+    /usr/bin/stat -f %m "$3"
+  fi
+  exit 0
+fi
+
+exit 2
+EOF
+
 cat > "$FAKE_BIN/sketchybar" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$SKETCHYBAR_LOG"
 EOF
 
-chmod +x "$FAKE_BIN/macmon" "$FAKE_BIN/pgrep" "$FAKE_BIN/sketchybar"
+chmod +x "$FAKE_BIN/macmon" "$FAKE_BIN/pgrep" "$FAKE_BIN/sketchybar" "$FAKE_BIN/stat"
 
 export CONFIG_DIR
 export MACMON_BIN="$FAKE_BIN/macmon"

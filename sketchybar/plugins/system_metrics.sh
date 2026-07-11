@@ -16,7 +16,11 @@ read_macmon() {
     [ -n "$CURL_BIN" ] || return 1
     "$CURL_BIN" --max-time 1 -fsS "$MACMON_URL" 2>/dev/null
   elif [ -r "$MACMON_DATA_FILE" ]; then
-    modified="$(stat -f %m "$MACMON_DATA_FILE" 2>/dev/null || stat -c %Y "$MACMON_DATA_FILE" 2>/dev/null || true)"
+    # BSD and GNU stat use different flags. Keep the probes separate because
+    # GNU stat can print filesystem details before rejecting BSD's -f format.
+    if ! modified="$(stat -f %m "$MACMON_DATA_FILE" 2>/dev/null)"; then
+      modified="$(stat -c %Y "$MACMON_DATA_FILE" 2>/dev/null || true)"
+    fi
     now="$(date +%s)"
     case "$modified" in
       ''|*[!0-9]*) return 1 ;;
