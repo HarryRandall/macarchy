@@ -22,7 +22,7 @@ LOW_POWER_MODE="$(
   pmset -g custom 2>/dev/null | awk -v target="$EFFECTIVE_POWER_SOURCE" '
     $0 == target ":" { in_section=1; next }
     in_section && /^[^[:space:]]/ { in_section=0 }
-    in_section && $1 == "lowpowermode" { print $2; exit }
+    in_section && ($1 == "lowpowermode" || $1 == "powermode") { print $2; exit }
   '
 )"
 

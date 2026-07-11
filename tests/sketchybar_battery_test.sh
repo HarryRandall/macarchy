@@ -29,7 +29,7 @@ case "$*" in
     ;;
   '-g custom')
     printf 'AC Power:\n'
-    printf ' lowpowermode %s\n' "$BATTERY_TEST_LOW_POWER"
+    printf ' %s %s\n' "$BATTERY_TEST_POWER_KEY" "$BATTERY_TEST_LOW_POWER"
     ;;
 esac
 EOF
@@ -46,10 +46,11 @@ export NAME=battery
 export SKETCHYBAR_LOG
 
 run_case() {
-  local percentage="$1" low_power="$2" expected_colour="$3"
+  local percentage="$1" power_key="$2" low_power="$3" expected_colour="$4"
 
   : > "$SKETCHYBAR_LOG"
   BATTERY_TEST_PERCENT="$percentage" \
+    BATTERY_TEST_POWER_KEY="$power_key" \
     BATTERY_TEST_LOW_POWER="$low_power" \
     "$REPO_ROOT/sketchybar/plugins/battery.sh"
 
@@ -57,8 +58,9 @@ run_case() {
     || fail "unexpected colour for battery at $percentage per cent with mode $low_power"
 }
 
-run_case 50 2 0xffFFD60A
-run_case 5 2 0xffff453a
-run_case 50 0 0xffffffff
+run_case 50 powermode 2 0xffFFD60A
+run_case 50 lowpowermode 1 0xffFFD60A
+run_case 5 powermode 2 0xffff453a
+run_case 50 powermode 0 0xffffffff
 
 printf 'SketchyBar battery power-mode colours passed.\n'
