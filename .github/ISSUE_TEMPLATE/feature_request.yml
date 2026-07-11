@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest a focused improvement or a new optional component.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What would this help you do?
+      description: Describe the use case before the proposed implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Suggested scope
+      description: Explain whether this belongs in a default, an optional component or an example.
+    validations:
+      required: true
