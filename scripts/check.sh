@@ -90,6 +90,7 @@ main() {
   require_command node
   require_command npm
   require_command python3
+  require_command strings
   require_command zsh
 
   check_shell_syntax

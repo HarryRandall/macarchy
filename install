@@ -449,7 +449,7 @@ install_component_files() {
 print_next_step() {
   if [ "$CONFIG_HOME" != "$HOME/.config" ] \
     && { [ "$1" = 'window-manager' ] || [ "$1" = 'sketchybar' ] || [ "$1" = 'terminal' ]; }; then
-    info "Before starting the service, expose the custom config path with: launchctl setenv XDG_CONFIG_HOME '$CONFIG_HOME'"
+    info "Before using this component, expose the custom config path with: launchctl setenv XDG_CONFIG_HOME '$CONFIG_HOME'"
   fi
 
   case "$1" in

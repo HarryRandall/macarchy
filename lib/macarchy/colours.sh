@@ -44,11 +44,6 @@ macarchy_ghostty_palette() {
     [[ "$value" =~ ^#[0-9A-Fa-f]{6}$ ]] && printf '%s\n' "$value" || printf '%s\n' "$fallback"
 }
 
-macarchy_macos_colour() {
-    local value="$1"
-    [[ "$value" =~ ^#[0-9A-Fa-f]{6}$ ]] && printf '0xff%s\n' "${value#\#}" || printf '%s\n' "$value"
-}
-
 # Ghostty theme files are colour data only. Rejecting other keys prevents an
 # imported theme from changing commands, fonts or input behaviour.
 macarchy_ghostty_theme_valid() {

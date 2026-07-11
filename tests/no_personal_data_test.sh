@@ -28,3 +28,21 @@ case "$status" in
     exit "$status"
     ;;
 esac
+
+while IFS= read -r -d '' relative; do
+  path="$REPO_ROOT/$relative"
+  [ -f "$path" ] || continue
+  LC_ALL=C grep -Iq . "$path" && continue
+
+  set +e
+  binary_matches="$(strings "$path" | grep -E -i "$search_pattern|Shutterstock|No use without permission")"
+  status=$?
+  set -e
+  if [ "$status" -eq 0 ]; then
+    printf 'Personal or restricted metadata found in %s:\n%s\n' "$relative" "$binary_matches" >&2
+    exit 1
+  fi
+  [ "$status" -eq 1 ] || exit "$status"
+done < <(git -C "$REPO_ROOT" ls-files -z)
+
+printf 'No personal or restricted binary metadata found.\n'
