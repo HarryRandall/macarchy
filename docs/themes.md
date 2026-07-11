@@ -27,6 +27,7 @@ Theme choices are stored under `${XDG_STATE_HOME:-~/.local/state}/macarchy/theme
 `theme-switch` can update:
 
 - macOS light or dark appearance and the desktop picture
+- Raycast's current, dark and light appearance defaults
 - Ghostty's dedicated `macarchy-theme.ghostty` colour file
 - Neovim's selected colour-scheme state
 - a generated btop theme
@@ -51,9 +52,16 @@ Supported keys are:
 | `BORDER_INACTIVE` | Inactive border in `0xAARRGGBB` format |
 | `BORDER_WIDTH` | JankyBorders width |
 | `SKETCHYBAR_BAR_COLOR` | Optional bar colour |
-| `SKETCHYBAR_TEXT_COLOR` | Optional bar text colour |
+| `SKETCHYBAR_TEXT_COLOR` | Optional bar text colour. Defaults to Ghostty's foreground colour |
+| `FIREFOX_ACCENT` | Optional legacy accent hint used for palette-based shell colours |
 
-Ghostty files are restricted to palette and colour keys. A downloaded theme cannot use them to change commands, fonts or key bindings.
+Ghostty files accept palette and colour keys plus these visual settings used by the original packs:
+
+- `background-opacity`, from `0` to `1`
+- `window-padding-x` and `window-padding-y`, as one or two non-negative numbers
+- `window-padding-balance`, as `true` or `false`
+
+A downloaded theme still cannot use its Ghostty file to change commands, fonts or key bindings.
 
 Run `./tests/theme_validation_test.sh` before sharing a pack.
 
@@ -66,5 +74,7 @@ MACARCHY_THEMES_DIR="$HOME/.local/share/my-themes" "$HOME/.local/bin/theme-switc
 ```
 
 The Raycast extension has a matching Themes Directory preference. A theme repo can therefore be installed or linked separately without changing the core scripts.
+
+Locally retained copies of the original `awakening`, `blackgold`, `carbonfox`, `city-783`, `lumon`, `matte-black`, `midnight` and `turbonite` packs remain compatible. Their names are preserved in `--list`, `next` and `prev`. Saved `lumon` or `turbonite` state is mapped to the built-in `cool-blue` or `amber-metal` palette only when the original local directory is absent.
 
 The old bundled wallpapers were removed after the provenance audit found unclear and restricted redistribution terms. New wallpaper-heavy packs should live in separate repositories so the core clone stays small and each pack can carry its own licence and credits.

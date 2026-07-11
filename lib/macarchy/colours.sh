@@ -44,8 +44,29 @@ macarchy_ghostty_palette() {
     [[ "$value" =~ ^#[0-9A-Fa-f]{6}$ ]] && printf '%s\n' "$value" || printf '%s\n' "$fallback"
 }
 
-# Ghostty theme files are colour data only. Rejecting other keys prevents an
-# imported theme from changing commands, fonts or input behaviour.
+macarchy_ghostty_palette_index() {
+    local file="$1"
+    local wanted="${2#\#}"
+
+    awk -F= -v wanted="$wanted" '
+        BEGIN { wanted=tolower(wanted) }
+        /^[[:space:]]*palette[[:space:]]*=/ {
+            palette_index=$2
+            colour=$3
+            gsub(/[[:space:]]/, "", palette_index)
+            gsub(/[[:space:]]/, "", colour)
+            sub(/^#/, "", colour)
+            if (tolower(colour) == wanted) {
+                print palette_index
+                exit
+            }
+        }
+    ' "$file" 2>/dev/null
+}
+
+# Ghostty theme files are restricted to colours and a small set of visual
+# settings used by the original packs. Commands, fonts and input behaviour are
+# still rejected.
 macarchy_ghostty_theme_valid() {
     local file="$1"
     awk -F= '
@@ -59,6 +80,12 @@ macarchy_ghostty_theme_valid() {
                 if (value !~ /^[0-9]+=#[0-9A-Fa-f]{6}$/) exit 1
             } else if (key ~ /^(background|foreground|cursor-color|cursor-text|selection-background|selection-foreground)$/) {
                 if (value !~ /^#[0-9A-Fa-f]{6}$/) exit 1
+            } else if (key == "background-opacity") {
+                if (value !~ /^(0([.][0-9]+)?|1([.]0+)?)$/) exit 1
+            } else if (key ~ /^(window-padding-x|window-padding-y)$/) {
+                if (value !~ /^[0-9]+([.][0-9]+)?(,[[:space:]]*[0-9]+([.][0-9]+)?)?$/) exit 1
+            } else if (key == "window-padding-balance") {
+                if (value !~ /^(true|false)$/) exit 1
             } else {
                 exit 1
             }

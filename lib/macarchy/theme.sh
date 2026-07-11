@@ -15,7 +15,8 @@ macarchy_theme_reset() {
     THEME_BORDER_INACTIVE="0x00000000"
     THEME_BORDER_WIDTH="6.0"
     THEME_SKETCHYBAR_BAR_COLOR="0x00000000"
-    THEME_SKETCHYBAR_TEXT_COLOR="0xffffffff"
+    THEME_SKETCHYBAR_TEXT_COLOR=""
+    THEME_FIREFOX_ACCENT=""
 }
 
 macarchy_theme_unquote() {
@@ -40,6 +41,7 @@ macarchy_theme_assign() {
         BORDER_WIDTH) THEME_BORDER_WIDTH="$value" ;;
         SKETCHYBAR_BAR_COLOR) THEME_SKETCHYBAR_BAR_COLOR="$value" ;;
         SKETCHYBAR_TEXT_COLOR) THEME_SKETCHYBAR_TEXT_COLOR="$value" ;;
+        FIREFOX_ACCENT) THEME_FIREFOX_ACCENT="$value" ;;
         *)
             macarchy_error "unsupported key '$key' in theme.env"
             return 1
@@ -61,7 +63,8 @@ macarchy_theme_validate() {
     [[ "$THEME_BORDER_INACTIVE" =~ ^0x[0-9A-Fa-f]{8}$ ]] || return 1
     [[ "$THEME_BORDER_WIDTH" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
     [[ "$THEME_SKETCHYBAR_BAR_COLOR" =~ ^0x[0-9A-Fa-f]{8}$ ]] || return 1
-    [[ "$THEME_SKETCHYBAR_TEXT_COLOR" =~ ^0x[0-9A-Fa-f]{8}$ ]] || return 1
+    [[ -z "$THEME_SKETCHYBAR_TEXT_COLOR" || "$THEME_SKETCHYBAR_TEXT_COLOR" =~ ^0x[0-9A-Fa-f]{8}$ ]] || return 1
+    [[ -z "$THEME_FIREFOX_ACCENT" || "$THEME_FIREFOX_ACCENT" =~ ^#[0-9A-Fa-f]{6}$ ]] || return 1
 }
 
 # theme.env is parsed as data. It is never sourced, so a downloaded theme
@@ -116,12 +119,14 @@ macarchy_theme_list() {
 macarchy_theme_normalise_name() {
     local name="$1"
 
+    # Keep an installed legacy pack selectable under its original name. The
+    # aliases only bridge old saved state when that pack is not present.
     case "$name" in
         lumon)
-            [[ -d "$MACARCHY_THEMES_DIR/cool-blue" ]] && name="cool-blue"
+            [[ ! -d "$MACARCHY_THEMES_DIR/lumon" && -d "$MACARCHY_THEMES_DIR/cool-blue" ]] && name="cool-blue"
             ;;
         turbonite)
-            [[ -d "$MACARCHY_THEMES_DIR/amber-metal" ]] && name="amber-metal"
+            [[ ! -d "$MACARCHY_THEMES_DIR/turbonite" && -d "$MACARCHY_THEMES_DIR/amber-metal" ]] && name="amber-metal"
             ;;
     esac
     printf '%s\n' "$name"

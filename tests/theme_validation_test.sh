@@ -32,6 +32,8 @@ source "$REPO_ROOT/lib/macarchy/common.sh"
 source "$REPO_ROOT/lib/macarchy/theme.sh"
 # shellcheck source=../lib/macarchy/colours.sh
 source "$REPO_ROOT/lib/macarchy/colours.sh"
+# shellcheck source=../lib/macarchy/apply/raycast.sh
+source "$REPO_ROOT/lib/macarchy/apply/raycast.sh"
 # shellcheck source=../lib/macarchy/apply/tools.sh
 source "$REPO_ROOT/lib/macarchy/apply/tools.sh"
 # shellcheck source=../lib/macarchy/apply/desktop.sh
@@ -59,6 +61,80 @@ for ghostty_file in "${ghostty_files[@]}"; do
     fail "invalid Ghostty colour data: $ghostty_file"
 done
 
+# Locally preserved copies of the original eight packs remain valid and keep
+# their original names. These small fixtures exercise their data format without
+# requiring the old wallpaper assets in the public repository.
+LEGACY_THEMES="$TEST_ROOT/legacy-themes"
+write_legacy_theme() {
+  local name="$1"
+  local foreground="$2"
+  local accent="${3:-}"
+  local accent_index="${4:-4}"
+  shift 4
+
+  mkdir -p "$LEGACY_THEMES/$name"
+  printf '%s\n' \
+    'DARK_MODE=true' \
+    'WALLPAPER=""' \
+    'NVIM_COLORSCHEME="legacy"' \
+    'BORDER_ACTIVE="0xff112233"' \
+    'BORDER_INACTIVE="0x00000000"' \
+    'BORDER_WIDTH="6.0"' > "$LEGACY_THEMES/$name/theme.env"
+  if [ -n "$accent" ]; then
+    printf 'FIREFOX_ACCENT="%s"\n' "$accent" >> "$LEGACY_THEMES/$name/theme.env"
+  fi
+  printf '%s\n' \
+    'background = #101010' \
+    "foreground = $foreground" \
+    'palette = 0=#101010' \
+    'palette = 4=#445566' \
+    "palette = $accent_index=${accent:-#112233}" > "$LEGACY_THEMES/$name/ghostty.conf"
+  if [ "$#" -gt 0 ]; then
+    printf '%s\n' "$@" >> "$LEGACY_THEMES/$name/ghostty.conf"
+  fi
+}
+
+write_legacy_theme awakening '#dacbe6' '#ffff00' 2 'background-opacity = 0.85'
+write_legacy_theme blackgold '#ebdbb2' '#bfa75d' 5
+write_legacy_theme carbonfox '#f2f4f8' '#78a9ff' 4
+write_legacy_theme city-783 '#b9bec6' '#eceff2' 15 'background-opacity = 0.85'
+write_legacy_theme lumon '#d6e2ee' '' 12
+write_legacy_theme matte-black '#bebebe' '' 4
+write_legacy_theme midnight '#F0F6FF' '#66CCFF' 6 \
+  'window-padding-y = 8,8' \
+  'window-padding-x = 8,8' \
+  'window-padding-balance = true'
+write_legacy_theme turbonite '#eae9e3' '#ed9a1d' 11
+
+MACARCHY_THEMES_DIR="$LEGACY_THEMES"
+expected_legacy_themes=$'awakening\nblackgold\ncarbonfox\ncity-783\nlumon\nmatte-black\nmidnight\nturbonite'
+[ "$(macarchy_theme_list)" = "$expected_legacy_themes" ] || \
+  fail 'legacy theme names changed while listing them'
+for theme_name in awakening blackgold carbonfox city-783 lumon matte-black midnight turbonite; do
+  macarchy_theme_load "$theme_name" || fail "legacy theme format was rejected: $theme_name"
+  macarchy_ghostty_theme_valid "$LEGACY_THEMES/$theme_name/ghostty.conf" || \
+    fail "legacy Ghostty settings were rejected: $theme_name"
+done
+mkdir -p "$(dirname "$MACARCHY_THEME_STATE")"
+printf '%s\n' lumon > "$MACARCHY_THEME_STATE"
+[ "$(macarchy_theme_cycle next)" = matte-black ] || fail 'theme cycling renamed an installed Lumon pack'
+printf '%s\n' turbonite > "$MACARCHY_THEME_STATE"
+[ "$(macarchy_theme_cycle next)" = awakening ] || fail 'theme cycling renamed an installed Turbonite pack'
+rm -f "$MACARCHY_THEME_STATE"
+
+INVALID_GHOSTTY="$TEST_ROOT/invalid-ghostty.conf"
+for invalid_setting in \
+  'background-opacity = 1.1' \
+  'window-padding-x = -1' \
+  'window-padding-y = 8,unsafe' \
+  'window-padding-balance = yes' \
+  'font-family = unexpected'; do
+  printf '%s\n' 'background = #101010' "$invalid_setting" > "$INVALID_GHOSTTY"
+  if macarchy_ghostty_theme_valid "$INVALID_GHOSTTY"; then
+    fail "unsafe Ghostty value was accepted: $invalid_setting"
+  fi
+done
+
 # Runtime state belongs outside a theme pack so separately cloned or read-only
 # packs are not modified when a theme is selected.
 [ "$MACARCHY_THEME_STATE" = "$XDG_STATE_HOME/macarchy/themes/current" ] || \
@@ -69,8 +145,9 @@ done
 # A damaged preferences file must be preserved for inspection rather than
 # replaced with empty output from a failed jq command.
 RUNTIME_THEMES="$TEST_ROOT/runtime-themes"
-mkdir -p "$RUNTIME_THEMES/demo" "$(dirname "$MACARCHY_BACKGROUND_STATE")"
+mkdir -p "$RUNTIME_THEMES/demo" "$RUNTIME_THEMES/cool-blue" "$(dirname "$MACARCHY_BACKGROUND_STATE")"
 : > "$RUNTIME_THEMES/demo/wallpaper.jpg"
+MACARCHY_THEMES_DIR="$RUNTIME_THEMES"
 MACARCHY_THEME_NAME=demo
 MACARCHY_THEME_DIR="$RUNTIME_THEMES/demo"
 MACARCHY_LEGACY_THEME_STATE="$RUNTIME_THEMES/.current"
@@ -79,6 +156,8 @@ printf '%s\n' demo > "$MACARCHY_LEGACY_THEME_STATE"
 [ "$(macarchy_theme_current)" = demo ] || fail 'legacy active theme state was not read'
 printf '%s\n' lumon > "$MACARCHY_LEGACY_THEME_STATE"
 [ "$(macarchy_theme_current)" = cool-blue ] || fail 'renamed Lumon state was not mapped to Cool Blue'
+mkdir -p "$RUNTIME_THEMES/lumon"
+[ "$(macarchy_theme_current)" = lumon ] || fail 'an installed Lumon pack was renamed to Cool Blue'
 
 printf '%s\n' '{"other":"kept.jpg"}' > "$MACARCHY_LEGACY_BACKGROUND_STATE"
 macarchy_theme_save_background wallpaper.jpg || fail 'legacy background state was not migrated'
@@ -102,20 +181,23 @@ printf '%s\n' demo | macarchy_write_generated "$MACARCHY_THEME_STATE" || \
 
 # Generated integration files are checksummed for safe installer cleanup. The
 # btop adapter must never rewrite the user's main btop configuration.
-THEME_DARK_MODE=true
-THEME_BORDER_ACTIVE=0x80ed9a1d
-THEME_BORDER_INACTIVE=0x00000000
-THEME_BORDER_WIDTH=6.0
-THEME_SKETCHYBAR_BAR_COLOR=0x00000000
-THEME_SKETCHYBAR_TEXT_COLOR=0xffffffff
-THEME_NVIM_COLORSCHEME=gruvbox
-MACARCHY_THEME_DIR="$REPO_ROOT/themes/amber-metal"
+MACARCHY_THEMES_DIR="$LEGACY_THEMES"
+macarchy_theme_load awakening || fail 'Awakening fixture could not be loaded for adapter tests'
 
 macarchy_apply_shell >/dev/null || fail 'shell theme state could not be generated'
 [ -f "$MACARCHY_GENERATED_DIR/shell-env" ] || fail 'shell state was not written under generated config'
 [ ! -e "$MACARCHY_THEMES_DIR/.shell-env" ] || fail 'shell state polluted the theme pack'
-grep -F "MACARCHY_ACCENT='#ed9a1d'" "$MACARCHY_GENERATED_DIR/shell-env" >/dev/null || \
-  fail 'shell accent did not discard the border alpha channel'
+grep -F "MACARCHY_ACCENT_IDX='2'" "$MACARCHY_GENERATED_DIR/shell-env" >/dev/null || \
+  fail 'legacy FIREFOX_ACCENT did not select its Ghostty palette index'
+grep -F "MACARCHY_ACCENT='#ffff00'" "$MACARCHY_GENERATED_DIR/shell-env" >/dev/null || \
+  fail 'legacy FIREFOX_ACCENT was not preserved in shell state'
+
+mkdir -p "$XDG_CONFIG_HOME/sketchybar"
+sketchybar() { :; }
+macarchy_apply_sketchybar >/dev/null || fail 'SketchyBar theme state could not be generated'
+unset -f sketchybar
+grep -F 'TEXT_COLOR="0xffdacbe6"' "$XDG_CONFIG_HOME/sketchybar/theme.sh" >/dev/null || \
+  fail 'SketchyBar text was not derived from the Ghostty foreground'
 
 mkdir -p "$XDG_CONFIG_HOME/btop"
 printf '%s\n' 'color_theme = "my-own-theme"' 'update_ms = 5000' > "$XDG_CONFIG_HOME/btop/btop.conf"
@@ -135,8 +217,31 @@ grep -F "$MACARCHY_BACKGROUND_STATE" "$MACARCHY_GENERATED_MANIFEST" >/dev/null |
   fail 'background state is absent from the generated-file manifest'
 grep -F "$MACARCHY_GENERATED_DIR/shell-env" "$MACARCHY_GENERATED_MANIFEST" >/dev/null || \
   fail 'shell state is absent from the generated-file manifest'
+grep -F "$XDG_CONFIG_HOME/sketchybar/theme.sh" "$MACARCHY_GENERATED_MANIFEST" >/dev/null || \
+  fail 'SketchyBar theme state is absent from the generated-file manifest'
 grep -F "$XDG_CONFIG_HOME/btop/themes/macarchy.theme" "$MACARCHY_GENERATED_MANIFEST" >/dev/null || \
   fail 'btop theme is absent from the generated-file manifest'
+
+# Raycast follows the selected appearance while retaining sensible defaults for
+# both modes. A stub keeps this test away from the machine's real preferences.
+RAYCAST_DEFAULTS_LOG="$TEST_ROOT/raycast-defaults.log"
+export RAYCAST_DEFAULTS_LOG
+MACARCHY_DEFAULTS_BIN="$TEST_ROOT/defaults"
+MACARCHY_RAYCAST_APP="$TEST_ROOT/Raycast.app"
+export MACARCHY_DEFAULTS_BIN MACARCHY_RAYCAST_APP
+mkdir -p "$MACARCHY_RAYCAST_APP"
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$RAYCAST_DEFAULTS_LOG"' > "$MACARCHY_DEFAULTS_BIN"
+chmod +x "$MACARCHY_DEFAULTS_BIN"
+uname() { printf 'Darwin\n'; }
+macarchy_apply_raycast >/dev/null || fail 'Raycast appearance defaults could not be generated'
+unset -f uname
+grep -F 'write com.raycast.macos raycastCurrentThemeId -string bundled-raycast-dark' "$RAYCAST_DEFAULTS_LOG" >/dev/null || \
+  fail 'Raycast current theme did not follow dark mode'
+grep -F 'write com.raycast.macos raycastCurrentThemeIdDarkAppearance -string bundled-raycast-dark' "$RAYCAST_DEFAULTS_LOG" >/dev/null || \
+  fail 'Raycast dark default was not restored'
+grep -F 'write com.raycast.macos raycastCurrentThemeIdLightAppearance -string bundled-raycast-light' "$RAYCAST_DEFAULTS_LOG" >/dev/null || \
+  fail 'Raycast light default was not restored'
+unset MACARCHY_DEFAULTS_BIN MACARCHY_RAYCAST_APP RAYCAST_DEFAULTS_LOG
 
 if printf '%s\n' 'content' | macarchy_atomic_write /dev/null/macarchy-test >/dev/null 2>&1; then
   fail 'an impossible atomic write reported success'
@@ -158,5 +263,10 @@ if macarchy_theme_load untrusted >/dev/null 2>&1; then
   fail 'an executable theme.env value passed validation'
 fi
 [ ! -e "$TEST_ROOT/should-not-exist" ] || fail 'theme.env content was executed'
+
+printf '%s\n' 'DARK_MODE=true' 'FIREFOX_ACCENT=blue' > "$UNSAFE_THEMES/untrusted/theme.env"
+if macarchy_theme_load untrusted >/dev/null 2>&1; then
+  fail 'an invalid FIREFOX_ACCENT passed validation'
+fi
 
 printf 'Validated %d themes without applying them.\n' "${#theme_files[@]}"

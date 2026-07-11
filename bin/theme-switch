@@ -22,6 +22,7 @@ source "$MACARCHY_LIB_DIR/common.sh"
 source "$MACARCHY_LIB_DIR/theme.sh"
 source "$MACARCHY_LIB_DIR/colours.sh"
 source "$MACARCHY_LIB_DIR/apply/appearance.sh"
+source "$MACARCHY_LIB_DIR/apply/raycast.sh"
 source "$MACARCHY_LIB_DIR/apply/ghostty.sh"
 source "$MACARCHY_LIB_DIR/apply/tools.sh"
 source "$MACARCHY_LIB_DIR/apply/desktop.sh"
@@ -45,6 +46,7 @@ apply_theme() {
 
     macarchy_info "Applying theme: $name"
     macarchy_apply_appearance || failures=$((failures + 1))
+    macarchy_apply_raycast || failures=$((failures + 1))
     macarchy_apply_wallpaper "$background" || failures=$((failures + 1))
     macarchy_apply_ghostty || failures=$((failures + 1))
     macarchy_apply_neovim || failures=$((failures + 1))
