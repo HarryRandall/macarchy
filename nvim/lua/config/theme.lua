@@ -5,14 +5,6 @@ M.state_file = config_home .. "/themes/.nvim-colorscheme"
 
 local fallback = "gruvbox"
 
-local aliases = {
-  awakening = "gruvbox",
-  blackgold = "gruvbox",
-  carbonfox = "tokyonight-night",
-  ["matte-black"] = "gruvbox",
-  midnight = "tokyonight-night",
-}
-
 local plugins = {
   ["catppuccin"] = "catppuccin",
   ["flexoki"] = "flexoki",
@@ -29,7 +21,7 @@ local plugins = {
 local function clean_name(value)
   value = tostring(value or ""):match("^%s*(.-)%s*$")
   if value:match("^[%w%._%-]+$") then
-    return aliases[value] or value
+    return value
   end
 end
 

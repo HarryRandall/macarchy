@@ -173,7 +173,7 @@ pass 'installs the SketchyBar app font dependency'
 
 # Themes include their shared library but start without mutable runtime state.
 run_capture "$TEST_ROOT/themes.out" themes
-assert_file "$XDG_CONFIG_HOME/themes/awakening/theme.env"
+assert_file "$XDG_CONFIG_HOME/themes/blackgold/theme.env"
 assert_file "$XDG_DATA_HOME/macarchy/lib/theme.sh"
 assert_file "$MACARCHY_BIN_HOME/theme-switch"
 assert_no_path "$XDG_CONFIG_HOME/themes/.current"
