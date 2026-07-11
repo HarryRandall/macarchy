@@ -9,6 +9,7 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 BIN_HOME="${MACARCHY_BIN_HOME:-$HOME/.local/bin}"
+APPLICATIONS_DIR="${MACARCHY_APPLICATIONS_DIR:-/Applications}"
 
 MACARCHY_STATE_DIR="$STATE_HOME/macarchy"
 MANIFEST_DIR="$MACARCHY_STATE_DIR/manifests"
@@ -179,11 +180,35 @@ select_components() {
 
 brew_formula_installed() {
   local formula="$1"
-  "$BREW_BIN" list --formula --versions "${formula##*/}" >/dev/null 2>&1
+  if "$BREW_BIN" list --formula --versions "${formula##*/}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # A suitable Node installation may come from fnm, nvm or a versioned
+  # Homebrew formula. Do not install a second copy just to build Raycast code.
+  if [ "${formula##*/}" = 'node' ] && command -v node >/dev/null 2>&1; then
+    node -e '
+      const [major, minor, patch] = process.versions.node.split(".").map(Number);
+      process.exit(major > 22 || (major === 22 && (minor > 22 || (minor === 22 && patch >= 2))) ? 0 : 1);
+    ' >/dev/null 2>&1
+    return
+  fi
+
+  return 1
 }
 
 brew_cask_installed() {
-  "$BREW_BIN" list --cask "$1" >/dev/null 2>&1
+  local cask="$1" app_name=""
+
+  "$BREW_BIN" list --cask "$cask" >/dev/null 2>&1 && return 0
+
+  case "$cask" in
+    ghostty) app_name='Ghostty.app' ;;
+    raycast) app_name='Raycast.app' ;;
+  esac
+
+  [ -n "$app_name" ] \
+    && { [ -d "$APPLICATIONS_DIR/$app_name" ] || [ -d "$HOME/Applications/$app_name" ]; }
 }
 
 install_dependencies() {

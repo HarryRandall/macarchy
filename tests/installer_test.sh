@@ -38,11 +38,12 @@ XDG_CONFIG_HOME="$HOME/Custom Config"
 XDG_DATA_HOME="$HOME/Custom Data"
 XDG_STATE_HOME="$HOME/Custom State"
 MACARCHY_BIN_HOME="$HOME/Custom Bin"
+MACARCHY_APPLICATIONS_DIR="$TEST_ROOT/Applications"
 FAKE_BIN="$TEST_ROOT/fake-bin"
 FAKE_BREW_LOG="$TEST_ROOT/brew.log"
 FAKE_BREW_STATE="$TEST_ROOT/brew-state"
 
-mkdir -p "$HOME" "$FAKE_BIN"
+mkdir -p "$HOME" "$FAKE_BIN" "$MACARCHY_APPLICATIONS_DIR"
 : > "$FAKE_BREW_LOG"
 : > "$FAKE_BREW_STATE"
 
@@ -77,7 +78,7 @@ esac
 EOF
 chmod +x "$FAKE_BIN/brew"
 
-export HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME MACARCHY_BIN_HOME
+export HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME MACARCHY_BIN_HOME MACARCHY_APPLICATIONS_DIR
 export FAKE_BREW_LOG FAKE_BREW_STATE TEST_ROOT
 export PATH="$FAKE_BIN:/usr/bin:/bin:/usr/sbin:/sbin"
 
@@ -251,6 +252,25 @@ rm -f "$THEME_SHELL_STATE"
 run_capture "$TEST_ROOT/themes-uninstall-finish.out" uninstall themes
 assert_no_path "$THEME_GENERATED_MANIFEST"
 pass 'theme uninstall removes generated state but preserves local edits'
+
+# Existing applications and a suitable Node runtime satisfy Raycast's
+# dependencies even when Homebrew did not install them.
+mkdir -p "$MACARCHY_APPLICATIONS_DIR/Raycast.app"
+cat > "$FAKE_BIN/node" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$FAKE_BIN/node"
+: > "$FAKE_BREW_LOG"
+run_capture "$TEST_ROOT/raycast.out" raycast
+assert_file "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher/package.json"
+if grep -F 'install --cask raycast' "$FAKE_BREW_LOG" >/dev/null; then
+  fail 'installer tried to replace an existing Raycast application'
+fi
+if grep -F 'install node' "$FAKE_BREW_LOG" >/dev/null; then
+  fail 'installer ignored a suitable existing Node runtime'
+fi
+pass 'accepts existing applications and Node runtimes'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"
