@@ -31,7 +31,17 @@ fi
 
 case "$*" in
   '-m query --spaces')
+    if [ "${SPACE_TEST_FULL_QUERY_TRUNCATED:-0}" = '1' ]; then
+      printf '%s\n' '['
+    else
+      printf '%s\n' '[{"index":1},{"index":3}]'
+    fi
+    ;;
+  '-m query --spaces --display 1')
     printf '%s\n' '[{"index":1},{"index":3}]'
+    ;;
+  '-m query --spaces --display 2')
+    exit 1
     ;;
   '-m query --spaces --space 1')
     printf '%s\n' '{"index":1,"display":1}'
@@ -70,6 +80,14 @@ grep -F -- '--add space space.3 left' "$SKETCHYBAR_LOG" >/dev/null \
 if grep -F -- '--add space space.2 left' "$SKETCHYBAR_LOG" >/dev/null; then
   fail 'a non-existent fallback Space was added'
 fi
+
+: > "$SKETCHYBAR_LOG"
+rm -f "$STATE_DIR/space_items"
+SPACE_TEST_FULL_QUERY_TRUNCATED=1 \
+  YABAI_BIN="$FAKE_BIN/yabai" \
+  "$REPO_ROOT/sketchybar/plugins/space_windows.sh" --reconcile
+grep -F -- '--add space space.1 left' "$SKETCHYBAR_LOG" >/dev/null \
+  || fail 'per-display fallback did not recover from a truncated yabai response'
 
 : > "$SKETCHYBAR_LOG"
 SPACE_TEST_QUERY_FAIL=1 \

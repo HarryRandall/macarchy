@@ -14,10 +14,11 @@ source "$CONFIG_ROOT/colors.sh"
 source "$CONFIG_ROOT/plugins/icon_map.sh"
 
 space_ids() {
-  local ids=""
+  local ids="" spaces_json="" display=1 display_ids=""
 
   if [ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ]; then
-    ids="$("$YABAI_BIN" -m query --spaces 2>/dev/null | "$JQ_BIN" -r '
+    spaces_json="$("$YABAI_BIN" -m query --spaces 2>/dev/null || true)"
+    ids="$(printf '%s' "$spaces_json" | "$JQ_BIN" -r '
       sort_by(.index)
       | .[]
       | select(.index != null)
@@ -27,6 +28,27 @@ space_ids() {
 
   if [ -n "$ids" ]; then
     printf '%s\n' "$ids"
+    return 0
+  fi
+
+  [ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ] || return 1
+
+  # yabai can occasionally truncate the unscoped array response while its
+  # display state settles. Per-display queries use a separate code path, so
+  # collect those as a safe fallback. Space indexes are global across displays.
+  while [ "$display" -le "${MAX_YABAI_DISPLAYS:-16}" ]; do
+    spaces_json="$("$YABAI_BIN" -m query --spaces --display "$display" 2>/dev/null)" || break
+    display_ids="$(printf '%s' "$spaces_json" | "$JQ_BIN" -r '
+      .[]
+      | select(.index != null)
+      | .index
+    ' 2>/dev/null)" || break
+    ids="${ids}${ids:+$'\n'}${display_ids}"
+    display=$((display + 1))
+  done
+
+  if [ -n "$ids" ]; then
+    printf '%s\n' "$ids" | awk 'NF' | LC_ALL=C sort -nu
     return 0
   fi
 
