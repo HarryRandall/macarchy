@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { loadBackgrounds } from "../src/backgrounds.ts";
+import { backgroundMatchesPath, loadBackgrounds } from "../src/backgrounds.ts";
 
 const directories: string[] = [];
 
@@ -46,6 +46,9 @@ test("hides an identical root compatibility copy", async () => {
     backgrounds.map(({ relativePath }) => relativePath),
     ["backgrounds/01-original.jpg"],
   );
+  assert.deepEqual(backgrounds[0].aliasPaths, ["wall.jpg"]);
+  assert.equal(backgroundMatchesPath(backgrounds[0], "wall.jpg"), true);
+  assert.equal(backgroundMatchesPath(backgrounds[0], "backgrounds/01-original.jpg"), true);
 });
 
 test("keeps distinct images with the same file size", async () => {

@@ -16,7 +16,7 @@ import { execFile } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { useCallback, useEffect, useState } from "react";
-import { loadBackgrounds, type Background } from "./backgrounds";
+import { backgroundMatchesPath, loadBackgrounds, type Background } from "./backgrounds";
 import { DEFAULT_PATHS, resolvePreferencePath } from "./paths";
 import { normaliseLegacyThemeName } from "./theme-utils";
 
@@ -165,7 +165,7 @@ async function loadThemeState(themesDirectory: string, themeStateDirectory: stri
         const ghostty = parseGhosttyColours(ghosttyText);
         const selectedPath = backgroundState[entry.name] || environment.WALLPAPER || "";
         const selectedBackground = isSafeRelativePath(selectedPath)
-          ? backgrounds.find((background) => background.relativePath === selectedPath)
+          ? backgrounds.find((background) => backgroundMatchesPath(background, selectedPath))
           : undefined;
 
         return {

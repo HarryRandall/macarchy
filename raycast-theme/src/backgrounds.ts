@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 
 export type Background = {
+  aliasPaths: string[];
   name: string;
   path: string;
   relativePath: string;
@@ -52,6 +53,7 @@ export async function loadBackgrounds(themeDirectory: string): Promise<Backgroun
       const path = join(themeDirectory, relativePath);
       const details = await stat(path);
       candidates.push({
+        aliasPaths: [],
         directory,
         name: titleFromBackgroundName(entry.name),
         path,
@@ -66,6 +68,7 @@ export async function loadBackgrounds(themeDirectory: string): Promise<Backgroun
     let duplicate = false;
     for (const existing of unique) {
       if (candidate.directory !== existing.directory && (await hasSameContents(candidate, existing))) {
+        existing.aliasPaths.push(candidate.relativePath);
         duplicate = true;
         break;
       }
@@ -75,9 +78,14 @@ export async function loadBackgrounds(themeDirectory: string): Promise<Backgroun
 
   return unique
     .map((background) => ({
+      aliasPaths: background.aliasPaths,
       name: background.name,
       path: background.path,
       relativePath: background.relativePath,
     }))
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+}
+
+export function backgroundMatchesPath(background: Background, relativePath: string): boolean {
+  return background.relativePath === relativePath || background.aliasPaths.includes(relativePath);
 }
