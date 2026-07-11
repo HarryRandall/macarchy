@@ -15,9 +15,12 @@ All three paths can be changed in the extension preferences. `~` and `$HOME` are
 Install the theme switcher and at least one theme first. Then run:
 
 ```sh
+fnm use --install-if-missing
 npm install
 npm run dev
 ```
+
+The included `.nvmrc` selects Node.js 24 when you use fnm or another compatible version manager. If you do not use one, make sure `node --version` satisfies the version in `package.json` before installing dependencies.
 
 Raycast will open the extension in development mode. Use `npm run lint` and `npm run build` before publishing changes.
 
