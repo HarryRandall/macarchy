@@ -58,7 +58,7 @@
     "@types/react": "19.2.17",
     "eslint": "^10.7.0",
     "prettier": "^3.9.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "scripts": {
     "build": "ray build --output dist",
