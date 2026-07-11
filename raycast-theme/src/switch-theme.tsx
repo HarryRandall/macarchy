@@ -7,6 +7,7 @@ import {
   Keyboard,
   List,
   Toast,
+  closeMainWindow,
   getPreferenceValues,
   openExtensionPreferences,
   showToast,
@@ -36,6 +37,7 @@ type Theme = {
   foreground: string;
   isDark: boolean;
   name: string;
+  palette: string[];
   selectedBackground?: Background;
   title: string;
 };
@@ -53,6 +55,13 @@ function titleFromName(name: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function titleFromBackgroundName(name: string): string {
+  return basename(name, extname(name))
+    .replace(/^\d+[-_.\s]*/, "")
+    .replace(/[-_.]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function isSafeRelativePath(path: string): boolean {
@@ -80,19 +89,21 @@ function parseThemeEnvironment(contents: string): Record<string, string> {
   return values;
 }
 
-function parseGhosttyColours(contents: string): { accent: string; foreground: string } {
+function parseGhosttyColours(contents: string): { accent: string; foreground: string; palette: string[] } {
   let accent = "#888888";
   let foreground = "#ffffff";
+  const palette: string[] = [];
 
   for (const rawLine of contents.split("\n")) {
     const line = rawLine.trim();
     const foregroundMatch = line.match(/^foreground\s*=\s*(#[0-9a-f]{6})$/i);
-    const accentMatch = line.match(/^palette\s*=\s*4\s*=\s*(#[0-9a-f]{6})$/i);
+    const paletteMatch = line.match(/^palette\s*=\s*(\d+)\s*=\s*(#[0-9a-f]{6})$/i);
     if (foregroundMatch) foreground = foregroundMatch[1];
-    if (accentMatch) accent = accentMatch[1];
+    if (paletteMatch) palette[Number(paletteMatch[1])] = paletteMatch[2];
   }
 
-  return { accent, foreground };
+  accent = palette[4] || accent;
+  return { accent, foreground, palette };
 }
 
 function borderColour(value: string | undefined): string | undefined {
@@ -113,7 +124,10 @@ async function readOptional(path: string): Promise<string> {
 async function loadBackgrounds(themeDirectory: string): Promise<Background[]> {
   const backgrounds: Background[] = [];
 
-  for (const directory of ["", "backgrounds"]) {
+  // Installed packs keep selectable wallpapers in backgrounds/. A root image
+  // is only a fallback for simpler third-party packs, otherwise generated
+  // wall.jpg files would appear as duplicate choices.
+  for (const directory of ["backgrounds", ""]) {
     let entries;
     try {
       entries = await readdir(join(themeDirectory, directory), { withFileTypes: true });
@@ -130,11 +144,13 @@ async function loadBackgrounds(themeDirectory: string): Promise<Background[]> {
 
       const relativePath = directory ? `${directory}/${entry.name}` : entry.name;
       backgrounds.push({
-        name: titleFromName(basename(entry.name, extname(entry.name))),
+        name: titleFromBackgroundName(entry.name),
         path: join(themeDirectory, relativePath),
         relativePath,
       });
     }
+
+    if (backgrounds.length > 0) break;
   }
 
   return backgrounds.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
@@ -208,6 +224,7 @@ async function loadThemeState(themesDirectory: string, themeStateDirectory: stri
           foreground: ghostty.foreground,
           isDark: environment.DARK_MODE !== "false",
           name: entry.name,
+          palette: ghostty.palette,
           selectedBackground: selectedBackground || backgrounds[0],
           title: titleFromName(entry.name),
         };
@@ -270,6 +287,31 @@ function wallpaperMarkdown(theme: Theme): string {
   return `![${theme.selectedBackground.name}](${image}?raycast-width=720&raycast-height=405)`;
 }
 
+function themeMarkdown(theme: Theme): string {
+  return [
+    `# ${theme.title}`,
+    "",
+    wallpaperMarkdown(theme),
+    "",
+    theme.selectedBackground ? `Background \`${theme.selectedBackground.name}\`` : "",
+    `Accent \`${theme.accent}\``,
+    "macOS Accent `Multicolour`",
+    "Highlight `System`",
+    `Text \`${theme.foreground}\``,
+  ].join("\n");
+}
+
+function lsPreviewColours(theme: Theme) {
+  return {
+    archive: theme.palette[1] || theme.accent,
+    device: theme.palette[3] || theme.accent,
+    directory: theme.palette[4] || theme.accent,
+    executable: theme.palette[2] || theme.accent,
+    normal: theme.foreground,
+    symlink: theme.palette[6] || theme.accent,
+  };
+}
+
 function BackgroundPicker(props: {
   executable: string;
   onApplied: () => Promise<void>;
@@ -278,6 +320,12 @@ function BackgroundPicker(props: {
   themeStateDirectory: string;
 }) {
   const [selected, setSelected] = useState(props.theme.selectedBackground?.relativePath);
+  const backgrounds = selected
+    ? [
+        ...props.theme.backgrounds.filter((background) => background.relativePath === selected),
+        ...props.theme.backgrounds.filter((background) => background.relativePath !== selected),
+      ]
+    : props.theme.backgrounds;
 
   async function applyBackground(background: Background) {
     const toast = await showToast({ style: Toast.Style.Animated, title: `Applying ${background.name}` });
@@ -292,6 +340,7 @@ function BackgroundPicker(props: {
       toast.style = Toast.Style.Success;
       toast.title = `${background.name} selected`;
       await props.onApplied();
+      await closeMainWindow();
     } catch (error) {
       toast.style = Toast.Style.Failure;
       toast.title = "Could not change the wallpaper";
@@ -300,16 +349,23 @@ function BackgroundPicker(props: {
   }
 
   return (
-    <Grid columns={2} aspectRatio="16/9" fit={Grid.Fit.Fill} searchBarPlaceholder="Search wallpapers">
-      {props.theme.backgrounds.map((background) => (
+    <Grid
+      columns={2}
+      inset={Grid.Inset.Small}
+      aspectRatio="16/9"
+      fit={Grid.Fit.Fill}
+      navigationTitle={`Switch Background (${props.theme.title})`}
+      searchBarPlaceholder="Search backgrounds..."
+    >
+      {backgrounds.map((background) => (
         <Grid.Item
           key={background.relativePath}
           title={background.name}
           content={{ source: background.path }}
-          accessory={selected === background.relativePath ? { icon: Icon.CheckCircle, tooltip: "Selected" } : undefined}
+          accessory={selected === background.relativePath ? { icon: Icon.CheckCircle, tooltip: "Current" } : undefined}
           actions={
             <ActionPanel>
-              <Action title="Use Wallpaper" icon={Icon.Image} onAction={() => applyBackground(background)} />
+              <Action title="Use Background" icon={Icon.Image} onAction={() => applyBackground(background)} />
             </ActionPanel>
           }
         />
@@ -351,6 +407,7 @@ export default function Command() {
       toast.style = Toast.Style.Success;
       toast.title = `${theme.title} applied`;
       await refresh();
+      await closeMainWindow();
     } catch (error) {
       toast.style = Toast.Style.Failure;
       toast.title = `Could not apply ${theme.title}`;
@@ -358,8 +415,10 @@ export default function Command() {
     }
   }
 
+  const activeTheme = state.themes.find((theme) => theme.name === state.currentTheme) || state.themes[0];
+
   return (
-    <List isLoading={isLoading} isShowingDetail searchBarPlaceholder="Search themes">
+    <List isLoading={isLoading} isShowingDetail searchBarPlaceholder="Search themes...">
       <List.EmptyView
         icon={loadError ? Icon.Warning : Icon.Brush}
         title={loadError ? "Could Not Load Themes" : "No Themes Found"}
@@ -371,6 +430,32 @@ export default function Command() {
           </ActionPanel>
         }
       />
+      {activeTheme ? (
+        <List.Item
+          title="Switch Background"
+          subtitle={activeTheme.title}
+          icon={Icon.AppWindowGrid2x2}
+          accessories={[{ text: `${activeTheme.backgrounds.length} options` }]}
+          detail={<List.Item.Detail markdown={wallpaperMarkdown(activeTheme)} />}
+          actions={
+            <ActionPanel>
+              <Action.Push
+                title="Open Backgrounds"
+                icon={Icon.Folder}
+                target={
+                  <BackgroundPicker
+                    executable={executable}
+                    theme={activeTheme}
+                    themesDirectory={themesDirectory}
+                    themeStateDirectory={themeStateDirectory}
+                    onApplied={refresh}
+                  />
+                }
+              />
+            </ActionPanel>
+          }
+        />
+      ) : null}
       {state.themes.map((theme) => {
         const isCurrent = theme.name === state.currentTheme;
         return (
@@ -378,35 +463,42 @@ export default function Command() {
             key={theme.name}
             icon={{ source: Icon.Circle, tintColor: theme.accent as Color }}
             title={theme.title}
-            subtitle={theme.name}
             accessories={[
               ...(isCurrent ? [{ tag: { value: "active", color: Color.Green } }] : []),
               { icon: theme.isDark ? Icon.Moon : Icon.Sun },
-              { text: `${theme.backgrounds.length} wallpaper${theme.backgrounds.length === 1 ? "" : "s"}` },
+              ...(theme.backgrounds.length > 0 ? [{ text: `${theme.backgrounds.length} bg` }] : []),
             ]}
             detail={
               <List.Item.Detail
-                markdown={wallpaperMarkdown(theme)}
+                markdown={themeMarkdown(theme)}
                 metadata={
                   <List.Item.Detail.Metadata>
                     <List.Item.Detail.Metadata.Label title="Mode" text={theme.isDark ? "Dark" : "Light"} />
-                    <List.Item.Detail.Metadata.Label title="Accent" text={theme.accent} />
-                    <List.Item.Detail.Metadata.Label title="Text" text={theme.foreground} />
+                    <List.Item.Detail.Metadata.Separator />
+                    <List.Item.Detail.Metadata.Label title="Wallpapers" text={String(theme.backgrounds.length)} />
+                    <List.Item.Detail.Metadata.Separator />
+                    <List.Item.Detail.Metadata.Label title="macOS Accent" text="Multicolour" />
+                    <List.Item.Detail.Metadata.Label title="Highlight" text="System" />
+                    <List.Item.Detail.Metadata.Separator />
+                    <List.Item.Detail.Metadata.TagList title="ls -la">
+                      <List.Item.Detail.Metadata.TagList.Item text="dir/" color={lsPreviewColours(theme).directory} />
+                      <List.Item.Detail.Metadata.TagList.Item text="link@" color={lsPreviewColours(theme).symlink} />
+                      <List.Item.Detail.Metadata.TagList.Item text="exec*" color={lsPreviewColours(theme).executable} />
+                      <List.Item.Detail.Metadata.TagList.Item text="archive" color={lsPreviewColours(theme).archive} />
+                      <List.Item.Detail.Metadata.TagList.Item text="device" color={lsPreviewColours(theme).device} />
+                      <List.Item.Detail.Metadata.TagList.Item text="file" color={lsPreviewColours(theme).normal} />
+                    </List.Item.Detail.Metadata.TagList>
                   </List.Item.Detail.Metadata>
                 }
               />
             }
             actions={
               <ActionPanel>
-                <Action
-                  title={isCurrent ? "Reapply Theme" : "Apply Theme"}
-                  icon={Icon.Brush}
-                  onAction={() => applyTheme(theme)}
-                />
+                <Action title="Apply Theme" icon={Icon.Brush} onAction={() => applyTheme(theme)} />
                 {theme.backgrounds.length > 0 ? (
                   <Action.Push
-                    title="Choose Wallpaper"
-                    icon={Icon.Image}
+                    title="Switch Background"
+                    icon={Icon.Folder}
                     shortcut={{ modifiers: ["cmd"], key: "b" }}
                     target={
                       <BackgroundPicker
