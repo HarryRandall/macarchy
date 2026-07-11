@@ -83,3 +83,16 @@ Local linting and builds work with the neutral `macarchy` author. Raycast Store 
 cd raycast-theme
 npm run validate:store
 ```
+
+## Raycast reports an invalid hook call
+
+This means `node_modules` was installed beside Raycast's generated command. Reinstall the component to preserve those dependencies in a backup, then register the extension from its source directory:
+
+```sh
+./install raycast
+cd "${XDG_DATA_HOME:-$HOME/.local/share}/macarchy/raycast-theme"
+npm ci
+npm run dev
+```
+
+Do not run npm commands in `~/.config/raycast/extensions/theme-switcher`.

@@ -44,6 +44,8 @@ Then install only the parts you want:
 
 The installer prints the next step for each selected component. It never disables SIP, writes a sudoers file, starts a background service or applies a theme on its own.
 
+Raycast development source is installed under `${XDG_DATA_HOME:-~/.local/share}/macarchy/raycast-theme`. Raycast's directory under `~/.config/raycast/extensions` is generated runtime output and should never contain `node_modules`.
+
 The `shell` component changes `ZDOTDIR` and backs up `~/.zshenv`. Existing `~/.zprofile` and `~/.zshrc` files stay on disk but are no longer loaded automatically. Review the [shell notes](./docs/install.md#what-happens-to-existing-files) before installing it.
 
 ## After installation

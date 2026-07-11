@@ -281,25 +281,63 @@ assert_no_path "$THEME_GENERATED_MANIFEST"
 pass 'theme uninstall removes generated state but preserves local edits'
 
 # Existing applications and a suitable Node runtime satisfy Raycast's
-# dependencies even when Homebrew did not install them.
+# dependencies even when Homebrew did not install them. Development source is
+# kept apart from Raycast's generated runtime so local React cannot shadow the
+# copy bundled with Raycast.
 mkdir -p "$MACARCHY_APPLICATIONS_DIR/Raycast.app"
 cat > "$FAKE_BIN/node" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
 chmod +x "$FAKE_BIN/node"
+
+RAYCAST_SOURCE="$XDG_DATA_HOME/macarchy/raycast-theme"
+LEGACY_RAYCAST_SOURCE="$XDG_CONFIG_HOME/raycast/extensions/theme-switcher"
+RAYCAST_RUNTIME="$HOME/.config/raycast/extensions/theme-switcher"
+mkdir -p "$LEGACY_RAYCAST_SOURCE" "$RAYCAST_RUNTIME/node_modules/react"
+printf '%s\n' 'legacy managed source' > "$LEGACY_RAYCAST_SOURCE/package.json"
+printf '%s\n' 'duplicate React' > "$RAYCAST_RUNTIME/node_modules/react/index.js"
+LEGACY_RAYCAST_HASH="$(shasum -a 256 "$LEGACY_RAYCAST_SOURCE/package.json" | awk '{print $1}')"
+printf '%s\t-\t%s\n' \
+  "$LEGACY_RAYCAST_SOURCE/package.json" "$LEGACY_RAYCAST_HASH" \
+  > "$XDG_STATE_HOME/macarchy/manifests/raycast.tsv"
+
 : > "$FAKE_BREW_LOG"
 run_capture "$TEST_ROOT/raycast.out" raycast
-assert_file "$XDG_CONFIG_HOME/raycast/extensions/theme-switcher/package.json"
-assert_file "$XDG_CONFIG_HOME/raycast/extensions/theme-switcher/.nvmrc"
+assert_file "$RAYCAST_SOURCE/package.json"
+assert_file "$RAYCAST_SOURCE/.nvmrc"
+assert_file "$RAYCAST_SOURCE/scripts/assert-runtime-clean.mjs"
+assert_contains "$TEST_ROOT/raycast.out" "$RAYCAST_SOURCE"
+assert_contains "$LEGACY_RAYCAST_SOURCE/package.json" 'legacy managed source'
+assert_no_path "$RAYCAST_RUNTIME/node_modules"
+assert_no_path "$RAYCAST_RUNTIME/src"
 assert_no_path "$XDG_CONFIG_HOME/raycast/extensions/macarchy-theme-switcher"
+if grep -F '/raycast/extensions/' "$XDG_STATE_HOME/macarchy/manifests/raycast.tsv" >/dev/null; then
+  fail 'Raycast runtime files remained in the managed manifest'
+fi
+if ! find "$XDG_STATE_HOME/macarchy/backups" \
+  -path '*raycast/*-runtime-node_modules/react/index.js' -type f -print | grep . >/dev/null; then
+  fail 'unsafe Raycast runtime dependencies were not preserved in a backup'
+fi
 if grep -F 'install --cask raycast' "$FAKE_BREW_LOG" >/dev/null; then
   fail 'installer tried to replace an existing Raycast application'
 fi
 if grep -F 'install node' "$FAKE_BREW_LOG" >/dev/null; then
   fail 'installer ignored a suitable existing Node runtime'
 fi
-pass 'accepts existing applications and Node runtimes'
+run_capture "$TEST_ROOT/raycast-status.out" status raycast
+assert_contains "$TEST_ROOT/raycast-status.out" 'installed ('
+
+# Raycast owns its generated bundle. Runtime changes must not affect installer
+# status or be removed when the source component is uninstalled.
+printf '%s\n' 'generated command' > "$RAYCAST_RUNTIME/switch-theme.js"
+run_capture "$TEST_ROOT/raycast-runtime-status.out" status raycast
+run_capture "$TEST_ROOT/raycast-uninstall.out" uninstall raycast
+assert_no_path "$RAYCAST_SOURCE/package.json"
+assert_contains "$RAYCAST_RUNTIME/switch-theme.js" 'generated command'
+assert_contains "$LEGACY_RAYCAST_SOURCE/package.json" 'legacy managed source'
+assert_no_path "$XDG_STATE_HOME/macarchy/manifests/raycast.tsv"
+pass 'keeps Raycast source, runtime and dependencies separate'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"

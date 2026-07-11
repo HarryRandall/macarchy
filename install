@@ -10,6 +10,7 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 BIN_HOME="${MACARCHY_BIN_HOME:-$HOME/.local/bin}"
 APPLICATIONS_DIR="${MACARCHY_APPLICATIONS_DIR:-/Applications}"
+RAYCAST_SOURCE_DIR="$DATA_HOME/macarchy/raycast-theme"
 
 MACARCHY_STATE_DIR="$STATE_HOME/macarchy"
 MANIFEST_DIR="$MACARCHY_STATE_DIR/manifests"
@@ -493,13 +494,90 @@ prune_removed_managed_files() {
 
 should_skip_source_path() {
   case "$1" in
-    */.DS_Store|*/node_modules/*|*/.raycast/*|*/dist/*|*/.state/*|*/sketchybar/theme.sh|*/.backgrounds.json|*/.current|*/.shell-env|*/.nvim-colorscheme)
+    */.DS_Store|*/node_modules/*|*/.raycast/*|*/dist/*|*/raycast-env.d.ts|*/.state/*|*/sketchybar/theme.sh|*/.backgrounds.json|*/.current|*/.shell-env|*/.nvim-colorscheme)
       return 0
       ;;
     *)
       return 1
       ;;
   esac
+}
+
+is_legacy_raycast_runtime_path() {
+  local path="$1" directory
+
+  for directory in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    case "$path" in
+      "$directory"|"$directory"/*) return 0 ;;
+    esac
+  done
+
+  return 1
+}
+
+release_legacy_raycast_runtime() {
+  local manifest temporary destination backup expected
+
+  manifest="$(manifest_path raycast)"
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$MANIFEST_DIR/.raycast-runtime.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    if is_legacy_raycast_runtime_path "$destination"; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would stop managing Raycast runtime file: $destination"
+      else
+        info "Stopped managing Raycast runtime file: $destination"
+      fi
+      continue
+    fi
+
+    if [ "$DRY_RUN" -eq 0 ]; then
+      printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+  fi
+}
+
+quarantine_raycast_runtime_dependencies() {
+  local runtime dependencies backup_parent backup
+
+  for runtime in \
+    "$CONFIG_HOME/raycast/extensions/theme-switcher" \
+    "$CONFIG_HOME/raycast/extensions/macarchy-theme-switcher" \
+    "$HOME/.config/raycast/extensions/theme-switcher" \
+    "$HOME/.config/raycast/extensions/macarchy-theme-switcher"; do
+    dependencies="$runtime/node_modules"
+    path_exists "$dependencies" || continue
+
+    BACKUP_COUNTER=$((BACKUP_COUNTER + 1))
+    backup_parent="$BACKUP_DIR/$BACKUP_RUN_ID/raycast"
+    backup="$backup_parent/${BACKUP_COUNTER}-runtime-node_modules"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "Would move unsafe Raycast runtime dependencies to: $backup"
+      continue
+    fi
+
+    mkdir -p "$backup_parent"
+    mv "$dependencies" "$backup"
+    info "Moved unsafe Raycast runtime dependencies to: $backup"
+  done
 }
 
 install_tree() {
@@ -633,7 +711,12 @@ install_component_files() {
       fi
       ;;
     raycast)
-      install_tree "$component" "$REPO_ROOT/raycast-theme" "$CONFIG_HOME/raycast/extensions/theme-switcher"
+      # Raycast writes compiled commands to ~/.config/raycast/extensions.
+      # Keep source and npm dependencies elsewhere so the command cannot load
+      # a second copy of React from its generated runtime directory.
+      quarantine_raycast_runtime_dependencies
+      release_legacy_raycast_runtime
+      install_tree "$component" "$REPO_ROOT/raycast-theme" "$RAYCAST_SOURCE_DIR"
       ;;
   esac
 }
@@ -656,7 +739,7 @@ print_next_step() {
       info "Next: apply a theme explicitly with '$BIN_HOME/theme-switch' <theme-name>."
       ;;
     raycast)
-      info "Next: run \`npm install && npm run dev\` in $CONFIG_HOME/raycast/extensions/theme-switcher."
+      info "Next: run \`npm install && npm run dev\` in $RAYCAST_SOURCE_DIR."
       ;;
   esac
 }

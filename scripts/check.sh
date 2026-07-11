@@ -81,6 +81,10 @@ check_raycast() {
     npm ci
     npm run lint
     npm run build
+    [ -f dist/switch-theme.js ]
+    [ -f dist/package.json ]
+    [ -f dist/assets/command-icon.png ]
+    [ ! -e dist/node_modules ]
   )
 }
 

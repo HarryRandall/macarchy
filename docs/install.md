@@ -69,6 +69,18 @@ launchctl setenv XDG_CONFIG_HOME "$XDG_CONFIG_HOME"
 
 Run that before starting yabai, skhd, SketchyBar or Ghostty. The installer prints a reminder when it detects a custom path.
 
+## Raycast source and runtime
+
+The `raycast` component installs development source in:
+
+```text
+${XDG_DATA_HOME:-~/.local/share}/macarchy/raycast-theme
+```
+
+Install its dependencies and register the command from that directory. Raycast generates the active command under `~/.config/raycast/extensions/theme-switcher` itself. Never run `npm install` in that generated directory. Keeping `node_modules` there gives the command a second React instance and causes an invalid hook error.
+
+The installer moves any legacy runtime `node_modules` into Macarchy's normal backup directory. It leaves Raycast's generated command in place when you update or uninstall the source component.
+
 ## Update
 
 ```sh
@@ -89,6 +101,7 @@ When upgrading from the old all-in-one setup, the installer also handles two leg
 
 - An existing Ghostty `config` file is backed up and replaced with a comment-only compatibility file, preventing it from overriding the newer `config.ghostty`.
 - On the first `window-manager` install, an existing unmanaged `skhdrc` is copied to `local.skhdrc` before the public configuration is installed. An existing `local.skhdrc` is never overwritten.
+- Older Raycast source is no longer managed inside Raycast's generated extension directory, and unsafe runtime dependencies are moved into a backup.
 
 The `themes` component leaves existing theme directories and wallpaper files in place. If Macarchy ships a file at the same path, that individual file still goes through the normal backup and replacement process.
 

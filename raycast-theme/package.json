@@ -61,7 +61,8 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "build": "ray build",
+    "build": "ray build --output dist",
+    "predev": "node scripts/assert-runtime-clean.mjs",
     "dev": "ray develop",
     "format": "prettier --write .",
     "lint": "eslint src && prettier --check . && tsc --noEmit",
