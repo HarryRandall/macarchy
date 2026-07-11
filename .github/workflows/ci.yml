@@ -9,9 +9,16 @@ permissions:
 
 jobs:
   check:
-    name: Repository checks
-    runs-on: ubuntu-latest
+    name: Repository checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-15
 
     steps:
       - name: Check out the repository
@@ -25,9 +32,14 @@ jobs:
           cache-dependency-path: raycast-theme/package-lock.json
 
       - name: Install validation tools
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends jq zsh
+
+      - name: Ensure jq is available
+        if: runner.os == 'macOS'
+        run: command -v jq >/dev/null || brew install jq
 
       - name: Run repository checks
         run: ./scripts/check.sh
