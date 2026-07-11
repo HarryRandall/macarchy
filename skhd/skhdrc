@@ -44,3 +44,6 @@ ctrl + alt - j : yabai -m window --toggle split
 ctrl + alt - l : yabai -m space --rotate 90; yabai -m space --balance
 ctrl + alt - 0x18 : yabai -m window --ratio rel:0.05
 ctrl + alt - 0x1B : yabai -m window --ratio rel:-0.05
+
+# The installer creates this untracked file for machine-specific shortcuts.
+.load "local.skhdrc"

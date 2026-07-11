@@ -190,6 +190,10 @@ if grep -E 'services|launchctl|sudo' "$FAKE_BREW_LOG" >/dev/null; then
 fi
 assert_file "$XDG_CONFIG_HOME/yabai/yabairc"
 assert_file "$XDG_CONFIG_HOME/skhd/skhdrc"
+assert_file "$XDG_CONFIG_HOME/skhd/local.skhdrc"
+if grep -F "$XDG_CONFIG_HOME/skhd/local.skhdrc" "$XDG_STATE_HOME/macarchy/manifests/window-manager.tsv" >/dev/null; then
+  fail 'machine-specific skhd shortcuts were added to the managed manifest'
+fi
 assert_contains "$TEST_ROOT/window-manager.out" 'launchctl setenv XDG_CONFIG_HOME'
 pass 'uses current window-manager formulae without starting services'
 

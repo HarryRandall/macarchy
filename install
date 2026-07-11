@@ -583,6 +583,25 @@ migrate_legacy_theme_content() {
   done
 }
 
+ensure_skhd_local_config() {
+  local local_config="$CONFIG_HOME/skhd/local.skhdrc"
+
+  path_exists "$local_config" && return 0
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    info "Would create local shortcut file: $local_config"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$local_config")"
+  printf '%s\n' \
+    '# Machine-specific skhd shortcuts. This file is not managed by Macarchy.' \
+    '# Copy optional bindings from examples/ here and customise them freely.' \
+    > "$local_config"
+  chmod 600 "$local_config"
+  info "Created local shortcut file: $local_config"
+}
+
 install_zsh_bootstrap() {
   local temporary
   temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-zshenv.XXXXXX")"
@@ -604,6 +623,7 @@ install_component_files() {
     window-manager)
       install_tree "$component" "$REPO_ROOT/yabai" "$CONFIG_HOME/yabai"
       install_managed_file "$component" "$REPO_ROOT/skhd/skhdrc" "$CONFIG_HOME/skhd/skhdrc"
+      ensure_skhd_local_config
       install_tree "$component" "$REPO_ROOT/borders" "$CONFIG_HOME/borders"
       ;;
     sketchybar)
