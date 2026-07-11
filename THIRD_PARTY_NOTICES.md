@@ -2,7 +2,9 @@
 
 Macarchy's root MIT licence covers the original installer, scripts and configuration adapters. It does not replace the licences of the third-party material listed here.
 
-No third-party wallpapers are included in the current tree. Earlier versions contained wallpaper and preview files with incomplete or restrictive provenance. Their blobs still exist in Git history, so a clean new snapshot or a separately approved history rewrite is required before describing the repository history as sanitised.
+No third-party wallpaper source files are included in the current tree. [`media/macarchy-preview.gif`](./media/macarchy-preview.gif) is a screen recording of the original local setup and shows wallpaper packs that are not bundled with Macarchy. It is included to demonstrate the interface; Macarchy does not grant reuse rights for artwork visible in the recording.
+
+Earlier versions contained wallpaper source files with incomplete or restrictive provenance. Their blobs still exist in Git history, so a clean new snapshot or a separately approved history rewrite is required before describing the repository history as sanitised.
 
 ## LazyVim starter
 

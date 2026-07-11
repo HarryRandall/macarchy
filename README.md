@@ -4,6 +4,12 @@ A modular macOS desktop setup built around yabai, SketchyBar, Ghostty and a shar
 
 Macarchy used to be easiest to install as one large dotfiles bundle. That made it hard to tell what would change, and harder still to use just one part. The installer now works component by component, backs up files before replacing them and leaves services, themes and macOS security settings alone until you choose to enable them.
 
+## Preview
+
+![Macarchy desktop preview](./media/macarchy-preview.gif)
+
+This recording shows the original local setup, including wallpaper packs that are not bundled with the repository.
+
 ## Start here
 
 You need macOS, Git and [Homebrew](https://brew.sh). Clone the repository, open it in a terminal, then see what is available:
@@ -47,6 +53,43 @@ The installer prints the next step for each selected component. It never disable
 Raycast development source is installed under `${XDG_DATA_HOME:-~/.local/share}/macarchy/raycast-theme`. Raycast's directory under `~/.config/raycast/extensions` is generated runtime output and should never contain `node_modules`.
 
 The `shell` component changes `ZDOTDIR` and backs up `~/.zshenv`. Existing `~/.zprofile` and `~/.zshrc` files stay on disk but are no longer loaded automatically. Review the [shell notes](./docs/install.md#what-happens-to-existing-files) before installing it.
+
+## Examples
+
+For a small terminal setup with Ghostty and the portable Zsh config:
+
+```sh
+./install --dry-run terminal shell
+./install terminal shell
+```
+
+For yabai, skhd and JankyBorders without the rest of the desktop:
+
+```sh
+./install --dry-run window-manager
+./install window-manager
+```
+
+For the menu bar and its network, battery and optional Apple Silicon metrics:
+
+```sh
+./install sketchybar
+```
+
+For themes and the Raycast picker:
+
+```sh
+./install themes raycast
+"$HOME/.local/bin/theme-switch" --list
+"$HOME/.local/bin/theme-switch" carbonfox
+```
+
+Each component can be checked or removed on its own:
+
+```sh
+./install status terminal shell
+./install uninstall terminal shell
+```
 
 ## After installation
 
