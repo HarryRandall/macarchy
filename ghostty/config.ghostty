@@ -1,0 +1,18 @@
+window-decoration = true
+macos-titlebar-style = hidden
+macos-window-buttons = hidden
+window-padding-x = 14
+window-padding-y = 14
+window-padding-balance = true
+background-opacity = 0.92
+
+keybind = cmd+enter=unbind
+keybind = cmd+enter=new_window
+keybind = ctrl+left=unbind
+keybind = ctrl+right=unbind
+keybind = ctrl+up=unbind
+keybind = ctrl+down=unbind
+
+# theme-switch owns this optional file, leaving the user's main configuration
+# untouched when colours change.
+config-file = ?macarchy-theme.ghostty
