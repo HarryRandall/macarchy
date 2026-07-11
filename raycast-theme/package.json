@@ -60,6 +60,6 @@
     "validate:store": "ray lint"
   },
   "engines": {
-    "node": ">=22.14"
+    "node": ">=22.22.2"
   }
 }

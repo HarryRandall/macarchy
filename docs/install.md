@@ -9,7 +9,7 @@ Macarchy copies files rather than symlinking them. That makes an installed setup
 - Git
 - Zsh and the macOS system Bash, both included with macOS
 
-Raycast development needs Node.js 22.14 or newer. Apple Silicon system metrics use `macmon`; Intel Macs still get the bar, network and battery items but show placeholders for CPU, GPU and RAM sensors.
+Raycast development needs Node.js 22.22.2 or newer. Apple Silicon system metrics use `macmon`; Intel Macs still get the bar, network and battery items but show placeholders for CPU, GPU and RAM sensors.
 
 ## Choose components
 
