@@ -85,6 +85,11 @@ If a managed file has local edits, an ordinary update stops before replacing it.
 ./install --force terminal
 ```
 
+When upgrading from the old all-in-one setup, the installer also handles two legacy cases:
+
+- An existing Ghostty `config` file is backed up and replaced with a comment-only compatibility file, preventing it from overriding the newer `config.ghostty`.
+- Removed wallpaper directories and renamed bundled themes are moved into the normal backup directory. They are never deleted outright.
+
 ## Uninstall
 
 ```sh

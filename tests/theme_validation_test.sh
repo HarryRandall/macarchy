@@ -77,6 +77,8 @@ MACARCHY_LEGACY_THEME_STATE="$RUNTIME_THEMES/.current"
 MACARCHY_LEGACY_BACKGROUND_STATE="$RUNTIME_THEMES/.backgrounds.json"
 printf '%s\n' demo > "$MACARCHY_LEGACY_THEME_STATE"
 [ "$(macarchy_theme_current)" = demo ] || fail 'legacy active theme state was not read'
+printf '%s\n' lumon > "$MACARCHY_LEGACY_THEME_STATE"
+[ "$(macarchy_theme_current)" = cool-blue ] || fail 'renamed Lumon state was not mapped to Cool Blue'
 
 printf '%s\n' '{"other":"kept.jpg"}' > "$MACARCHY_LEGACY_BACKGROUND_STATE"
 macarchy_theme_save_background wallpaper.jpg || fail 'legacy background state was not migrated'

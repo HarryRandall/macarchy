@@ -105,22 +105,24 @@ pass 'dry run is side-effect free'
 # Direct shorthand installs one component and leaves unrelated components alone.
 mkdir -p "$XDG_CONFIG_HOME/ghostty"
 printf '%s\n' 'original ghostty config' > "$XDG_CONFIG_HOME/ghostty/config.ghostty"
+printf '%s\n' 'original legacy ghostty config' > "$XDG_CONFIG_HOME/ghostty/config"
 TERMINAL_OUTPUT="$TEST_ROOT/terminal-install.out"
 run_capture "$TERMINAL_OUTPUT" terminal
 assert_file "$XDG_CONFIG_HOME/ghostty/config.ghostty"
 cmp -s "$REPO_ROOT/ghostty/config.ghostty" "$XDG_CONFIG_HOME/ghostty/config.ghostty" || fail 'terminal config was not installed'
+assert_contains "$XDG_CONFIG_HOME/ghostty/config" 'Legacy Ghostty compatibility file'
 assert_no_path "$XDG_CONFIG_HOME/nvim"
 assert_contains "$FAKE_BREW_LOG" 'install --cask ghostty'
 assert_file "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv"
 BACKUP_COUNT_BEFORE="$(find "$XDG_STATE_HOME/macarchy/backups" -type f | wc -l | tr -d ' ')"
-[ "$BACKUP_COUNT_BEFORE" -eq 1 ] || fail 'existing terminal config was not backed up once'
+[ "$BACKUP_COUNT_BEFORE" -eq 2 ] || fail 'current and legacy terminal configs were not backed up once'
 pass 'installs only the selected component and backs up existing files'
 
 # Repeating an install should not make another backup or duplicate state.
 run_capture "$TEST_ROOT/terminal-reinstall.out" install terminal
 BACKUP_COUNT_AFTER="$(find "$XDG_STATE_HOME/macarchy/backups" -type f | wc -l | tr -d ' ')"
 [ "$BACKUP_COUNT_AFTER" -eq "$BACKUP_COUNT_BEFORE" ] || fail 'idempotent install created another backup'
-[ "$(wc -l < "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv" | tr -d ' ')" -eq 1 ] || fail 'manifest contains duplicate entries'
+[ "$(wc -l < "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv" | tr -d ' ')" -eq 2 ] || fail 'manifest contains duplicate entries'
 pass 'repeated install is idempotent'
 
 # A rerun must stop rather than overwrite a locally edited managed file.
@@ -154,12 +156,13 @@ pass 'updates prune unchanged files no longer shipped by a component'
 
 STATUS_OUTPUT="$TEST_ROOT/status.out"
 run_capture "$STATUS_OUTPUT" status terminal
-assert_contains "$STATUS_OUTPUT" 'installed (1 managed files)'
+assert_contains "$STATUS_OUTPUT" 'installed (2 managed files)'
 pass 'reports installed state'
 
 # Uninstall restores the exact file that existed before Macarchy managed it.
 run_capture "$TEST_ROOT/terminal-uninstall.out" uninstall terminal
 assert_contains "$XDG_CONFIG_HOME/ghostty/config.ghostty" 'original ghostty config'
+assert_contains "$XDG_CONFIG_HOME/ghostty/config" 'original legacy ghostty config'
 assert_no_path "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv"
 pass 'uninstall restores the original file'
 
@@ -201,11 +204,21 @@ assert_file "$XDG_CONFIG_HOME/sketchybar/sketchybarrc"
 pass 'installs the SketchyBar app font dependency'
 
 # Themes include their shared library but start without mutable runtime state.
+mkdir -p "$XDG_CONFIG_HOME/themes/lumon/backgrounds" "$XDG_CONFIG_HOME/themes/blackgold/backgrounds"
+printf '%s\n' 'DARK_MODE=true' > "$XDG_CONFIG_HOME/themes/lumon/theme.env"
+printf '%s\n' 'old wallpaper' > "$XDG_CONFIG_HOME/themes/lumon/backgrounds/old.jpg"
+printf '%s\n' 'old wallpaper' > "$XDG_CONFIG_HOME/themes/blackgold/backgrounds/old.jpg"
 run_capture "$TEST_ROOT/themes.out" themes
 assert_file "$XDG_CONFIG_HOME/themes/blackgold/theme.env"
 assert_file "$XDG_DATA_HOME/macarchy/lib/theme.sh"
 assert_file "$MACARCHY_BIN_HOME/theme-switch"
 assert_no_path "$XDG_CONFIG_HOME/themes/.current"
+assert_no_path "$XDG_CONFIG_HOME/themes/lumon"
+assert_no_path "$XDG_CONFIG_HOME/themes/blackgold/backgrounds"
+find "$XDG_STATE_HOME/macarchy/backups" -path '*themes/*legacy-lumon' -type d | grep . >/dev/null \
+  || fail 'legacy renamed theme was not backed up'
+find "$XDG_STATE_HOME/macarchy/backups" -path '*themes/*legacy-blackgold-backgrounds' -type d | grep . >/dev/null \
+  || fail 'legacy wallpaper directory was not backed up'
 assert_contains "$TEST_ROOT/themes.out" "$MACARCHY_BIN_HOME/theme-switch"
 if grep -F 'desktoppr' "$TEST_ROOT/themes.out" "$FAKE_BREW_LOG" >/dev/null; then
   fail 'themes installed optional desktoppr despite having a system fallback'

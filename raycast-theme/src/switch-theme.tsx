@@ -108,6 +108,13 @@ function borderColour(value: string | undefined): string | undefined {
   return match ? `#${match[1]}` : undefined;
 }
 
+function normaliseLegacyThemeName(name: string, themes: Theme[]): string {
+  const current = name.trim();
+  if (current === "lumon" && themes.some((theme) => theme.name === "cool-blue")) return "cool-blue";
+  if (current === "turbonite" && themes.some((theme) => theme.name === "amber-metal")) return "amber-metal";
+  return current;
+}
+
 async function readOptional(path: string): Promise<string> {
   try {
     return await readFile(path, "utf8");
@@ -208,7 +215,7 @@ async function loadThemeState(themesDirectory: string, themeStateDirectory: stri
   );
 
   return {
-    currentTheme: selectedTheme.trim(),
+    currentTheme: normaliseLegacyThemeName(selectedTheme, themes),
     themes: themes.sort((left, right) => left.name.localeCompare(right.name)),
   };
 }

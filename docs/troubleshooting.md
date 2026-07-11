@@ -64,6 +64,17 @@ Run it from a terminal to see the failing target:
 
 The active theme is only recorded after all required writes succeed. Optional applications that are not installed are skipped.
 
+## Ghostty still uses old settings
+
+Ghostty loads its macOS Application Support config after its XDG config. Check both locations if a setting still overrides Macarchy:
+
+```sh
+sed -n '1,120p' "$HOME/.config/ghostty/config.ghostty"
+sed -n '1,120p' "$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+```
+
+The installer neutralises the older XDG file named `config`, but it only warns about a non-empty Application Support file because that file may be intentionally machine-specific.
+
 ## Raycast store validation rejects the author
 
 Local linting and builds work with the neutral `macarchy` author. Raycast Store publishing requires a real Raycast handle, so a publisher must change the manifest author before running:

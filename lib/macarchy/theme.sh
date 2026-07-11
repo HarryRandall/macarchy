@@ -113,12 +113,29 @@ macarchy_theme_list() {
     done | LC_ALL=C sort
 }
 
+macarchy_theme_normalise_name() {
+    local name="$1"
+
+    case "$name" in
+        lumon)
+            [[ -d "$MACARCHY_THEMES_DIR/cool-blue" ]] && name="cool-blue"
+            ;;
+        turbonite)
+            [[ -d "$MACARCHY_THEMES_DIR/amber-metal" ]] && name="amber-metal"
+            ;;
+    esac
+    printf '%s\n' "$name"
+}
+
 macarchy_theme_current() {
+    local current=""
+
     if [[ -r "$MACARCHY_THEME_STATE" ]]; then
-        sed -n '1p' "$MACARCHY_THEME_STATE"
+        current="$(sed -n '1p' "$MACARCHY_THEME_STATE")"
     elif [[ -r "$MACARCHY_LEGACY_THEME_STATE" ]]; then
-        sed -n '1p' "$MACARCHY_LEGACY_THEME_STATE"
+        current="$(sed -n '1p' "$MACARCHY_LEGACY_THEME_STATE")"
     fi
+    macarchy_theme_normalise_name "$current"
 }
 
 macarchy_theme_cycle() {

@@ -493,6 +493,71 @@ install_tree() {
   [ "$found" -eq 1 ] || warn "no files found in $source_dir"
 }
 
+install_legacy_ghostty_shim() {
+  local legacy_config="$CONFIG_HOME/ghostty/config"
+  local macos_config="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+  local temporary
+
+  # Ghostty still loads the pre-1.2.3 filename after config.ghostty. Replacing
+  # an existing legacy file with a managed, empty shim prevents stale settings
+  # from overriding the new config while allowing uninstall to restore it.
+  if path_exists "$legacy_config" || lookup_manifest_entry terminal "$legacy_config" >/dev/null 2>&1; then
+    temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-ghostty-legacy.XXXXXX")"
+    printf '%s\n' \
+      '# Legacy Ghostty compatibility file managed by Macarchy.' \
+      '# Put local overrides in config.ghostty or a file imported from it.' \
+      > "$temporary"
+    install_managed_file terminal "$temporary" "$legacy_config"
+    rm -f "$temporary"
+  fi
+
+  if [ "$(uname -s)" = 'Darwin' ] && [ -f "$macos_config" ] \
+    && grep -Ev '^[[:space:]]*(#|$)' "$macos_config" >/dev/null 2>&1; then
+    warn "Ghostty also loads $macos_config after the XDG config; settings there may override Macarchy"
+  fi
+}
+
+move_legacy_theme_path() {
+  local relative="$1" source backup_parent backup_target label
+
+  source="$CONFIG_HOME/themes/$relative"
+  path_exists "$source" || return 0
+  label="${relative//\//-}"
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    info "Would move legacy theme content to a backup: $source"
+    return 0
+  fi
+
+  BACKUP_COUNTER=$((BACKUP_COUNTER + 1))
+  backup_parent="$BACKUP_DIR/$BACKUP_RUN_ID/themes"
+  backup_target="$backup_parent/${BACKUP_COUNTER}-legacy-$label"
+  mkdir -p "$backup_parent"
+  mv "$source" "$backup_target"
+  info "Moved legacy theme content from $source to $backup_target"
+}
+
+migrate_legacy_theme_content() {
+  local relative
+
+  # These paths came from older bundled themes and wallpaper sets. Move them
+  # out of the active theme directory rather than deleting them, as users may
+  # have made local changes or may still want the images.
+  for relative in \
+    awakening \
+    city-783 \
+    midnight \
+    lumon \
+    turbonite \
+    blackgold/backgrounds \
+    carbonfox/backgrounds \
+    matte-black/backgrounds \
+    matte-black/wall.jpg
+  do
+    move_legacy_theme_path "$relative"
+  done
+}
+
 install_zsh_bootstrap() {
   local temporary
   temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-zshenv.XXXXXX")"
@@ -521,6 +586,7 @@ install_component_files() {
       ;;
     terminal)
       install_managed_file "$component" "$REPO_ROOT/ghostty/config.ghostty" "$CONFIG_HOME/ghostty/config.ghostty"
+      install_legacy_ghostty_shim
       ;;
     shell)
       if path_exists "$HOME/.zshrc" || path_exists "$HOME/.zprofile"; then
@@ -538,6 +604,7 @@ install_component_files() {
       install_tree "$component" "$REPO_ROOT/fastfetch" "$CONFIG_HOME/fastfetch"
       ;;
     themes)
+      migrate_legacy_theme_content
       install_tree "$component" "$REPO_ROOT/themes" "$CONFIG_HOME/themes"
       install_managed_file "$component" "$REPO_ROOT/bin/theme-switch" "$BIN_HOME/theme-switch"
       install_managed_file "$component" "$REPO_ROOT/bin/set-wallpaper" "$BIN_HOME/set-wallpaper"
