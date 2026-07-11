@@ -1,6 +1,6 @@
 setopt PROMPT_SUBST
 
-_MACARCHY_SHELL_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/themes/.shell-env"
+_MACARCHY_SHELL_ENV="${MACARCHY_GENERATED_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/macarchy/generated}/shell-env"
 
 function _macarchy_load_theme() {
     [[ -r "$_MACARCHY_SHELL_ENV" ]] && source "$_MACARCHY_SHELL_ENV"

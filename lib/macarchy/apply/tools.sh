@@ -2,10 +2,13 @@
 
 macarchy_apply_neovim() {
     local config_dir="$MACARCHY_CONFIG_HOME/nvim"
-    local state_file="$MACARCHY_THEMES_DIR/.nvim-colorscheme"
+    local state_file="$MACARCHY_GENERATED_DIR/nvim-colorscheme"
 
     [[ -n "$THEME_NVIM_COLORSCHEME" && -d "$config_dir" ]] || return 0
-    printf '%s\n' "$THEME_NVIM_COLORSCHEME" | macarchy_atomic_write "$state_file"
+    if ! printf '%s\n' "$THEME_NVIM_COLORSCHEME" | macarchy_write_generated "$state_file"; then
+        macarchy_error "Neovim theme state could not be written"
+        return 1
+    fi
     pkill -WINCH -x nvim >/dev/null 2>&1 || true
     macarchy_info "  Neovim: $THEME_NVIM_COLORSCHEME"
 }
@@ -27,7 +30,7 @@ macarchy_write_btop_theme() {
     purple="$(macarchy_ghostty_palette "$ghostty_file" 5 "$accent")"
     orange="$(macarchy_ghostty_palette "$ghostty_file" 11 "$yellow")"
 
-    macarchy_atomic_write "$target" <<EOF
+    macarchy_write_generated "$target" <<EOF
 theme[main_bg]=""
 theme[main_fg]="$foreground"
 theme[title]="$foreground"
@@ -73,17 +76,12 @@ EOF
 
 macarchy_apply_btop() {
     local config="$MACARCHY_CONFIG_HOME/btop/btop.conf"
-    local temporary
 
     [[ -f "$config" ]] || return 0
-    macarchy_write_btop_theme
-    temporary="$(mktemp "$(dirname "$config")/.btop.XXXXXX")"
-    awk '
-        /^color_theme[[:space:]]*=/ { print "color_theme = \"macarchy\""; found=1; next }
-        { print }
-        END { if (!found) print "color_theme = \"macarchy\"" }
-    ' "$config" > "$temporary"
-    mv "$temporary" "$config"
+    if ! macarchy_write_btop_theme; then
+        macarchy_error "btop theme could not be written"
+        return 1
+    fi
     pkill -USR2 -x btop >/dev/null 2>&1 || true
     macarchy_info "  btop: colours updated"
 }

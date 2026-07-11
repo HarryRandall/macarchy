@@ -230,6 +230,8 @@ install_dependencies() {
 file_hash() {
   local file="$1"
 
+  [ -f "$file" ] || return 1
+
   if command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "$file" | awk '{print $1}'
   elif command -v sha256sum >/dev/null 2>&1; then
@@ -354,7 +356,7 @@ install_managed_file() {
   fi
 
   if [ "$had_entry" -eq 1 ] && path_exists "$destination"; then
-    actual="$(file_hash "$destination")"
+    actual="$(file_hash "$destination" 2>/dev/null || true)"
     if [ "$actual" != "$previous_checksum" ]; then
       if [ "$DRY_RUN" -eq 1 ]; then
         info "Would keep locally modified managed file: $destination"
@@ -416,7 +418,7 @@ prune_removed_managed_files() {
     fi
 
     if path_exists "$destination"; then
-      actual="$(file_hash "$destination")"
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
       if [ "$actual" != "$expected" ]; then
         warn "kept locally modified file no longer shipped by $component: $destination"
         unresolved=$((unresolved + 1))
@@ -608,7 +610,7 @@ status_component() {
       missing=$((missing + 1))
       continue
     fi
-    actual="$(file_hash "$destination")"
+    actual="$(file_hash "$destination" 2>/dev/null || true)"
     [ "$actual" = "$expected" ] || modified=$((modified + 1))
   done < "$manifest"
 
@@ -654,7 +656,7 @@ uninstall_component() {
 
   while IFS=$'\t' read -r destination backup expected; do
     if path_exists "$destination"; then
-      actual="$(file_hash "$destination")"
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
       if [ "$actual" != "$expected" ]; then
         warn "kept modified file: $destination"
         unresolved=$((unresolved + 1))
@@ -704,10 +706,68 @@ uninstall_component() {
   [ "$unresolved" -eq 0 ]
 }
 
+uninstall_generated_theme_files() {
+  local manifest="$MACARCHY_STATE_DIR/generated/themes.tsv"
+  local temporary destination expected actual
+  local unresolved=0
+
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$(dirname "$manifest")/.themes-uninstall.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination expected; do
+    [ -n "$destination" ] || continue
+
+    if path_exists "$destination"; then
+      if [ -d "$destination" ]; then
+        warn "kept generated path because it is now a directory: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\n' "$destination" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      actual="$(file_hash "$destination" 2>/dev/null || true)"
+      if [ "$actual" != "$expected" ]; then
+        warn "kept modified generated file: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\n' "$destination" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would remove generated theme file: $destination"
+      else
+        rm -f "$destination"
+        info "Removed generated theme file: $destination"
+      fi
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+  fi
+
+  [ "$unresolved" -eq 0 ]
+}
+
 uninstall_components() {
   local component result=0
   for component in "${SELECTED_COMPONENTS[@]}"; do
     if ! uninstall_component "$component"; then
+      result=1
+    fi
+    if [ "$component" = 'themes' ] && ! uninstall_generated_theme_files; then
       result=1
     fi
   done

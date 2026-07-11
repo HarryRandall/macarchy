@@ -206,7 +206,38 @@ assert_file "$XDG_CONFIG_HOME/themes/blackgold/theme.env"
 assert_file "$XDG_DATA_HOME/macarchy/lib/theme.sh"
 assert_file "$MACARCHY_BIN_HOME/theme-switch"
 assert_no_path "$XDG_CONFIG_HOME/themes/.current"
+assert_contains "$TEST_ROOT/themes.out" "$MACARCHY_BIN_HOME/theme-switch"
+if grep -F 'desktoppr' "$TEST_ROOT/themes.out" "$FAKE_BREW_LOG" >/dev/null; then
+  fail 'themes installed optional desktoppr despite having a system fallback'
+fi
 pass 'installs theme code separately from runtime state'
+
+# Uninstall removes only unchanged runtime files recorded by theme-switch.
+THEME_RUNTIME="$XDG_STATE_HOME/macarchy/themes/current"
+THEME_SHELL_STATE="$XDG_CONFIG_HOME/macarchy/generated/shell-env"
+THEME_GENERATED_MANIFEST="$XDG_STATE_HOME/macarchy/generated/themes.tsv"
+mkdir -p "$(dirname "$THEME_RUNTIME")" "$(dirname "$THEME_SHELL_STATE")" \
+  "$(dirname "$THEME_GENERATED_MANIFEST")"
+printf '%s\n' 'carbonfox' > "$THEME_RUNTIME"
+printf '%s\n' 'generated shell state' > "$THEME_SHELL_STATE"
+RUNTIME_HASH="$(shasum -a 256 "$THEME_RUNTIME" | awk '{print $1}')"
+SHELL_STATE_HASH="$(shasum -a 256 "$THEME_SHELL_STATE" | awk '{print $1}')"
+printf '%s\t%s\n%s\t%s\n' \
+  "$THEME_RUNTIME" "$RUNTIME_HASH" \
+  "$THEME_SHELL_STATE" "$SHELL_STATE_HASH" > "$THEME_GENERATED_MANIFEST"
+printf '%s\n' 'locally edited shell state' > "$THEME_SHELL_STATE"
+
+if run_capture "$TEST_ROOT/themes-uninstall.out" uninstall themes; then
+  fail 'themes uninstall did not report a modified generated file'
+fi
+assert_no_path "$THEME_RUNTIME"
+assert_contains "$THEME_SHELL_STATE" 'locally edited shell state'
+assert_contains "$THEME_GENERATED_MANIFEST" "$THEME_SHELL_STATE"
+assert_no_path "$XDG_STATE_HOME/macarchy/manifests/themes.tsv"
+rm -f "$THEME_SHELL_STATE"
+run_capture "$TEST_ROOT/themes-uninstall-finish.out" uninstall themes
+assert_no_path "$THEME_GENERATED_MANIFEST"
+pass 'theme uninstall removes generated state but preserves local edits'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"

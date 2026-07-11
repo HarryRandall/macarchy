@@ -58,7 +58,10 @@ apply_theme() {
         return 1
     fi
 
-    printf '%s\n' "$name" | macarchy_atomic_write "$MACARCHY_THEME_STATE"
+    if ! printf '%s\n' "$name" | macarchy_write_generated "$MACARCHY_THEME_STATE"; then
+        macarchy_error "active theme state could not be written"
+        return 1
+    fi
     macarchy_info "Theme '$name' applied."
 }
 

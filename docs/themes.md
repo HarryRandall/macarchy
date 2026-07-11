@@ -4,19 +4,23 @@ The themes component keeps colours in sync across the parts of Macarchy you have
 
 ```sh
 ./install themes
-theme-switch --list
-theme-switch carbonfox
-theme-switch next
-theme-switch prev
+"$HOME/.local/bin/theme-switch" --list
+"$HOME/.local/bin/theme-switch" carbonfox
+"$HOME/.local/bin/theme-switch" next
+"$HOME/.local/bin/theme-switch" prev
 ```
+
+The installer uses `~/.local/bin/theme-switch` unless `MACARCHY_BIN_HOME` is set. Use the full path when the `shell` component is not installed, because a themes-only install does not change `PATH`.
 
 An external pack can include wallpapers. Choose one with a path relative to its theme directory:
 
 ```sh
-theme-switch --background my-theme backgrounds/my-wallpaper.jpg
+"$HOME/.local/bin/theme-switch" --background my-theme backgrounds/my-wallpaper.jpg
 ```
 
 The selected background is remembered per theme. Built-in palettes leave the desktop picture unchanged.
+
+Theme choices are stored under `${XDG_STATE_HOME:-~/.local/state}/macarchy/themes`, separately from the theme pack itself. This keeps external theme repositories clean and allows the pack directory to be read-only.
 
 ## What gets updated
 
@@ -30,11 +34,11 @@ The selected background is remembered per theme. Built-in palettes leave the des
 - SketchyBar colours
 - the Zsh prompt colour state
 
-Missing applications are skipped. The script only writes Macarchy-owned generated files, except for btop's `color_theme` setting.
+Missing applications are skipped. The script writes only Macarchy-owned generated files.
 
 ## Theme format
 
-Each theme is a directory containing `theme.env`, `ghostty.conf` and one or more images. `theme.env` is parsed as data and is never sourced as shell code.
+Each theme is a directory containing `theme.env` and `ghostty.conf`. Images are optional and can sit in the theme directory or a `backgrounds` subdirectory. `theme.env` is parsed as data and is never sourced as shell code.
 
 Supported keys are:
 
@@ -58,7 +62,7 @@ Run `./tests/theme_validation_test.sh` before sharing a pack.
 The theme directory is intentionally independent from the rest of the configs. You can point the command at another pack collection:
 
 ```sh
-MACARCHY_THEMES_DIR="$HOME/.local/share/my-themes" theme-switch --list
+MACARCHY_THEMES_DIR="$HOME/.local/share/my-themes" "$HOME/.local/bin/theme-switch" --list
 ```
 
 The Raycast extension has a matching Themes Directory preference. A theme repo can therefore be installed or linked separately without changing the core scripts.

@@ -12,7 +12,10 @@ macarchy_apply_ghostty() {
         return 1
     }
 
-    macarchy_atomic_write "$target_file" < "$source_file"
+    if ! macarchy_write_generated "$target_file" < "$source_file"; then
+        macarchy_error "Ghostty colours could not be written"
+        return 1
+    fi
     pkill -USR2 -x ghostty >/dev/null 2>&1 || pkill -USR2 -x Ghostty >/dev/null 2>&1 || true
     macarchy_info "  Ghostty: colours updated"
 }

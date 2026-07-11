@@ -6,8 +6,9 @@ By default, it looks for:
 
 - the command at `~/.local/bin/theme-switch`
 - themes in `~/.config/themes`
+- theme state in `~/.local/state/macarchy/themes`
 
-Both paths can be changed in the extension preferences. `~` and `$HOME` are expanded before the paths are used.
+All three paths can be changed in the extension preferences. `~` and `$HOME` are expanded before the paths are used, and the theme and state directories are passed to `theme-switch` when a selection is applied. If Macarchy was installed with a custom `XDG_STATE_HOME`, set Theme State Directory to `$XDG_STATE_HOME/macarchy/themes` using its full path.
 
 ## Run it locally
 

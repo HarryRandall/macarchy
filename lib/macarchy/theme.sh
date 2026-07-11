@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
 MACARCHY_THEMES_DIR="${MACARCHY_THEMES_DIR:-$MACARCHY_CONFIG_HOME/themes}"
-MACARCHY_THEME_STATE="$MACARCHY_THEMES_DIR/.current"
-MACARCHY_BACKGROUND_STATE="$MACARCHY_THEMES_DIR/.backgrounds.json"
+MACARCHY_THEME_RUNTIME_DIR="${MACARCHY_THEME_RUNTIME_DIR:-$MACARCHY_STATE_HOME/macarchy/themes}"
+MACARCHY_THEME_STATE="${MACARCHY_THEME_STATE:-$MACARCHY_THEME_RUNTIME_DIR/current}"
+MACARCHY_BACKGROUND_STATE="${MACARCHY_BACKGROUND_STATE:-$MACARCHY_THEME_RUNTIME_DIR/backgrounds.json}"
+MACARCHY_LEGACY_THEME_STATE="$MACARCHY_THEMES_DIR/.current"
+MACARCHY_LEGACY_BACKGROUND_STATE="$MACARCHY_THEMES_DIR/.backgrounds.json"
 
 macarchy_theme_reset() {
     THEME_DARK_MODE="true"
@@ -111,7 +114,11 @@ macarchy_theme_list() {
 }
 
 macarchy_theme_current() {
-    [[ -r "$MACARCHY_THEME_STATE" ]] && sed -n '1p' "$MACARCHY_THEME_STATE"
+    if [[ -r "$MACARCHY_THEME_STATE" ]]; then
+        sed -n '1p' "$MACARCHY_THEME_STATE"
+    elif [[ -r "$MACARCHY_LEGACY_THEME_STATE" ]]; then
+        sed -n '1p' "$MACARCHY_LEGACY_THEME_STATE"
+    fi
 }
 
 macarchy_theme_cycle() {
@@ -150,10 +157,14 @@ macarchy_theme_background_valid() {
 macarchy_theme_selected_background() {
     local selected=""
     local jq_bin=""
+    local background_state="$MACARCHY_BACKGROUND_STATE"
 
     jq_bin="$(macarchy_command jq || true)"
-    if [[ -n "$jq_bin" && -r "$MACARCHY_BACKGROUND_STATE" ]]; then
-        selected="$("$jq_bin" -r --arg theme "$MACARCHY_THEME_NAME" '.[$theme] // empty' "$MACARCHY_BACKGROUND_STATE" 2>/dev/null || true)"
+    if [[ ! -r "$background_state" && -r "$MACARCHY_LEGACY_BACKGROUND_STATE" ]]; then
+        background_state="$MACARCHY_LEGACY_BACKGROUND_STATE"
+    fi
+    if [[ -n "$jq_bin" && -r "$background_state" ]]; then
+        selected="$("$jq_bin" -r --arg theme "$MACARCHY_THEME_NAME" '.[$theme] // empty' "$background_state" 2>/dev/null || true)"
     fi
     macarchy_theme_background_valid "$selected" && { printf '%s\n' "$selected"; return 0; }
     macarchy_theme_background_valid "$THEME_WALLPAPER" && printf '%s\n' "$THEME_WALLPAPER"
@@ -161,7 +172,7 @@ macarchy_theme_selected_background() {
 
 macarchy_theme_save_background() {
     local relative="$1"
-    local jq_bin temporary
+    local jq_bin temporary source_state=""
 
     macarchy_theme_background_valid "$relative" || {
         macarchy_error "'$relative' is not a background in theme '$MACARCHY_THEME_NAME'"
@@ -170,15 +181,50 @@ macarchy_theme_save_background() {
     jq_bin="$(macarchy_command jq || true)"
     [[ -n "$jq_bin" ]] || { macarchy_error "jq is required to save a background choice"; return 1; }
 
-    mkdir -p "$MACARCHY_THEMES_DIR"
-    temporary="$(mktemp "$MACARCHY_THEMES_DIR/.backgrounds.XXXXXX")"
-    if [[ -r "$MACARCHY_BACKGROUND_STATE" ]]; then
-        "$jq_bin" --arg theme "$MACARCHY_THEME_NAME" --arg background "$relative" \
-            '.[$theme] = $background' "$MACARCHY_BACKGROUND_STATE" > "$temporary"
-    else
-        "$jq_bin" -n --arg theme "$MACARCHY_THEME_NAME" --arg background "$relative" \
-            '{($theme): $background}' > "$temporary"
+    mkdir -p "$MACARCHY_THEME_RUNTIME_DIR" || {
+        macarchy_error "could not create theme state directory: $MACARCHY_THEME_RUNTIME_DIR"
+        return 1
+    }
+    temporary="$(mktemp "$MACARCHY_THEME_RUNTIME_DIR/.backgrounds.XXXXXX")" || {
+        macarchy_error "could not create temporary background state"
+        return 1
+    }
+
+    if [[ -e "$MACARCHY_BACKGROUND_STATE" || -L "$MACARCHY_BACKGROUND_STATE" ]]; then
+        source_state="$MACARCHY_BACKGROUND_STATE"
+    elif [[ -e "$MACARCHY_LEGACY_BACKGROUND_STATE" || -L "$MACARCHY_LEGACY_BACKGROUND_STATE" ]]; then
+        source_state="$MACARCHY_LEGACY_BACKGROUND_STATE"
     fi
-    chmod 600 "$temporary"
-    mv "$temporary" "$MACARCHY_BACKGROUND_STATE"
+
+    if [[ -n "$source_state" ]]; then
+        if [[ ! -f "$source_state" || -L "$source_state" || ! -r "$source_state" ]]; then
+            rm -f "$temporary"
+            macarchy_error "background state is not a readable regular file: $source_state"
+            return 1
+        fi
+        if ! "$jq_bin" -e 'type == "object"' "$source_state" >/dev/null 2>&1; then
+            rm -f "$temporary"
+            macarchy_error "background state is not a valid JSON object: $source_state"
+            return 1
+        fi
+        if ! "$jq_bin" --arg theme "$MACARCHY_THEME_NAME" --arg background "$relative" \
+            '.[$theme] = $background' "$source_state" > "$temporary"; then
+            rm -f "$temporary"
+            macarchy_error "could not update background state"
+            return 1
+        fi
+    else
+        if ! "$jq_bin" -n --arg theme "$MACARCHY_THEME_NAME" --arg background "$relative" \
+            '{($theme): $background}' > "$temporary"; then
+            rm -f "$temporary"
+            macarchy_error "could not create background state"
+            return 1
+        fi
+    fi
+
+    if ! macarchy_write_generated "$MACARCHY_BACKGROUND_STATE" < "$temporary"; then
+        rm -f "$temporary"
+        return 1
+    fi
+    rm -f "$temporary"
 }

@@ -30,6 +30,15 @@
       "required": true,
       "default": "~/.config/themes",
       "placeholder": "~/.config/themes"
+    },
+    {
+      "name": "themeStateDirectory",
+      "title": "Theme State Directory",
+      "description": "Directory containing Macarchy's current theme and wallpaper choices",
+      "type": "textfield",
+      "required": true,
+      "default": "~/.local/state/macarchy/themes",
+      "placeholder": "~/.local/state/macarchy/themes"
     }
   ],
   "commands": [

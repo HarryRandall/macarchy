@@ -1,7 +1,8 @@
 local M = {}
 
 local config_home = vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
-M.state_file = config_home .. "/themes/.nvim-colorscheme"
+local generated_dir = vim.env.MACARCHY_GENERATED_DIR or (config_home .. "/macarchy/generated")
+M.state_file = generated_dir .. "/nvim-colorscheme"
 
 local fallback = "gruvbox"
 

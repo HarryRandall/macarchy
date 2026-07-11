@@ -18,6 +18,7 @@ import { basename, extname, isAbsolute, join } from "node:path";
 import { useCallback, useEffect, useState } from "react";
 
 type Preferences = {
+  themeStateDirectory: string;
   themeSwitcherPath: string;
   themesDirectory: string;
 };
@@ -147,17 +148,25 @@ async function loadBackgrounds(themeDirectory: string): Promise<Background[]> {
   return backgrounds.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
-async function loadThemeState(themesDirectory: string): Promise<ThemeState> {
-  const [entries, currentTheme, backgroundStateText] = await Promise.all([
-    readdir(themesDirectory, { withFileTypes: true }),
-    readOptional(join(themesDirectory, ".current")),
-    readOptional(join(themesDirectory, ".backgrounds.json")),
-  ]);
+async function loadThemeState(themesDirectory: string, themeStateDirectory: string): Promise<ThemeState> {
+  const [entries, currentTheme, legacyCurrentTheme, backgroundStateText, legacyBackgroundStateText] = await Promise.all(
+    [
+      readdir(themesDirectory, { withFileTypes: true }),
+      readOptional(join(themeStateDirectory, "current")),
+      readOptional(join(themesDirectory, ".current")),
+      readOptional(join(themeStateDirectory, "backgrounds.json")),
+      readOptional(join(themesDirectory, ".backgrounds.json")),
+    ],
+  );
 
+  // Keep existing installations useful until a theme is next applied and its
+  // state is migrated out of the theme pack.
+  const selectedTheme = currentTheme || legacyCurrentTheme;
+  const selectedBackgroundState = backgroundStateText || legacyBackgroundStateText;
   let backgroundState: Record<string, string> = {};
-  if (backgroundStateText) {
+  if (selectedBackgroundState) {
     try {
-      const parsed: unknown = JSON.parse(backgroundStateText);
+      const parsed: unknown = JSON.parse(selectedBackgroundState);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         backgroundState = Object.fromEntries(
           Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
@@ -199,21 +208,37 @@ async function loadThemeState(themesDirectory: string): Promise<ThemeState> {
   );
 
   return {
-    currentTheme: currentTheme.trim(),
+    currentTheme: selectedTheme.trim(),
     themes: themes.sort((left, right) => left.name.localeCompare(right.name)),
   };
 }
 
-function runThemeSwitcher(executable: string, arguments_: string[]): Promise<void> {
+function runThemeSwitcher(
+  executable: string,
+  arguments_: string[],
+  themesDirectory: string,
+  themeStateDirectory: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    execFile(executable, arguments_, (error, stdout, stderr) => {
-      if (!error) {
-        resolve();
-        return;
-      }
+    execFile(
+      executable,
+      arguments_,
+      {
+        env: {
+          ...process.env,
+          MACARCHY_THEMES_DIR: themesDirectory,
+          MACARCHY_THEME_RUNTIME_DIR: themeStateDirectory,
+        },
+      },
+      (error, stdout, stderr) => {
+        if (!error) {
+          resolve();
+          return;
+        }
 
-      reject(new Error(stderr.trim() || stdout.trim() || error.message));
-    });
+        reject(new Error(stderr.trim() || stdout.trim() || error.message));
+      },
+    );
   });
 }
 
@@ -227,13 +252,24 @@ function wallpaperMarkdown(theme: Theme): string {
   return `![${theme.selectedBackground.name}](${image}?raycast-width=720&raycast-height=405)`;
 }
 
-function BackgroundPicker(props: { executable: string; onApplied: () => Promise<void>; theme: Theme }) {
+function BackgroundPicker(props: {
+  executable: string;
+  onApplied: () => Promise<void>;
+  theme: Theme;
+  themesDirectory: string;
+  themeStateDirectory: string;
+}) {
   const [selected, setSelected] = useState(props.theme.selectedBackground?.relativePath);
 
   async function applyBackground(background: Background) {
     const toast = await showToast({ style: Toast.Style.Animated, title: `Applying ${background.name}` });
     try {
-      await runThemeSwitcher(props.executable, ["--background", props.theme.name, background.relativePath]);
+      await runThemeSwitcher(
+        props.executable,
+        ["--background", props.theme.name, background.relativePath],
+        props.themesDirectory,
+        props.themeStateDirectory,
+      );
       setSelected(background.relativePath);
       toast.style = Toast.Style.Success;
       toast.title = `${background.name} selected`;
@@ -267,6 +303,7 @@ function BackgroundPicker(props: { executable: string; onApplied: () => Promise<
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const themesDirectory = expandHome(preferences.themesDirectory);
+  const themeStateDirectory = expandHome(preferences.themeStateDirectory);
   const executable = expandHome(preferences.themeSwitcherPath);
   const [state, setState] = useState<ThemeState>({ currentTheme: "", themes: [] });
   const [loadError, setLoadError] = useState<string>();
@@ -276,14 +313,14 @@ export default function Command() {
     setIsLoading(true);
     setLoadError(undefined);
     try {
-      setState(await loadThemeState(themesDirectory));
+      setState(await loadThemeState(themesDirectory, themeStateDirectory));
     } catch (error) {
       setState({ currentTheme: "", themes: [] });
       setLoadError(errorMessage(error));
     } finally {
       setIsLoading(false);
     }
-  }, [themesDirectory]);
+  }, [themesDirectory, themeStateDirectory]);
 
   useEffect(() => {
     void refresh();
@@ -292,7 +329,7 @@ export default function Command() {
   async function applyTheme(theme: Theme) {
     const toast = await showToast({ style: Toast.Style.Animated, title: `Applying ${theme.title}` });
     try {
-      await runThemeSwitcher(executable, [theme.name]);
+      await runThemeSwitcher(executable, [theme.name], themesDirectory, themeStateDirectory);
       toast.style = Toast.Style.Success;
       toast.title = `${theme.title} applied`;
       await refresh();
@@ -353,7 +390,15 @@ export default function Command() {
                     title="Choose Wallpaper"
                     icon={Icon.Image}
                     shortcut={{ modifiers: ["cmd"], key: "b" }}
-                    target={<BackgroundPicker executable={executable} theme={theme} onApplied={refresh} />}
+                    target={
+                      <BackgroundPicker
+                        executable={executable}
+                        theme={theme}
+                        themesDirectory={themesDirectory}
+                        themeStateDirectory={themeStateDirectory}
+                        onApplied={refresh}
+                      />
+                    }
                   />
                 ) : null}
                 <Action
