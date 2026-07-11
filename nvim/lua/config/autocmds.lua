@@ -46,7 +46,6 @@ clear_backgrounds()
 local theme_group = vim.api.nvim_create_augroup("macarchy_theme_refresh", { clear = true })
 local theme = require("config.theme")
 local last_colorscheme_stamp = theme.stamp()
-local theme_timer = nil
 
 local function refresh_configured_colorscheme()
   vim.schedule(function()
@@ -71,37 +70,11 @@ local function refresh_configured_colorscheme()
   end)
 end
 
-local function start_theme_timer()
-  local uv = vim.uv or vim.loop
-
-  if theme_timer then
-    return
-  end
-
-  theme_timer = uv.new_timer()
-  if not theme_timer then
-    return
-  end
-
-  theme_timer:start(150, 150, refresh_configured_colorscheme)
-end
-
-start_theme_timer()
-
+-- theme-switch sends WINCH to running Neovim processes. VimResized handles
+-- that signal, while the other events cover ordinary focus changes.
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "VimResized" }, {
   group = theme_group,
   callback = refresh_configured_colorscheme,
-})
-
-vim.api.nvim_create_autocmd("VimLeavePre", {
-  group = theme_group,
-  callback = function()
-    if theme_timer then
-      theme_timer:stop()
-      theme_timer:close()
-      theme_timer = nil
-    end
-  end,
 })
 
 local dashboard_filetypes = {

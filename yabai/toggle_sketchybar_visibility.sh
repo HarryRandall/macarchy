@@ -2,19 +2,14 @@
 
 set -u
 
-STATE_FILE="${HOME}/.config/yabai/.sketchybar_hidden"
+SKETCHYBAR_BIN="$(command -v "${SKETCHYBAR_BIN:-sketchybar}" 2>/dev/null || true)"
+JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
+[ -n "$SKETCHYBAR_BIN" ] && [ -n "$JQ_BIN" ] || exit 0
 
-mkdir -p "$(dirname "$STATE_FILE")"
+hidden="$("$SKETCHYBAR_BIN" --query bar 2>/dev/null | "$JQ_BIN" -r '.hidden // "off"' 2>/dev/null || printf 'off')"
 
-is_hidden=0
-if [ -f "$STATE_FILE" ]; then
-  is_hidden=1
-fi
-
-if [ "$is_hidden" -eq 1 ]; then
-  rm -f "$STATE_FILE"
-  sketchybar --bar hidden=off >/dev/null 2>&1 || true
+if [ "$hidden" = "on" ]; then
+  "$SKETCHYBAR_BIN" --bar hidden=off >/dev/null 2>&1 || true
 else
-  : >"$STATE_FILE"
-  sketchybar --bar hidden=on >/dev/null 2>&1 || true
+  "$SKETCHYBAR_BIN" --bar hidden=on >/dev/null 2>&1 || true
 fi

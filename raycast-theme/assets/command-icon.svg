@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Five coloured theme swatches">
+  <rect width="512" height="512" rx="112" fill="#111216"/>
+  <circle cx="88" cy="256" r="38" fill="#e89a3c"/>
+  <circle cx="172" cy="256" r="38" fill="#ae84e8"/>
+  <circle cx="256" cy="256" r="38" fill="#6db7c8"/>
+  <circle cx="340" cy="256" r="38" fill="#e35f8d"/>
+  <circle cx="424" cy="256" r="38" fill="#6c91e8"/>
+</svg>

@@ -1,31 +1,76 @@
 {
+  "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "theme-switcher",
   "title": "Theme Switcher",
-  "description": "Apply Macarchy themes through ~/.local/bin/theme-switch",
+  "description": "Choose and apply an installed Macarchy theme",
   "icon": "command-icon.png",
   "author": "macarchy",
-  "license": "UNLICENSED",
+  "platforms": [
+    "macOS"
+  ],
+  "categories": [
+    "System"
+  ],
+  "license": "MIT",
+  "preferences": [
+    {
+      "name": "themeSwitcherPath",
+      "title": "Theme Switcher",
+      "description": "Path to the installed theme-switch command",
+      "type": "textfield",
+      "required": false,
+      "default": "~/.local/bin/theme-switch",
+      "placeholder": "~/.local/bin/theme-switch"
+    },
+    {
+      "name": "themesDirectory",
+      "title": "Themes Directory",
+      "description": "Directory containing the installed themes",
+      "type": "textfield",
+      "required": false,
+      "default": "~/.config/themes",
+      "placeholder": "~/.config/themes"
+    },
+    {
+      "name": "themeStateDirectory",
+      "title": "Theme State Directory",
+      "description": "Directory containing Macarchy's current theme and wallpaper choices",
+      "type": "textfield",
+      "required": false,
+      "default": "~/.local/state/macarchy/themes",
+      "placeholder": "~/.local/state/macarchy/themes"
+    }
+  ],
   "commands": [
     {
       "name": "switch-theme",
       "title": "Switch Theme",
-      "description": "Pick a theme to apply across your system",
+      "description": "Choose an installed theme and apply it",
       "mode": "view"
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.93.3"
+    "@raycast/api": "^1.104.22"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^1.0.11",
-    "@types/node": "22.13.14",
-    "@types/react": "19.0.12",
-    "eslint": "^9.23.0",
-    "typescript": "^5.8.2"
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^22.20.1",
+    "@types/react": "19.2.17",
+    "eslint": "^10.7.0",
+    "prettier": "^3.9.0",
+    "typescript": "^6.0.3"
   },
   "scripts": {
-    "build": "ray build",
+    "build": "ray build --output dist",
+    "predev": "node scripts/assert-runtime-clean.mjs",
     "dev": "ray develop",
-    "lint": "ray lint"
+    "format": "prettier --write .",
+    "lint": "eslint src && prettier --check . && tsc --noEmit",
+    "lint:fix": "eslint src --fix && prettier --write .",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.ts",
+    "validate:store": "ray lint"
+  },
+  "engines": {
+    "node": ">=22.22.2"
   }
 }

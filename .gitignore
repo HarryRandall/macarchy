@@ -6,12 +6,14 @@
 *.bak
 
 # Runtime-generated files under installed dotfiles.
-btop/themes/active-theme.theme
+btop/themes/macarchy.theme
 raycast-*/node_modules/
 raycast-*/.raycast/
 raycast-*/dist/
 themes/.backgrounds.json
+themes/.current
 sketchybar/theme.sh
 sketchybar/.state/
+macarchy/generated/
 yabai/.sketchybar_hidden
 yabai/float_state.json

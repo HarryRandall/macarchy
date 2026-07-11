@@ -1,16 +1,10 @@
 local M = {}
 
-M.state_file = vim.fn.expand("~/.config/themes/.nvim-colorscheme")
+local config_home = vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
+local generated_dir = vim.env.MACARCHY_GENERATED_DIR or (config_home .. "/macarchy/generated")
+M.state_file = generated_dir .. "/nvim-colorscheme"
 
 local fallback = "gruvbox"
-
-local aliases = {
-  awakening = "gruvbox",
-  blackgold = "gruvbox",
-  carbonfox = "tokyonight-night",
-  ["matte-black"] = "gruvbox",
-  midnight = "tokyonight-night",
-}
 
 local plugins = {
   ["catppuccin"] = "catppuccin",
@@ -28,7 +22,7 @@ local plugins = {
 local function clean_name(value)
   value = tostring(value or ""):match("^%s*(.-)%s*$")
   if value:match("^[%w%._%-]+$") then
-    return aliases[value] or value
+    return value
   end
 end
 

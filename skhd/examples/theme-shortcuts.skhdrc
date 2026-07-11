@@ -1,0 +1,5 @@
+# Optional theme shortcuts. Install the themes component before copying these.
+
+cmd + ctrl - 0x18 : "$HOME/.local/bin/theme-switch" next
+cmd + ctrl + shift - 0x18 : "$HOME/.local/bin/theme-switch" next
+cmd + ctrl - 0x1B : "$HOME/.local/bin/theme-switch" prev

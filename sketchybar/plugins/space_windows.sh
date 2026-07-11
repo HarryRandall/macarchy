@@ -1,11 +1,11 @@
 #!/bin/bash
 
 CONFIG_ROOT="${CONFIG_DIR:-$HOME/.config/sketchybar}"
-YABAI_BIN="${YABAI_BIN:-$(command -v yabai 2>/dev/null || true)}"
-[ -x "$YABAI_BIN" ] || YABAI_BIN="/opt/homebrew/bin/yabai"
-STATE_DIR="$CONFIG_ROOT/.state"
+YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
+JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
+STATE_DIR="${SKETCHYBAR_STATE_DIR:-$CONFIG_ROOT/.state}"
 SPACE_ITEM_STATE="$STATE_DIR/space_items"
-MAX_FALLBACK_SPACES="${MAX_FALLBACK_SPACES:-10}"
+CURRENT_SPACES=""
 
 # shellcheck source=/dev/null
 source "$CONFIG_ROOT/colors.sh"
@@ -14,10 +14,11 @@ source "$CONFIG_ROOT/colors.sh"
 source "$CONFIG_ROOT/plugins/icon_map.sh"
 
 space_ids() {
-  local ids=""
+  local ids="" spaces_json="" display=1 display_ids=""
 
-  if [ -x "$YABAI_BIN" ]; then
-    ids="$("$YABAI_BIN" -m query --spaces 2>/dev/null | jq -r '
+  if [ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ]; then
+    spaces_json="$("$YABAI_BIN" -m query --spaces 2>/dev/null || true)"
+    ids="$(printf '%s' "$spaces_json" | "$JQ_BIN" -r '
       sort_by(.index)
       | .[]
       | select(.index != null)
@@ -30,11 +31,28 @@ space_ids() {
     return 0
   fi
 
-  local space=1
-  while [ "$space" -le "$MAX_FALLBACK_SPACES" ]; do
-    printf '%s\n' "$space"
-    space=$((space + 1))
+  [ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ] || return 1
+
+  # yabai can occasionally truncate the unscoped array response while its
+  # display state settles. Per-display queries use a separate code path, so
+  # collect those as a safe fallback. Space indexes are global across displays.
+  while [ "$display" -le "${MAX_YABAI_DISPLAYS:-16}" ]; do
+    spaces_json="$("$YABAI_BIN" -m query --spaces --display "$display" 2>/dev/null)" || break
+    display_ids="$(printf '%s' "$spaces_json" | "$JQ_BIN" -r '
+      .[]
+      | select(.index != null)
+      | .index
+    ' 2>/dev/null)" || break
+    ids="${ids}${ids:+$'\n'}${display_ids}"
+    display=$((display + 1))
   done
+
+  if [ -n "$ids" ]; then
+    printf '%s\n' "$ids" | awk 'NF' | LC_ALL=C sort -nu
+    return 0
+  fi
+
+  return 1
 }
 
 list_contains() {
@@ -50,6 +68,11 @@ list_contains() {
 
 add_space_item() {
   local sid="$1"
+  local click_action=""
+
+  if [ -n "$YABAI_BIN" ]; then
+    printf -v click_action '%q -m space --focus %q' "$YABAI_BIN" "$sid"
+  fi
 
   sketchybar --add space "space.$sid" left >/dev/null 2>&1 || true
 
@@ -69,27 +92,30 @@ add_space_item() {
     background.border_color=0x00000000 \
     background.color=0x00000000 \
     script="$CONFIG_ROOT/plugins/space.sh" \
-    click_script="$YABAI_BIN -m space --focus $sid"
+    click_script="$click_action"
 }
 
 reconcile_spaces() {
   local force="${1:-}"
-  local current_spaces desired_spaces space drawing
+  local current_spaces desired_spaces known_spaces space drawing state_tmp
 
   mkdir -p "$STATE_DIR"
-  current_spaces="$(space_ids)"
-  desired_spaces="$(space_ids | awk -v max="$MAX_FALLBACK_SPACES" '
-    { seen[$0] = 1 }
-    END {
-      for (i = 1; i <= max; i++) seen[i] = 1
-      for (space in seen) print space
-    }
-  ' | LC_ALL=C sort -n)"
+  known_spaces="$(cat "$SPACE_ITEM_STATE" 2>/dev/null || true)"
+
+  # Keep the existing bar unchanged during a yabai restart. When yabai is not
+  # installed, the rest of SketchyBar still works without ten dead Space items.
+  if ! current_spaces="$(space_ids)"; then
+    CURRENT_SPACES=""
+    return 0
+  fi
+
+  CURRENT_SPACES="$current_spaces"
+  desired_spaces="$current_spaces"
 
   while IFS= read -r space; do
     [ -n "$space" ] || continue
 
-    if [ "$force" = "--force" ]; then
+    if [ "$force" = "--force" ] || ! printf '%s\n' "$known_spaces" | list_contains "$space"; then
       add_space_item "$space"
     fi
 
@@ -101,12 +127,17 @@ reconcile_spaces() {
     sketchybar --set "space.$space" drawing="$drawing" >/dev/null 2>&1 || true
   done <<< "$desired_spaces"
 
+  # Hide items left behind when a high-numbered Space is removed.
   while IFS= read -r space; do
     [ -n "$space" ] || continue
-    refresh_space "$space"
-  done <<< "$current_spaces"
+    if ! printf '%s\n' "$desired_spaces" | list_contains "$space"; then
+      sketchybar --set "space.$space" drawing=off >/dev/null 2>&1 || true
+    fi
+  done <<< "$known_spaces"
 
-  printf '%s\n' "$current_spaces" > "$SPACE_ITEM_STATE"
+  state_tmp="$SPACE_ITEM_STATE.$$"
+  printf '%s\n' "$desired_spaces" > "$state_tmp"
+  mv "$state_tmp" "$SPACE_ITEM_STATE"
 }
 
 map_app_icon() {
@@ -127,7 +158,7 @@ render_space() {
       icon_strip+=" $(map_app_icon "$app")"
     done <<< "$apps"
   else
-    icon_strip=" —"
+    icon_strip=" -"
   fi
 
   sketchybar --set "space.$space" label="$icon_strip"
@@ -137,19 +168,21 @@ apps_for_space() {
   local space="$1"
   local space_json display_id
 
-  [ -x "$YABAI_BIN" ] || return 1
+  [ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ] || return 1
 
   space_json="$("$YABAI_BIN" -m query --spaces --space "$space" 2>/dev/null)" || return 1
-  display_id="$(printf '%s' "$space_json" | jq -r '.display')"
+  display_id="$(printf '%s' "$space_json" | "$JQ_BIN" -r '.display')"
 
-  "$YABAI_BIN" -m query --windows --space "$space" 2>/dev/null | jq -r --argjson display "$display_id" --argjson space "$space" '
+  "$YABAI_BIN" -m query --windows --space "$space" 2>/dev/null | "$JQ_BIN" -r --argjson display "$display_id" --argjson space "$space" '
     map(
       select(
         .app
         and .space == $space
         and .display == $display
-        and .role == "AXWindow"
-        and .["has-ax-reference"] == true
+        and (
+          (.role == "AXWindow" and .["has-ax-reference"] == true)
+          or (.["root-window"] == true and ((.role // "") == ""))
+        )
         and .["is-minimized"] == false
         and .["is-hidden"] == false
         and (."is-sticky" // false) == false
@@ -175,30 +208,40 @@ refresh_space() {
   render_space "$space" "$apps"
 }
 
+refresh_current_spaces() {
+  local space
+
+  while IFS= read -r space; do
+    [ -n "$space" ] || continue
+    refresh_space "$space"
+  done <<< "$CURRENT_SPACES"
+}
+
 case "${SENDER:-}" in
   space_windows_change)
     reconcile_spaces
 
-    if [ -n "${INFO:-}" ]; then
-      changed_space="$(printf '%s' "$INFO" | jq -r '.space // empty')"
+    if [ -n "${INFO:-}" ] && [ -n "$JQ_BIN" ]; then
+      changed_space="$(printf '%s' "$INFO" | "$JQ_BIN" -r '.space // empty' 2>/dev/null)"
 
-      if printf '%s\n' "$(space_ids)" | list_contains "$changed_space"; then
+      if printf '%s\n' "$CURRENT_SPACES" | list_contains "$changed_space"; then
         refresh_space "$changed_space"
       else
-        while IFS= read -r space; do
-          [ -n "$space" ] || continue
-          refresh_space "$space"
-        done <<< "$(space_ids)"
+        refresh_current_spaces
       fi
 
-      exit 0
+    else
+      refresh_current_spaces
     fi
+
+    exit 0
     ;;
 esac
 
 case "${1:-}" in
   --reconcile)
     reconcile_spaces --force
+    refresh_current_spaces
     exit 0
     ;;
   --space-ids)
@@ -208,9 +251,4 @@ case "${1:-}" in
 esac
 
 reconcile_spaces
-
-while IFS= read -r space
-do
-  [ -n "$space" ] || continue
-  refresh_space "$space"
-done <<< "$(space_ids)"
+refresh_current_spaces

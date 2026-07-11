@@ -6,16 +6,18 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-IMG="$(python3 - <<'PY' "$1"
-import pathlib, sys
-print(pathlib.Path(sys.argv[1]).expanduser().resolve())
-PY
-)"
+input="$1"
+case "$input" in
+  '~') input="$HOME" ;;
+  '~/'*) input="$HOME/${input#'~/'}" ;;
+esac
 
-if [ ! -f "$IMG" ]; then
-  echo "image not found: $IMG" >&2
+if [ ! -f "$input" ]; then
+  echo "image not found: $input" >&2
   exit 1
 fi
+
+IMG="$(cd "$(dirname "$input")" && pwd -P)/$(basename "$input")"
 
 WALLPAPER_INDEX="$HOME/Library/Application Support/com.apple.wallpaper/Store/Index.plist"
 
@@ -98,7 +100,8 @@ def desktop_choice():
 def update_desktop(node):
     if not isinstance(node, dict):
         return
-    # Update existing Linked entry (used by Spaces that follow All-Spaces wallpaper)
+    # Update an existing Linked entry used by Spaces that follow the
+    # all-Spaces wallpaper.
     linked = node.get("Linked")
     if isinstance(linked, dict):
         content = linked.setdefault("Content", {})
@@ -153,7 +156,7 @@ PY
 
 nudge_wallpaper_agent() {
   # Re-kicks WallpaperAgent so it re-reads Index.plist and applies the new
-  # image to every Space. Importantly, we do NOT touch Dock — restarting Dock
+  # image to every Space. Importantly, we do not touch Dock, as restarting Dock
   # is what caused the old black flash. WallpaperAgent on its own is silent.
   /bin/launchctl kickstart -k "gui/$(id -u)/com.apple.wallpaper.agent" >/dev/null 2>&1 || true
 }
@@ -168,13 +171,13 @@ fi
 
 # 2) Plist edit: rewrites Index.plist for every Space / display so when the
 #    user switches Spaces those windows already show the new wallpaper.
-#    Always run alongside desktoppr — they cover different surfaces.
+#    Always run alongside desktoppr because they cover different surfaces.
 if set_with_wallpaper_store; then
   applied=1
   nudge_wallpaper_agent
 fi
 
-# Fallbacks only if both of the above failed (rare — usually missing tools).
+# Fallbacks only if both of the above failed, usually because tools are missing.
 if [ "$applied" -ne 1 ] && set_with_finder; then
   applied=1
 fi
