@@ -4,7 +4,7 @@ import test from "node:test";
 import { DEFAULT_PATHS, resolvePreferencePath } from "../src/paths.ts";
 import { normaliseLegacyThemeName } from "../src/theme-utils.ts";
 
-const HOME = "/Users/example";
+const HOME = "/home/example";
 
 test("keeps manifest defaults aligned with runtime defaults", async () => {
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")) as {
@@ -17,22 +17,22 @@ test("keeps manifest defaults aligned with runtime defaults", async () => {
 });
 
 test("uses portable defaults when preferences are unset or empty", () => {
-  assert.equal(resolvePreferencePath(undefined, DEFAULT_PATHS.themesDirectory, HOME), "/Users/example/.config/themes");
+  assert.equal(resolvePreferencePath(undefined, DEFAULT_PATHS.themesDirectory, HOME), "/home/example/.config/themes");
   assert.equal(
     resolvePreferencePath("   ", DEFAULT_PATHS.themeStateDirectory, HOME),
-    "/Users/example/.local/state/macarchy/themes",
+    "/home/example/.local/state/macarchy/themes",
   );
   assert.equal(
     resolvePreferencePath(null, DEFAULT_PATHS.themeSwitcherPath, HOME),
-    "/Users/example/.local/bin/theme-switch",
+    "/home/example/.local/bin/theme-switch",
   );
 });
 
 test("trims configured paths and expands home references", () => {
-  assert.equal(resolvePreferencePath("  ~/themes  ", DEFAULT_PATHS.themesDirectory, HOME), "/Users/example/themes");
+  assert.equal(resolvePreferencePath("  ~/themes  ", DEFAULT_PATHS.themesDirectory, HOME), "/home/example/themes");
   assert.equal(
     resolvePreferencePath(" $HOME/bin/theme-switch ", DEFAULT_PATHS.themeSwitcherPath, HOME),
-    "/Users/example/bin/theme-switch",
+    "/home/example/bin/theme-switch",
   );
   assert.equal(resolvePreferencePath(" /Volumes/Themes ", DEFAULT_PATHS.themesDirectory, HOME), "/Volumes/Themes");
 });
