@@ -1,39 +1,5 @@
-# Launch terminal
-ctrl - return : /bin/bash "$HOME/.config/yabai/launch_ghostty.sh"
-
-# Quit application
-# In Chrome, Cmd+Q should close the current profile window instead of quitting every profile.
-cmd - q [
-    "Google Chrome"             : osascript -e 'tell application "System Events" to keystroke "w" using {command down, shift down}'
-    "Firefox"                   ~
-    "Firefox Developer Edition" ~
-    "Firefox Nightly"           ~
-    *                           : osascript -e 'tell application (path to frontmost application as text) to quit'
-]
-
-# In Messages, TablePlus, and Obsidian, Cmd+W should quit the app instead of just closing the window.
-cmd - w [
-    "Messages"  : osascript -e 'tell application "Messages" to quit'
-    "TablePlus" : osascript -e 'tell application "TablePlus" to quit'
-    "Obsidian"  : osascript -e 'tell application "Obsidian" to quit'
-]
-
-# Media keys only control Spotify when Spotify is already running.
-play     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to playpause'
-next     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
-fast     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
-previous : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
-rewind   : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
-
 # Toggle fullscreen
 ctrl - f : yabai -m window --toggle zoom-fullscreen
-
-# Open Firefox profile manager
-cmd + shift - b : open -na 'Firefox' --args -P
-ctrl + shift - b : open -na 'Firefox' --args -P
-
-# Open home folder in Finder
-cmd + shift - f : open "$HOME"
 
 # Focus windows
 cmd - left  : yabai -m window --focus west
@@ -78,16 +44,16 @@ ctrl - 9 : yabai -m space --focus 9
 ctrl - 0 : yabai -m space --focus 10
 
 # Swap current workspace with target workspace
-cmd + ctrl - 1 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 1
-cmd + ctrl - 2 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 2
-cmd + ctrl - 3 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 3
-cmd + ctrl - 4 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 4
-cmd + ctrl - 5 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 5
-cmd + ctrl - 6 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 6
-cmd + ctrl - 7 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 7
-cmd + ctrl - 8 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 8
-cmd + ctrl - 9 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 9
-cmd + ctrl - 0 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 10
+cmd + ctrl - 1 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 1
+cmd + ctrl - 2 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 2
+cmd + ctrl - 3 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 3
+cmd + ctrl - 4 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 4
+cmd + ctrl - 5 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 5
+cmd + ctrl - 6 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 6
+cmd + ctrl - 7 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 7
+cmd + ctrl - 8 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 8
+cmd + ctrl - 9 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 9
+cmd + ctrl - 0 : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/swap_space_and_refresh.sh" 10
 
 # Move window to workspace and follow focus
 cmd + shift - 1 : yabai -m window --space 1; yabai -m space --focus 1
@@ -112,7 +78,7 @@ ctrl + shift - 9 : yabai -m window --space 9; yabai -m space --focus 9
 ctrl + shift - 0 : yabai -m window --space 10; yabai -m space --focus 10
 
 # Toggle focused window floating / tiled and persist per-app preference
-ctrl - t : /bin/bash "$HOME/.config/yabai/toggle_float_persist.sh"
+ctrl - t : /bin/bash "${XDG_CONFIG_HOME:-$HOME/.config}/yabai/toggle_float_persist.sh"
 
 # Toggle split direction
 ctrl - j : yabai -m window --toggle split
@@ -126,8 +92,3 @@ ctrl - 0x1B : yabai -m window --ratio rel:-0.05
 
 # Screenshot (interactive, to clipboard)
 ctrl + shift - s : screencapture -i -c -x
-
-# Cycle Macarchy themes directly
-cmd + ctrl - 0x18 : "$HOME/.local/bin/theme-switch" next
-cmd + ctrl + shift - 0x18 : "$HOME/.local/bin/theme-switch" next
-cmd + ctrl - 0x1B : "$HOME/.local/bin/theme-switch" prev

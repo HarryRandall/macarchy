@@ -80,6 +80,9 @@ dependencies_for() {
     sketchybar)
       FORMULAE=(FelixKratz/formulae/sketchybar jq)
       CASKS=(font-sketchybar-app-font)
+      if [ "$(uname -s)" = 'Darwin' ] && [ "$(uname -m)" = 'arm64' ]; then
+        FORMULAE+=(macmon)
+      fi
       ;;
     terminal)
       CASKS=(ghostty)
@@ -364,7 +367,7 @@ install_managed_file() {
 
 should_skip_source_path() {
   case "$1" in
-    */.DS_Store|*/node_modules/*|*/.raycast/*|*/dist/*|*/.state/*|*/theme.sh|*/.backgrounds.json|*/.shell-env|*/.nvim-colorscheme)
+    */.DS_Store|*/node_modules/*|*/.raycast/*|*/dist/*|*/.state/*|*/sketchybar/theme.sh|*/.backgrounds.json|*/.current|*/.shell-env|*/.nvim-colorscheme)
       return 0
       ;;
     *)
@@ -394,9 +397,11 @@ install_zsh_bootstrap() {
   temporary="$(mktemp "${TMPDIR:-/tmp}/macarchy-zshenv.XXXXXX")"
   printf '%s\n' \
     '# Macarchy shell bootstrap. Remove this file or run ./install uninstall shell to restore the previous one.' \
-    'export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"' \
-    'export ZDOTDIR="$XDG_CONFIG_HOME/zsh"' \
-    '[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"' > "$temporary"
+    > "$temporary"
+  printf 'export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-%q}\n' "$CONFIG_HOME" >> "$temporary"
+  printf '%s\n' \
+    'export ZDOTDIR="${ZDOTDIR:-$XDG_CONFIG_HOME/zsh}"' \
+    '[[ -r "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"' >> "$temporary"
   install_managed_file shell "$temporary" "$HOME/.zshenv"
   rm -f "$temporary"
 }
@@ -442,6 +447,11 @@ install_component_files() {
 }
 
 print_next_step() {
+  if [ "$CONFIG_HOME" != "$HOME/.config" ] \
+    && { [ "$1" = 'window-manager' ] || [ "$1" = 'sketchybar' ] || [ "$1" = 'terminal' ]; }; then
+    info "Before starting the service, expose the custom config path with: launchctl setenv XDG_CONFIG_HOME '$CONFIG_HOME'"
+  fi
+
   case "$1" in
     window-manager)
       info 'Next: grant Accessibility access, then start only the services you want with `yabai --start-service`, `skhd --start-service` and `brew services start borders`.'

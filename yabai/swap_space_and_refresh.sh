@@ -10,28 +10,27 @@ case "$target_space" in
     ;;
 esac
 
-YABAI_BIN="${YABAI_BIN:-$(command -v yabai 2>/dev/null || true)}"
-[ -x "$YABAI_BIN" ] || YABAI_BIN="/opt/homebrew/bin/yabai"
+YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
+JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
+[ -n "$YABAI_BIN" ] && [ -n "$JQ_BIN" ] || exit 0
 
-SKETCHYBAR_BIN="${SKETCHYBAR_BIN:-$(command -v sketchybar 2>/dev/null || true)}"
-[ -x "$SKETCHYBAR_BIN" ] || SKETCHYBAR_BIN="/opt/homebrew/bin/sketchybar"
+CONFIG_ROOT="${YABAI_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/yabai}"
+REFRESH_SCRIPT="$CONFIG_ROOT/trigger_sketchybar_space_labels_refresh.sh"
 
-refresh_bar() {
-  /bin/bash "$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh" "$target_space"
-  [ -x "$SKETCHYBAR_BIN" ] && "$SKETCHYBAR_BIN" --trigger yabai_space_labels_refresh >/dev/null 2>&1 || true
-}
-
-current_space="$("$YABAI_BIN" -m query --spaces --space | jq -r '.index')"
+current_space="$("$YABAI_BIN" -m query --spaces --space | "$JQ_BIN" -r '.index // empty')"
+[ -n "$current_space" ] || exit 1
 
 if [ "$current_space" != "$target_space" ]; then
   "$YABAI_BIN" -m space --swap "$target_space"
-  refresh_bar
-  sleep 0.20
   "$YABAI_BIN" -m space --focus "$target_space"
 fi
 
-for delay in 0.05 0.20 0.50
+# Wait briefly for macOS to report the final Space before rendering once.
+for _attempt in 1 2 3 4 5 6 7 8 9 10
 do
-  sleep "$delay"
-  refresh_bar
+  focused_space="$("$YABAI_BIN" -m query --spaces --space 2>/dev/null | "$JQ_BIN" -r '.index // empty' || true)"
+  [ "$focused_space" = "$target_space" ] && break
+  sleep 0.05
 done
+
+[ -f "$REFRESH_SCRIPT" ] && /bin/bash "$REFRESH_SCRIPT" || true

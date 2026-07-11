@@ -157,22 +157,38 @@ if grep -E 'services|launchctl|sudo' "$FAKE_BREW_LOG" >/dev/null; then
 fi
 assert_file "$XDG_CONFIG_HOME/yabai/yabairc"
 assert_file "$XDG_CONFIG_HOME/skhd/skhdrc"
+assert_contains "$TEST_ROOT/window-manager.out" 'launchctl setenv XDG_CONFIG_HOME'
 pass 'uses current window-manager formulae without starting services'
 
 # SketchyBar's app labels rely on its companion ligature font.
 : > "$FAKE_BREW_LOG"
 run_capture "$TEST_ROOT/sketchybar.out" sketchybar
 assert_contains "$FAKE_BREW_LOG" 'install FelixKratz/formulae/sketchybar'
+if [ "$(uname -s)" = 'Darwin' ] && [ "$(uname -m)" = 'arm64' ]; then
+  assert_contains "$FAKE_BREW_LOG" 'install macmon'
+fi
 assert_contains "$FAKE_BREW_LOG" 'install --cask font-sketchybar-app-font'
 assert_file "$XDG_CONFIG_HOME/sketchybar/sketchybarrc"
 pass 'installs the SketchyBar app font dependency'
+
+# Themes include their shared library but start without mutable runtime state.
+run_capture "$TEST_ROOT/themes.out" themes
+assert_file "$XDG_CONFIG_HOME/themes/awakening/theme.env"
+assert_file "$XDG_DATA_HOME/macarchy/lib/theme.sh"
+assert_file "$MACARCHY_BIN_HOME/theme-switch"
+assert_no_path "$XDG_CONFIG_HOME/themes/.current"
+pass 'installs theme code separately from runtime state'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"
 mv "$FAKE_BIN/brew" "$FAKE_BIN/brew.disabled"
 run_capture "$TEST_ROOT/shell.out" shell
 mv "$FAKE_BIN/brew.disabled" "$FAKE_BIN/brew"
-assert_contains "$HOME/.zshenv" 'export ZDOTDIR="$XDG_CONFIG_HOME/zsh"'
+assert_contains "$HOME/.zshenv" 'export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-'
+assert_contains "$HOME/.zshenv" 'Custom\ Config}'
+assert_contains "$HOME/.zshenv" 'export ZDOTDIR="${ZDOTDIR:-$XDG_CONFIG_HOME/zsh}"'
+[ "$(env -i HOME="$HOME" PATH=/usr/bin:/bin zsh -c 'source "$HOME/.zshenv"; print -r -- "$XDG_CONFIG_HOME"')" = "$XDG_CONFIG_HOME" ] \
+  || fail 'shell bootstrap did not restore the custom XDG path'
 assert_file "$XDG_CONFIG_HOME/zsh/.zshrc"
 run_capture "$TEST_ROOT/shell-uninstall.out" uninstall shell
 assert_contains "$HOME/.zshenv" 'original zsh bootstrap'

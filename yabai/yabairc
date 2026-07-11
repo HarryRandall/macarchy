@@ -1,50 +1,88 @@
 #!/usr/bin/env bash
 
-# Load scripting addition
-sudo yabai --load-sa
-yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
-yabai -m signal --add event=space_changed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=space_created action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=space_destroyed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_created action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+YABAI_BIN="$(command -v "${YABAI_BIN:-yabai}" 2>/dev/null || true)"
+[ -n "$YABAI_BIN" ] || exit 0
+
+CONFIG_ROOT="${YABAI_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/yabai}"
+REFRESH_SCRIPT="$CONFIG_ROOT/trigger_sketchybar_space_labels_refresh.sh"
+FLOAT_SCRIPT="$CONFIG_ROOT/apply_float_state.sh"
+RESTORE_SCRIPT="$CONFIG_ROOT/restore_minimized_on_current_space.sh"
+BORDERS_SCRIPT="$CONFIG_ROOT/restart_borders_after_fullscreen.sh"
+SYNC_SCRIPT="$CONFIG_ROOT/sync_float_rules.sh"
+
+printf -v refresh_command '/bin/bash %q' "$REFRESH_SCRIPT"
+printf -v float_command '/bin/bash %q' "$FLOAT_SCRIPT"
+printf -v restore_command '/bin/bash %q' "$RESTORE_SCRIPT"
+printf -v borders_command '/bin/bash %q' "$BORDERS_SCRIPT"
+printf -v load_sa_command 'sudo -n %q --load-sa' "$YABAI_BIN"
+
+replace_signal() {
+  local label="$1" event="$2" action="$3"
+  "$YABAI_BIN" -m signal --remove "$label" 2>/dev/null || true
+  "$YABAI_BIN" -m signal --add label="$label" event="$event" action="$action"
+}
+
+replace_rule() {
+  local label="$1"
+  shift
+  "$YABAI_BIN" -m rule --remove "$label" 2>/dev/null || true
+  "$YABAI_BIN" -m rule --add label="$label" "$@"
+}
+
+# Load the optional scripting addition only when the matching passwordless
+# sudoers rule is already configured. This never prompts during service startup.
+if sudo -n "$YABAI_BIN" --load-sa >/dev/null 2>&1; then
+  replace_signal macarchy_load_sa dock_did_restart "$load_sa_command"
+else
+  "$YABAI_BIN" -m signal --remove macarchy_load_sa 2>/dev/null || true
+fi
+
+replace_signal macarchy_space_changed space_changed "$refresh_command"
+replace_signal macarchy_space_created space_created "$refresh_command"
+replace_signal macarchy_space_destroyed space_destroyed "$refresh_command"
+
+# Restart JankyBorders after a native fullscreen Space disappears. This clears
+# stale border overlays after Firefox/macOS fullscreen transitions.
+replace_signal borders_fullscreen_space_created space_created "$borders_command"
+replace_signal borders_fullscreen_space_destroyed space_destroyed "$borders_command"
+replace_signal borders_fullscreen_space_changed space_changed "$borders_command"
 
 # Restore apps with only minimized windows onto the current Space when activated.
-yabai -m signal --add event=application_activated action="$HOME/.config/yabai/restore_minimized_on_current_space.sh"
+replace_signal macarchy_restore_minimized application_activated "$restore_command"
 
-# Sync persisted float rules so stale per-app rules cannot override the JSON state
-"$HOME/.config/yabai/sync_float_rules.sh"
+# Sync persisted float rules so stale per-app rules cannot override the JSON state.
+[ -f "$SYNC_SCRIPT" ] && /bin/bash "$SYNC_SCRIPT"
 
-# Re-apply float preference when windows are created or deminimized
-yabai -m signal --add event=window_created action="$HOME/.config/yabai/apply_float_state.sh"
-yabai -m signal --add event=window_deminimized action="$HOME/.config/yabai/apply_float_state.sh"
-
-yabai -m signal --add event=window_destroyed action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_minimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
-yabai -m signal --add event=window_deminimized action="$HOME/.config/yabai/trigger_sketchybar_space_labels_refresh.sh"
+# Creation and restoration both affect floating state and the Space label. Using
+# one signal per event avoids racing two independent actions.
+replace_signal macarchy_window_created window_created "$float_command; $refresh_command"
+replace_signal macarchy_window_deminimized window_deminimized "$float_command; $refresh_command"
+replace_signal macarchy_window_destroyed window_destroyed "$refresh_command"
+replace_signal macarchy_window_minimized window_minimized "$refresh_command"
 
 # BSP layout
-yabai -m config layout bsp
-yabai -m config window_insertion_point focused
-yabai -m config window_placement second_child
-yabai -m config split_type auto
-yabai -m config auto_balance off
-yabai -m config insert_feedback_color 0x01000000
+"$YABAI_BIN" -m config layout bsp
+"$YABAI_BIN" -m config window_insertion_point focused
+"$YABAI_BIN" -m config window_placement second_child
+"$YABAI_BIN" -m config split_type auto
+"$YABAI_BIN" -m config auto_balance off
+"$YABAI_BIN" -m config insert_feedback_color 0x01000000
 
 # Padding and gaps
-yabai -m config top_padding    8
-yabai -m config bottom_padding 8
-yabai -m config left_padding   8
-yabai -m config right_padding  8
-yabai -m config window_gap     8
+"$YABAI_BIN" -m config top_padding    8
+"$YABAI_BIN" -m config bottom_padding 8
+"$YABAI_BIN" -m config left_padding   8
+"$YABAI_BIN" -m config right_padding  8
+"$YABAI_BIN" -m config window_gap     8
 
-# Mouse follows focus
-yabai -m config mouse_follows_focus on
-yabai -m config mouse_modifier ctrl
-yabai -m config mouse_action1 move
-yabai -m config mouse_action2 resize
-yabai -m config mouse_drop_action stack
+# Mouse controls
+"$YABAI_BIN" -m config mouse_follows_focus off
+"$YABAI_BIN" -m config mouse_modifier ctrl
+"$YABAI_BIN" -m config mouse_action1 move
+"$YABAI_BIN" -m config mouse_action2 resize
+"$YABAI_BIN" -m config mouse_drop_action stack
 
 # Float system apps that don't tile well
-yabai -m rule --add app="^System Settings$" manage=off
-yabai -m rule --add app="^Calculator$" manage=off
-yabai -m rule --add app="^Finder$" manage=off title="^Copy$|^Move$|^Delete$|^Trash$"
+replace_rule macarchy_system_settings app="^System Settings$" manage=off
+replace_rule macarchy_calculator app="^Calculator$" manage=off
+replace_rule macarchy_finder_dialogs app="^Finder$" manage=off title="^Copy$|^Move$|^Delete$|^Trash$"
