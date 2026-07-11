@@ -98,6 +98,35 @@ done
 replacement_pid="$(cat "$CONFIG_DIR/.state/macmon-stream.pid")"
 [ "$replacement_pid" != "$first_pid" ] || fail 'macmon stream restart reused the stopped process'
 
+mkdir -p "$CONFIG_DIR/icons"
+touch \
+  "$CONFIG_DIR/icons/cpu.png" \
+  "$CONFIG_DIR/icons/gpu-rotated-270.png" \
+  "$CONFIG_DIR/icons/ram-rotated-270.png" \
+  "$CONFIG_DIR/icons/network-arrows.png"
+: > "$SKETCHYBAR_LOG"
+PLUGIN_DIR="$REPO_ROOT/sketchybar/plugins" \
+  /bin/bash "$REPO_ROOT/sketchybar/items/system_metrics.sh"
+for image in cpu.png gpu-rotated-270.png ram-rotated-270.png; do
+  grep -F "background.image=$CONFIG_DIR/icons/$image" "$SKETCHYBAR_LOG" >/dev/null \
+    || fail "$image was not used for its hardware metric"
+done
+grep -F 'background.image.scale=0.16' "$SKETCHYBAR_LOG" >/dev/null \
+  || fail 'hardware metric images did not use their original scale'
+grep -F "background.image=$CONFIG_DIR/icons/network-arrows.png" "$SKETCHYBAR_LOG" >/dev/null \
+  || fail 'network-arrows.png was not used for the network metric'
+grep -F 'background.image.scale=0.13' "$SKETCHYBAR_LOG" >/dev/null \
+  || fail 'network image did not use its original scale'
+
+rm -rf "$CONFIG_DIR/icons"
+: > "$SKETCHYBAR_LOG"
+PLUGIN_DIR="$REPO_ROOT/sketchybar/plugins" \
+  /bin/bash "$REPO_ROOT/sketchybar/items/system_metrics.sh"
+for fallback in 'icon=CPU' 'icon=GPU' 'icon=RAM' 'icon=NET'; do
+  grep -F "$fallback" "$SKETCHYBAR_LOG" >/dev/null \
+    || fail "$fallback was not used when its image was unavailable"
+done
+
 mv "$FAKE_BIN/macmon" "$FAKE_BIN/macmon.disabled"
 : > "$SKETCHYBAR_LOG"
 PLUGIN_DIR="$REPO_ROOT/sketchybar/plugins" \
