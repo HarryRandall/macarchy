@@ -16,6 +16,8 @@ BACKUP_DIR="$MACARCHY_STATE_DIR/backups"
 BACKUP_RUN_ID="$(date '+%Y%m%d-%H%M%S')-$$"
 BACKUP_COUNTER=0
 DRY_RUN=0
+FORCE=0
+SEEN_FILE=""
 
 COMPONENTS=(
   window-manager
@@ -45,13 +47,16 @@ usage() {
   cat <<'EOF'
 Usage:
   ./install --list
-  ./install [--dry-run] install <component...|all>
-  ./install [--dry-run] <component...|all>
+  ./install [--dry-run] [--force] install <component...|all>
+  ./install [--dry-run] [--force] <component...|all>
   ./install status [component...]
   ./install [--dry-run] uninstall <component...>
 
 The installer copies only the selected configuration. It does not change SIP,
 write sudoers files, start services or apply a theme.
+
+Updates stop if a managed file has local edits. Review the diff first, then use
+--force to replace it while keeping an extra backup of the edited version.
 EOF
 }
 
@@ -97,7 +102,6 @@ dependencies_for() {
       ;;
     themes)
       FORMULAE=(jq)
-      CASKS=(desktoppr)
       ;;
     raycast)
       FORMULAE=(node)
@@ -312,13 +316,18 @@ copy_file_atomically() {
 
 install_managed_file() {
   local component="$1" source="$2" destination="$3"
-  local entry original_backup='-' checksum had_entry=0
+  local entry original_backup='-' previous_checksum='' checksum actual had_entry=0
 
   [ -f "$source" ] || [ -L "$source" ] || die "installer source is missing: $source"
+
+  if [ -n "$SEEN_FILE" ]; then
+    printf '%s\n' "$destination" >> "$SEEN_FILE"
+  fi
 
   if entry="$(lookup_manifest_entry "$component" "$destination" 2>/dev/null)"; then
     had_entry=1
     original_backup="${entry%%$'\t'*}"
+    previous_checksum="${entry#*$'\t'}"
   fi
 
   if path_exists "$destination" && [ -d "$destination" ]; then
@@ -344,6 +353,24 @@ install_managed_file() {
     return
   fi
 
+  if [ "$had_entry" -eq 1 ] && path_exists "$destination"; then
+    actual="$(file_hash "$destination")"
+    if [ "$actual" != "$previous_checksum" ]; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would keep locally modified managed file: $destination"
+        info "Use --force after reviewing the changes if you want to replace it."
+        return
+      fi
+
+      if [ "$FORCE" -eq 0 ]; then
+        die "managed file has local edits: $destination (review it, then rerun with --force to replace it)"
+      fi
+
+      backup_current_path "$component" "$destination"
+      info "Preserved locally edited version before forced update: $BACKUP_RESULT"
+    fi
+  fi
+
   if [ "$DRY_RUN" -eq 1 ]; then
     if path_exists "$destination"; then
       info "Would back up and replace: $destination"
@@ -353,16 +380,88 @@ install_managed_file() {
     return
   fi
 
-  if path_exists "$destination"; then
+  if path_exists "$destination" && [ "$had_entry" -eq 0 ]; then
     backup_current_path "$component" "$destination"
-    if [ "$had_entry" -eq 0 ]; then
-      original_backup="$BACKUP_RESULT"
-    fi
+    original_backup="$BACKUP_RESULT"
   fi
 
   copy_file_atomically "$source" "$destination"
   record_manifest_entry "$component" "$destination" "$original_backup" "$checksum"
   info "Installed: $destination"
+}
+
+seen_file_contains() {
+  local destination="$1"
+  [ -n "$SEEN_FILE" ] && grep -Fqx -- "$destination" "$SEEN_FILE" 2>/dev/null
+}
+
+prune_removed_managed_files() {
+  local component="$1" manifest temporary destination backup expected actual
+  local unresolved=0
+
+  manifest="$(manifest_path "$component")"
+  [ -s "$manifest" ] || return 0
+
+  temporary=''
+  if [ "$DRY_RUN" -eq 0 ]; then
+    temporary="$(mktemp "$MANIFEST_DIR/.${component}-prune.XXXXXX")"
+  fi
+
+  while IFS=$'\t' read -r destination backup expected; do
+    if seen_file_contains "$destination"; then
+      if [ "$DRY_RUN" -eq 0 ]; then
+        printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+      fi
+      continue
+    fi
+
+    if path_exists "$destination"; then
+      actual="$(file_hash "$destination")"
+      if [ "$actual" != "$expected" ]; then
+        warn "kept locally modified file no longer shipped by $component: $destination"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+    fi
+
+    if [ "$backup" != '-' ]; then
+      if ! path_exists "$backup"; then
+        warn "kept $destination because its original backup is missing: $backup"
+        unresolved=$((unresolved + 1))
+        if [ "$DRY_RUN" -eq 0 ]; then
+          printf '%s\t%s\t%s\n' "$destination" "$backup" "$expected" >> "$temporary"
+        fi
+        continue
+      fi
+
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would restore file no longer shipped by $component: $destination"
+      else
+        restore_backup "$backup" "$destination"
+        info "Restored file no longer shipped by $component: $destination"
+      fi
+    elif path_exists "$destination"; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        info "Would remove file no longer shipped by $component: $destination"
+      else
+        rm -f "$destination"
+        info "Removed file no longer shipped by $component: $destination"
+      fi
+    fi
+  done < "$manifest"
+
+  if [ "$DRY_RUN" -eq 0 ]; then
+    if [ -s "$temporary" ]; then
+      mv "$temporary" "$manifest"
+    else
+      rm -f "$temporary" "$manifest"
+    fi
+  fi
+
+  [ "$unresolved" -eq 0 ]
 }
 
 should_skip_source_path() {
@@ -422,6 +521,10 @@ install_component_files() {
       install_managed_file "$component" "$REPO_ROOT/ghostty/config.ghostty" "$CONFIG_HOME/ghostty/config.ghostty"
       ;;
     shell)
+      if path_exists "$HOME/.zshrc" || path_exists "$HOME/.zprofile"; then
+        warn "the shell component sets ZDOTDIR to $CONFIG_HOME/zsh, so existing ~/.zshrc and ~/.zprofile files will no longer load automatically"
+        warn "move any settings you still need into $CONFIG_HOME/zsh/local.zsh after installation"
+      fi
       install_tree "$component" "$REPO_ROOT/zsh" "$CONFIG_HOME/zsh"
       install_zsh_bootstrap
       ;;
@@ -461,7 +564,7 @@ print_next_step() {
       info 'Next: start SketchyBar when ready with `brew services start sketchybar`.'
       ;;
     themes)
-      info 'Next: apply a theme explicitly with `theme-switch <theme-name>`.'
+      info "Next: apply a theme explicitly with '$BIN_HOME/theme-switch' <theme-name>."
       ;;
     raycast)
       info "Next: run \`npm install && npm run dev\` in $CONFIG_HOME/raycast/extensions/macarchy-theme-switcher."
@@ -470,15 +573,23 @@ print_next_step() {
 }
 
 install_components() {
-  local component
+  local component result=0
 
   for component in "${SELECTED_COMPONENTS[@]}"; do
     info ""
     info "Installing $component"
+    SEEN_FILE="$(mktemp "${TMPDIR:-/tmp}/macarchy-seen.XXXXXX")"
     install_dependencies "$component"
     install_component_files "$component"
+    if ! prune_removed_managed_files "$component"; then
+      result=1
+    fi
+    rm -f "$SEEN_FILE"
+    SEEN_FILE=""
     print_next_step "$component"
   done
+
+  return "$result"
 }
 
 status_component() {
@@ -612,6 +723,9 @@ main() {
       --dry-run)
         DRY_RUN=1
         ;;
+      --force)
+        FORCE=1
+        ;;
       -h|--help)
         usage
         return 0
@@ -638,6 +752,7 @@ main() {
   first="${arguments[0]}"
   case "$first" in
     list)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
       [ "${#arguments[@]}" -eq 1 ] || die '--list does not accept component names'
       list_components
       ;;
@@ -646,6 +761,7 @@ main() {
       install_components
       ;;
     status)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
       if [ "${#arguments[@]}" -eq 1 ]; then
         select_components all
       else
@@ -654,6 +770,7 @@ main() {
       status_components
       ;;
     uninstall)
+      [ "$FORCE" -eq 0 ] || die '--force can only be used while installing components'
       select_components "${arguments[@]:1}"
       uninstall_components
       ;;

@@ -123,6 +123,35 @@ BACKUP_COUNT_AFTER="$(find "$XDG_STATE_HOME/macarchy/backups" -type f | wc -l | 
 [ "$(wc -l < "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv" | tr -d ' ')" -eq 1 ] || fail 'manifest contains duplicate entries'
 pass 'repeated install is idempotent'
 
+# A rerun must stop rather than overwrite a locally edited managed file.
+printf '%s\n' 'local terminal edit' > "$XDG_CONFIG_HOME/ghostty/config.ghostty"
+if run_capture "$TEST_ROOT/terminal-conflict.out" install terminal; then
+  fail 'update overwrote a locally edited managed file without --force'
+fi
+assert_contains "$XDG_CONFIG_HOME/ghostty/config.ghostty" 'local terminal edit'
+assert_contains "$TEST_ROOT/terminal-conflict.out" 'managed file has local edits'
+
+run_capture "$TEST_ROOT/terminal-force.out" --force install terminal
+cmp -s "$REPO_ROOT/ghostty/config.ghostty" "$XDG_CONFIG_HOME/ghostty/config.ghostty" \
+  || fail 'forced update did not replace the managed file'
+BACKUP_COUNT_FORCED="$(find "$XDG_STATE_HOME/macarchy/backups" -type f | wc -l | tr -d ' ')"
+[ "$BACKUP_COUNT_FORCED" -eq $((BACKUP_COUNT_BEFORE + 1)) ] \
+  || fail 'forced update did not preserve the locally edited version'
+pass 'updates stop on local edits unless force is explicit'
+
+# Files removed from a later component version are pruned when they are still
+# unchanged. This keeps updates from leaving obsolete generated bundles behind.
+OLD_MANAGED="$XDG_CONFIG_HOME/ghostty/old-managed.conf"
+printf '%s\n' 'obsolete managed file' > "$OLD_MANAGED"
+OLD_HASH="$(shasum -a 256 "$OLD_MANAGED" | awk '{print $1}')"
+printf '%s\t-\t%s\n' "$OLD_MANAGED" "$OLD_HASH" >> "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv"
+run_capture "$TEST_ROOT/terminal-prune.out" install terminal
+assert_no_path "$OLD_MANAGED"
+if grep -F -- "$OLD_MANAGED" "$XDG_STATE_HOME/macarchy/manifests/terminal.tsv" >/dev/null; then
+  fail 'obsolete managed file remained in the manifest'
+fi
+pass 'updates prune unchanged files no longer shipped by a component'
+
 STATUS_OUTPUT="$TEST_ROOT/status.out"
 run_capture "$STATUS_OUTPUT" status terminal
 assert_contains "$STATUS_OUTPUT" 'installed (1 managed files)'
@@ -181,18 +210,27 @@ pass 'installs theme code separately from runtime state'
 
 # The shell bootstrap honours a non-default XDG config path, including spaces.
 printf '%s\n' 'original zsh bootstrap' > "$HOME/.zshenv"
+printf '%s\n' 'existing root zshrc' > "$HOME/.zshrc"
+printf '%s\n' 'existing root zprofile' > "$HOME/.zprofile"
 mv "$FAKE_BIN/brew" "$FAKE_BIN/brew.disabled"
 run_capture "$TEST_ROOT/shell.out" shell
 mv "$FAKE_BIN/brew.disabled" "$FAKE_BIN/brew"
 assert_contains "$HOME/.zshenv" 'export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-'
 assert_contains "$HOME/.zshenv" 'Custom\ Config}'
 assert_contains "$HOME/.zshenv" 'export ZDOTDIR="${ZDOTDIR:-$XDG_CONFIG_HOME/zsh}"'
+assert_contains "$TEST_ROOT/shell.out" 'sets ZDOTDIR'
 [ "$(env -i HOME="$HOME" PATH=/usr/bin:/bin zsh -c 'source "$HOME/.zshenv"; print -r -- "$XDG_CONFIG_HOME"')" = "$XDG_CONFIG_HOME" ] \
   || fail 'shell bootstrap did not restore the custom XDG path'
 assert_file "$XDG_CONFIG_HOME/zsh/.zshrc"
 run_capture "$TEST_ROOT/shell-uninstall.out" uninstall shell
 assert_contains "$HOME/.zshenv" 'original zsh bootstrap'
 pass 'shell bootstrap uses portable XDG paths and restores cleanly'
+
+if run_capture "$TEST_ROOT/force-status.out" --force status terminal; then
+  fail '--force unexpectedly worked with status'
+fi
+assert_contains "$TEST_ROOT/force-status.out" '--force can only be used while installing components'
+pass 'limits force to explicit installs'
 
 if run_capture "$TEST_ROOT/unknown.out" install made-up-component; then
   fail 'unknown component unexpectedly succeeded'
