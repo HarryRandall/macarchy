@@ -9,7 +9,7 @@ JQ_BIN="$(command -v "${JQ_BIN:-jq}" 2>/dev/null || true)"
 # Record existing Ghostty windows before launching. Picking the highest window
 # ID after a fixed sleep can focus an older window when startup is slow.
 before_ids="$("$YABAI_BIN" -m query --windows 2>/dev/null \
-  | "$JQ_BIN" -c '[.[] | select(.app == "Ghostty") | .id]' 2>/dev/null)" || exit 0
+  | "$JQ_BIN" -c '[.[] | select((.app // "" | ascii_downcase) == "ghostty") | .id]' 2>/dev/null)" || exit 0
 
 open -na Ghostty
 
@@ -29,7 +29,7 @@ while [ "$attempts" -gt 0 ]; do
     "$JQ_BIN" -r --argjson before "$before_ids" '
       map(
         select(
-          .app == "Ghostty"
+          ((.app // "" | ascii_downcase) == "ghostty")
           and (.id as $id | ($before | index($id)) == null)
         )
       )

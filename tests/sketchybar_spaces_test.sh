@@ -49,8 +49,11 @@ case "$*" in
   '-m query --spaces --space 3')
     printf '%s\n' '{"index":3,"display":1}'
     ;;
-  '-m query --windows --space 1'|'-m query --windows --space 3')
+  '-m query --windows --space 1')
     printf '%s\n' '[]'
+    ;;
+  '-m query --windows --space 3')
+    printf '%s\n' '[{"app":"ghostty","space":3,"display":1,"role":"","root-window":true,"has-ax-reference":false,"is-minimized":false,"is-hidden":false,"is-sticky":false,"frame":{"x":0,"y":0},"stack-index":0,"id":99}]'
     ;;
 esac
 EOF
@@ -100,7 +103,7 @@ SENDER=space_windows_change \
   INFO='{"space":3,"apps":{}}' \
   YABAI_BIN="$FAKE_BIN/yabai" \
   "$REPO_ROOT/sketchybar/plugins/space_windows.sh"
-grep -F -- '--set space.3 label= -' "$SKETCHYBAR_LOG" >/dev/null \
+grep -F -- ':ghostty:' "$SKETCHYBAR_LOG" >/dev/null \
   || fail 'the changed Space was not refreshed'
 if grep -F -- '--set space.1 label=' "$SKETCHYBAR_LOG" >/dev/null; then
   fail 'an unchanged Space was needlessly redrawn'

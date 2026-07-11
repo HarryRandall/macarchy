@@ -179,8 +179,10 @@ apps_for_space() {
         .app
         and .space == $space
         and .display == $display
-        and .role == "AXWindow"
-        and .["has-ax-reference"] == true
+        and (
+          (.role == "AXWindow" and .["has-ax-reference"] == true)
+          or (.["root-window"] == true and ((.role // "") == ""))
+        )
         and .["is-minimized"] == false
         and .["is-hidden"] == false
         and (."is-sticky" // false) == false
