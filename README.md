@@ -44,6 +44,8 @@ Then install only the parts you want:
 
 The installer prints the next step for each selected component. It never disables SIP, writes a sudoers file, starts a background service or applies a theme on its own.
 
+The `shell` component changes `ZDOTDIR` and backs up `~/.zshenv`. Existing `~/.zprofile` and `~/.zshrc` files stay on disk but are no longer loaded automatically. Review the [shell notes](./docs/install.md#what-happens-to-existing-files) before installing it.
+
 ## After installation
 
 Check what Macarchy manages:
@@ -55,9 +57,11 @@ Check what Macarchy manages:
 Apply a theme explicitly:
 
 ```sh
-theme-switch --list
-theme-switch carbonfox
+"$HOME/.local/bin/theme-switch" --list
+"$HOME/.local/bin/theme-switch" carbonfox
 ```
+
+That is the default install path. The `shell` component adds `~/.local/bin` to `PATH`; a themes-only install does not, so the full path works in either case.
 
 Update by pulling the repository and rerunning the components you use. Existing files are backed up under `${XDG_STATE_HOME:-~/.local/state}/macarchy/backups`.
 
@@ -73,7 +77,7 @@ Modified files are kept rather than deleted. Homebrew packages and empty directo
 
 The configs, installer and Raycast picker stay together because they share one small theme contract. Selective installation now provides the useful separation without making people clone several repositories.
 
-Wallpaper-heavy theme packs should be separate repositories. The old wallpapers have been removed from the current tree, but their blobs remain in Git history. Publishing a completely clean core would therefore mean creating a new snapshot repository or explicitly approving a history rewrite; this branch does neither silently.
+Wallpaper-heavy theme packs should be separate repositories. The old wallpapers have been removed from the current tree, but their blobs remain in Git history. Publishing a completely clean core would therefore mean creating a new snapshot repository or explicitly approving a history rewrite. The existing history has not been rewritten.
 
 ## Guides
 
@@ -84,6 +88,6 @@ Wallpaper-heavy theme packs should be separate repositories. The old wallpapers 
 - [Raycast theme picker](./raycast-theme/README.md)
 - [Troubleshooting](./docs/troubleshooting.md)
 
-The code in this repository is MIT licensed. Adapted palettes and the app icon map retain their original notices; read [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) before redistributing them.
+Macarchy's original code is MIT licensed. The LazyVim starter files, adapted palettes and app icon map retain their upstream licences; read [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) before redistributing them.
 
 Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) and run `./scripts/check.sh` before opening a pull request.
