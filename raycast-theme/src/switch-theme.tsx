@@ -13,14 +13,15 @@ import {
 } from "@raycast/api";
 import { execFile } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, extname, isAbsolute, join } from "node:path";
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_PATHS, resolvePreferencePath } from "./paths";
+import { normaliseLegacyThemeName } from "./theme-utils";
 
 type Preferences = {
-  themeStateDirectory: string;
-  themeSwitcherPath: string;
-  themesDirectory: string;
+  themeStateDirectory?: string;
+  themeSwitcherPath?: string;
+  themesDirectory?: string;
 };
 
 type Background = {
@@ -45,15 +46,6 @@ type ThemeState = {
 };
 
 const IMAGE_EXTENSIONS = new Set([".heic", ".jpeg", ".jpg", ".png", ".webp"]);
-
-function expandHome(value: string): string {
-  const path = value.trim();
-
-  if (path === "~" || path === "$HOME") return homedir();
-  if (path.startsWith("~/")) return join(homedir(), path.slice(2));
-  if (path.startsWith("$HOME/")) return join(homedir(), path.slice(6));
-  return path;
-}
 
 function titleFromName(name: string): string {
   return name
@@ -108,13 +100,6 @@ function borderColour(value: string | undefined): string | undefined {
   return match ? `#${match[1]}` : undefined;
 }
 
-function normaliseLegacyThemeName(name: string, themes: Theme[]): string {
-  const current = name.trim();
-  if (current === "lumon" && themes.some((theme) => theme.name === "cool-blue")) return "cool-blue";
-  if (current === "turbonite" && themes.some((theme) => theme.name === "amber-metal")) return "amber-metal";
-  return current;
-}
-
 async function readOptional(path: string): Promise<string> {
   try {
     return await readFile(path, "utf8");
@@ -156,15 +141,30 @@ async function loadBackgrounds(themeDirectory: string): Promise<Background[]> {
 }
 
 async function loadThemeState(themesDirectory: string, themeStateDirectory: string): Promise<ThemeState> {
-  const [entries, currentTheme, legacyCurrentTheme, backgroundStateText, legacyBackgroundStateText] = await Promise.all(
-    [
-      readdir(themesDirectory, { withFileTypes: true }),
-      readOptional(join(themeStateDirectory, "current")),
-      readOptional(join(themesDirectory, ".current")),
-      readOptional(join(themeStateDirectory, "backgrounds.json")),
-      readOptional(join(themesDirectory, ".backgrounds.json")),
-    ],
-  );
+  let entries;
+  try {
+    entries = await readdir(themesDirectory, { withFileTypes: true });
+  } catch (error) {
+    const code = error instanceof Error && "code" in error ? error.code : undefined;
+    if (code === "ENOENT") {
+      throw new Error(
+        `Themes directory was not found at ${themesDirectory}. Install the themes or update the extension preferences.`,
+      );
+    }
+    if (code === "EACCES") {
+      throw new Error(
+        `Themes directory cannot be read at ${themesDirectory}. Check its permissions or update the extension preferences.`,
+      );
+    }
+    throw error;
+  }
+
+  const [currentTheme, legacyCurrentTheme, backgroundStateText, legacyBackgroundStateText] = await Promise.all([
+    readOptional(join(themeStateDirectory, "current")),
+    readOptional(join(themesDirectory, ".current")),
+    readOptional(join(themeStateDirectory, "backgrounds.json")),
+    readOptional(join(themesDirectory, ".backgrounds.json")),
+  ]);
 
   // Keep existing installations useful until a theme is next applied and its
   // state is migrated out of the theme pack.
@@ -243,6 +243,17 @@ function runThemeSwitcher(
           return;
         }
 
+        if ("code" in error && error.code === "ENOENT") {
+          reject(
+            new Error(`Theme switcher was not found at ${executable}. Install it or update the extension preferences.`),
+          );
+          return;
+        }
+        if ("code" in error && error.code === "EACCES") {
+          reject(new Error(`Theme switcher is not executable at ${executable}. Check its permissions.`));
+          return;
+        }
+
         reject(new Error(stderr.trim() || stdout.trim() || error.message));
       },
     );
@@ -309,9 +320,9 @@ function BackgroundPicker(props: {
 
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
-  const themesDirectory = expandHome(preferences.themesDirectory);
-  const themeStateDirectory = expandHome(preferences.themeStateDirectory);
-  const executable = expandHome(preferences.themeSwitcherPath);
+  const themesDirectory = resolvePreferencePath(preferences.themesDirectory, DEFAULT_PATHS.themesDirectory);
+  const themeStateDirectory = resolvePreferencePath(preferences.themeStateDirectory, DEFAULT_PATHS.themeStateDirectory);
+  const executable = resolvePreferencePath(preferences.themeSwitcherPath, DEFAULT_PATHS.themeSwitcherPath);
   const [state, setState] = useState<ThemeState>({ currentTheme: "", themes: [] });
   const [loadError, setLoadError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);

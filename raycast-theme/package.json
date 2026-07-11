@@ -66,6 +66,7 @@
     "format": "prettier --write .",
     "lint": "eslint src && prettier --check . && tsc --noEmit",
     "lint:fix": "eslint src --fix && prettier --write .",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test test/*.test.ts",
     "validate:store": "ray lint"
   },
   "engines": {
