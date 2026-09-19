@@ -8,33 +8,33 @@ let package = Package(
         // Installed binary keeps this name so the .app, Info.plist, and
         // `pkill -x MacarchySettings` stay stable.
         .executable(name: "MacarchySettings", targets: ["Settings"]),
-        .executable(name: "macarchy", targets: ["CLI"])
+        .executable(name: "macarchy", targets: ["macarchy"])
     ],
     targets: [
-        // Pure logic shared by the app and the CLI. Ported shell surfaces land
-        // here so both entry points run exactly one implementation — the app and
-        // the theme-cycling hotkey must never disagree about what a theme means.
+        // One folder per program the desktop runs. Ported shell surfaces land
+        // beside the tool they drive, so the app and the theme-cycling hotkey
+        // run exactly one implementation and cannot disagree about a theme.
         .target(
-            name: "Kit",
-            path: "Kit",
+            name: "Desktop",
+            path: "Desktop",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
             name: "Settings",
-            dependencies: ["Kit"],
+            dependencies: ["Desktop"],
             path: "Settings",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
-            name: "KitTests",
-            dependencies: ["Kit"],
-            path: "Tests/Kit",
+            name: "DesktopTests",
+            dependencies: ["Desktop"],
+            path: "Tests/Desktop",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
-            name: "CLI",
-            dependencies: ["Kit"],
-            path: "CLI",
+            name: "macarchy",
+            dependencies: ["Desktop"],
+            path: "macarchy",
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

@@ -15,7 +15,7 @@ struct SettingsApp: App {
         .commands { CommandGroup(replacing: .newItem) {} }
 
         MenuBarExtra("Macarchy", systemImage: "circle.lefthalf.filled") {
-            MenuBarContent()
+            StatusMenu()
                 .environment(model)
         }
     }
