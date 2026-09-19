@@ -8,7 +8,7 @@ bitten us.
 
 A native macOS app that takes over configuration of a desktop stack —
 **yabai, JankyBorders, SketchyBar, skhd** — from a pile of shell scripts,
-chiefly a 969-line `theme-switch`.
+chiefly a 947-line `theme-switch`.
 
 | Daemon | launchd label | What the app controls |
 |---|---|---|
@@ -97,7 +97,7 @@ On the machine:
 ~/.config/macarchy-settings/   themes/, settings.env, snapshots/, generated.json
 ~/.config/themes               SYMLINK into the above (shell still hard-codes it)
 ~/.local/bin/macarchy          the command
-~/.local/bin/theme-switch      the 969 lines still to port
+~/.local/bin/theme-switch      the 947 lines still to port
 ~/.local/bin/macarchy-borders  the patched JankyBorders fork
 ~/projects/jankyborders-local  its source, under git — see square-borders.md
 ```

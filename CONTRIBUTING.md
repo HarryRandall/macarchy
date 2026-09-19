@@ -15,7 +15,7 @@ the rules.
 ```sh
 swift build          # must compile
 ./Scripts/test.sh    # swift test — 20 unit tests
-./Scripts/doctor.sh  # 35 machine assertions — THE GATE, must be 0 failed
+./Scripts/doctor.sh  # 36 machine assertions — THE GATE, must be 0 failed
 ./Scripts/lint.sh    # swift-format + swiftlint
 ```
 

@@ -77,6 +77,14 @@ else
   bad "bordersrc has a syntax error"
 fi
 
+# Removing Raycast integration once also deleted the next function declaration.
+# Daemon health alone cannot detect a broken script until the next theme switch.
+if bash -n "$HOME/.local/bin/theme-switch" 2>/dev/null; then
+  ok "theme-switch is valid shell"
+else
+  bad "theme-switch has a syntax error"
+fi
+
 # theme-switch used to regenerate bordersrc on every switch, silently reverting
 # whatever the app wrote. Assert that generator stays dead.
 if grep -A4 "^write_borders_config()" "$HOME/.local/bin/theme-switch" 2>/dev/null | grep -q "sole author"; then
