@@ -12,7 +12,7 @@ extension BordersPane {
                         )
                     )
                     .toggleStyle(.switch).controlSize(.small)
-                    .disabled(editor.isApplying || (!editor.live && editor.hasChanges))
+                    .disabled(!editor.live && (editor.isApplying || editor.hasChanges))
                     HelpTooltip(
                         text: "Live applies edits and resets immediately. Turn it off to compare "
                             + "Before and After, then choose Apply or Discard. Apply or discard pending edits "

@@ -27,6 +27,9 @@ struct BorderPreview: View {
         }
         .frame(minHeight: 232)
         .clipShape(RoundedRectangle(cornerRadius: 7))
+        // Clipping crops pixels, not the scaled wallpaper's hit area. The
+        // decorative preview must never intercept clicks on nearby controls.
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder

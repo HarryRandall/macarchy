@@ -88,4 +88,27 @@ struct BordersEditorTests {
         #expect(!editor.hasChanges)
         #expect(editor.error == nil)
     }
+    @Test("live mode can be turned off while a write is in flight")
+    func disableLiveDuringApply() async {
+        var finish: CheckedContinuation<Void, Never>?
+        var cancelled = false
+        let editor = BordersEditor { _ in
+            await withCheckedContinuation { finish = $0 }
+            cancelled = Task.isCancelled
+        }
+        editor.load(BorderAppearance())
+        editor.draft.width = 9
+        let applying = Task { await editor.apply() }
+        while finish == nil { await Task.yield() }
+        #expect(editor.isApplying)
+        editor.setLive(false)
+        #expect(!editor.live)
+        finish?.resume()
+        await applying.value
+        #expect(!cancelled)
+        #expect(editor.applied.width == 9)
+        #expect(!editor.isApplying)
+        #expect(!editor.live)
+    }
+
 }

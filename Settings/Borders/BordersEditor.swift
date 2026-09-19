@@ -30,8 +30,9 @@ final class BordersEditor {
     }
 
     func changed() {
+        guard !isApplying else { return }
         pending?.cancel()
-        guard live, hasChanges, !isApplying else { return }
+        guard live, hasChanges else { return }
         pending = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
@@ -41,8 +42,9 @@ final class BordersEditor {
 
     /// Enabling live mode never silently commits an existing manual draft.
     func setLive(_ enabled: Bool) {
-        guard !isApplying, !enabled || !hasChanges else { return }
-        pending?.cancel()
+        guard !enabled || (!isApplying && !hasChanges) else { return }
+        // Let an already-started write finish, but stop queued live edits.
+        if !isApplying { pending?.cancel() }
         live = enabled
     }
 
