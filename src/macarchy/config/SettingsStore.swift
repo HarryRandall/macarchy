@@ -1,0 +1,175 @@
+import Foundation
+import Darwin
+
+public enum SettingValue: Codable, Sendable, Equatable {
+    case number(Double)
+    case bool(Bool)
+    case text(String)
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer()
+        if let boolean = try? value.decode(Bool.self) {
+            self = .bool(boolean)
+        } else if let number = try? value.decode(Double.self) {
+            self = .number(number)
+        } else {
+            self = .text(try value.decode(String.self))
+        }
+    }
+    public func encode(to encoder: Encoder) throws {
+        var value = encoder.singleValueContainer()
+        switch self {
+        case .number(let number): try value.encode(number)
+        case .bool(let boolean): try value.encode(boolean)
+        case .text(let text): try value.encode(text)
+        }
+    }
+    public var string: String {
+        switch self {
+        case .number(let number):
+            if number.rounded() == number { String(format: "%.0f", number) } else { String(number) }
+        case .bool(let boolean): boolean ? "true" : "false"
+        case .text(let text): text
+        }
+    }
+}
+
+public struct SettingsDocument: Codable, Sendable, Equatable {
+    public var schema = 1
+    public var currentTheme: String?
+    public var wallpapers: [String: String] = [:]
+    public var layout: [String: SettingValue] = [:]
+    public var borders: [String: SettingValue] = [:]
+    public var menuBar: [String: SettingValue] = [:]
+    public var floatingApps: [String] = []
+    public var itemOrder: [String] = []
+    public var itemVisibility: [String: Bool] = [:]
+    public var itemLabels: [String: String] = [:]
+    public init() {}
+
+    public func validate() throws {
+        guard schema == 1 else { throw ConfigurationError("Unsupported settings schema") }
+        let numeric = [layout, borders, menuBar].flatMap { $0.values }
+        for value in numeric {
+            if case .number(let number) = value, !number.isFinite {
+                throw ConfigurationError("Settings contain a non-finite number")
+            }
+        }
+        if let currentTheme {
+            guard
+                currentTheme.range(of: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$", options: .regularExpression)
+                    != nil
+            else {
+                throw ConfigurationError("Invalid active theme name")
+            }
+        }
+        for path in wallpapers.values
+        where path.hasPrefix("/") || path.split(separator: "/").contains("..") {
+            throw ConfigurationError("Wallpaper paths must stay inside their theme")
+        }
+        let ranges: [String: ClosedRange<Double>] = [
+            "BORDER_WIDTH": 0...16, "YABAI_WINDOW_GAP": 0...1000,
+            "YABAI_TOP_PADDING": 0...1000, "YABAI_BOTTOM_PADDING": 0...1000,
+            "YABAI_LEFT_PADDING": 0...1000, "YABAI_RIGHT_PADDING": 0...1000,
+            "SKETCHYBAR_HEIGHT": 1...200, "SKETCHYBAR_BLUR_RADIUS": 0...100
+        ]
+        for (key, range) in ranges {
+            if let raw = legacyValues[key] {
+                guard let number = Double(raw), number.isFinite, range.contains(number) else {
+                    throw ConfigurationError("\(key) is outside its supported range")
+                }
+            }
+        }
+    }
+
+    public var legacyValues: [String: String] {
+        var result: [String: String] = [:]
+        for (prefix, values) in [("YABAI_", layout), ("", borders), ("SKETCHYBAR_", menuBar)] {
+            for (key, value) in values {
+                let name = prefix + key.uppercased()
+                if case .bool(let flag) = value, name != "BORDERS_VISIBLE" {
+                    result[name] = flag ? "on" : "off"
+                } else {
+                    result[name] = value.string
+                }
+            }
+        }
+        return result
+    }
+
+    public mutating func mergeLegacy(_ values: [String: String]) {
+        for (key, raw) in values {
+            let value: SettingValue
+            if ["true", "false", "on", "off"].contains(raw) {
+                value = .bool(raw == "true" || raw == "on")
+            } else if let number = Double(raw), number.isFinite {
+                value = .number(number)
+            } else {
+                value = .text(raw)
+            }
+            if key.hasPrefix("YABAI_") {
+                layout[String(key.dropFirst(6)).lowercased()] = value
+            } else if key.hasPrefix("SKETCHYBAR_") {
+                menuBar[String(key.dropFirst(11)).lowercased()] = value
+            } else if key.hasPrefix("BORDER") {
+                borders[key.lowercased()] = value
+            }
+        }
+    }
+}
+
+public struct ConfigurationError: LocalizedError {
+    public let message: String
+    public init(_ message: String) { self.message = message }
+    public var errorDescription: String? { message }
+}
+
+/// JSON is authoritative. The legacy reader is used only before explicit migration.
+public struct SettingsStore: Sendable {
+    public let url: URL
+    public init(url: URL = Paths.appRoot.appending(path: "settings.json")) { self.url = url }
+
+    public func read() throws -> SettingsDocument {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            var settings = SettingsDocument()
+            settings.mergeLegacy(
+                EnvFile.parse(url.deletingLastPathComponent().appending(path: "settings.env")))
+            return settings
+        }
+        let settings = try JSONDecoder().decode(SettingsDocument.self, from: Data(contentsOf: url))
+        guard settings.schema == 1 else {
+            throw ConfigurationError("Unsupported settings schema: \(settings.schema)")
+        }
+        try settings.validate()
+        return settings
+    }
+
+    public func load() throws -> [String: String] { try read().legacyValues }
+    public func set(_ key: String, _ value: String) throws {
+        try update { $0.mergeLegacy([key: value]) }
+    }
+    public func write(_ values: [String: String]) throws { try update { $0.mergeLegacy(values) } }
+
+    /// The app and CLI may write at the same time. Lock the whole read-modify-write.
+    public func update(_ edit: (inout SettingsDocument) throws -> Void) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let descriptor = open(url.path + ".lock", O_CREAT | O_RDWR, 0o600)
+        guard descriptor >= 0 else { throw ConfigurationError("Cannot open settings lock") }
+        defer { close(descriptor) }
+        guard flock(descriptor, LOCK_EX) == 0 else {
+            throw ConfigurationError("Cannot lock settings")
+        }
+        defer { flock(descriptor, LOCK_UN) }
+        var settings = try read()
+        try edit(&settings)
+        try settings.validate()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(settings)
+        if (try? Data(contentsOf: url)) == data { return }
+        try SnapshotStore(root: url.deletingLastPathComponent().appending(path: "snapshots"))
+            .capture([url], reason: "settings changed")
+        try data.write(to: url, options: .atomic)
+    }
+}

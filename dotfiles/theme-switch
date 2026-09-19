@@ -1,0 +1,7 @@
+#!/bin/sh
+# Compatibility entry point for existing shortcuts; all logic lives in Swift.
+if [ "${1:-}" = --background ]; then
+  shift
+  exec "$HOME/.local/bin/macarchy" background "$@"
+fi
+exec "$HOME/.local/bin/macarchy" theme "$@"

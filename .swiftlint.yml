@@ -3,15 +3,15 @@
 # cannot see — force unwraps, oversized types, complexity.
 
 included:
-  - Kit
-  - Settings
-  - CLI
+  - src
+  - tests
 excluded:
   - .build
   - dist
-  - Tests/Fixtures/Ghostty/reference.sh
 
 disabled_rules:
+  # swift-format owns brace placement for multiline conditions.
+  - opening_brace
   # SwiftUI view bodies are legitimately long and deeply nested; the real
   # signal is type size, which is kept below.
   - closure_body_length
@@ -42,7 +42,6 @@ opt_in_rules:
   - sorted_first_last
   - toggle_bool
   - unneeded_parentheses_in_closure_argument
-  - unused_import
   - vertical_parameter_alignment_on_call
   - yoda_condition
 

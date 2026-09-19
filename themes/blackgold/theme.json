@@ -1,0 +1,15 @@
+{
+  "apps" : {
+    "ghosttyConfig" : "ghostty.conf",
+    "nvimColorscheme" : "blackgold"
+  },
+  "colors" : {
+    "borderActive" : "0xffbfa75d",
+    "borderInactive" : "0x00000000",
+    "firefoxAccent" : "#bfa75d"
+  },
+  "dark" : true,
+  "name" : "blackgold",
+  "schema" : 1,
+  "wallpaper" : "backgrounds/BG2.png"
+}

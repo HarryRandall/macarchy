@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="Macarchy Settings"
+APP_NAME="Macarchy"
 BINARY="MacarchySettings"
 CONFIG="${1:-release}"
 DIST="$ROOT/dist"
@@ -26,13 +26,13 @@ echo "==> Assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
-cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
-[ -f "$ROOT/Resources/AppIcon.icns" ] && cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
+cp "$ROOT/src/app/resources/Info.plist" "$APP/Contents/Info.plist"
+[ -f "$ROOT/src/app/resources/AppIcon.icns" ] && cp "$ROOT/src/app/resources/AppIcon.icns" "$APP/Contents/Resources/"
 
 # Shipped theme defaults, used as the reset-to-default baseline.
-if [ -d "$ROOT/Themes" ]; then
-  cp -R "$ROOT/Themes" "$APP/Contents/Resources/Themes"
-  echo "    bundled $(find "$ROOT/Themes" -name theme.json | wc -l | tr -d ' ') default themes"
+if [ -d "$ROOT/themes" ]; then
+  cp -R "$ROOT/themes" "$APP/Contents/Resources/Themes"
+  echo "    bundled $(find "$ROOT/themes" -name theme.json | wc -l | tr -d ' ') default themes"
 fi
 
 echo "==> Signing"
@@ -47,14 +47,6 @@ else
   echo "    MACARCHY_SIGN_IDENTITY=\"<cert name>\" to keep a stable identity."
 fi
 
-# The CLI is how ported surfaces stay single-implementation: theme-switch and
-# the theme-cycling hotkey call it, so the keyboard path and the GUI path run
-# the same code.
 CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
-if [ -f "$CLI_PATH" ]; then
-  mkdir -p "$HOME/.local/bin"
-  cp "$CLI_PATH" "$HOME/.local/bin/macarchy"
-  echo "==> Installed CLI: ~/.local/bin/macarchy"
-fi
-
-echo "==> Done: $APP"
+cp "$CLI_PATH" "$DIST/macarchy"
+echo "==> Built: $APP and $DIST/macarchy (not installed)"
