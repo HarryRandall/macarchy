@@ -17,9 +17,15 @@ final class MenuBarModel {
     var cornerRadius: Double = 0
     var yOffset: Double = 0
     var sticky = true
+    var color = "0x1000000"
 
     private(set) var groups: [ItemGroup] = []
+    /// Live leaves for the preview. Groups stay script-level for toggles.
+    private(set) var items: [SketchybarItem] = []
     private(set) var isHydrating = false
+    private(set) var canUndo = false
+    private var undoStack: [@MainActor () async -> Void] = []
+    private var recordingUndo = true
 
     /// A source file and the runtime items it creates.
     ///
@@ -62,15 +68,31 @@ final class MenuBarModel {
             cornerRadius = Double(bar.cornerRadius ?? 0)
             yOffset = Double(bar.yOffset ?? 0)
             sticky = (bar.sticky ?? "on") == "on"
+            color = bar.color ?? color
         }
 
         if bar != nil { persistHydrated() }
-        await rebuildGroups(runtimeItems: bar?.items ?? [])
+        let names = bar?.items ?? []
+        items = await snapshotItems(names)
+        rebuildGroups(runtimeItems: names)
+    }
+
+    private func snapshotItems(_ names: [String]) async -> [SketchybarItem] {
+        var snapped: [SketchybarItem] = []
+        snapped.reserveCapacity(names.count)
+        for name in names {
+            let result = await backend.sketchybar(["--query", name])
+            guard result.ok, let item = SketchybarItem.parse(id: name, json: result.stdout) else {
+                continue
+            }
+            snapped.append(item)
+        }
+        return snapped
     }
 
     /// Maps runtime items back to the file that declared them by reading the
     /// `--add` lines out of each item script.
-    private func rebuildGroups(runtimeItems: [String]) async {
+    private func rebuildGroups(runtimeItems: [String]) {
         let fm = FileManager.default
         let files =
             ((try? fm.contentsOfDirectory(at: Self.itemsDirectory, includingPropertiesForKeys: nil))
@@ -78,6 +100,7 @@ final class MenuBarModel {
             .filter { $0.pathExtension == "sh" }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
+        let drawing = Set(items.filter(\.drawing).map(\.id))
         var claimed = Set<String>()
         var built: [ItemGroup] = []
 
@@ -92,14 +115,11 @@ final class MenuBarModel {
             guard !owned.isEmpty else { continue }
             claimed.formUnion(owned)
 
-            var anyVisible = false
-            for item in owned where await isDrawing(item) { anyVisible = true; break }
-
             built.append(
                 ItemGroup(
                     id: file.deletingPathExtension().lastPathComponent,
                     items: owned,
-                    visible: anyVisible))
+                    visible: owned.contains { drawing.contains($0) }))
         }
 
         let orphans = runtimeItems.filter { !claimed.contains($0) }
@@ -125,16 +145,6 @@ final class MenuBarModel {
             names.append(name)
         }
         return names
-    }
-
-    private func isDrawing(_ item: String) async -> Bool {
-        let result = await backend.sketchybar(["--query", item])
-        guard result.ok, let data = result.stdout.data(using: .utf8),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let geometry = object["geometry"] as? [String: Any],
-            let drawing = geometry["drawing"] as? String
-        else { return true }
-        return drawing == "on"
     }
 
     /// Mirrors the running bar into settings.env so the generated rc reproduces
@@ -174,7 +184,9 @@ final class MenuBarModel {
 
     func setGroup(_ group: ItemGroup, visible: Bool) {
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
+        let previous = groups[index].visible
         groups[index].visible = visible
+        pushUndo { [weak self] in self?.setGroup(group, visible: previous) }
 
         Task { [backend, log, items = group.items] in
             var arguments: [String] = []
@@ -182,6 +194,7 @@ final class MenuBarModel {
                 arguments += ["--set", item, "drawing=\(visible ? "on" : "off")"]
             }
             log.record(await backend.sketchybar(arguments))
+            await hydrate()
         }
     }
 
@@ -189,5 +202,76 @@ final class MenuBarModel {
         Task { [backend, log] in
             log.record(await backend.restart(.sketchybar))
         }
+    }
+
+    func setDrawing(_ id: String, _ drawing: Bool) {
+        let previous = items.first { $0.id == id }?.drawing ?? !drawing
+        pushUndo { [weak self] in self?.setDrawing(id, previous) }
+        Task {
+            log.record(
+                await backend.sketchybar(["--set", id, "drawing=\(drawing ? "on" : "off")"]))
+            await hydrate()
+        }
+    }
+
+    func setLabel(_ id: String, _ label: String) {
+        let previous = items.first { $0.id == id }?.label.value ?? ""
+        pushUndo { [weak self] in self?.setLabel(id, previous) }
+        Task {
+            log.record(await backend.sketchybar(["--set", id, "label=\(label)"]))
+            await hydrate()
+        }
+    }
+
+    /// `before`/`after` follow query order, which is reversed on the right.
+    func move(_ source: String, onto target: String) {
+        let names = items.map(\.id)
+        guard let sourceIndex = names.firstIndex(of: source),
+            let targetIndex = names.firstIndex(of: target),
+            sourceIndex != targetIndex
+        else { return }
+        let relation = sourceIndex < targetIndex ? "after" : "before"
+        let neighbor = sourceIndex > 0 ? names[sourceIndex - 1] : nil
+        let afterNeighbor = sourceIndex + 1 < names.count ? names[sourceIndex + 1] : nil
+        pushUndo { [weak self] in
+            guard let self else { return }
+            if let afterNeighbor {
+                await self.moveRaw(source, "before", afterNeighbor)
+            } else if let neighbor {
+                await self.moveRaw(source, "after", neighbor)
+            }
+        }
+        Task { await moveRaw(source, relation, target) }
+    }
+
+    func undoLast() {
+        guard let step = undoStack.popLast() else { return }
+        canUndo = !undoStack.isEmpty
+        recordingUndo = false
+        Task {
+            await step()
+            recordingUndo = true
+        }
+    }
+
+    private func pushUndo(_ step: @escaping @MainActor () async -> Void) {
+        guard recordingUndo else { return }
+        undoStack.append(step)
+        canUndo = true
+    }
+
+    private func moveRaw(_ source: String, _ relation: String, _ target: String) async {
+        log.record(await backend.sketchybar(["--move", source, relation, target]))
+        persistOrder(moving: source, onto: target, relation: relation)
+        await hydrate()
+    }
+
+    private func persistOrder(moving source: String, onto target: String, relation: String) {
+        var names = items.map(\.id)
+        guard let from = names.firstIndex(of: source) else { return }
+        names.remove(at: from)
+        guard let to = names.firstIndex(of: target) else { return }
+        names.insert(source, at: relation == "after" ? to + 1 : to)
+        try? store.set("SKETCHYBAR_ITEM_ORDER", names.joined(separator: ","))
     }
 }

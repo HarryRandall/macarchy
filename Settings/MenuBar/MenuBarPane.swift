@@ -9,18 +9,26 @@ struct MenuBarPane: View {
 
         Form {
             Section {
-                MenuBarStrip(
-                    height: bar.height,
-                    paddingLeft: bar.paddingLeft,
-                    paddingRight: bar.paddingRight,
-                    cornerRadius: bar.cornerRadius,
-                    position: bar.position,
-                    groups: bar.groups,
-                    palette: model.currentThemePalette
+                // MenuBarStage is this page's preview. Revert: restore
+                // MenuBarStrip from git and delete MenuBarStage.swift.
+                MenuBarStage(
+                    bar: bar,
+                    palette: model.currentThemePalette,
+                    wallpaper: model.currentThemeWallpaper
                 )
-                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+                .listRowInsets(EdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4))
             } header: {
-                Text("Preview")
+                HStack {
+                    Text("Preview")
+                    Spacer()
+                    Button("Undo") { bar.undoLast() }
+                        .disabled(!bar.canUndo)
+                        .controlSize(.small)
+                }
+            } footer: {
+                Text("Drag to reorder · click to edit. The live bar follows.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -130,47 +138,5 @@ struct MenuBarPane: View {
                     .frame(width: 30, alignment: .trailing)
             }
         }
-    }
-}
-
-/// A scaled stand-in for the bar, so geometry changes are legible without
-/// looking away from the window.
-private struct MenuBarStrip: View {
-    let height: Double
-    let paddingLeft: Double
-    let paddingRight: Double
-    let cornerRadius: Double
-    let position: String
-    let groups: [MenuBarModel.ItemGroup]
-    let palette: GhosttyPalette?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if position == "bottom" { Spacer(minLength: 0) }
-
-            HStack(spacing: 10) {
-                ForEach(groups.filter(\.visible).prefix(5)) { group in
-                    Text(group.id)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(palette?.foreground ?? .primary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            (palette?.brightBlack ?? .secondary).opacity(0.25),
-                            in: RoundedRectangle(cornerRadius: 3))
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, paddingLeft / 2)
-            .padding(.trailing, paddingRight / 2)
-            .frame(height: max(height, 14))
-            .background(palette?.background.opacity(0.75) ?? Color.black.opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-
-            if position == "top" { Spacer(minLength: 0) }
-        }
-        .frame(height: 72)
-        .padding(6)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
     }
 }
