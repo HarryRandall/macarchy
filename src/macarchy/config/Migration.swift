@@ -20,9 +20,14 @@ public enum Migration {
                 initial.floatingApps = try JSONDecoder().decode(
                     [String].self, from: Data(contentsOf: rules))
             }
+            initial.barConfiguration = try BarConfigurationStore().load()
             try store.update { $0 = initial }
         } else {
-            _ = try store.read()
+            if try store.read().barConfiguration == nil,
+                let configuration = try BarConfigurationStore().load()
+            {
+                try BarConfigurationStore().save(configuration)
+            }
         }
         let configuration = StartupConfiguration()
         for outcome in [

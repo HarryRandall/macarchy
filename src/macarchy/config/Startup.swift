@@ -36,6 +36,9 @@ public enum Startup {
             for pair in zip(settings.itemOrder, settings.itemOrder.dropFirst()) {
                 try require(await integrations.sketchybar(["--move", pair.1, "after", pair.0]))
             }
+            if let configuration = try BarConfigurationStore().load() {
+                try await BarCommands.replay(configuration, integrations: integrations)
+            }
         case "borders":
             let theme = settings.currentTheme.flatMap {
                 Theme.load(from: Paths.themesDirectory.appending(path: $0))

@@ -18,8 +18,6 @@ struct MenuBarItemView: View {
             }
         }
         .frame(width: item.frame.width, height: item.frame.height, alignment: .leading)
-        .padding(.leading, item.paddingLeft)
-        .padding(.trailing, item.paddingRight)
         .opacity(dimmed ? 0.28 : 1)
     }
 

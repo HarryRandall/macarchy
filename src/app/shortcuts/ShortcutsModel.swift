@@ -6,7 +6,7 @@ import Macarchy
 ///
 /// Editing lands later behind a macarchy:keep block; parsing first because the
 /// parser is the reusable half — generating skhdrc has to round-trip the same
-/// model, so it lives beside the daemon in Desktop rather than here.
+/// model, so it lives in the shared Macarchy module.
 @MainActor
 @Observable
 final class ShortcutsModel {

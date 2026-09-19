@@ -7,7 +7,9 @@ identifier and MacarchySettings executable remain stable for macOS identity.
 ## Ownership
 
 `settings.json` owns the active theme, per-theme wallpaper choices, layout,
-borders, menu bar preferences and floating-window rules. It has a schema version.
+borders, menu bar preferences and floating-window rules. Grouped menu bar layouts
+are stored in its `barConfiguration` field; unapplied edits use a separate
+`menu-bar-draft.json`. Existing `menu-bar.json` files are imported by migration. It has a schema version.
 Atomic writes hold a cross-process lock around read-modify-write and snapshot the
 previous version. Unchanged writes create no snapshots. Invalid JSON is an error.
 
@@ -45,7 +47,8 @@ a plain restore intentionally changes files only.
 ## Development checks
 
 `swift test` exercises JSON persistence, serialised changes, process cancellation,
-restore at the retention limit, shell-output parity and the app's Borders editor.
+restore at the retention limit, shell-output parity, native menu bar replay,
+grouped editing and the app's Borders editor.
 The integration test runs migration twice in a temporary home and checks that
 preferences and custom regions survive, generated scripts parse, the second run
 changes nothing, and invalid JSON is never replaced by legacy data:

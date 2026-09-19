@@ -16,6 +16,7 @@ with tempfile.TemporaryDirectory(prefix="macarchy-migration-test-") as temporary
     root = config / "macarchy-settings"
     root.mkdir(parents=True)
     (root / "settings.env").write_text('BORDER_WIDTH="7.0"\nBORDERS_VISIBLE="true"\nYABAI_WINDOW_GAP="8"\nSKETCHYBAR_HEIGHT="35"\n')
+    (root / "menu-bar.json").write_text('{"components":[],"geometry":{"height":"35"},"componentPadding":6,"componentSpacing":9}')
     themes = root / "themes"
     themes.mkdir()
     shutil.copytree(repo / "tests/fixtures/themes/matte-black", themes / "matte-black")
@@ -39,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix="macarchy-migration-test-") as temporary
     assert saved["borders"]["border_width"] == 7
     assert saved["borders"]["borders_visible"] is True
     assert saved["layout"]["window_gap"] == 8
+    assert saved["barConfiguration"]["componentPadding"] == 6
     assert saved["currentTheme"] == "matte-black"
     assert saved["floatingApps"] == ["System Settings"]
     assert saved["wallpapers"]["matte-black"] == "backgrounds/chosen.jpg"
@@ -46,8 +48,10 @@ with tempfile.TemporaryDirectory(prefix="macarchy-migration-test-") as temporary
         subprocess.run(["/bin/bash", "-n", path], check=True)
         assert "macarchy\" startup" in path.read_text()
         assert "settings.env" not in path.read_text()
+        assert "menu-bar.sh" not in path.read_text()
         assert "preserved" in path.read_text()
         assert os.access(path, os.X_OK)
+    assert "--load-font example --default icon.font=example" in (config / "sketchybar/sketchybarrc").read_text()
     def contents():
         return {str(path.relative_to(home)): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in home.rglob("*") if path.is_file()}

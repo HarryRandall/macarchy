@@ -41,12 +41,14 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var borders: [String: SettingValue] = [:]
     public var menuBar: [String: SettingValue] = [:]
     public var floatingApps: [String] = []
+    public var barConfiguration: BarConfiguration?
     public var itemOrder: [String] = []
     public var itemVisibility: [String: Bool] = [:]
     public var itemLabels: [String: String] = [:]
     public init() {}
 
     public func validate() throws {
+        try barConfiguration?.validate()
         guard schema == 1 else { throw ConfigurationError("Unsupported settings schema") }
         let numeric = [layout, borders, menuBar].flatMap { $0.values }
         for value in numeric {

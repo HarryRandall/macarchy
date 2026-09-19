@@ -1,214 +1,151 @@
 import AppKit
 import CoreText
 import SwiftUI
+import UniformTypeIdentifiers
 import Macarchy
 
-/// Scales a native-size paint of the live bar. The empty desktop middle is
-/// collapsed so items can be larger than a full-width 1512pt shrink.
 struct MenuBarStage: View {
     @Bindable var bar: MenuBarModel
-    let palette: GhosttyPalette?
     let wallpaper: URL?
-
-    @State private var editing: SketchybarItem?
+    var half: String?
     @State private var dragging: String?
-    @State private var dragLocation: CGPoint = .zero
-    @State private var dropTarget: String?
-    @State private var stageHeight: CGFloat = 44
+    @State private var target: String?
 
     var body: some View {
-        // GeometryReader inside a Form row reports a useless width unless the
-        // row already has a size. Background-on-Color.clear is the Form-safe way.
-        Color.clear
-            .frame(maxWidth: .infinity)
-            .frame(height: stageHeight)
-            .background { GeometryReader { proxy in canvas(width: proxy.size.width) } }
-            .clipShape(RoundedRectangle(cornerRadius: 7))
-            .onAppear { Self.registerAppFont() }
-            .onPreferenceChange(StageHeightKey.self) { stageHeight = $0 }
-            .animation(.easeInOut(duration: 0.15), value: bar.height)
-            .popover(item: $editing) { item in
-                MenuBarItemEditor(item: item, bar: bar)
+        GeometryReader { proxy in
+            let layout = MenuBarLayout(bar: bar)
+            let nativeWidth = half == nil ? layout.screenWidth : layout.screenWidth / 2
+            let width = half == nil ? proxy.size.width : max(proxy.size.width, nativeWidth)
+            let scale = width / nativeWidth
+            ScrollView(.horizontal) {
+                canvas(layout: layout, width: width, scale: scale)
             }
+            .scrollIndicators(.hidden)
+        }
+        .frame(height: half == nil ? 82 : max(104, bar.height + 48))
+        .onAppear {
+            let font = Paths.home.appending(path: "Library/Fonts/sketchybar-app-font.ttf") as CFURL
+            CTFontManagerRegisterFontsForURL(font, .process, nil)
+        }
     }
 
-    private func canvas(width: CGFloat) -> some View {
-        let layout = PackedBar.fit(
-            items: leaves, barHeight: max(bar.height, 35), previewWidth: width)
+    private var visibleComponents: [BarComponent] {
+        bar.draft.components.filter { $0.visible && (half == nil || $0.side == half) }
+    }
 
+    private func componentItems(_ component: BarComponent) -> [SketchybarItem] {
+        bar.items.filter {
+            component.members.contains($0.id) && $0.drawing && !$0.id.hasPrefix("gap.")
+        }
+    }
+
+    private func canvas(layout: MenuBarLayout, width: CGFloat, scale: CGFloat) -> some View {
+        let offset = half == "right" ? layout.screenWidth / 2 : 0
+        let stageHeight = half == nil ? 78.0 : max(96, bar.height + 40)
         return ZStack(alignment: .topLeading) {
-            WallpaperThumbnail(url: wallpaper, height: layout.stageHeight)
-                .frame(width: width, height: layout.stageHeight)
-                .clipped()
-            (Color(macarchyHex: bar.color) ?? .clear)
-                .frame(width: width, height: layout.barHeight)
-            Notch(frame: layout.notch)
-            ForEach(leaves) { item in
-                if let frame = layout.frames[item.id] {
-                    placed(item, frame: frame, scale: layout.scale, frames: layout.frames)
+            WallpaperThumbnail(url: wallpaper, height: stageHeight)
+                .frame(width: layout.screenWidth * scale)
+                .offset(x: -offset * scale).allowsHitTesting(false)
+            (Color(macarchyHex: bar.colour) ?? .clear)
+                .frame(width: width, height: bar.height * scale).allowsHitTesting(false)
+            ForEach(visibleComponents) { component in
+                if let frame = layout.frames[component.id] {
+                    group(component, frame: frame, layout: layout, scale: scale, offset: offset)
                 }
             }
-            if let dragging, let item = bar.items.first(where: { $0.id == dragging }) {
-                MenuBarItemView(item: item)
-                    .scaleEffect(layout.scale)
-                    .position(dragLocation)
-                    .allowsHitTesting(false)
+            if layout.notch.width > 0 && bar.draft.geometry["position"] != "bottom" {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0, bottomLeadingRadius: 9 * scale,
+                    bottomTrailingRadius: 9 * scale, topTrailingRadius: 0
+                )
+                .fill(.black)
+                .frame(width: layout.notch.width * scale, height: layout.notch.height * scale)
+                .offset(x: (layout.notch.minX - offset) * scale)
+                .allowsHitTesting(false)
             }
         }
-        .frame(width: width, height: layout.stageHeight)
-        .clipped()
-        .coordinateSpace(name: "preview")
-        .onHover { inside in
-            if inside { NSCursor.openHand.push() } else { NSCursor.pop() }
-        }
-        .preference(key: StageHeightKey.self, value: layout.stageHeight)
+        .frame(width: width, height: stageHeight, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
     }
 
-    private var leaves: [SketchybarItem] {
-        bar.items.filter(\.isOnScreen).filter(\.isLeaf)
-    }
-
-    private func placed(
-        _ item: SketchybarItem, frame: CGRect, scale: CGFloat, frames: [String: CGRect]
+    private func group(
+        _ component: BarComponent, frame: CGRect, layout: MenuBarLayout,
+        scale: CGFloat, offset: CGFloat
     ) -> some View {
-        MenuBarItemView(item: item, dimmed: dragging == item.id)
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: frame.width, height: frame.height, alignment: .topLeading)
-            .background(alignment: .leading) {
-                if dropTarget == item.id {
-                    Capsule().fill(Color.accentColor).frame(width: 2).offset(x: -2)
+        ZStack(alignment: .topLeading) {
+            if component.isCustom {
+                HStack(spacing: 8) {
+                    Text(component.icon).font(.system(size: 15))
+                    Text(component.text).font(.system(size: 12))
+                }
+                .foregroundStyle(Color(macarchyHex: component.colour) ?? .white)
+                .padding(.leading, bar.draft.padding(for: component))
+                .frame(width: frame.width, height: frame.height, alignment: .leading)
+                .opacity(component.kind == "spacer" ? 0 : 1)
+            } else {
+                ForEach(componentItems(component)) { item in
+                    if let memberFrame = layout.memberFrames[item.id] {
+                        MenuBarItemView(item: item)
+                            .offset(x: memberFrame.minX - frame.minX, y: memberFrame.minY)
+                    }
                 }
             }
-            .position(x: frame.midX, y: frame.midY)
-            .contentShape(Rectangle())
-            .gesture(drag(item, frames: frames))
-    }
-
-    private func drag(_ item: SketchybarItem, frames: [String: CGRect]) -> some Gesture {
-        DragGesture(minimumDistance: 2, coordinateSpace: .named("preview"))
-            .onChanged { value in
-                if dragging == nil { NSCursor.closedHand.push() }
-                dragging = item.id
-                dragLocation = value.location
-                dropTarget = target(at: value.location, excluding: item.id, frames: frames)
-            }
-            .onEnded { value in
-                NSCursor.pop()
-                let travelled = hypot(value.translation.width, value.translation.height)
-                if travelled < 5 {
-                    editing = item
-                } else if let dropTarget {
-                    bar.move(item.id, onto: dropTarget)
-                }
-                dragging = nil
-                dropTarget = nil
-            }
-    }
-
-    private func target(
-        at point: CGPoint, excluding: String, frames: [String: CGRect]
-    ) -> String? {
-        leaves.first { item in
-            guard item.id != excluding, let frame = frames[item.id] else { return false }
-            return frame.insetBy(dx: -4, dy: -4).contains(point)
-        }?.id
-    }
-
-    /// The app font lives in ~/Library/Fonts but SwiftUI only sees it after
-    /// an explicit process-level register — otherwise `:firefox:` is literal.
-    private static func registerAppFont() {
-        let url = Paths.home.appending(path: "Library/Fonts/sketchybar-app-font.ttf") as CFURL
-        CTFontManagerRegisterFontsForURL(url, .process, nil)
-    }
-}
-
-private struct StageHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 44
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-/// Maps live `bounding_rects` into the preview by dropping the unused middle.
-@MainActor
-private struct PackedBar {
-    let scale: CGFloat
-    let frames: [String: CGRect]
-    let notch: CGRect
-    let barHeight: CGFloat
-    let stageHeight: CGFloat
-
-    static func fit(
-        items: [SketchybarItem], barHeight: CGFloat, previewWidth: CGFloat
-    ) -> PackedBar {
-        let screen = max(NSScreen.main?.frame.width ?? 1512, 1)
-        let notchNative = Notch.current.frame
-        let mid = screen / 2
-        let leftMax = items.filter { $0.frame.midX < mid }.map(\.frame.maxX).max() ?? 0
-        let rightMin = items.filter { $0.frame.midX >= mid }.map(\.frame.minX).min() ?? screen
-        let leftNative = max(leftMax, 0)
-        let rightNative = max(screen - rightMin, 0)
-        let gutter: CGFloat = 12
-        let packed = leftNative + gutter + notchNative.width + gutter + rightNative
-        let scale = max((previewWidth - 8) / max(packed, 1), 0.01)
-        let pad: CGFloat = 5
-        let scaledBar = barHeight * scale
-
-        var frames: [String: CGRect] = [:]
-        for item in items where item.frame.midX < mid {
-            frames[item.id] = CGRect(
-                x: 4 + item.frame.minX * scale,
-                y: pad + item.frame.minY * scale,
-                width: item.frame.width * scale,
-                height: item.frame.height * scale)
         }
-        let rightOrigin = previewWidth - 4 - rightNative * scale
-        for item in items where item.frame.midX >= mid {
-            frames[item.id] = CGRect(
-                x: rightOrigin + (item.frame.minX - rightMin) * scale,
-                y: pad + item.frame.minY * scale,
-                width: item.frame.width * scale,
-                height: item.frame.height * scale)
-        }
-
-        let leftEnd = 4 + leftNative * scale
-        let rightStart = previewWidth - 4 - rightNative * scale
-        let notchWidth = notchNative.width * scale
-        let notchX = (leftEnd + rightStart) / 2 - notchWidth / 2
-        let notch = CGRect(
-            x: notchX, y: pad, width: notchWidth, height: notchNative.height * scale)
-
-        return PackedBar(
-            scale: scale, frames: frames, notch: notch,
-            barHeight: scaledBar, stageHeight: scaledBar + pad * 2)
-    }
-}
-
-/// Live notch, from the same `NSScreen` auxiliary areas the bar already avoids.
-private struct Notch: View {
-    let frame: CGRect
-
-    static var current: Notch {
-        let screen = NSScreen.main
-        let left = screen?.auxiliaryTopLeftArea ?? .zero
-        let right = screen?.auxiliaryTopRightArea ?? .zero
-        let x = left.maxX
-        let width = max(0, right.minX - left.maxX)
-        let height = max(left.height, right.height)
-        return Notch(frame: CGRect(x: x, y: 0, width: width, height: height))
-    }
-
-    var body: some View {
-        UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: frame.height / 2.4,
-            bottomTrailingRadius: frame.height / 2.4,
-            topTrailingRadius: 0,
-            style: .continuous
-        )
-        .fill(Color.black)
-        .frame(width: frame.width, height: frame.height)
-        .position(x: frame.midX, y: frame.midY)
+        .frame(width: frame.width, height: frame.height, alignment: .topLeading)
         .allowsHitTesting(false)
+        .overlay {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(
+                    bar.selection.contains(component.id) ? Color.accentColor.opacity(0.12) : .clear
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4).strokeBorder(
+                        bar.selection.contains(component.id) || dragging == component.id
+                            ? Color.accentColor : .clear, lineWidth: 2)
+                )
+                .padding(.trailing, bar.draft.spacing(for: component))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    bar.select(component.id, extending: NSEvent.modifierFlags.contains(.shift))
+                    bar.side = component.side
+                }
+                .onDrag {
+                    if !bar.selection.contains(component.id) { bar.select(component.id) }
+                    dragging = component.id
+                    return NSItemProvider(object: component.id as NSString)
+                }
+                .onDrop(
+                    of: [UTType.text],
+                    isTargeted: Binding(
+                        get: { target == component.id }, set: { target = $0 ? component.id : nil }
+                    )
+                ) { providers in
+                    acceptDrop(providers, target: component.id)
+                }
+        }
+        .overlay(alignment: .leading) {
+            if target == component.id { Rectangle().fill(Color.accentColor).frame(width: 2) }
+        }
+        .scaleEffect(scale, anchor: .topLeading)
+        .frame(width: frame.width * scale, height: frame.height * scale, alignment: .topLeading)
+        .offset(x: (frame.minX - offset) * scale)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(component.title)
+        .help("\(component.title): click to edit, drag to move")
+    }
+
+    private func acceptDrop(_ providers: [NSItemProvider], target: String) -> Bool {
+        guard let provider = providers.first else { return false }
+        _ = provider.loadObject(ofClass: String.self) { value, _ in
+            guard let value else { return }
+            Task { @MainActor in
+                guard bar.draft.components.contains(where: { $0.id == value }) else { return }
+                bar.move(value, before: target)
+                dragging = nil
+                self.target = nil
+            }
+        }
+        return true
     }
 }
