@@ -26,6 +26,12 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
+            name: "SettingsTests",
+            dependencies: ["Settings", "Desktop"],
+            path: "Tests/Settings",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(
             name: "DesktopTests",
             dependencies: ["Desktop"],
             path: "Tests/Desktop",

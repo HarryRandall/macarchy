@@ -30,8 +30,6 @@ final class BordersModel {
     private let backend: StackBackend
     private let log: CommandLog
     private let store = SettingsEnv()
-    private var pending: Task<Void, Never>?
-    private var cornerRadiusPending: Task<Void, Never>?
 
     init(backend: StackBackend, log: CommandLog) {
         self.backend = backend
@@ -70,95 +68,69 @@ final class BordersModel {
         }
     }
 
-    func applyBorders() {
-        pending?.cancel()
-        let style = self.style
-        pending = Task { [backend, log, width, visible, excludedApps, store] in
-            try? await Task.sleep(for: .milliseconds(80))
-            guard !Task.isCancelled else { return }
-
-            var arguments = [
-                "width=\(visible ? String(format: "%.1f", width) : "0.0")",
-                "style=\(style)",
-                "background_color=0x00000000"
-            ]
-            var excludedApps = excludedApps
-            if !excludedApps.contains("iPhone Mirroring") {
-                excludedApps.append("iPhone Mirroring")
-            }
-            arguments.append("blacklist=\(excludedApps.joined(separator: ","))")
-
-            if visible {
-                let name =
-                    (try? String(
-                        contentsOf: Paths.themesDirectory.appending(path: ".current"),
-                        encoding: .utf8))?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let theme = EnvFile.parse(
-                    Paths.themesDirectory.appending(path: name).appending(path: "theme.env"))
-                var active = theme["BORDER_ACTIVE"] ?? "0xff45e8ff"
-                let colours = (theme["BORDER_ANIMATION_COLORS"] ?? "").split(whereSeparator: {
-                    $0.isWhitespace
-                })
-                if let first = colours.first {
-                    let second =
-                        colours.count > 3 ? colours[3] : (colours.count > 1 ? colours[1] : first)
-                    active =
-                        (theme["BORDER_ANIMATION_EFFECT"] ?? "glow") == "glow"
-                        ? "glow(\(first))"
-                        : "gradient(top_left=\(first),bottom_right=\(second))"
-                }
-                arguments.append("active_color=\(active)")
-                arguments.append("inactive_color=\(theme["BORDER_INACTIVE"] ?? "0x00000000")")
-            } else {
-                arguments.append("active_color=0x00000000")
-                arguments.append("inactive_color=0x00000000")
-            }
-
-            let result = await backend.borders(arguments)
-            log.record(result)
-            guard result.ok else {
-                await self.hydrate()
-                return
-            }
-
-            do {
-                var values = store.load()
-                values["BORDER_WIDTH"] = String(format: "%.1f", width)
-                values["BORDER_STYLE"] = style
-                values["BORDERS_VISIBLE"] = visible ? "true" : "false"
-                values["BORDERS_BLACKLIST"] = excludedApps.joined(separator: ",")
-                try store.write(values)
-                log.note("wrote settings.env", "\(values.count) keys")
-            } catch {
-                log.note("settings.env write failed", error.localizedDescription)
-            }
+    func applyBorders() async throws {
+        var arguments = [
+            "width=\(visible ? String(format: "%.1f", width) : "0.0")",
+            "style=\(style)",
+            "background_color=0x00000000"
+        ]
+        var excludedApps = excludedApps
+        if !excludedApps.contains("iPhone Mirroring") {
+            excludedApps.append("iPhone Mirroring")
         }
-    }
+        arguments.append("blacklist=\(excludedApps.joined(separator: ","))")
 
-    /// Writes the window radius and re-sends the derived border style together,
-    /// so the two can never disagree.
-    func applyCornerRadius() {
-        cornerRadiusPending?.cancel()
-        cornerRadiusPending = Task { [backend, log, cornerRadius] in
-            try? await Task.sleep(for: .milliseconds(120))
-            guard !Task.isCancelled else { return }
-            let result = await backend.setGlobalDefault(
-                Self.cornerRadiusKey, float: String(format: "%.2f", cornerRadius))
-            log.record(result)
-            guard !Task.isCancelled, result.ok else { return }
-            self.hasCornerRadiusOverride = true
-            self.applyBorders()
+        if visible {
+            let name =
+                (try? String(
+                    contentsOf: Paths.themesDirectory.appending(path: ".current"),
+                    encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let theme = EnvFile.parse(
+                Paths.themesDirectory.appending(path: name).appending(path: "theme.env"))
+            var active = theme["BORDER_ACTIVE"] ?? "0xff45e8ff"
+            let colours = (theme["BORDER_ANIMATION_COLORS"] ?? "").split(whereSeparator: {
+                $0.isWhitespace
+            })
+            if let first = colours.first {
+                let second =
+                    colours.count > 3 ? colours[3] : (colours.count > 1 ? colours[1] : first)
+                active =
+                    (theme["BORDER_ANIMATION_EFFECT"] ?? "glow") == "glow"
+                    ? "glow(\(first))"
+                    : "gradient(top_left=\(first),bottom_right=\(second))"
+            }
+            arguments.append("active_color=\(active)")
+            arguments.append("inactive_color=\(theme["BORDER_INACTIVE"] ?? "0x00000000")")
+        } else {
+            arguments.append("active_color=0x00000000")
+            arguments.append("inactive_color=0x00000000")
         }
-    }
 
-    func resetCornerRadius() async {
-        cornerRadiusPending?.cancel()
-        let result = await backend.removeGlobalDefault(Self.cornerRadiusKey)
+        let result = await backend.borders(arguments)
         log.record(result)
-        guard result.ok else { return }
-        cornerRadius = Self.cornerRadiusRange.upperBound
-        hasCornerRadiusOverride = false
-        applyBorders()
+        guard result.ok else { throw BorderApplyError(message: result.summary) }
+
+        var values = store.load()
+        values["BORDER_WIDTH"] = String(format: "%.1f", width)
+        values["BORDER_STYLE"] = style
+        values["BORDERS_VISIBLE"] = visible ? "true" : "false"
+        values["BORDERS_BLACKLIST"] = excludedApps.joined(separator: ",")
+        try store.write(values)
+        log.note("wrote settings.env", "\(values.count) keys")
+    }
+
+    func applyCornerRadius(_ radius: Double?) async throws {
+        let result: CommandResult
+        if let radius {
+            result = await backend.setGlobalDefault(
+                Self.cornerRadiusKey, float: String(format: "%.2f", radius))
+        } else {
+            result = await backend.removeGlobalDefault(Self.cornerRadiusKey)
+        }
+        log.record(result)
+        guard result.ok else { throw BorderApplyError(message: result.summary) }
+        cornerRadius = radius ?? Self.cornerRadiusRange.upperBound
+        hasCornerRadiusOverride = radius != nil
     }
 }

@@ -1,18 +1,12 @@
 import SwiftUI
 
-/// The border as it will actually render, over the current wallpaper.
-///
-/// Normally one window. A second appears only when the corner radius has been
-/// changed but existing windows predate it — the one setting on this pane whose
-/// effect is genuinely deferred, and so the only one worth showing twice.
+import Desktop
+
+/// Manual mode compares the last applied appearance with the unsaved draft.
 struct BorderPreview: View {
-    let width: Double
-    let cornerRadius: Double
-    /// Radius the already-open windows were created with, captured at launch.
-    let appliedCornerRadius: Double?
-    let activeColor: Color
+    let appearance: BorderAppearance
+    let before: BorderAppearance?
     let wallpaper: URL?
-    let visible: Bool
 
     /// The preview window stands in for a real one roughly 720pt wide, so
     /// widths and radii are drawn at that ratio rather than 1:1. Drawing them
@@ -21,30 +15,24 @@ struct BorderPreview: View {
     private static let representedWidth: Double = 720
     private var scale: Double { Self.windowSize.width / Self.representedWidth }
 
-    private var scaledWidth: Double { width * scale }
-
-    private var isPending: Bool {
-        guard let applied = appliedCornerRadius else { return false }
-        return abs(applied - cornerRadius) > 0.01
-    }
-
     var body: some View {
         ZStack {
-            WallpaperThumbnail(url: wallpaper, height: 208)
+            WallpaperThumbnail(url: wallpaper, height: 232)
                 .overlay(.black.opacity(0.38))
-
-            HStack(spacing: 40) {
-                if isPending, let applied = appliedCornerRadius {
-                    pane(radius: applied, caption: "Open windows", dimmed: true)
-                    pane(radius: cornerRadius, caption: "New windows", dimmed: false)
-                } else {
-                    pane(radius: cornerRadius, caption: nil, dimmed: false)
-                }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 32) { windows }
+                VStack(spacing: 20) { windows }
             }
+            .padding(18)
         }
-        .frame(height: 208)
+        .frame(minHeight: 232)
         .clipShape(RoundedRectangle(cornerRadius: 7))
-        .animation(.easeInOut(duration: 0.18), value: isPending)
+    }
+
+    @ViewBuilder
+    private var windows: some View {
+        if let before { pane(before, caption: "Before") }
+        pane(appearance, caption: before == nil ? nil : "After")
     }
 
     /// Same threshold the model uses, so the preview can't disagree with what
@@ -59,7 +47,9 @@ struct BorderPreview: View {
             : AnyShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 
-    private func pane(radius: Double, caption: String?, dimmed: Bool) -> some View {
+    private func pane(_ appearance: BorderAppearance, caption: String?) -> some View {
+        let radius = appearance.previewRadius
+        let scaledWidth = appearance.width * scale
         let windowRadius = isSquare(radius) ? 0 : radius * scale
         let borderRadius = isSquare(radius) ? 0 : windowRadius + scaledWidth / 2
         let gutter = max(scaledWidth, 1)
@@ -79,28 +69,34 @@ struct BorderPreview: View {
                             .padding(.horizontal, 8)
                             .frame(height: 22)
                             Divider().opacity(0.4)
+                            Text("~  $ _")
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(10)
                             Spacer()
                         }
                     )
                     .clipShape(shape(radius: windowRadius))
 
-                if visible && scaledWidth > 0 {
+                if appearance.visible && scaledWidth > 0 {
                     // AnyShape isn't insettable, so this strokes centred on a
                     // path grown by half the width — putting the stroke's inner
                     // edge exactly on the window boundary, where the real one sits.
                     shape(radius: borderRadius)
-                        .stroke(activeColor, lineWidth: scaledWidth)
+                        .stroke(
+                            Color(macarchyHex: appearance.activeColour) ?? .accentColor,
+                            lineWidth: scaledWidth
+                        )
                         .padding(-scaledWidth / 2)
                 }
             }
             .frame(width: Self.windowSize.width, height: Self.windowSize.height)
             .padding(gutter)
-            .opacity(dimmed ? 0.5 : 1)
 
             if let caption {
                 Text(caption)
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(dimmed ? 0.55 : 0.85))
+                    .foregroundStyle(.white.opacity(0.85))
             }
         }
         .accessibilityElement(children: .combine)

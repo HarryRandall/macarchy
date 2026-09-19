@@ -2,7 +2,7 @@ import SwiftUI
 import Desktop
 
 extension BordersPane {
-    private var activeTheme: InstalledTheme? {
+    var activeTheme: InstalledTheme? {
         model.themes.themes.first { $0.name == model.themes.current }
     }
 
@@ -12,46 +12,39 @@ extension BordersPane {
     }
 
     private var coloursModified: Bool {
-        guard let original = defaultTheme, let current = activeTheme?.manifest else { return false }
-        return current.colors.borderActive != original.colors.borderActive
-            || current.colors.borderInactive != original.colors.borderInactive
+        guard let original = defaultTheme else { return false }
+        return editor.draft.activeColour != original.colors.borderActive
+            || editor.draft.inactiveColour != original.colors.borderInactive
     }
 
     func colourCard() -> some View {
         SettingsCard(
             "Colour",
-            footnote: "These colours are saved to the active theme and shared with Themes. "
-                + "Click a swatch to edit its colour, opacity or hex value. "
-                + "Reset restores only this theme's original border colours, when available.",
+            footnote: "Colours are saved to the active theme when applied. Click a swatch to edit "
+                + "its colour, opacity or hex value. Imported themes may not have a bundled default.",
             reset: resetColours,
-            resetEnabled: coloursModified
+            resetEnabled: coloursModified,
+            resetLabel: "Theme colours",
+            resetHelp:
+                "Restore only the active theme's original border colours. Other theme settings stay unchanged."
         ) {
-            borderColourRow("Active", detail: "The window with focus", key: \.borderActive)
-            borderColourRow("Inactive", detail: "Every other window", key: \.borderInactive)
+            borderColourRow("Active", detail: "The window with focus", key: \.activeColour)
+            borderColourRow("Inactive", detail: "Every other window", key: \.inactiveColour)
         }
         .disabled(activeTheme?.manifest == nil)
     }
 
     private func borderColourRow(
-        _ title: String, detail: String, key: WritableKeyPath<Theme.Colors, String?>
+        _ title: String, detail: String, key: WritableKeyPath<BorderAppearance, String?>
     ) -> some View {
-        let raw = activeTheme?.manifest?.colors[keyPath: key]
-        return SettingRow(title, detail: detail) {
+        SettingRow(title, detail: detail) {
             ColorWell(
                 color: Binding(
-                    get: {
-                        Color(macarchyHex: activeTheme?.manifest?.colors[keyPath: key]) ?? .clear
-                    },
-                    set: { colour in
-                        guard let encoded = colour.macarchyString(.argb),
-                            var manifest = activeTheme?.manifest
-                        else { return }
-                        manifest.colors[keyPath: key] = encoded
-                        saveBorderColours(manifest)
-                    }
+                    get: { Color(macarchyHex: editor.draft[keyPath: key]) ?? .clear },
+                    set: { editor.draft[keyPath: key] = $0.macarchyString(.argb) }
                 ),
                 format: .argb,
-                isUnset: raw == nil
+                isUnset: editor.draft[keyPath: key] == nil
             ) { _ in }
             .accessibilityLabel("\(title) border colour")
             .help("Edit \(title.lowercased()) border colour")
@@ -59,19 +52,8 @@ extension BordersPane {
     }
 
     private func resetColours() {
-        guard let original = defaultTheme, var manifest = activeTheme?.manifest else { return }
-        manifest.colors.borderActive = original.colors.borderActive
-        manifest.colors.borderInactive = original.colors.borderInactive
-        saveBorderColours(manifest)
-    }
-
-    private func saveBorderColours(_ manifest: Theme) {
-        guard let theme = activeTheme else { return }
-        do {
-            try model.themes.save(manifest, to: theme.directory)
-            model.borders.applyBorders()
-        } catch {
-            colourError = error.localizedDescription
-        }
+        guard let original = defaultTheme else { return }
+        editor.draft.activeColour = original.colors.borderActive
+        editor.draft.inactiveColour = original.colors.borderInactive
     }
 }

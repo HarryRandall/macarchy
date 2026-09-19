@@ -16,6 +16,8 @@ struct SettingsCard<Content: View>: View {
     private let footnote: String?
     private let reset: (() -> Void)?
     private let resetEnabled: Bool
+    private let resetLabel: String
+    private let resetHelp: String?
     private let content: Content
 
     init(
@@ -23,12 +25,16 @@ struct SettingsCard<Content: View>: View {
         footnote: String? = nil,
         reset: (() -> Void)? = nil,
         resetEnabled: Bool = true,
+        resetLabel: String = "Reset",
+        resetHelp: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.footnote = footnote
         self.reset = reset
         self.resetEnabled = resetEnabled
+        self.resetLabel = resetLabel
+        self.resetHelp = resetHelp
         self.content = content()
     }
 
@@ -43,16 +49,16 @@ struct SettingsCard<Content: View>: View {
                     Spacer()
                     if let reset {
                         Button(action: reset) {
-                            Image(systemName: "arrow.counterclockwise")
+                            Label(resetLabel, systemImage: "arrow.counterclockwise")
                                 .font(.system(size: 12))
-                                .frame(width: 24, height: 24)
+                                .frame(height: 24)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                         .disabled(!resetEnabled)
-                        .help("Reset \(title.lowercased()) to default")
-                        .accessibilityLabel("Reset \(title.lowercased()) to default")
+                        .help(resetHelp ?? "Reset \(title.lowercased()) to default")
+                        .accessibilityLabel(resetHelp ?? "Reset \(title.lowercased()) to default")
                     }
                 }
                 .padding(.horizontal, 4)
