@@ -43,6 +43,31 @@ struct AdvancedPane: View {
             }
 
             Section {
+                ForEach(["bordersrc"], id: \.self) { name in
+                    LabeledContent {
+                        HStack(spacing: 8) {
+                            outcomeBadge(model.rc.lastOutcomes[name])
+                            Button("Regenerate") { model.rc.generateBordersRC() }
+                                .controlSize(.small)
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(name)
+                            Text("~/.config/borders/bordersrc")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Generated config")
+            } footer: {
+                Text("Authored by the app. Hand edits are not blocked — they're detected by hash, snapshotted and reported before being replaced. Wrap anything you want kept in a macarchy:keep block.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 if model.snapshots.snapshots.isEmpty {
                     Text("No snapshots yet. One is taken before each write.")
                         .font(.caption)
@@ -75,6 +100,25 @@ struct AdvancedPane: View {
         }
         .formStyle(.grouped)
         .task { await model.daemons.refresh(); model.snapshots.refresh() }
+    }
+
+    @ViewBuilder
+    private func outcomeBadge(_ outcome: GeneratedFile.Outcome?) -> some View {
+        switch outcome {
+        case .written:
+            Label("generated", systemImage: "checkmark")
+                .font(.caption2).foregroundStyle(.green).labelStyle(.titleAndIcon)
+        case .unchanged:
+            Text("up to date").font(.caption2).foregroundStyle(.secondary)
+        case .writtenOverDrift:
+            Label("hand edits snapshotted", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2).foregroundStyle(.orange)
+        case .failed(let message):
+            Label(message, systemImage: "xmark.circle.fill")
+                .font(.caption2).foregroundStyle(.red)
+        case nil:
+            Text("not yet generated").font(.caption2).foregroundStyle(.tertiary)
+        }
     }
 
     private func captionFor(_ snapshot: SnapshotStore.Snapshot) -> String {

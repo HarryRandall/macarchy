@@ -58,6 +58,7 @@ final class AppModel {
     let borders: BordersModel
     let snapshots: SnapshotBrowser
     let menuBar: MenuBarModel
+    let rc: RCGenerator
 
     var selection: Pane? = .layout
 
@@ -70,6 +71,7 @@ final class AppModel {
         self.borders = BordersModel(backend: backend, log: log)
         self.snapshots = SnapshotBrowser(log: log)
         self.menuBar = MenuBarModel(backend: backend, log: log)
+        self.rc = RCGenerator(log: log)
     }
 
     /// Reads a key off whichever theme is currently applied.
@@ -94,5 +96,8 @@ final class AppModel {
         await borders.hydrate()
         await daemons.refresh()
         snapshots.refresh()
+        // bordersrc reads settings at run time, so it only needs regenerating
+        // when the template itself changes — on launch is enough.
+        rc.generateBordersRC()
     }
 }

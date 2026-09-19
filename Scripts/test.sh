@@ -22,6 +22,12 @@ if grep -qE '\(expected [^)]*\)$' "$OUT/result.txt"; then
     case "$got" in *"$want"*) ;; *) echo "FAIL: $line"; exit 1 ;; esac
   done
 fi
+echo "==> Generated file behaviour"
+swiftc -O "$SRC/Model/GeneratedFile.swift" "$SRC/Model/SnapshotStore.swift" \
+       "$SRC/Daemon/Daemon.swift" \
+       "$ROOT/Tests/GeneratedFileBehaviour/main.swift" -o "$OUT/genfile"
+"$OUT/genfile" | tee -a "$OUT/result.txt"
+
 echo "==> Manifest / env round-trip"
 swiftc -O "$SRC/Model/ThemeManifest.swift" \
        "$ROOT/Tests/ManifestRoundTrip/main.swift" -o "$OUT/manifest"
