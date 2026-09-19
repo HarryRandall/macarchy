@@ -56,6 +56,7 @@ final class AppModel {
     let themes: ThemeCatalog
     let daemons: DaemonMonitor
     let borders: BordersModel
+    let snapshots: SnapshotBrowser
 
     var selection: Pane? = .layout
 
@@ -66,6 +67,7 @@ final class AppModel {
         self.themes = ThemeCatalog(backend: backend, log: log)
         self.daemons = DaemonMonitor(backend: backend, log: log)
         self.borders = BordersModel(backend: backend, log: log)
+        self.snapshots = SnapshotBrowser(log: log)
     }
 
     /// Reads a key off whichever theme is currently applied.
@@ -84,5 +86,6 @@ final class AppModel {
         await layout.hydrate()
         await borders.hydrate()
         await daemons.refresh()
+        snapshots.refresh()
     }
 }

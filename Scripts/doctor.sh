@@ -1,0 +1,143 @@
+#!/bin/bash
+# macarchy doctor — assert the desktop is in a working state.
+#
+# This is the gate for every migration phase: run it before a change and after.
+# A phase that leaves doctor failing gets reverted, not patched forward.
+#
+# Exit 0 = healthy, 1 = something is broken.
+
+set -uo pipefail
+
+PASS=0; FAIL=0; WARN=0
+NEW_ROOT="$HOME/.config/macarchy-settings"
+
+ok()   { printf "  \033[32m✓\033[0m %s\n" "$1"; PASS=$((PASS+1)); }
+bad()  { printf "  \033[31m✗\033[0m %s\n" "$1"; FAIL=$((FAIL+1)); }
+warn() { printf "  \033[33m!\033[0m %s\n" "$1"; WARN=$((WARN+1)); }
+head_() { printf "\n\033[1m%s\033[0m\n" "$1"; }
+
+head_ "Daemons"
+for d in yabai borders sketchybar skhd; do
+  if pgrep -x "$d" >/dev/null 2>&1 || pgrep -f "macarchy-$d" >/dev/null 2>&1; then
+    ok "$d running"
+  else
+    bad "$d not running"
+  fi
+done
+
+head_ "Daemons answer"
+if v=$(yabai -m config window_gap 2>/dev/null) && [ -n "$v" ]; then
+  ok "yabai responds (window_gap=$v)"
+else
+  bad "yabai not responding to queries"
+fi
+
+if sketchybar --query bar >/dev/null 2>&1; then
+  ok "sketchybar responds to --query"
+else
+  bad "sketchybar not responding to --query"
+fi
+
+# borders has no query verb, so the best available check is which binary is live.
+if pgrep -lf macarchy-borders >/dev/null 2>&1; then
+  ok "borders running the local patched build"
+elif pgrep -x borders >/dev/null 2>&1; then
+  warn "borders running the Homebrew build, not the local patched one"
+else
+  bad "no borders process"
+fi
+
+head_ "Config tree"
+[ -d "$NEW_ROOT" ] && ok "app root exists ($NEW_ROOT)" || bad "missing $NEW_ROOT"
+[ -f "$NEW_ROOT/settings.env" ] && ok "settings.env present" || bad "missing settings.env"
+
+if [ -L "$HOME/.config/themes" ] && [ -d "$HOME/.config/themes" ]; then
+  ok "~/.config/themes symlink resolves"
+elif [ -d "$HOME/.config/themes" ]; then
+  warn "~/.config/themes is a real directory, not the expected symlink"
+else
+  bad "~/.config/themes does not resolve"
+fi
+
+if grep -q "macarchy-settings/settings.env" "$HOME/.config/borders/bordersrc" 2>/dev/null; then
+  ok "bordersrc sources the new settings.env"
+else
+  bad "bordersrc does not reference the new settings.env"
+fi
+
+head_ "Themes"
+THEMES_DIR="$NEW_ROOT/themes"
+CURRENT="$(cat "$THEMES_DIR/.current" 2>/dev/null || true)"
+if [ -n "$CURRENT" ] && [ -d "$THEMES_DIR/$CURRENT" ]; then
+  ok "current theme resolves ($CURRENT)"
+else
+  bad "current theme does not resolve (got '${CURRENT:-empty}')"
+fi
+
+total=0; withjson=0; badjson=0
+for d in "$THEMES_DIR"/*/; do
+  [ -d "$d" ] || continue
+  total=$((total+1))
+  if [ -f "$d/theme.json" ]; then
+    withjson=$((withjson+1))
+    python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$d/theme.json" 2>/dev/null \
+      || { badjson=$((badjson+1)); bad "invalid JSON: $(basename "$d")/theme.json"; }
+  fi
+done
+[ "$total" -gt 0 ] && ok "$total themes installed" || bad "no themes found"
+if [ "$withjson" -eq "$total" ] && [ "$badjson" -eq 0 ]; then
+  ok "all $total themes have valid theme.json"
+else
+  warn "$withjson/$total themes have a manifest, $badjson invalid"
+fi
+
+head_ "Wallpaper"
+# A grey desktop has been a real failure mode here, so check the file resolves
+# and that something is actually set.
+WALL_REL="$(python3 -c "
+import json,sys,os
+p=sys.argv[1]
+try:
+    d=json.load(open(os.path.join(p,'.backgrounds.json')))
+    print(d.get(sys.argv[2],''))
+except Exception:
+    print('')
+" "$THEMES_DIR" "$CURRENT" 2>/dev/null)"
+if [ -z "$WALL_REL" ] && [ -f "$THEMES_DIR/$CURRENT/theme.json" ]; then
+  WALL_REL="$(python3 -c "
+import json,sys
+print(json.load(open(sys.argv[1])).get('wallpaper',''))
+" "$THEMES_DIR/$CURRENT/theme.json" 2>/dev/null)"
+fi
+if [ -n "$WALL_REL" ] && [ -f "$THEMES_DIR/$CURRENT/$WALL_REL" ]; then
+  ok "wallpaper file resolves ($WALL_REL)"
+else
+  bad "wallpaper for '$CURRENT' does not resolve ('${WALL_REL:-none}')"
+fi
+
+if command -v desktoppr >/dev/null 2>&1; then
+  cur="$(desktoppr 2>/dev/null | head -1)"
+  if [ -n "$cur" ] && [ -f "$cur" ]; then
+    ok "desktop wallpaper is set"
+  else
+    warn "desktoppr reports no wallpaper — the grey-desktop failure mode"
+  fi
+fi
+
+head_ "Hotkeys"
+if [ -f "$HOME/.config/skhd/skhdrc" ]; then
+  n=$(grep -cE '^[^#[:space:]].*:' "$HOME/.config/skhd/skhdrc" 2>/dev/null || echo 0)
+  [ "$n" -gt 0 ] && ok "skhdrc parses ($n bindings)" || bad "skhdrc has no bindings"
+else
+  bad "skhdrc missing"
+fi
+
+head_ "Borders source"
+if git -C "$HOME/projects/jankyborders-local" rev-parse --git-dir >/dev/null 2>&1; then
+  ok "borders fork is under version control ($(git -C "$HOME/projects/jankyborders-local" rev-list --count HEAD) commits)"
+else
+  bad "borders fork is NOT under version control"
+fi
+
+printf "\n\033[1m%d passed, %d failed, %d warnings\033[0m\n" "$PASS" "$FAIL" "$WARN"
+[ "$FAIL" -eq 0 ] || exit 1

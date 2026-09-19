@@ -21,6 +21,9 @@ struct SettingsStore: Sendable {
     }
 
     func write(_ values: [String: String]) throws {
+        // Capture the outgoing version before overwriting it.
+        try? SnapshotStore().capture([url], reason: "settings.env write")
+
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
 
