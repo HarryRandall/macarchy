@@ -129,7 +129,8 @@ fi
 missing=""
 grep -q "load-font" "$SBRC" 2>/dev/null || missing="$missing --load-font"
 grep -q "icon.font" "$SBRC" 2>/dev/null || missing="$missing --default"
-n_items=$(grep -c 'source "\$ITEM_DIR' "$SBRC" 2>/dev/null || echo 0)
+n_items=$(grep -c 'source "\$ITEM_DIR' "$SBRC" 2>/dev/null | head -1)
+n_items=${n_items:-0}
 [ "$n_items" -gt 0 ] || missing="$missing item-sourcing"
 if [ -z "$missing" ]; then
   ok "sketchybarrc keep regions intact (font, defaults, $n_items items)"
@@ -212,18 +213,21 @@ else
 fi
 
 # Exactly one theme block, and nothing theme-owned leaking above it.
-n_marker=$(grep -c "THEME COLORS" "$HOME/.config/ghostty/config" 2>/dev/null || echo 0)
+n_marker=$(grep -c "THEME COLORS" "$HOME/.config/ghostty/config" 2>/dev/null | head -1)
+n_marker=${n_marker:-0}
 [ "$n_marker" -eq 1 ] && ok "ghostty config has one theme block" \
                       || bad "ghostty config has $n_marker theme blocks"
 
 leaked=$(sed -n '1,/THEME COLORS/p' "$HOME/.config/ghostty/config" 2>/dev/null \
-         | grep -cE "^(background|foreground|palette|theme)[[:space:]]*=" || echo 0)
+         | grep -cE "^(background|foreground|palette|theme)[[:space:]]*=" | head -1)
+leaked=${leaked:-0}
 [ "$leaked" -eq 0 ] && ok "no theme colours leaked above the marker" \
                     || bad "$leaked theme-owned lines above the marker"
 
 head_ "Hotkeys"
 if [ -f "$HOME/.config/skhd/skhdrc" ]; then
-  n=$(grep -cE '^[^#[:space:]].*:' "$HOME/.config/skhd/skhdrc" 2>/dev/null || echo 0)
+  n=$(grep -cE '^[^#[:space:]].*:' "$HOME/.config/skhd/skhdrc" 2>/dev/null | head -1)
+  n=${n:-0}
   [ "$n" -gt 0 ] && ok "skhdrc parses ($n bindings)" || bad "skhdrc has no bindings"
 else
   bad "skhdrc missing"
