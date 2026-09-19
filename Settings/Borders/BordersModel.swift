@@ -13,8 +13,9 @@ final class BordersModel {
     ///
     /// Not per-app, and not universal: only native AppKit windows honour it.
     /// Chromium apps and Firefox draw their own corners and ignore it entirely.
-    var cornerRadius: Double = 0.5
+    var cornerRadius: Double = 12.0
     var cornerRadiusApplied: Double?
+    var hasCornerRadiusOverride = false
 
     /// Border shape is not an independent choice — a rounded border around a
     /// square window (or the reverse) is always wrong. It follows the radius.
@@ -61,6 +62,11 @@ final class BordersModel {
         if result.ok, let parsed = Double(result.stdout) {
             cornerRadius = parsed
             cornerRadiusApplied = parsed
+            hasCornerRadiusOverride = true
+        } else if result.ok || result.stderr.contains("does not exist") {
+            cornerRadius = Self.cornerRadiusRange.upperBound
+            cornerRadiusApplied = Self.cornerRadiusRange.upperBound
+            hasCornerRadiusOverride = false
         }
     }
 
@@ -140,15 +146,19 @@ final class BordersModel {
             let result = await backend.setGlobalDefault(
                 Self.cornerRadiusKey, float: String(format: "%.2f", cornerRadius))
             log.record(result)
-            guard !Task.isCancelled else { return }
-            await MainActor.run { self.applyBorders() }
+            guard !Task.isCancelled, result.ok else { return }
+            self.hasCornerRadiusOverride = true
+            self.applyBorders()
         }
     }
 
     func resetCornerRadius() async {
+        cornerRadiusPending?.cancel()
         let result = await backend.removeGlobalDefault(Self.cornerRadiusKey)
         log.record(result)
-        cornerRadius = 0.5
+        guard result.ok else { return }
+        cornerRadius = Self.cornerRadiusRange.upperBound
+        hasCornerRadiusOverride = false
         applyBorders()
     }
 }

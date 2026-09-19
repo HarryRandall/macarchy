@@ -2,173 +2,184 @@ import SwiftUI
 import AppKit
 
 struct BordersPane: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AppModel.self) var model
+    @State var colourError: String?
     @State private var newExclusion = ""
 
     var body: some View {
         @Bindable var borders = model.borders
 
-        Form {
-            Section("Preview") {
-                BorderPreview(
-                    width: borders.width,
-                    cornerRadius: borders.cornerRadius,
-                    appliedCornerRadius: borders.cornerRadiusApplied,
-                    activeColor: Color(macarchyHex: model.currentThemeValue("BORDER_ACTIVE"))
-                        ?? .accentColor,
-                    wallpaper: model.currentThemeWallpaper,
-                    visible: borders.visible
-                )
-                .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
-            }
-
-            Section {
-                Toggle("Show borders", isOn: $borders.visible)
-                    .onChange(of: borders.visible) { _, _ in borders.applyBorders() }
-
-                LabeledContent("Width") {
-                    HStack {
-                        Slider(value: $borders.width, in: 0...16, step: 0.5)
-                            .frame(width: 160)
-                            .onChange(of: borders.width) { _, _ in borders.applyBorders() }
-                        Text(String(format: "%.1f", borders.width))
-                            .monospacedDigit()
-                            .frame(width: 34, alignment: .trailing)
-                    }
-                }
-                .disabled(!borders.visible)
-
-            } header: {
-                Text("Geometry")
-            } footer: {
-                Text(
-                    "borders has no query API, so these are read from settings.env rather than the daemon."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section("Excluded apps") {
-                ForEach(borders.excludedApps, id: \.self) { app in
-                    HStack {
-                        Text(app)
-                        Spacer()
-                        Button {
-                            borders.excludedApps.removeAll { $0 == app }
-                            borders.applyBorders()
-                        } label: {
-                            Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                HStack {
-                    TextField("Application name", text: $newExclusion)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Add") {
-                        let trimmed = newExclusion.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty, !borders.excludedApps.contains(trimmed) else {
-                            return
-                        }
-                        borders.excludedApps.append(trimmed)
-                        newExclusion = ""
-                        borders.applyBorders()
-                    }
-                    .disabled(newExclusion.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-
-            cornerRadiusSection(borders)
-
-            Section("Colour") {
-                LabeledContent("Active") {
-                    readOnlyColour(model.currentThemeValue("BORDER_ACTIVE"))
-                }
-                LabeledContent("Inactive") {
-                    readOnlyColour(model.currentThemeValue("BORDER_INACTIVE"))
-                }
-            }
-            Section {
-                Button("Edit in Themes") { model.selection = .themes }
-            } footer: {
-                Text(
-                    "Colour belongs to the active theme; geometry belongs here. No key lives in both files, so neither can override the other."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+        SettingsPage("Borders", subtitle: "The outline drawn around the focused window") {
+            previewCard(borders)
+            colourCard()
+            geometryCard(borders)
+            cornersCard(borders)
+            exclusionsCard(borders)
         }
-        .formStyle(.grouped)
         .task { await borders.hydrate() }
+        .alert(
+            "Could not save colour",
+            isPresented: Binding(
+                get: { colourError != nil }, set: { if !$0 { colourError = nil } }
+            )
+        ) {
+            Button("OK") { colourError = nil }
+        } message: {
+            Text(colourError ?? "")
+        }
     }
 
-    @ViewBuilder
-    private func cornerRadiusSection(_ borders: BordersModel) -> some View {
-        Section {
-            LabeledContent("Corner radius") {
-                HStack {
-                    Slider(
-                        value: Binding(
-                            get: { borders.cornerRadius },
-                            set: { borders.cornerRadius = $0 }
-                        ), in: BordersModel.cornerRadiusRange
-                    )
-                    .frame(width: 160)
-                    .onChange(of: borders.cornerRadius) { _, _ in borders.applyCornerRadius() }
-                    Text(
-                        borders.cornerRadius < BordersModel.squareThreshold
-                            ? "Square"
-                            : String(format: "%.1f", borders.cornerRadius)
-                    )
-                    .monospacedDigit()
-                    .frame(width: 54, alignment: .trailing)
+    // MARK: - Preview
+
+    private func previewCard(_ borders: BordersModel) -> some View {
+        SettingsCard {
+            BorderPreview(
+                width: borders.width,
+                cornerRadius: borders.cornerRadius,
+                appliedCornerRadius: borders.cornerRadiusApplied,
+                activeColor: Color(macarchyHex: model.currentThemeValue("BORDER_ACTIVE"))
+                    ?? .accentColor,
+                wallpaper: model.currentThemeWallpaper,
+                visible: borders.visible
+            )
+            .padding(12)
+        }
+    }
+
+    // MARK: - Geometry
+
+    private func geometryCard(_ borders: BordersModel) -> some View {
+        @Bindable var borders = borders
+        return SettingsCard(
+            "Geometry",
+            footnote: """
+                borders has no query API, so these are read from settings.env \
+                rather than the daemon.
+                """,
+            reset: resetGeometry,
+            resetEnabled: borders.width != 6 || !borders.visible
+        ) {
+            SettingRow("Show borders", detail: "Outline the window that has focus") {
+                Toggle("", isOn: $borders.visible)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: borders.visible) { _, _ in borders.applyBorders() }
+            }
+
+            SettingRow("Width", detail: "Thickness of the outline in points") {
+                ValueSlider(
+                    value: $borders.width,
+                    range: 0...16,
+                    step: 0.5,
+                    decimals: 1,
+                    unit: "pt"
+                ) { _ in borders.applyBorders() }
+            }
+            .disabled(!borders.visible)
+            .opacity(borders.visible ? 1 : 0.45)
+        }
+    }
+
+    // MARK: - Corners
+
+    private func cornersCard(_ borders: BordersModel) -> some View {
+        @Bindable var borders = borders
+        let isSquare = borders.cornerRadius < BordersModel.squareThreshold
+        return SettingsCard(
+            "Corners", footnote: cornersFootnote,
+            reset: resetCorners,
+            resetEnabled: borders.hasCornerRadiusOverride
+        ) {
+            SettingRow(
+                "Corner radius",
+                detail: isSquare
+                    ? "Square corners"
+                    : "The border follows the window's own radius"
+            ) {
+                ValueSlider(
+                    value: $borders.cornerRadius,
+                    range: BordersModel.cornerRadiusRange,
+                    step: 0.1,
+                    decimals: 1,
+                    unit: "pt"
+                ) { _ in borders.applyCornerRadius() }
+            }
+
+        }
+    }
+
+    private var cornersFootnote: String {
+        "Changes apply to newly opened windows. Relaunch an app to see them. "
+            + "Native macOS windows support this setting; Firefox and Chromium apps use their own "
+            + "corners. The border follows the window. Reset restores the macOS default."
+    }
+
+    // MARK: - Exclusions
+
+    private func exclusionsCard(_ borders: BordersModel) -> some View {
+        SettingsCard(
+            "Excluded apps",
+            footnote:
+                "Windows belonging to these apps are never outlined. iPhone Mirroring is always excluded.",
+            reset: resetExclusions,
+            resetEnabled: borders.excludedApps.contains { $0 != "iPhone Mirroring" }
+        ) {
+            ForEach(borders.excludedApps, id: \.self) { app in
+                SettingRow(app) {
+                    Button {
+                        borders.excludedApps.removeAll { $0 == app }
+                        borders.applyBorders()
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Stop excluding \(app)")
                 }
             }
 
-            HStack {
-                Button("Reset to system default") { Task { await borders.resetCornerRadius() } }
-                Spacer()
-            }
-
-            if borders.cornerRadiusNeedsRestart {
-                Label(
-                    "Applies to windows opened from now on. Relaunch an app to see it.",
-                    systemImage: "info.circle"
-                )
-                .foregroundStyle(.secondary)
-                .font(.caption)
-            }
-        } header: {
-            Text("Corners")
-        } footer: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(
-                    "Sets the window corner radius and shapes the border to match — the border always follows the window rather than being set separately."
-                )
-                Text(
-                    "Global, not per-app. Only native AppKit windows honour NSConvolutionOverride1; Chromium apps and Firefox keep their own corners, and the border tracks those instead."
-                )
-                Text(
-                    "Takes effect for newly opened windows; already-open windows keep the radius they were created with. Values at or below 0.25 are ignored, so the slider bottoms out at Square."
-                )
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            addExclusionRow(borders)
         }
     }
 
-    private func readOnlyColour(_ value: String?) -> some View {
-        HStack(spacing: 7) {
-            Text(value ?? "—")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.tertiary)
-            if let color = Color(macarchyHex: value) {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(color)
-                    .frame(width: 18, height: 18)
-                    .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(.separator))
-            }
+    private func addExclusionRow(_ borders: BordersModel) -> some View {
+        HStack(spacing: 8) {
+            TextField("Application name", text: $newExclusion)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { addExclusion(borders) }
+            Button("Add") { addExclusion(borders) }
+                .disabled(trimmedExclusion.isEmpty)
         }
+        .padding(.horizontal, CardMetrics.horizontalPadding)
+        .padding(.vertical, 10)
     }
+
+    private var trimmedExclusion: String {
+        newExclusion.trimmingCharacters(in: .whitespaces)
+    }
+
+    private func addExclusion(_ borders: BordersModel) {
+        let trimmed = trimmedExclusion
+        guard !trimmed.isEmpty, !borders.excludedApps.contains(trimmed) else { return }
+        borders.excludedApps.append(trimmed)
+        newExclusion = ""
+        borders.applyBorders()
+    }
+
+    private func resetGeometry() {
+        model.borders.width = 6
+        model.borders.visible = true
+        model.borders.applyBorders()
+    }
+
+    private func resetCorners() {
+        Task { await model.borders.resetCornerRadius() }
+    }
+
+    private func resetExclusions() {
+        model.borders.excludedApps = ["iPhone Mirroring"]
+        model.borders.applyBorders()
+    }
+
 }
