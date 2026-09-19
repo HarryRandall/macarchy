@@ -1,5 +1,5 @@
 #!/bin/bash
-# Assemble Sources/ into a signed .app bundle.
+# Assemble the package into a signed .app bundle.
 #
 # Signing uses a self-signed Keychain identity rather than ad-hoc: an ad-hoc
 # signature changes on every rebuild, so macOS treats each build as a new app
@@ -30,9 +30,9 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$ROOT/Resources/AppIcon.icns" ] && cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
 
 # Shipped theme defaults, used as the reset-to-default baseline.
-if [ -d "$ROOT/Defaults" ]; then
-  cp -R "$ROOT/Defaults" "$APP/Contents/Resources/Defaults"
-  echo "    bundled $(find "$ROOT/Defaults/themes" -name theme.json | wc -l | tr -d ' ') default themes"
+if [ -d "$ROOT/Themes" ]; then
+  cp -R "$ROOT/Themes" "$APP/Contents/Resources/Themes"
+  echo "    bundled $(find "$ROOT/Themes" -name theme.json | wc -l | tr -d ' ') default themes"
 fi
 
 echo "==> Signing"

@@ -12,10 +12,10 @@ status=0
 if [ -n "$FORMAT" ]; then
   if [ "$MODE" = "fix" ]; then
     echo "==> swift-format (writing)"
-    find Sources -name '*.swift' -print0 | xargs -0 "$FORMAT" format --in-place --configuration .swift-format
+    find Kit Settings CLI -name '*.swift' -print0 | xargs -0 "$FORMAT" format --in-place --configuration .swift-format
   else
     echo "==> swift-format (check)"
-    find Sources -name '*.swift' -print0 \
+    find Kit Settings CLI -name '*.swift' -print0 \
       | xargs -0 "$FORMAT" lint --configuration .swift-format 2>&1 | head -40 || status=1
   fi
 else

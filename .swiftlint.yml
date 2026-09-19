@@ -3,11 +3,13 @@
 # cannot see — force unwraps, oversized types, complexity.
 
 included:
-  - Sources
+  - Kit
+  - Settings
+  - CLI
 excluded:
   - .build
   - dist
-  - Tests/GhosttyPort/reference.sh
+  - Tests/Fixtures/Ghostty/reference.sh
 
 disabled_rules:
   # SwiftUI view bodies are legitimately long and deeply nested; the real

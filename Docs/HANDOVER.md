@@ -12,7 +12,7 @@ This is his **daily driver machine**. It is not a sandbox. Breaking the desktop
 means breaking the machine he is working on.
 
 Two planning documents sit beside this one and are still accurate:
-- `PLAN.md` — architecture and why it is shaped this way
+- `Docs/PLAN.md` — architecture and why it is shaped this way
 - `MIGRATION.md` — the phased plan, decisions taken, and the open questions
 
 ## State right now
@@ -43,7 +43,7 @@ between checks.
 
 **3. There are two entry points for theme switching.** The GUI, and
 `cmd+ctrl+=` bound to `theme-switch` in `skhdrc:130`. A surface ported into the
-app alone makes them disagree. Ported logic goes in **`Sources/MacarchyKit`**,
+app alone makes them disagree. Ported logic goes in **`Kit`**,
 which the app and the `macarchy` CLI both depend on, and `theme-switch` calls
 the CLI. One implementation, whichever way a theme is applied.
 
@@ -59,14 +59,15 @@ encode a bug that actually happened, not one that was imagined.
 ## Layout
 
 ```
-Sources/MacarchyKit/      pure logic shared by app + CLI (ported surfaces land here)
-Sources/MacarchySettings/ the SwiftUI app — App/ Daemon/ Model/ Views/
-Sources/MacarchyCLI/      the `macarchy` CLI, installed to ~/.local/bin/macarchy
-Defaults/themes/          the 8 shipped manifests — the reset-to-default baseline
-Scripts/build_app.sh      builds, bundles, signs, installs the CLI
-Scripts/doctor.sh         32 health assertions — THE GATE
-Scripts/test.sh           snapshot, manifest and port round-trip tests
-Tests/GhosttyPort/        reference.sh is the original shell, kept for diffing
+Kit/                     shared logic — Core/ Stack/ Theme/ Config/
+Settings/                SwiftUI app — App/ Features/<pane>/ Shared/
+CLI/                     the `macarchy` CLI, installed to ~/.local/bin/macarchy
+Themes/                  the 8 shipped manifests — the reset-to-default baseline
+Scripts/build_app.sh     builds, bundles, signs, installs the CLI
+Scripts/doctor.sh        health assertions — THE GATE
+Scripts/test.sh          swift test
+Tests/Kit/               mirrors Kit subsystems
+Tests/Fixtures/Ghostty/  reference.sh is the original shell, kept for diffing
 ```
 
 On the machine:
@@ -115,7 +116,7 @@ To confirm a window rendered, query yabai:
 ### Finish Phase 3b — port the rest of `theme-switch` (951 lines)
 
 Measured, easiest first. **Follow the ghostty pattern exactly**: implement in
-`MacarchyKit` → extract the original shell verbatim as a `reference.sh` →
+`Kit` → extract the original shell verbatim as a `reference.sh` →
 diff across all 8 themes plus edge cases → only then delete the bash and point
 `theme-switch` at the CLI → add a `doctor` assertion that it stays delegated.
 

@@ -38,7 +38,7 @@ call needs a new verb, add the verb.
 one, diff, cut over, then *delete* the old path. Two things writing one file is
 this project's recurring failure, and it does not announce itself.
 
-**Ported shell goes in `MacarchyKit`.** Theme switching has two entry points —
+**Ported shell goes in `Kit`.** Theme switching has two entry points —
 the GUI and `cmd+ctrl+=` bound to `theme-switch`. Logic in the app alone makes
 them disagree. The Kit is shared by the app and the `macarchy` CLI.
 
@@ -86,5 +86,9 @@ zsh does not word-split unquoted expansions.
 
 ## Git
 
-Commit messages explain why a change was
+Never add `Co-Authored-By` trailers. Commit messages explain why a change was
 made and what was verified, not just what changed.
+
+You cannot screenshot the app (the shell has no Screen Recording permission).
+To confirm a window rendered: `yabai -m query --windows | grep -i macarchy`.
+Verify claims against the machine rather than reporting what you expect.

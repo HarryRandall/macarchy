@@ -2,37 +2,39 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacarchySettings",
+    name: "Macarchy",
     platforms: [.macOS("26.0")],
     products: [
-        .executable(name: "MacarchySettings", targets: ["MacarchySettings"]),
-        .executable(name: "macarchy", targets: ["MacarchyCLI"])
+        // Installed binary keeps this name so the .app, Info.plist, and
+        // `pkill -x MacarchySettings` stay stable.
+        .executable(name: "MacarchySettings", targets: ["Settings"]),
+        .executable(name: "macarchy", targets: ["CLI"])
     ],
     targets: [
         // Pure logic shared by the app and the CLI. Ported shell surfaces land
         // here so both entry points run exactly one implementation — the app and
         // the theme-cycling hotkey must never disagree about what a theme means.
         .target(
-            name: "MacarchyKit",
-            path: "Sources/MacarchyKit",
+            name: "Kit",
+            path: "Kit",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
-            name: "MacarchySettings",
-            dependencies: ["MacarchyKit"],
-            path: "Sources/MacarchySettings",
+            name: "Settings",
+            dependencies: ["Kit"],
+            path: "Settings",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
-            name: "MacarchyKitTests",
-            dependencies: ["MacarchyKit"],
-            path: "Tests/MacarchyKitTests",
+            name: "KitTests",
+            dependencies: ["Kit"],
+            path: "Tests/Kit",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
-            name: "MacarchyCLI",
-            dependencies: ["MacarchyKit"],
-            path: "Sources/MacarchyCLI",
+            name: "CLI",
+            dependencies: ["Kit"],
+            path: "CLI",
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
