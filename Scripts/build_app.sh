@@ -29,6 +29,12 @@ cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$ROOT/Resources/AppIcon.icns" ] && cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/"
 
+# Shipped theme defaults, used as the reset-to-default baseline.
+if [ -d "$ROOT/Defaults" ]; then
+  cp -R "$ROOT/Defaults" "$APP/Contents/Resources/Defaults"
+  echo "    bundled $(find "$ROOT/Defaults/themes" -name theme.json | wc -l | tr -d ' ') default themes"
+fi
+
 echo "==> Signing"
 IDENTITY="${MACARCHY_SIGN_IDENTITY:-}"
 if [ -n "$IDENTITY" ]; then

@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import AppKit
 
 enum ThemeError: LocalizedError {
     case notAPackage
@@ -243,6 +244,23 @@ final class ThemeCatalog {
 }
 
 extension Color {
+    /// How a colour is spelled in the file it lives in. borders and sketchybar
+    /// want 0xAARRGGBB; FIREFOX_ACCENT wants #RRGGBB.
+    enum MacarchyFormat { case argb, rgb }
+
+    /// Renders back to the string form the target expects. Round-trips with
+    /// `init?(macarchyHex:)`, so editing a colour and saving cannot silently
+    /// change its notation.
+    func macarchyString(_ format: MacarchyFormat) -> String? {
+        guard let srgb = NSColor(self).usingColorSpace(.sRGB) else { return nil }
+        let channel = { (v: CGFloat) in Int((v * 255).rounded()) }
+        let r = channel(srgb.redComponent), g = channel(srgb.greenComponent), b = channel(srgb.blueComponent)
+        switch format {
+        case .argb: return String(format: "0x%02x%02x%02x%02x", channel(srgb.alphaComponent), r, g, b)
+        case .rgb:  return String(format: "#%02x%02x%02x", r, g, b)
+        }
+    }
+
     /// Alpha channel of a `0xAARRGGBB` value, so a fully transparent border can
     /// be reported as "not drawn" rather than silently rendering as nothing.
     static func macarchyAlpha(_ raw: String?) -> Double? {

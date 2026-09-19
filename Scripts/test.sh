@@ -22,4 +22,14 @@ if grep -qE '\(expected [^)]*\)$' "$OUT/result.txt"; then
     case "$got" in *"$want"*) ;; *) echo "FAIL: $line"; exit 1 ;; esac
   done
 fi
+echo "==> Manifest / env round-trip"
+swiftc -O "$SRC/Model/ThemeManifest.swift" \
+       "$ROOT/Tests/ManifestRoundTrip/main.swift" -o "$OUT/manifest"
+"$OUT/manifest" | tee -a "$OUT/result.txt"
+
+grep -E '\(expected' "$OUT/result.txt" | while read -r line; do
+  got="${line%% (expected*}"; want="${line##*(expected }"; want="${want%)}"
+  case "$got" in *"$want"*) ;; *) echo "FAIL: $line"; exit 1 ;; esac
+done
+
 echo "==> OK"
