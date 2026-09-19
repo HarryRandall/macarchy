@@ -1,4 +1,5 @@
 import Foundation
+import MacarchyKit
 import Observation
 
 enum Pane: String, CaseIterable, Identifiable, Hashable {

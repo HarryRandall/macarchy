@@ -47,4 +47,14 @@ else
   echo "    MACARCHY_SIGN_IDENTITY=\"<cert name>\" to keep a stable identity."
 fi
 
+# The CLI is how ported surfaces stay single-implementation: theme-switch and
+# the theme-cycling hotkey call it, so the keyboard path and the GUI path run
+# the same code.
+CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
+if [ -f "$CLI_PATH" ]; then
+  mkdir -p "$HOME/.local/bin"
+  cp "$CLI_PATH" "$HOME/.local/bin/macarchy"
+  echo "==> Installed CLI: ~/.local/bin/macarchy"
+fi
+
 echo "==> Done: $APP"

@@ -196,6 +196,31 @@ if command -v desktoppr >/dev/null 2>&1; then
   fi
 fi
 
+head_ "Ported surfaces"
+if [ -x "$HOME/.local/bin/macarchy" ]; then
+  ok "macarchy CLI installed"
+else
+  bad "macarchy CLI missing — theme-switch will skip ported surfaces"
+fi
+
+# Both entry points must run one implementation. If theme-switch grows its own
+# ghostty handling back, the hotkey and the GUI can disagree about a theme.
+if grep -q "macarchy\" ghostty" "$HOME/.local/bin/theme-switch" 2>/dev/null; then
+  ok "theme-switch delegates ghostty to the CLI"
+else
+  bad "theme-switch is handling ghostty itself again"
+fi
+
+# Exactly one theme block, and nothing theme-owned leaking above it.
+n_marker=$(grep -c "THEME COLORS" "$HOME/.config/ghostty/config" 2>/dev/null || echo 0)
+[ "$n_marker" -eq 1 ] && ok "ghostty config has one theme block" \
+                      || bad "ghostty config has $n_marker theme blocks"
+
+leaked=$(sed -n '1,/THEME COLORS/p' "$HOME/.config/ghostty/config" 2>/dev/null \
+         | grep -cE "^(background|foreground|palette|theme)[[:space:]]*=" || echo 0)
+[ "$leaked" -eq 0 ] && ok "no theme colours leaked above the marker" \
+                    || bad "$leaked theme-owned lines above the marker"
+
 head_ "Hotkeys"
 if [ -f "$HOME/.config/skhd/skhdrc" ]; then
   n=$(grep -cE '^[^#[:space:]].*:' "$HOME/.config/skhd/skhdrc" 2>/dev/null || echo 0)
