@@ -1,0 +1,556 @@
+<title>Macarchy Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* ── Dark-first tokens. Bare :root is the dark palette; light is the override. ── */
+:root {
+  --ground:#0A0E13; --surface:#141B23; --surface-2:#1B242E; --surface-3:#222D38;
+  --sidebar:#10171F; --line:#233040; --line-soft:#1A242E;
+  --text:#E4EDF5; --muted:#8497A6; --faint:#5C6F7E;
+  --accent:#66CCFF; --accent-soft:rgba(102,204,255,.14); --accent-line:rgba(102,204,255,.35);
+  --ok:#4ADE80; --warn:#FBBF24; --crit:#FB7185;
+  --titlebar:#1A222B; --shadow:0 32px 64px -12px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05);
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --app:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground:#E9EEF3; --surface:#FFFFFF; --surface-2:#F4F7FA; --surface-3:#EAEFF4;
+    --sidebar:#DFE6ED; --line:#CFD9E2; --line-soft:#E4EAF0;
+    --text:#0D141B; --muted:#566878; --faint:#8296A5;
+    --accent:#0B7EB5; --accent-soft:rgba(11,126,181,.10); --accent-line:rgba(11,126,181,.30);
+    --titlebar:#E8EDF2; --shadow:0 24px 48px -16px rgba(13,20,27,.28), 0 0 0 1px rgba(13,20,27,.08);
+  }
+}
+:root[data-theme="light"] {
+  --ground:#E9EEF3; --surface:#FFFFFF; --surface-2:#F4F7FA; --surface-3:#EAEFF4;
+  --sidebar:#DFE6ED; --line:#CFD9E2; --line-soft:#E4EAF0;
+  --text:#0D141B; --muted:#566878; --faint:#8296A5;
+  --accent:#0B7EB5; --accent-soft:rgba(11,126,181,.10); --accent-line:rgba(11,126,181,.30);
+  --titlebar:#E8EDF2; --shadow:0 24px 48px -16px rgba(13,20,27,.28), 0 0 0 1px rgba(13,20,27,.08);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--text);
+  font-family:var(--sans); line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px; margin:0 auto; padding:56px 28px 96px; display:flex; flex-direction:column; gap:56px}
+
+/* ── Page furniture ── */
+.eyebrow{
+  font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+}
+h1{font-size:clamp(34px,5vw,50px); line-height:1.05; font-weight:600; margin:0 0 16px; letter-spacing:-.025em; text-wrap:balance}
+.lede{font-size:17px; color:var(--muted); max-width:62ch; margin:0}
+.lede strong{color:var(--text); font-weight:500}
+
+h2{font-size:13px; font-family:var(--mono); font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+   color:var(--faint); margin:0 0 20px; display:flex; align-items:center; gap:14px}
+h2::after{content:''; flex:1; height:1px; background:var(--line)}
+
+/* ── macOS window chrome ── */
+.stage{
+  background:
+    radial-gradient(120% 90% at 50% -10%, var(--accent-soft), transparent 62%),
+    var(--surface-2);
+  border:1px solid var(--line-soft); border-radius:18px;
+  padding:40px clamp(16px,4vw,52px) 48px; overflow-x:auto;
+}
+.mac{
+  min-width:860px; background:var(--surface); border-radius:11px; overflow:hidden;
+  box-shadow:var(--shadow); font-family:var(--app);
+}
+.titlebar{
+  height:38px; background:var(--titlebar); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; padding:0 14px; gap:9px; position:relative;
+}
+.light{width:12px; height:12px; border-radius:50%}
+.l-r{background:#FF5F57} .l-y{background:#FEBC2E} .l-g{background:#28C840}
+.win-title{
+  position:absolute; left:0; right:0; text-align:center; font-size:13px;
+  font-weight:600; color:var(--muted); pointer-events:none;
+}
+.mac-body{display:grid; grid-template-columns:196px 1fr; min-height:494px}
+
+/* ── Sidebar ── */
+.sidebar{background:var(--sidebar); border-right:1px solid var(--line); padding:10px 8px; display:flex; flex-direction:column}
+.side-group{
+  font-size:11px; font-weight:600; color:var(--faint); letter-spacing:.04em;
+  padding:12px 10px 5px; text-transform:uppercase;
+}
+.nav{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  padding:6px 10px; border-radius:6px; border:0; background:none; cursor:pointer;
+  font-family:var(--app); font-size:13px; color:var(--text); transition:background .13s;
+}
+.nav:hover{background:var(--surface-3)}
+.nav[aria-selected="true"]{background:var(--accent); color:#fff; font-weight:500}
+.nav:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.gl{
+  width:19px; height:19px; border-radius:5px; display:grid; place-items:center;
+  font-size:11px; flex:none; background:var(--surface-3); color:var(--muted);
+}
+.nav[aria-selected="true"] .gl{background:rgba(255,255,255,.22); color:#fff}
+.side-foot{margin-top:auto; padding:10px; border-top:1px solid var(--line); display:flex; align-items:center; gap:7px}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 7px var(--ok)}
+.side-foot span{font-size:11px; color:var(--muted)}
+
+/* ── Detail pane ── */
+.detail{padding:22px 26px; display:none; flex-direction:column; gap:20px; min-width:0}
+.detail.on{display:flex}
+.pane-h{font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em}
+.pane-sub{font-size:12px; color:var(--muted); margin:3px 0 0}
+
+/* grouped form — the native inspector idiom */
+.group{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.g-label{
+  font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 7px 2px;
+}
+.row{display:flex; align-items:center; gap:14px; padding:9px 13px; border-top:1px solid var(--line-soft); min-height:40px}
+.row:first-child{border-top:0}
+.row-l{font-size:13px; flex:1; min-width:0}
+.row-l small{display:block; font-size:11px; color:var(--faint); line-height:1.4; margin-top:1px}
+.row-r{display:flex; align-items:center; gap:9px; flex:none}
+
+select, .field{
+  font-family:var(--app); font-size:12px; background:var(--surface-3); color:var(--text);
+  border:1px solid var(--line); border-radius:5px; padding:3px 8px;
+}
+.field{font-family:var(--mono); width:58px; text-align:right; font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none; appearance:none; width:132px; height:3px; border-radius:2px; background:var(--line); outline:none}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:#fff; border:.5px solid rgba(0,0,0,.3); box-shadow:0 1px 3px rgba(0,0,0,.35); cursor:pointer;
+}
+input[type=range]:focus-visible{outline:2px solid var(--accent); outline-offset:4px}
+
+.sw{width:34px; height:20px; border-radius:11px; background:var(--line); position:relative; cursor:pointer; border:0; flex:none; transition:background .16s}
+.sw::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:transform .16s}
+.sw[aria-checked="true"]{background:var(--ok)}
+.sw[aria-checked="true"]::after{transform:translateX(14px)}
+.sw:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.chip{
+  font-family:var(--mono); font-size:10px; font-weight:500; padding:2px 7px; border-radius:4px;
+  background:var(--surface-3); color:var(--muted); border:1px solid var(--line);
+}
+.chip.ok{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 40%, transparent)}
+.chip.warn{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 40%, transparent)}
+.chip.read{color:var(--faint)}
+.mono{font-family:var(--mono); font-size:12px; font-variant-numeric:tabular-nums}
+.well{width:19px; height:19px; border-radius:4px; border:1px solid rgba(128,128,128,.4); flex:none}
+
+/* live BSP preview */
+.preview{
+  background:var(--surface-3); border:1px solid var(--line); border-radius:8px;
+  padding:var(--pad,8px); aspect-ratio:16/8.2; display:grid; gap:var(--gap,8px);
+  grid-template-columns:1.45fr 1fr; grid-template-rows:1fr 1fr;
+}
+.tile{background:var(--accent-soft); border:1.5px solid var(--accent-line); border-radius:3px}
+.tile.a{grid-row:span 2; border-color:var(--accent); background:color-mix(in srgb, var(--accent) 22%, transparent)}
+
+/* theme grid */
+.themes{display:grid; grid-template-columns:repeat(4,1fr); gap:9px}
+.tcard{
+  border:1px solid var(--line); border-radius:7px; overflow:hidden; cursor:pointer;
+  background:var(--surface-2); padding:0; font-family:var(--app); text-align:left; transition:border-color .13s;
+}
+.tcard:hover{border-color:var(--faint)}
+.tcard[aria-pressed="true"]{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft)}
+.tcard:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.swatch{height:40px; display:block}
+.tname{display:flex; align-items:center; gap:5px; padding:5px 7px; font-size:11px; color:var(--text)}
+.tname i{width:8px; height:8px; border-radius:50%; flex:none; font-style:normal}
+
+/* tables */
+.tbl{width:100%; border-collapse:collapse; font-size:12px}
+.tbl th{
+  text-align:left; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--faint); padding:7px 13px; border-bottom:1px solid var(--line); background:var(--surface-3);
+}
+.tbl td{padding:7px 13px; border-top:1px solid var(--line-soft); vertical-align:middle}
+.tbl tr:first-child td{border-top:0}
+kbd{
+  font-family:var(--app); font-size:10px; font-weight:600; padding:2px 5px; border-radius:4px;
+  background:var(--surface-3); border:1px solid var(--line); border-bottom-width:2px; color:var(--text); white-space:nowrap;
+}
+
+/* console strip */
+.console{
+  border-top:1px solid var(--line); background:var(--sidebar);
+  padding:7px 13px; display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px;
+}
+.console .lbl{color:var(--faint); letter-spacing:.06em; flex:none}
+#log{color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1}
+#log b{color:var(--accent); font-weight:500}
+.tick{color:var(--ok); flex:none}
+
+/* menu bar extra */
+.mb-stage{background:var(--surface-2); border:1px solid var(--line-soft); border-radius:18px; padding:0 0 34px; overflow:hidden}
+.fakebar{
+  height:26px; background:var(--titlebar); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:flex-end; gap:15px; padding:0 15px;
+  font-family:var(--app); font-size:11px; color:var(--muted); margin-bottom:9px;
+}
+.fakebar .live{color:var(--accent)}
+.menu{
+  width:252px; margin:0 15px 0 auto; background:var(--titlebar); border:1px solid var(--line);
+  border-radius:8px; padding:5px; box-shadow:var(--shadow); font-family:var(--app); font-size:13px;
+}
+.mi{display:flex; align-items:center; gap:8px; padding:4px 8px; border-radius:5px; color:var(--text)}
+.mi.sel{background:var(--accent); color:#fff}
+.mi .ck{width:12px; flex:none; font-size:10px}
+.mi .sub{margin-left:auto; color:var(--faint); font-size:11px}
+.mi.sel .sub{color:rgba(255,255,255,.75)}
+.msep{height:1px; background:var(--line); margin:5px 8px}
+.mhead{font-size:10px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); padding:6px 8px 3px}
+
+/* notes */
+.notes{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:18px}
+.note{background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:18px 19px}
+.note h3{font-size:14px; margin:0 0 8px; font-weight:600; letter-spacing:-.01em}
+.note p{margin:0; font-size:13px; color:var(--muted); line-height:1.6}
+.note p + p{margin-top:9px}
+.note code{font-family:var(--mono); font-size:11.5px; color:var(--accent); background:var(--accent-soft); padding:1px 4px; border-radius:3px}
+.note .src{display:block; margin-top:11px; font-family:var(--mono); font-size:10.5px; color:var(--faint); letter-spacing:.03em}
+
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">UI Draft · v0.1 · 19 Sep 2026</p>
+    <h1>Macarchy Settings</h1>
+    <p class="lede">A first pass at the control panel for the yabai / borders / sketchybar / skhd stack. Every value shown is <strong>real, read from the running system</strong> — gap 8, layout bsp, border width 6.0, accent 0xff66CCFF, 9 float rules, 86 bindings. Click the sidebar to move between panes; drag the Layout sliders to watch the preview and the command log respond.</p>
+  </header>
+
+  <section>
+    <h2>Settings window</h2>
+    <div class="stage">
+      <div class="mac">
+        <div class="titlebar">
+          <span class="light l-r"></span><span class="light l-y"></span><span class="light l-g"></span>
+          <span class="win-title">Macarchy Settings</span>
+        </div>
+
+        <div class="mac-body">
+          <nav class="sidebar" role="tablist" aria-label="Settings sections">
+            <div class="side-group">Appearance</div>
+            <button class="nav" role="tab" aria-selected="false" data-p="themes"><span class="gl">◐</span>Themes</button>
+            <button class="nav" role="tab" aria-selected="false" data-p="borders"><span class="gl">▢</span>Borders</button>
+            <button class="nav" role="tab" aria-selected="false" data-p="menubar"><span class="gl">▤</span>Menu Bar</button>
+            <div class="side-group">Behaviour</div>
+            <button class="nav" role="tab" aria-selected="true" data-p="layout"><span class="gl">▣</span>Layout</button>
+            <button class="nav" role="tab" aria-selected="false" data-p="rules"><span class="gl">⚑</span>Rules</button>
+            <button class="nav" role="tab" aria-selected="false" data-p="shortcuts"><span class="gl">⌘</span>Shortcuts</button>
+            <div class="side-group">System</div>
+            <button class="nav" role="tab" aria-selected="false" data-p="advanced"><span class="gl">⚙</span>Advanced</button>
+            <div class="side-foot"><span class="dot"></span><span>4 daemons running</span></div>
+          </nav>
+
+          <!-- LAYOUT -->
+          <div class="detail on" id="p-layout" role="tabpanel">
+            <div><h3 class="pane-h">Layout</h3><p class="pane-sub">Hydrated live from <span class="mono">yabai -m config</span></p></div>
+            <div>
+              <p class="g-label">Preview</p>
+              <div class="preview" id="pv"><div class="tile a"></div><div class="tile"></div><div class="tile"></div></div>
+            </div>
+            <div>
+              <p class="g-label">Tiling</p>
+              <div class="group">
+                <div class="row"><div class="row-l">Layout mode</div><div class="row-r"><select><option>BSP</option><option>Stack</option><option>Float</option></select></div></div>
+                <div class="row"><div class="row-l">Split type</div><div class="row-r"><select><option>Auto</option><option>Vertical</option><option>Horizontal</option></select></div></div>
+                <div class="row"><div class="row-l">New window placement</div><div class="row-r"><select><option>Second child</option><option>First child</option></select></div></div>
+                <div class="row"><div class="row-l">Auto balance<small>Redistribute space when windows open or close</small></div><div class="row-r"><button class="sw" role="switch" aria-checked="false" aria-label="Auto balance"></button></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Gaps &amp; padding</p>
+              <div class="group">
+                <div class="row"><div class="row-l">Window gap</div><div class="row-r"><input type="range" id="s-gap" min="0" max="32" value="8"><span class="field" id="v-gap">8</span></div></div>
+                <div class="row"><div class="row-l">Link all edges<small>Top, bottom, left and right move together</small></div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="Link all edges"></button></div></div>
+                <div class="row"><div class="row-l">Padding</div><div class="row-r"><input type="range" id="s-pad" min="0" max="40" value="8"><span class="field" id="v-pad">8</span></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Mouse</p>
+              <div class="group">
+                <div class="row"><div class="row-l">Modifier</div><div class="row-r"><select><option>ctrl</option><option>alt</option><option>cmd</option></select></div></div>
+                <div class="row"><div class="row-l">Focus follows mouse</div><div class="row-r"><button class="sw" role="switch" aria-checked="false" aria-label="Focus follows mouse"></button></div></div>
+                <div class="row"><div class="row-l">Drop action</div><div class="row-r"><select><option>Stack</option><option>Swap</option></select></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- THEMES -->
+          <div class="detail" id="p-themes" role="tabpanel">
+            <div><h3 class="pane-h">Themes</h3><p class="pane-sub">8 installed · applied through <span class="mono">theme-switch</span></p></div>
+            <div class="themes">
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#2B1B10,#C9712B)"></span><span class="tname"><i style="background:#C9712B"></i>awakening</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#121008,#D4AF37)"></span><span class="tname"><i style="background:#D4AF37"></i>blackgold</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#0C0F17,#78A9FF)"></span><span class="tname"><i style="background:#78A9FF"></i>carbonfox</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#1A0A0C,#E5484D)"></span><span class="tname"><i style="background:#E5484D"></i>city-783</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#0B1412,#4CC38A)"></span><span class="tname"><i style="background:#4CC38A"></i>lumon</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#0D0D0D,#4A4A4A)"></span><span class="tname"><i style="background:#8A8A8A"></i>matte-black</span></button>
+              <button class="tcard" aria-pressed="true"><span class="swatch" style="background:linear-gradient(135deg,#0A1622,#66CCFF)"></span><span class="tname"><i style="background:#66CCFF"></i>midnight</span></button>
+              <button class="tcard" aria-pressed="false"><span class="swatch" style="background:linear-gradient(135deg,#0E1414,#2CF9ED)"></span><span class="tname"><i style="background:#2CF9ED"></i>turbonite</span></button>
+            </div>
+            <div>
+              <p class="g-label">midnight · theme.env</p>
+              <div class="group">
+                <div class="row"><div class="row-l">Border active</div><div class="row-r"><span class="mono">0xff66CCFF</span><span class="well" style="background:#66CCFF"></span></div></div>
+                <div class="row"><div class="row-l">Border inactive</div><div class="row-r"><span class="mono">0x00000000</span><span class="well" style="background:repeating-conic-gradient(#888 0% 25%,transparent 0% 50%) 50%/8px 8px"></span></div></div>
+                <div class="row"><div class="row-l">Sketchybar text</div><div class="row-r"><span class="mono">0xffF0F6FF</span><span class="well" style="background:#F0F6FF"></span></div></div>
+                <div class="row"><div class="row-l">Firefox accent</div><div class="row-r"><span class="mono">#66CCFF</span><span class="well" style="background:#66CCFF"></span></div></div>
+                <div class="row"><div class="row-l">Neovim colorscheme</div><div class="row-r"><span class="mono">tokyonight-night</span></div></div>
+                <div class="row"><div class="row-l">Dark mode</div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="Dark mode"></button></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Wallpaper · 3 in this theme</p>
+              <div class="group"><div class="row"><div class="row-l mono" style="font-size:12px">2-hand-of-adam.png</div><div class="row-r"><span class="chip">Change…</span></div></div></div>
+            </div>
+          </div>
+
+          <!-- BORDERS -->
+          <div class="detail" id="p-borders" role="tabpanel">
+            <div><h3 class="pane-h">Borders</h3><p class="pane-sub">No query API — these values come from the settings store</p></div>
+            <div>
+              <p class="g-label">Geometry &amp; behaviour <span style="color:var(--accent)">· owned here</span></p>
+              <div class="group">
+                <div class="row"><div class="row-l">Width</div><div class="row-r"><input type="range" min="0" max="16" step="0.5" value="6"><span class="field">6.0</span></div></div>
+                <div class="row"><div class="row-l">Style</div><div class="row-r"><select><option>Square</option><option>Round</option></select></div></div>
+                <div class="row"><div class="row-l">Visible</div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="Borders visible"></button></div></div>
+                <div class="row"><div class="row-l">HiDPI</div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="HiDPI"></button></div></div>
+                <div class="row"><div class="row-l">Excluded apps</div><div class="row-r"><span class="chip">iPhone Mirroring ✕</span><span class="chip">+ Add</span></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Colour <span style="color:var(--faint)">· owned by the theme</span></p>
+              <div class="group">
+                <div class="row"><div class="row-l">Active<small>Set in Themes → midnight</small></div><div class="row-r"><span class="chip read">read-only</span><span class="mono">0xff66CCFF</span><span class="well" style="background:#66CCFF"></span></div></div>
+                <div class="row"><div class="row-l">Inactive</div><div class="row-r"><span class="chip read">read-only</span><span class="mono">0x00000000</span><span class="well" style="background:repeating-conic-gradient(#888 0% 25%,transparent 0% 50%) 50%/8px 8px"></span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MENU BAR -->
+          <div class="detail" id="p-menubar" role="tabpanel">
+            <div><h3 class="pane-h">Menu Bar</h3><p class="pane-sub">Hydrated from <span class="mono">sketchybar --query bar</span></p></div>
+            <div>
+              <p class="g-label">Bar</p>
+              <div class="group">
+                <div class="row"><div class="row-l">Height</div><div class="row-r"><input type="range" min="20" max="60" value="37"><span class="field">37</span></div></div>
+                <div class="row"><div class="row-l">Position</div><div class="row-r"><select><option>Top</option><option>Bottom</option></select></div></div>
+                <div class="row"><div class="row-l">Blur radius</div><div class="row-r"><input type="range" min="0" max="40" value="0"><span class="field">0</span></div></div>
+                <div class="row"><div class="row-l">Sticky<small>Stay visible in fullscreen spaces</small></div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="Sticky"></button></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Items · 10 definitions → 28 live</p>
+              <div class="group">
+                <div class="row"><div class="row-l">spaces<small>Expands to space.1 – space.10 plus space_labels_updater</small></div><div class="row-r"><span class="chip warn">12 items</span><button class="sw" role="switch" aria-checked="true" aria-label="spaces"></button></div></div>
+                <div class="row"><div class="row-l">system_metrics<small>CPU, RAM, GPU, fan, network via macmon stream</small></div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="system_metrics"></button></div></div>
+                <div class="row"><div class="row-l">calendar</div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="calendar"></button></div></div>
+                <div class="row"><div class="row-l">battery</div><div class="row-r"><button class="sw" role="switch" aria-checked="true" aria-label="battery"></button></div></div>
+                <div class="row"><div class="row-l">front_app</div><div class="row-r"><button class="sw" role="switch" aria-checked="false" aria-label="front_app"></button></div></div>
+                <div class="row"><div class="row-l">media</div><div class="row-r"><button class="sw" role="switch" aria-checked="false" aria-label="media"></button></div></div>
+                <div class="row"><div class="row-l">volume</div><div class="row-r"><button class="sw" role="switch" aria-checked="false" aria-label="volume"></button></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RULES -->
+          <div class="detail" id="p-rules" role="tabpanel">
+            <div><h3 class="pane-h">Rules</h3><p class="pane-sub">float_state.json merged with <span class="mono">yabai -m rule --list</span></p></div>
+            <div class="group">
+              <table class="tbl">
+                <thead><tr><th>Application</th><th>Behaviour</th><th>Source</th></tr></thead>
+                <tbody>
+                  <tr><td>System Settings</td><td>Float</td><td><span class="chip">float_state</span></td></tr>
+                  <tr><td>Docker Desktop</td><td>Float</td><td><span class="chip">float_state</span></td></tr>
+                  <tr><td>Raycast</td><td>Float</td><td><span class="chip">float_state</span></td></tr>
+                  <tr><td>QuickTime Player</td><td>Float</td><td><span class="chip">float_state</span></td></tr>
+                  <tr><td>Tailscale</td><td>Float</td><td><span class="chip">float_state</span></td></tr>
+                  <tr><td>Calculator</td><td>Unmanaged</td><td><span class="chip ok">yabai rule</span></td></tr>
+                  <tr><td>Finder <span class="mono" style="color:var(--faint)">· Copy/Move/Delete/Trash</span></td><td>Unmanaged</td><td><span class="chip ok">yabai rule</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="row" style="padding:0"><span class="chip">+ Add application…</span><span style="font-size:11px; color:var(--faint); margin-left:8px">4 more in float_state.json</span></div>
+          </div>
+
+          <!-- SHORTCUTS -->
+          <div class="detail" id="p-shortcuts" role="tabpanel">
+            <div><h3 class="pane-h">Shortcuts</h3><p class="pane-sub">86 bindings · read-only in v1</p></div>
+            <div class="group">
+              <table class="tbl">
+                <thead><tr><th style="width:150px">Keys</th><th>Action</th></tr></thead>
+                <tbody>
+                  <tr><td><kbd>⌘</kbd> <kbd>return</kbd></td><td>Launch terminal</td></tr>
+                  <tr><td><kbd>⌘</kbd> <kbd>H</kbd> <span style="color:var(--faint)">…</span> <kbd>L</kbd></td><td>Focus window west / south / north / east</td></tr>
+                  <tr><td><kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>H</kbd></td><td>Reorder window west</td></tr>
+                  <tr><td><kbd>⌥</kbd> <kbd>1</kbd> <span style="color:var(--faint)">…</span> <kbd>9</kbd></td><td>Switch workspace <span class="chip warn">workaround</span></td></tr>
+                  <tr><td><kbd>⌥</kbd> <kbd>F</kbd></td><td>Toggle float, persist per-app</td></tr>
+                  <tr><td><kbd>⌥</kbd> <kbd>R</kbd></td><td>Rotate and rebalance BSP layout</td></tr>
+                  <tr><td><kbd>⌥</kbd> <kbd>B</kbd></td><td>Toggle SketchyBar visibility</td></tr>
+                  <tr><td><kbd>⌥</kbd> <kbd>T</kbd></td><td>Cycle Macarchy themes</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="margin:0; font-size:11px; color:var(--faint)">Grouped by the section comments already in skhdrc. Editing lands in v2 behind a managed block.</p>
+          </div>
+
+          <!-- ADVANCED -->
+          <div class="detail" id="p-advanced" role="tabpanel">
+            <div><h3 class="pane-h">Advanced</h3><p class="pane-sub">Daemons, snapshots, and active workarounds</p></div>
+            <div>
+              <p class="g-label">Daemons</p>
+              <div class="group">
+                <div class="row"><div class="row-l">yabai<small>com.asmvik.yabai</small></div><div class="row-r"><span class="chip ok">running</span><span class="chip">Restart</span></div></div>
+                <div class="row"><div class="row-l">borders<small>homebrew.mxcl.borders</small></div><div class="row-r"><span class="chip ok">running</span><span class="chip">Restart</span></div></div>
+                <div class="row"><div class="row-l">sketchybar<small>homebrew.mxcl.sketchybar</small></div><div class="row-r"><span class="chip ok">running</span><span class="chip">Restart</span></div></div>
+                <div class="row"><div class="row-l">skhd<small>com.koekeishiya.skhd</small></div><div class="row-r"><span class="chip ok">running</span><span class="chip">Restart</span></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Active workarounds</p>
+              <div class="group">
+                <div class="row"><div class="row-l">macOS 27 Space switching<small>switch_space_macos27.sh · InstantSpaceSwitcher PR #88 · since 16 Sep 2026</small></div><div class="row-r"><span class="chip warn">active</span></div></div>
+                <div class="row"><div class="row-l">Scripting addition reload on wake<small>Deep sleep breaks the SA and borders</small></div><div class="row-r"><span class="chip warn">active</span></div></div>
+              </div>
+            </div>
+            <div>
+              <p class="g-label">Snapshots · keeping last 20</p>
+              <div class="group">
+                <div class="row"><div class="row-l mono" style="font-size:12px">2026-09-19T15:04:22<small style="font-family:var(--sans)">settings.env · bordersrc</small></div><div class="row-r"><span class="chip">Restore</span></div></div>
+                <div class="row"><div class="row-l mono" style="font-size:12px">2026-09-19T14:51:07<small style="font-family:var(--sans)">theme.env · midnight</small></div><div class="row-r"><span class="chip">Restore</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="console">
+          <span class="lbl">CONSOLE</span>
+          <span id="log"><b>yabai -m config window_gap</b> → 8</span>
+          <span class="tick">✓</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Menu bar extra</h2>
+    <div class="mb-stage">
+      <div class="fakebar"><span>CPU 12%</span><span>RAM 41%</span><span class="live">◐</span><span>Fri 19 Sep 15:04</span></div>
+      <div class="menu">
+        <div class="mhead">Theme</div>
+        <div class="mi"><span class="ck"></span>awakening</div>
+        <div class="mi"><span class="ck"></span>blackgold</div>
+        <div class="mi"><span class="ck"></span>carbonfox</div>
+        <div class="mi"><span class="ck"></span>city-783</div>
+        <div class="mi"><span class="ck"></span>lumon</div>
+        <div class="mi"><span class="ck"></span>matte-black</div>
+        <div class="mi sel"><span class="ck">✓</span>midnight<span class="sub">current</span></div>
+        <div class="mi"><span class="ck"></span>turbonite</div>
+        <div class="msep"></div>
+        <div class="mi"><span class="ck"></span>Wallpaper<span class="sub">3 ▸</span></div>
+        <div class="msep"></div>
+        <div class="mi"><span class="ck"></span>Settings…<span class="sub">⌘,</span></div>
+        <div class="mi"><span class="ck"></span>Restart All Daemons</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div class="note">
+        <h3>System Settings, deliberately</h3>
+        <p>Sidebar plus grouped <code>Form</code> rows is the idiom this app replaces, so borrowing it means nothing new to learn. Sections are grouped by <em>what you're changing</em> — Appearance, Behaviour, System — not by which daemon owns it. You think "make the gaps bigger," not "reconfigure yabai."</p>
+      </div>
+      <div class="note">
+        <h3>The live preview</h3>
+        <p>Borrowed from yabUI, which puts a proportional window map front and centre. Gap and padding are spatial values, so a number alone is a poor control — the miniature makes the slider legible before it touches the real desktop.</p>
+        <span class="src">ref · github.com/4hmedk/yabUI</span>
+      </div>
+      <div class="note">
+        <h3>The console strip</h3>
+        <p>Also from yabUI, whose Activity tab logs every command with its success or failure. When an app is a face over four CLIs, hiding the shell-out is the wrong instinct — showing it is what makes the thing debuggable and trustworthy.</p>
+        <p>Every control writes one line here. If a daemon rejects a value, its stderr lands in the row and nothing is persisted.</p>
+      </div>
+      <div class="note">
+        <h3>No Save button</h3>
+        <p>Changes apply live and debounce at 80&nbsp;ms; the commit writes <code>settings.env</code> and snapshots. Saving is a concept from a world where the app owns a document — here the daemon is already the source of truth.</p>
+      </div>
+      <div class="note">
+        <h3>Read-only means owned elsewhere</h3>
+        <p>The Borders pane shows colour greyed with a pointer back to Themes. That's the <code>bordersrc</code> ownership split made visible: theme owns colour, settings owns geometry. A rule you can see in the UI is a rule you won't accidentally break in a dotfile.</p>
+      </div>
+      <div class="note">
+        <h3>Surfacing the temporary</h3>
+        <p>The macOS 27 Space-switching workaround currently lives in a comment at <code>skhdrc:55</code>. Advanced lists it with the date it was added, so a stopgap can't quietly become permanent.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var log = document.getElementById('log');
+  function say(cmd, res) {
+    log.innerHTML = '<b>' + cmd + '</b>' + (res ? ' → ' + res : '');
+  }
+
+  // pane switching
+  var navs = document.querySelectorAll('.nav');
+  navs.forEach(function (n) {
+    n.addEventListener('click', function () {
+      navs.forEach(function (o) { o.setAttribute('aria-selected', 'false'); });
+      n.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.detail').forEach(function (d) { d.classList.remove('on'); });
+      document.getElementById('p-' + n.dataset.p).classList.add('on');
+    });
+  });
+
+  // live preview + command log
+  var pv = document.getElementById('pv');
+  function bind(slider, out, cssVar, cmd) {
+    var s = document.getElementById(slider), o = document.getElementById(out);
+    s.addEventListener('input', function () {
+      o.textContent = s.value;
+      pv.style.setProperty(cssVar, s.value + 'px');
+      say(cmd + ' ' + s.value);
+    });
+  }
+  bind('s-gap', 'v-gap', '--gap', 'yabai -m config window_gap');
+  bind('s-pad', 'v-pad', '--pad', 'yabai -m config top_padding');
+
+  // switches
+  document.querySelectorAll('.sw').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var on = b.getAttribute('aria-checked') === 'true';
+      b.setAttribute('aria-checked', on ? 'false' : 'true');
+      say('set ' + (b.getAttribute('aria-label') || 'option') + ' ' + (on ? 'off' : 'on'));
+    });
+  });
+
+  // theme cards
+  var cards = document.querySelectorAll('.tcard');
+  cards.forEach(function (c) {
+    c.addEventListener('click', function () {
+      cards.forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+      c.setAttribute('aria-pressed', 'true');
+      say('theme-switch ' + c.querySelector('.tname').textContent.trim());
+    });
+  });
+})();
+</script>
