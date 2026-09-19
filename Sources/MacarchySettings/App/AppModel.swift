@@ -57,6 +57,7 @@ final class AppModel {
     let daemons: DaemonMonitor
     let borders: BordersModel
     let snapshots: SnapshotBrowser
+    let menuBar: MenuBarModel
 
     var selection: Pane? = .layout
 
@@ -68,12 +69,18 @@ final class AppModel {
         self.daemons = DaemonMonitor(backend: backend, log: log)
         self.borders = BordersModel(backend: backend, log: log)
         self.snapshots = SnapshotBrowser(log: log)
+        self.menuBar = MenuBarModel(backend: backend, log: log)
     }
 
     /// Reads a key off whichever theme is currently applied.
     func currentThemeValue(_ key: String) -> String? {
         guard let name = themes.current else { return nil }
         return themes.themes.first { $0.name == name }?.values[key]
+    }
+
+    var currentThemePalette: GhosttyPalette? {
+        guard let name = themes.current else { return nil }
+        return themes.themes.first { $0.name == name }?.palette
     }
 
     var currentThemeWallpaper: URL? {

@@ -41,6 +41,18 @@ struct ThemesPane: View {
             }
 
             if let theme, draft != nil {
+                if let palette = theme.palette {
+                    Section {
+                        TerminalPreview(palette: palette, themeName: theme.name)
+                            .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+                    } header: {
+                        Text("Terminal")
+                    } footer: {
+                        Text("Rendered from the theme's ghostty.conf — background, foreground and all 16 ANSI colours.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 backgroundSection(theme)
                 editorSection(theme)
                 actionsSection(theme)

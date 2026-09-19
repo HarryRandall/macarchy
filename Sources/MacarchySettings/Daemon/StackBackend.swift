@@ -31,10 +31,18 @@ struct BarState: Codable, Sendable {
     var sticky: String?
     var color: String?
     var items: [String]?
+    var paddingLeft: Int?
+    var paddingRight: Int?
+    var cornerRadius: Int?
+    var yOffset: Int?
 
     enum CodingKeys: String, CodingKey {
         case height, position, sticky, color, items
         case blurRadius = "blur_radius"
+        case paddingLeft = "padding_left"
+        case paddingRight = "padding_right"
+        case cornerRadius = "corner_radius"
+        case yOffset = "y_offset"
     }
 }
 

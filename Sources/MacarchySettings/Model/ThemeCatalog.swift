@@ -42,6 +42,7 @@ struct Theme: Identifiable, Sendable {
 
     var selectedBackground: String?
     var manifest: ThemeManifest?
+    var palette: GhosttyPalette?
 
     /// theme.env is no longer read by the app — it is regenerated from the
     /// manifest purely so bordersrc and theme-switch keep working.
@@ -137,7 +138,8 @@ final class ThemeCatalog {
                       directory: url,
                       values: Self.parseEnv(url.appending(path: "theme.env")),
                       selectedBackground: chosen[url.lastPathComponent],
-                      manifest: ThemeManifest.load(from: url))
+                      manifest: ThemeManifest.load(from: url),
+                      palette: GhosttyPalette.load(from: url))
             }
 
         log.note("loaded themes", "\(themes.count) in ~/.config/themes")

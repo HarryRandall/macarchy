@@ -36,7 +36,7 @@ struct RootView: View {
         case .themes: ThemesPane()
         case .advanced: AdvancedPane()
         case .borders: BordersPane()
-        case .menuBar: StubPane(pane: .menuBar, note: "Bar geometry hydrates from sketchybar --query bar; items group by source file.")
+        case .menuBar: MenuBarPane()
         case .rules: StubPane(pane: .rules, note: "float_state.json merged with yabai -m rule --list.")
         case .shortcuts: StubPane(pane: .shortcuts, note: "A read-only view of the 86 skhd bindings, grouped by section comment.")
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")
