@@ -99,5 +99,6 @@ final class AppModel {
         // bordersrc reads settings at run time, so it only needs regenerating
         // when the template itself changes — on launch is enough.
         rc.generateBordersRC()
+        rc.generateYabaiRC()
     }
 }

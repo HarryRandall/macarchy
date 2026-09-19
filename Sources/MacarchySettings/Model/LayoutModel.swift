@@ -25,6 +25,7 @@ final class LayoutModel {
     private let backend: StackBackend
     private let log: CommandLog
     private var pending: [String: Task<Void, Never>] = [:]
+    private let store = SettingsStore()
 
     /// Long enough to swallow a slider drag, short enough to feel immediate.
     private let debounce = Duration.milliseconds(80)
@@ -61,17 +62,50 @@ final class LayoutModel {
         if !results[8].stdout.isEmpty { mouseDropAction = results[8].stdout }
 
         log.note("hydrated layout", "\(results.count) keys read from yabai")
+        persistHydrated(results)
+    }
+
+    /// Mirrors what the daemon is actually running into settings.env, so the
+    /// generated yabairc reproduces the live state rather than falling back to
+    /// compiled-in defaults that may not match.
+    private func persistHydrated(_ results: [CommandResult]) {
+        let ordered = ["window_gap", "top_padding", "layout", "split_type", "window_placement",
+                       "auto_balance", "mouse_modifier", "mouse_follows_focus", "mouse_drop_action"]
+        var values = store.load()
+        for (key, result) in zip(ordered, results) where result.ok && !result.stdout.isEmpty {
+            guard let env = RCGenerator.envName(forYabaiKey: key) else { continue }
+            values[env] = result.stdout
+        }
+        // Padding is linked in the UI but four separate keys in yabai.
+        if let top = values["YABAI_TOP_PADDING"] {
+            for edge in ["YABAI_BOTTOM_PADDING", "YABAI_LEFT_PADDING", "YABAI_RIGHT_PADDING"] {
+                values[edge] = values[edge] ?? top
+            }
+        }
+        do { try store.write(values) }
+        catch { log.note("settings.env seed failed", error.localizedDescription) }
     }
 
     /// Apply a key to the running daemon, coalescing rapid changes per key.
+    ///
+    /// Applying and persisting are deliberately separate: the daemon gets the
+    /// value immediately so the desktop responds, and settings.env is written
+    /// on the same beat so the generated yabairc reproduces it at next login.
     func apply(_ key: String, _ value: String) {
         guard !isHydrating else { return }
         pending[key]?.cancel()
-        pending[key] = Task { [backend, log, debounce] in
+        pending[key] = Task { [backend, log, debounce, store] in
             try? await Task.sleep(for: debounce)
             guard !Task.isCancelled else { return }
+
             let result = await backend.yabaiWrite(key, value: value)
             log.record(result)
+            guard result.ok else { return }
+
+            if let env = RCGenerator.envName(forYabaiKey: key) {
+                do { try store.set(env, value) }
+                catch { log.note("settings.env write failed", error.localizedDescription) }
+            }
         }
     }
 

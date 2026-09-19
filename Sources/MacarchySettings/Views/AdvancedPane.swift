@@ -43,17 +43,21 @@ struct AdvancedPane: View {
             }
 
             Section {
-                ForEach(["bordersrc"], id: \.self) { name in
+                ForEach(["bordersrc", "yabairc"], id: \.self) { name in
                     LabeledContent {
                         HStack(spacing: 8) {
                             outcomeBadge(model.rc.lastOutcomes[name])
-                            Button("Regenerate") { model.rc.generateBordersRC() }
-                                .controlSize(.small)
+                            Button("Regenerate") {
+                                name == "bordersrc" ? model.rc.generateBordersRC() : model.rc.generateYabaiRC()
+                            }
+                            .controlSize(.small)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(name)
-                            Text("~/.config/borders/bordersrc")
+                            Text(name == "bordersrc"
+                                 ? "~/.config/borders/bordersrc"
+                                 : "~/.config/yabai/yabairc")
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundStyle(.tertiary)
                         }
