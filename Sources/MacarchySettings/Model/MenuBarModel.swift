@@ -34,6 +34,7 @@ final class MenuBarModel {
     private let backend: StackBackend
     private let log: CommandLog
     private var pending: [String: Task<Void, Never>] = [:]
+    private let store = SettingsStore()
 
     init(backend: StackBackend, log: CommandLog) {
         self.backend = backend
@@ -62,6 +63,7 @@ final class MenuBarModel {
             sticky = (bar.sticky ?? "on") == "on"
         }
 
+        if bar != nil { persistHydrated() }
         await rebuildGroups(runtimeItems: bar?.items ?? [])
     }
 
@@ -128,6 +130,25 @@ final class MenuBarModel {
         return drawing == "on"
     }
 
+    /// Mirrors the running bar into settings.env so the generated rc reproduces
+    /// it. The file and the live bar had already diverged — sketchybarrc said
+    /// height 37 while the bar was running 35 — so a restart silently reverted.
+    private func persistHydrated() {
+        var values = store.load()
+        let live: [String: String] = [
+            "height": String(Int(height)), "position": position,
+            "padding_left": String(Int(paddingLeft)), "padding_right": String(Int(paddingRight)),
+            "blur_radius": String(Int(blurRadius)), "corner_radius": String(Int(cornerRadius)),
+            "y_offset": String(Int(yOffset)), "sticky": sticky ? "on" : "off"
+        ]
+        for (key, value) in live {
+            guard let env = RCGenerator.envName(forBarKey: key) else { continue }
+            values[env] = value
+        }
+        do { try store.write(values) }
+        catch { log.note("settings.env seed failed", error.localizedDescription) }
+    }
+
     // MARK: - Applying
 
     func applyBar(_ key: String, _ value: String) {
@@ -138,6 +159,9 @@ final class MenuBarModel {
             guard !Task.isCancelled else { return }
             _ = backend
             log.record(await CommandRunner.run(Paths.sketchybar, ["--bar", "\(key)=\(value)"]))
+        }
+        if let env = RCGenerator.envName(forBarKey: key) {
+            try? store.set(env, value)
         }
     }
 

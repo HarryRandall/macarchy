@@ -43,21 +43,24 @@ struct AdvancedPane: View {
             }
 
             Section {
-                ForEach(["bordersrc", "yabairc"], id: \.self) { name in
+                ForEach(["bordersrc", "yabairc", "sketchybarrc"], id: \.self) { name in
                     LabeledContent {
                         HStack(spacing: 8) {
                             outcomeBadge(model.rc.lastOutcomes[name])
                             Button("Regenerate") {
-                                name == "bordersrc" ? model.rc.generateBordersRC() : model.rc.generateYabaiRC()
+                                switch name {
+                                case "bordersrc": model.rc.generateBordersRC()
+                                case "yabairc": model.rc.generateYabaiRC()
+                                default: model.rc.generateSketchybarRC()
+                                }
                             }
                             .controlSize(.small)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(name)
-                            Text(name == "bordersrc"
-                                 ? "~/.config/borders/bordersrc"
-                                 : "~/.config/yabai/yabairc")
+                            Text("~/.config/" + (name == "bordersrc" ? "borders/bordersrc"
+                                 : name == "yabairc" ? "yabai/yabairc" : "sketchybar/sketchybarrc"))
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundStyle(.tertiary)
                         }

@@ -100,5 +100,7 @@ final class AppModel {
         // when the template itself changes — on launch is enough.
         rc.generateBordersRC()
         rc.generateYabaiRC()
+        await menuBar.hydrate()
+        rc.generateSketchybarRC()
     }
 }
