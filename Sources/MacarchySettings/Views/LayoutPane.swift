@@ -14,9 +14,11 @@ struct LayoutPane: View {
             } header: {
                 Text("Preview")
             } footer: {
-                Text("Gaps and padding are spatial, so the miniature shows the change before it reaches the desktop.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Gaps and padding are spatial, so the miniature shows the change before it reaches the desktop."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section("Tiling") {
@@ -38,7 +40,9 @@ struct LayoutPane: View {
                     Text("Second child").tag("second_child")
                     Text("First child").tag("first_child")
                 }
-                .onChange(of: layout.windowPlacement) { _, new in layout.apply("window_placement", new) }
+                .onChange(of: layout.windowPlacement) { _, new in
+                    layout.apply("window_placement", new)
+                }
 
                 Toggle("Auto balance", isOn: $layout.autoBalance)
                     .onChange(of: layout.autoBalance) { _, new in
@@ -81,7 +85,8 @@ struct LayoutPane: View {
                     Text("Command").tag("cmd")
                     Text("Shift").tag("shift")
                 }
-                .onChange(of: layout.mouseModifier) { _, new in layout.apply("mouse_modifier", new) }
+                .onChange(of: layout.mouseModifier) { _, new in layout.apply("mouse_modifier", new)
+                }
 
                 Toggle("Focus follows mouse", isOn: $layout.mouseFollowsFocus)
                     .onChange(of: layout.mouseFollowsFocus) { _, new in
@@ -92,7 +97,9 @@ struct LayoutPane: View {
                     Text("Stack").tag("stack")
                     Text("Swap").tag("swap")
                 }
-                .onChange(of: layout.mouseDropAction) { _, new in layout.apply("mouse_drop_action", new) }
+                .onChange(of: layout.mouseDropAction) { _, new in
+                    layout.apply("mouse_drop_action", new)
+                }
             }
         }
         .formStyle(.grouped)
@@ -108,7 +115,7 @@ private struct TilingPreview: View {
         GeometryReader { proxy in
             let scale = proxy.size.width / 1440
             let g = max(1, gap * scale * 2.4)
-            let p = max(1, padding * scale * 2.4)
+            let inset = max(1, padding * scale * 2.4)
 
             HStack(spacing: g) {
                 tile(emphasised: true)
@@ -118,7 +125,7 @@ private struct TilingPreview: View {
                 }
                 .frame(width: proxy.size.width * 0.38)
             }
-            .padding(p)
+            .padding(inset)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
         }
     }

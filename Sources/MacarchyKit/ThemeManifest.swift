@@ -8,41 +8,69 @@ import Foundation
 ///
 /// The env file is not replaced — it is *generated* from this, so theme-switch
 /// and bordersrc keep working untouched.
-struct ThemeManifest: Codable, Sendable, Equatable {
-    var schema: Int = 1
-    var name: String
-    var displayName: String?
-    var version: String?
-    var author: String?
-    var dark: Bool = true
-    var wallpaper: String?
-    var colors: Colors = Colors()
-    var apps: Apps = Apps()
+public struct ThemeManifest: Codable, Sendable, Equatable {
+    public var schema: Int = 1
+    public var name: String
+    public var displayName: String?
+    public var version: String?
+    public var author: String?
+    public var dark: Bool = true
+    public var wallpaper: String?
+    public var colors: Colors = Colors()
+    public var apps: Apps = Apps()
 
-    struct Colors: Codable, Sendable, Equatable {
-        var borderActive: String?
-        var borderInactive: String?
-        var sketchybarBar: String?
-        var sketchybarText: String?
-        var firefoxAccent: String?
+    public struct Colors: Codable, Sendable, Equatable {
+        public init() {}
+
+        public var borderActive: String?
+        public var borderInactive: String?
+        public var sketchybarBar: String?
+        public var sketchybarText: String?
+        public var firefoxAccent: String?
     }
 
-    struct Apps: Codable, Sendable, Equatable {
-        var nvimColorscheme: String?
-        var ghosttyConfig: String?
+    public struct Apps: Codable, Sendable, Equatable {
+        public init() {}
+
+        public var nvimColorscheme: String?
+        public var ghosttyConfig: String?
     }
 
-    static let fileName = "theme.json"
+    public init(
+        schema: Int = 1,
+        name: String,
+        displayName: String? = nil,
+        version: String? = nil,
+        author: String? = nil,
+        dark: Bool = true,
+        wallpaper: String? = nil,
+        colors: Colors = Colors(),
+        apps: Apps = Apps()
+    ) {
+        self.schema = schema
+        self.name = name
+        self.displayName = displayName
+        self.version = version
+        self.author = author
+        self.dark = dark
+        self.wallpaper = wallpaper
+        self.colors = colors
+        self.apps = apps
+    }
+
+    public static let fileName = "theme.json"
 
     /// Maps manifest fields to the env keys the existing shell already reads.
     /// One table drives both directions so they cannot drift apart.
-    private static var colorKeys: [(WritableKeyPath<Colors, String?>, String)] { [
-        (\.borderActive, "BORDER_ACTIVE"),
-        (\.borderInactive, "BORDER_INACTIVE"),
-        (\.sketchybarBar, "SKETCHYBAR_BAR_COLOR"),
-        (\.sketchybarText, "SKETCHYBAR_TEXT_COLOR"),
-        (\.firefoxAccent, "FIREFOX_ACCENT")
-    ] }
+    private static var colorKeys: [(WritableKeyPath<Colors, String?>, String)] {
+        [
+            (\.borderActive, "BORDER_ACTIVE"),
+            (\.borderInactive, "BORDER_INACTIVE"),
+            (\.sketchybarBar, "SKETCHYBAR_BAR_COLOR"),
+            (\.sketchybarText, "SKETCHYBAR_TEXT_COLOR"),
+            (\.firefoxAccent, "FIREFOX_ACCENT")
+        ]
+    }
 
     // MARK: - Reading the legacy format
 
@@ -51,7 +79,7 @@ struct ThemeManifest: Codable, Sendable, Equatable {
     /// BORDER_WIDTH is deliberately dropped: it is geometry, which belongs to
     /// settings.env, not to a theme. Keeping it in both is the double-ownership
     /// problem this project is trying to remove.
-    static func from(env: [String: String], name: String) -> ThemeManifest {
+    public static func from(env: [String: String], name: String) -> ThemeManifest {
         var manifest = ThemeManifest(name: name)
         manifest.dark = env["DARK_MODE"] != "false"
         manifest.wallpaper = env["WALLPAPER"]
@@ -65,7 +93,7 @@ struct ThemeManifest: Codable, Sendable, Equatable {
     // MARK: - Writing the legacy format
 
     /// Regenerates the env file the shell still consumes.
-    func envRepresentation() -> String {
+    public func envRepresentation() -> String {
         var lines = [
             "# Generated from \(Self.fileName) by Macarchy Settings — do not edit by hand.",
             "DARK_MODE=\(dark)"
@@ -80,7 +108,7 @@ struct ThemeManifest: Codable, Sendable, Equatable {
 
     /// The env dictionary this manifest represents, for comparing against an
     /// existing file without writing anything.
-    func envValues() -> [String: String] {
+    public func envValues() -> [String: String] {
         var values: [String: String] = ["DARK_MODE": String(dark)]
         if let wallpaper { values["WALLPAPER"] = wallpaper }
         if let scheme = apps.nvimColorscheme { values["NVIM_COLORSCHEME"] = scheme }
@@ -92,15 +120,16 @@ struct ThemeManifest: Codable, Sendable, Equatable {
 
     // MARK: - Disk
 
-    static func load(from directory: URL) -> ThemeManifest? {
+    public static func load(from directory: URL) -> ThemeManifest? {
         let url = directory.appending(path: fileName)
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(ThemeManifest.self, from: data)
     }
 
-    func write(to directory: URL) throws {
+    public func write(to directory: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        try encoder.encode(self).write(to: directory.appending(path: Self.fileName), options: .atomic)
+        try encoder.encode(self).write(
+            to: directory.appending(path: Self.fileName), options: .atomic)
     }
 }

@@ -37,7 +37,8 @@ struct GhosttyPalette: Sendable {
         for raw in text.split(separator: "\n") {
             let line = raw.trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty, !line.hasPrefix("#"),
-                  let eq = line.firstIndex(of: "=") else { continue }
+                let eq = line.firstIndex(of: "=")
+            else { continue }
             let key = line[line.startIndex..<eq].trimmingCharacters(in: .whitespaces)
             let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
 
@@ -48,8 +49,10 @@ struct GhosttyPalette: Sendable {
             case "palette":
                 // "palette = 4=#e68e0d" — the slot index is on the value side.
                 let parts = value.split(separator: "=", maxSplits: 1)
-                guard parts.count == 2, let index = Int(parts[0].trimmingCharacters(in: .whitespaces)),
-                      let color = Color(macarchyHex: String(parts[1]).trimmingCharacters(in: .whitespaces))
+                guard parts.count == 2,
+                    let index = Int(parts[0].trimmingCharacters(in: .whitespaces)),
+                    let color = Color(
+                        macarchyHex: String(parts[1]).trimmingCharacters(in: .whitespaces))
                 else { continue }
                 slots[index] = color
             default: break

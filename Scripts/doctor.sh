@@ -164,6 +164,48 @@ else
   warn "$withjson/$total themes have a manifest, $badjson invalid"
 fi
 
+# theme.env is generated from theme.json. If they diverge, the shell and the UI
+# disagree about a theme without anything erroring.
+drift=$(python3 - "$THEMES_DIR" <<'PYEOF'
+import json, os, sys
+root = sys.argv[1]
+MAP = {"BORDER_ACTIVE": ("colors","borderActive"), "BORDER_INACTIVE": ("colors","borderInactive"),
+       "SKETCHYBAR_BAR_COLOR": ("colors","sketchybarBar"),
+       "SKETCHYBAR_TEXT_COLOR": ("colors","sketchybarText"),
+       "FIREFOX_ACCENT": ("colors","firefoxAccent"), "NVIM_COLORSCHEME": ("apps","nvimColorscheme")}
+DROPPED = {"BORDER_WIDTH"}
+bad = 0
+for name in sorted(os.listdir(root)):
+    d = os.path.join(root, name)
+    env_p, json_p = os.path.join(d, "theme.env"), os.path.join(d, "theme.json")
+    if not (os.path.isfile(env_p) and os.path.isfile(json_p)):
+        continue
+    env = {}
+    for line in open(env_p):
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        env[k] = v.strip('"')
+    m = json.load(open(json_p))
+    for k, v in env.items():
+        if k in DROPPED:
+            continue
+        if k == "DARK_MODE":
+            if str(m.get("dark")).lower() != v.lower(): bad += 1
+        elif k == "WALLPAPER":
+            if m.get("wallpaper") != v: bad += 1
+        elif k in MAP:
+            sec, key = MAP[k]
+            if m.get(sec, {}).get(key) != v: bad += 1
+        else:
+            bad += 1
+print(bad)
+PYEOF
+)
+[ "${drift:-0}" -eq 0 ] && ok "theme.json and theme.env agree" \
+                        || bad "$drift theme values differ between theme.json and theme.env"
+
 head_ "Wallpaper"
 # A grey desktop has been a real failure mode here, so check the file resolves
 # and that something is actually set.

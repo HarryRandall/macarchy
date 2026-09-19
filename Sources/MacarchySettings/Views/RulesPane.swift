@@ -38,8 +38,10 @@ struct RulesPane: View {
             } header: {
                 Text("Floating apps · \(owned.count)")
             } footer: {
-                Text("Kept in float_state.json and reapplied by sync_float_rules.sh, so they survive a yabai restart.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(
+                    "Kept in float_state.json and reapplied by sync_float_rules.sh, so they survive a yabai restart."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
 
             if !declared.isEmpty {
@@ -66,8 +68,10 @@ struct RulesPane: View {
                 } header: {
                     Text("Declared in yabairc · \(declared.count)")
                 } footer: {
-                    Text("Hand-written rules inside yabairc's macarchy:keep region. The app never rewrites these.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        "Hand-written rules inside yabairc's macarchy:keep region. The app never rewrites these."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -108,9 +112,11 @@ private struct AppIcon: View {
     }
 
     private static func path(for name: String) -> String? {
-        for root in ["/Applications", "/System/Applications",
-                     NSHomeDirectory() + "/Applications",
-                     "/System/Applications/Utilities"] {
+        for root in [
+            "/Applications", "/System/Applications",
+            NSHomeDirectory() + "/Applications",
+            "/System/Applications/Utilities"
+        ] {
             let candidate = "\(root)/\(name).app"
             if FileManager.default.fileExists(atPath: candidate) { return candidate }
         }

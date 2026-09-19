@@ -75,7 +75,7 @@ final class AppModel {
         self.snapshots = SnapshotBrowser(log: log)
         self.menuBar = MenuBarModel(backend: backend, log: log)
         self.rc = RCGenerator(log: log)
-        self.rules = RulesModel(log: log)
+        self.rules = RulesModel(backend: backend, log: log)
         self.shortcuts = ShortcutsModel(log: log)
     }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import MacarchyKit
 
 /// Live yabai layout settings.
 ///
@@ -69,8 +70,10 @@ final class LayoutModel {
     /// generated yabairc reproduces the live state rather than falling back to
     /// compiled-in defaults that may not match.
     private func persistHydrated(_ results: [CommandResult]) {
-        let ordered = ["window_gap", "top_padding", "layout", "split_type", "window_placement",
-                       "auto_balance", "mouse_modifier", "mouse_follows_focus", "mouse_drop_action"]
+        let ordered = [
+            "window_gap", "top_padding", "layout", "split_type", "window_placement",
+            "auto_balance", "mouse_modifier", "mouse_follows_focus", "mouse_drop_action"
+        ]
         var values = store.load()
         for (key, result) in zip(ordered, results) where result.ok && !result.stdout.isEmpty {
             guard let env = RCGenerator.envName(forYabaiKey: key) else { continue }
@@ -82,8 +85,9 @@ final class LayoutModel {
                 values[edge] = values[edge] ?? top
             }
         }
-        do { try store.write(values) }
-        catch { log.note("settings.env seed failed", error.localizedDescription) }
+        do { try store.write(values) } catch {
+            log.note("settings.env seed failed", error.localizedDescription)
+        }
     }
 
     /// Apply a key to the running daemon, coalescing rapid changes per key.
@@ -103,15 +107,17 @@ final class LayoutModel {
             guard result.ok else { return }
 
             if let env = RCGenerator.envName(forYabaiKey: key) {
-                do { try store.set(env, value) }
-                catch { log.note("settings.env write failed", error.localizedDescription) }
+                do { try store.set(env, value) } catch {
+                    log.note("settings.env write failed", error.localizedDescription)
+                }
             }
         }
     }
 
     func applyPadding(_ value: Double) {
         let rendered = String(Int(value))
-        let edges = linkPadding
+        let edges =
+            linkPadding
             ? ["top_padding", "bottom_padding", "left_padding", "right_padding"]
             : ["top_padding"]
         for edge in edges { apply(edge, rendered) }

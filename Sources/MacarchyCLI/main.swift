@@ -6,12 +6,13 @@ import MacarchyKit
 // a theme was applied from the GUI or the keyboard.
 
 func usage() -> Never {
-    fputs("""
-    usage: macarchy <command>
+    fputs(
+        """
+        usage: macarchy <command>
 
-      ghostty <theme-dir> <theme-name>   inline a theme's palette into ~/.config/ghostty/config
+          ghostty <theme-dir> <theme-name>   inline a theme's palette into ~/.config/ghostty/config
 
-    """, stderr)
+        """, stderr)
     exit(2)
 }
 
@@ -24,7 +25,8 @@ case "ghostty":
     let themeDirectory = URL(fileURLWithPath: arguments[1])
     let themeName = arguments[2]
 
-    let configURL = URL(fileURLWithPath: NSHomeDirectory()).appending(path: ".config/ghostty/config")
+    let configURL = URL(fileURLWithPath: NSHomeDirectory()).appending(
+        path: ".config/ghostty/config")
     let themeConfURL = themeDirectory.appending(path: "ghostty.conf")
 
     guard let config = try? String(contentsOf: configURL, encoding: .utf8) else {
@@ -34,7 +36,8 @@ case "ghostty":
         fputs("macarchy: no ghostty.conf in \(themeDirectory.path)\n", stderr); exit(1)
     }
 
-    let updated = GhosttyApplier.transform(config: config, themeConf: themeConf, themeName: themeName)
+    let updated = GhosttyApplier.transform(
+        config: config, themeConf: themeConf, themeName: themeName)
     do {
         try updated.write(to: configURL, atomically: true, encoding: .utf8)
     } catch {

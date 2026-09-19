@@ -13,8 +13,10 @@ struct ShortcutsPane: View {
                 TextField("Filter by key, command or section", text: $shortcuts.search)
                     .textFieldStyle(.roundedBorder)
             } footer: {
-                Text("\(model.shortcuts.bindings.count) bindings parsed from skhdrc. Read-only for now — editing writes back through a macarchy:keep block.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(
+                    "\(model.shortcuts.bindings.count) bindings parsed from skhdrc. Read-only for now — editing writes back through a macarchy:keep block."
+                )
+                .font(.caption).foregroundStyle(.secondary)
             }
 
             ForEach(model.shortcuts.sections, id: \.self) { section in

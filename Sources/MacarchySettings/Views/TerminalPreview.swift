@@ -21,13 +21,27 @@ struct TerminalPreview: View {
 
     private var entries: [Entry] {
         [
-            .init(mode: "drwxr-xr-x", size: "  160", date: "19 Sep 18:31", name: "src", kind: .directory),
-            .init(mode: "drwxr-xr-x", size: "  128", date: "19 Sep 17:50", name: "Tests", kind: .directory),
-            .init(mode: "-rwxr-xr-x", size: " 92K", date: "19 Sep 18:12", name: "borders", kind: .executable),
-            .init(mode: "-rw-r--r--", size: "2.1K", date: "19 Sep 18:12", name: "README.md", kind: .plain),
-            .init(mode: "-rw-r--r--", size: " 545", date: "14 May 22:23", name: "makefile", kind: .plain),
-            .init(mode: "lrwxr-xr-x", size: "  45", date: "19 Sep 18:31", name: "themes -> ../themes", kind: .symlink),
-            .init(mode: "-rw-r--r--", size: " 34K", date: "19 Sep 16:04", name: "assets.tar.gz", kind: .archive)
+            .init(
+                mode: "drwxr-xr-x", size: "  160", date: "19 Sep 18:31", name: "src",
+                kind: .directory),
+            .init(
+                mode: "drwxr-xr-x", size: "  128", date: "19 Sep 17:50", name: "Tests",
+                kind: .directory),
+            .init(
+                mode: "-rwxr-xr-x", size: " 92K", date: "19 Sep 18:12", name: "borders",
+                kind: .executable),
+            .init(
+                mode: "-rw-r--r--", size: "2.1K", date: "19 Sep 18:12", name: "README.md",
+                kind: .plain),
+            .init(
+                mode: "-rw-r--r--", size: " 545", date: "14 May 22:23", name: "makefile",
+                kind: .plain),
+            .init(
+                mode: "lrwxr-xr-x", size: "  45", date: "19 Sep 18:31", name: "themes -> ../themes",
+                kind: .symlink),
+            .init(
+                mode: "-rw-r--r--", size: " 34K", date: "19 Sep 16:04", name: "assets.tar.gz",
+                kind: .archive)
         ]
     }
 

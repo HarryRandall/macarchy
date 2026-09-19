@@ -104,6 +104,7 @@ struct BorderPreview: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(caption ?? "Border preview"), \(isSquare(radius) ? "square" : "rounded") corners")
+        .accessibilityLabel(
+            "\(caption ?? "Border preview"), \(isSquare(radius) ? "square" : "rounded") corners")
     }
 }

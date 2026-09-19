@@ -1,70 +1,8 @@
 import Foundation
+import MacarchyKit
 import Observation
 import SwiftUI
 import AppKit
-
-enum ThemeError: LocalizedError {
-    case notAPackage
-    case alreadyInstalled(String)
-    case noDefault(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .notAPackage:
-            "That folder has no theme.json, so it isn't a theme package."
-        case .alreadyInstalled(let name):
-            "A theme called \(name) is already installed. Remove it first, or rename the import."
-        case .noDefault(let name):
-            "\(name) didn't ship with the app, so there's no default to restore."
-        }
-    }
-}
-
-struct Theme: Identifiable, Sendable {
-    let name: String
-    let directory: URL
-    let values: [String: String]
-
-    var id: String { name }
-
-    var accent: Color {
-        Color(macarchyHex: manifest?.colors.borderActive ?? values["BORDER_ACTIVE"]) ?? .accentColor
-    }
-    var isDark: Bool { manifest?.dark ?? (values["DARK_MODE"] != "false") }
-    var colorscheme: String? { manifest?.apps.nvimColorscheme ?? values["NVIM_COLORSCHEME"] }
-
-    /// The background actually in force.
-    ///
-    /// `.backgrounds.json` records the per-theme choice and overrides the
-    /// `WALLPAPER` line in theme.env — for most themes the two already disagree,
-    /// so reading theme.env alone would show the wrong image.
-    var wallpaperRelativePath: String? { selectedBackground ?? values["WALLPAPER"] }
-
-    var selectedBackground: String?
-    var manifest: ThemeManifest?
-    var palette: GhosttyPalette?
-
-    /// theme.env is no longer read by the app — it is regenerated from the
-    /// manifest purely so bordersrc and theme-switch keep working.
-    var envURLLegacy: URL { directory.appending(path: "theme.env") }
-    var manifestURL: URL { directory.appending(path: ThemeManifest.fileName) }
-
-    var wallpaperURL: URL? {
-        guard let relative = wallpaperRelativePath, !relative.isEmpty else { return nil }
-        let url = directory.appending(path: relative)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
-    }
-
-    /// Every image the theme ships, for the background picker.
-    var availableBackgrounds: [URL] {
-        let fm = FileManager.default
-        let extensions: Set<String> = ["png", "jpg", "jpeg", "heic", "webp"]
-        return [directory.appending(path: "backgrounds"), directory]
-            .flatMap { (try? fm.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)) ?? [] }
-            .filter { extensions.contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-    }
-}
 
 /// Reads ~/.config/themes. Each theme is a directory holding a `theme.env` of
 /// plain KEY="value" lines, which is why no shell parsing is needed here.
@@ -73,7 +11,8 @@ struct Theme: Identifiable, Sendable {
 final class ThemeCatalog {
     private(set) var themes: [Theme] = []
     private(set) var current: String?
-    private(set) var backgroundsStateURL: URL = Paths.themesDirectory.appending(path: ".backgrounds.json")
+    private(set) var backgroundsStateURL: URL = Paths.themesDirectory.appending(
+        path: ".backgrounds.json")
 
     private let backend: StackBackend
     private let log: CommandLog
@@ -90,14 +29,18 @@ final class ThemeCatalog {
     func migrateToManifests() -> [String] {
         let fm = FileManager.default
         let root = Paths.themesDirectory
-        let entries = (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+        let entries =
+            (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey]))
+            ?? []
         var migrated: [String] = []
 
         for url in entries where !url.lastPathComponent.hasPrefix(".") {
-            guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+            guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+                continue
+            }
             guard ThemeManifest.load(from: url) == nil else { continue }
 
-            let env = Self.parseEnv(url.appending(path: "theme.env"))
+            let env = EnvFile.parse(url.appending(path: "theme.env"))
             guard !env.isEmpty else { continue }
 
             var manifest = ThemeManifest.from(env: env, name: url.lastPathComponent)
@@ -108,7 +51,9 @@ final class ThemeCatalog {
                 try manifest.write(to: url)
                 migrated.append(manifest.name)
             } catch {
-                log.note("manifest write failed", "\(url.lastPathComponent): \(error.localizedDescription)")
+                log.note(
+                    "manifest write failed",
+                    "\(url.lastPathComponent): \(error.localizedDescription)")
             }
         }
 
@@ -128,18 +73,22 @@ final class ThemeCatalog {
 
         let chosen = Self.parseBackgroundsState(backgroundsStateURL)
 
-        let entries = (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
-        themes = entries
+        let entries =
+            (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey]))
+            ?? []
+        themes =
+            entries
             .filter { !$0.lastPathComponent.hasPrefix(".") }
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
             .map { url in
-                Theme(name: url.lastPathComponent,
-                      directory: url,
-                      values: Self.parseEnv(url.appending(path: "theme.env")),
-                      selectedBackground: chosen[url.lastPathComponent],
-                      manifest: ThemeManifest.load(from: url),
-                      palette: GhosttyPalette.load(from: url))
+                Theme(
+                    name: url.lastPathComponent,
+                    directory: url,
+                    values: EnvFile.parse(url.appending(path: "theme.env")),
+                    selectedBackground: chosen[url.lastPathComponent],
+                    manifest: ThemeManifest.load(from: url),
+                    palette: GhosttyPalette.load(from: url))
             }
 
         log.note("loaded themes", "\(themes.count) in ~/.config/themes")
@@ -201,7 +150,8 @@ final class ThemeCatalog {
 
     func isModified(_ theme: Theme) -> Bool {
         guard let original = Self.bundledDefault(named: theme.name),
-              let current = theme.manifest else { return false }
+            let current = theme.manifest
+        else { return false }
         return original != current
     }
 
@@ -221,80 +171,9 @@ final class ThemeCatalog {
 
     nonisolated static func parseBackgroundsState(_ url: URL) -> [String: String] {
         guard let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String: String].self, from: data)
+            let decoded = try? JSONDecoder().decode([String: String].self, from: data)
         else { return [:] }
         return decoded
     }
 
-    /// KEY=value / KEY="value", skipping comments and blanks.
-    nonisolated static func parseEnv(_ url: URL) -> [String: String] {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [:] }
-        var values: [String: String] = [:]
-        for raw in text.split(separator: "\n") {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty, !line.hasPrefix("#"),
-                  let split = line.firstIndex(of: "=") else { continue }
-            let key = String(line[line.startIndex..<split])
-            var value = String(line[line.index(after: split)...])
-            if value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") {
-                value = String(value.dropFirst().dropLast())
-            }
-            values[key] = value
-        }
-        return values
-    }
-}
-
-extension Color {
-    /// How a colour is spelled in the file it lives in. borders and sketchybar
-    /// want 0xAARRGGBB; FIREFOX_ACCENT wants #RRGGBB.
-    enum MacarchyFormat { case argb, rgb }
-
-    /// Renders back to the string form the target expects. Round-trips with
-    /// `init?(macarchyHex:)`, so editing a colour and saving cannot silently
-    /// change its notation.
-    func macarchyString(_ format: MacarchyFormat) -> String? {
-        guard let srgb = NSColor(self).usingColorSpace(.sRGB) else { return nil }
-        let channel = { (v: CGFloat) in Int((v * 255).rounded()) }
-        let r = channel(srgb.redComponent), g = channel(srgb.greenComponent), b = channel(srgb.blueComponent)
-        switch format {
-        case .argb: return String(format: "0x%02x%02x%02x%02x", channel(srgb.alphaComponent), r, g, b)
-        case .rgb:  return String(format: "#%02x%02x%02x", r, g, b)
-        }
-    }
-
-    /// Alpha channel of a `0xAARRGGBB` value, so a fully transparent border can
-    /// be reported as "not drawn" rather than silently rendering as nothing.
-    static func macarchyAlpha(_ raw: String?) -> Double? {
-        guard var text = raw?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
-        if text.hasPrefix("0x") || text.hasPrefix("0X") { text = String(text.dropFirst(2)) }
-        guard text.count == 8, let value = UInt64(text, radix: 16) else { return 1 }
-        return Double((value >> 24) & 0xFF) / 255
-    }
-
-    /// Parses the `0xAARRGGBB` form that borders and sketchybar both use,
-    /// and the plain `#RRGGBB` used for FIREFOX_ACCENT.
-    init?(macarchyHex raw: String?) {
-        guard var text = raw?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
-        if text.hasPrefix("0x") || text.hasPrefix("0X") { text = String(text.dropFirst(2)) }
-        if text.hasPrefix("#") { text = String(text.dropFirst()) }
-        guard let value = UInt64(text, radix: 16) else { return nil }
-
-        let a, r, g, b: Double
-        switch text.count {
-        case 8:
-            a = Double((value >> 24) & 0xFF) / 255
-            r = Double((value >> 16) & 0xFF) / 255
-            g = Double((value >> 8) & 0xFF) / 255
-            b = Double(value & 0xFF) / 255
-        case 6:
-            a = 1
-            r = Double((value >> 16) & 0xFF) / 255
-            g = Double((value >> 8) & 0xFF) / 255
-            b = Double(value & 0xFF) / 255
-        default:
-            return nil
-        }
-        self.init(.sRGB, red: r, green: g, blue: b, opacity: a)
-    }
 }

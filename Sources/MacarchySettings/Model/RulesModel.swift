@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import MacarchyKit
 
 /// Per-app window rules.
 ///
@@ -16,20 +17,25 @@ final class RulesModel {
         let id: String
         let app: String
         let title: String?
-        let managed: Bool       // false = yabai won't tile it
+        let managed: Bool  // false = yabai won't tile it
         let source: Source
 
         enum Source: Sendable {
-            case floatState     // app-owned, editable here
-            case declared       // hand-written in yabairc's keep region
+            case floatState  // app-owned, editable here
+            case declared  // hand-written in yabairc's keep region
         }
     }
 
     private(set) var rules: [Rule] = []
     private(set) var isBusy = false
 
+    private let backend: StackBackend
     private let log: CommandLog
-    init(log: CommandLog) { self.log = log }
+
+    init(backend: StackBackend, log: CommandLog) {
+        self.backend = backend
+        self.log = log
+    }
 
     private static var stateURL: URL {
         Paths.home.appending(path: ".config/yabai/float_state.json")
@@ -42,34 +48,40 @@ final class RulesModel {
 
     func reload() async {
         let owned = Self.loadFloatState()
-        let result = await CommandRunner.run(Paths.yabai, ["-m", "rule", "--list"])
+        let result = await backend.yabaiRules()
 
         var built: [Rule] = []
         if result.ok, let data = result.stdout.data(using: .utf8),
-           let live = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            let live = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             for entry in live {
                 let label = entry["label"] as? String ?? ""
                 let pattern = entry["app"] as? String ?? ""
                 let name = Self.unanchor(pattern)
                 let isOwned = label.hasPrefix(Self.managedLabelPrefix) || owned.contains(name)
-                built.append(Rule(
-                    id: label.isEmpty ? pattern : label,
-                    app: name,
-                    title: (entry["title"] as? String).flatMap { $0.isEmpty ? nil : $0 },
-                    managed: (entry["manage"] as? Bool) ?? true,
-                    source: isOwned ? .floatState : .declared))
+                built.append(
+                    Rule(
+                        id: label.isEmpty ? pattern : label,
+                        app: name,
+                        title: (entry["title"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                        managed: (entry["manage"] as? Bool) ?? true,
+                        source: isOwned ? .floatState : .declared))
             }
         }
 
         // Anything in the JSON that yabai hasn't loaded yet still belongs on screen.
         for name in owned where !built.contains(where: { $0.app == name }) {
-            built.append(Rule(id: "pending-\(name)", app: name, title: nil,
-                              managed: false, source: .floatState))
+            built.append(
+                Rule(
+                    id: "pending-\(name)", app: name, title: nil,
+                    managed: false, source: .floatState))
         }
 
-        rules = built.sorted {
-            ($0.source == .floatState ? 0 : 1, $0.app.lowercased())
-                < ($1.source == .floatState ? 0 : 1, $1.app.lowercased())
+        // App-owned rules first, then alphabetical within each group.
+        rules = built.sorted { left, right in
+            let leftRank = left.source == .floatState ? 0 : 1
+            let rightRank = right.source == .floatState ? 0 : 1
+            if leftRank != rightRank { return leftRank < rightRank }
+            return left.app.lowercased() < right.app.lowercased()
         }
     }
 
@@ -102,13 +114,13 @@ final class RulesModel {
 
         // The script owns reconciliation: it strips every float_persist_ rule
         // and re-adds from the file, so partial state can't accumulate.
-        log.record(await CommandRunner.run("/bin/bash", [Self.syncScript]))
+        log.record(await backend.runScript(Self.syncScript))
         await reload()
     }
 
     private static func loadFloatState() -> [String] {
         guard let data = try? Data(contentsOf: stateURL),
-              let apps = try? JSONDecoder().decode([String].self, from: data)
+            let apps = try? JSONDecoder().decode([String].self, from: data)
         else { return [] }
         return apps
     }

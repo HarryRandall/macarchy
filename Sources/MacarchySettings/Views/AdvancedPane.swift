@@ -1,4 +1,5 @@
 import SwiftUI
+import MacarchyKit
 
 struct AdvancedPane: View {
     @Environment(AppModel.self) private var model
@@ -30,10 +31,13 @@ struct AdvancedPane: View {
             }
 
             Section {
-                workaround("macOS 27 Space switching",
-                           detail: "switch_space_macos27.sh · InstantSpaceSwitcher PR #88 · added 16 Sep 2026")
-                workaround("Scripting addition reload on wake",
-                           detail: "Deep sleep breaks the SA and borders until the Dock restarts")
+                workaround(
+                    "macOS 27 Space switching",
+                    detail:
+                        "switch_space_macos27.sh · InstantSpaceSwitcher PR #88 · added 16 Sep 2026")
+                workaround(
+                    "Scripting addition reload on wake",
+                    detail: "Deep sleep breaks the SA and borders until the Dock restarts")
             } header: {
                 Text("Active workarounds")
             } footer: {
@@ -59,19 +63,26 @@ struct AdvancedPane: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(name)
-                            Text("~/.config/" + (name == "bordersrc" ? "borders/bordersrc"
-                                 : name == "yabairc" ? "yabai/yabairc" : "sketchybar/sketchybarrc"))
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.tertiary)
+                            Text(
+                                "~/.config/"
+                                    + (name == "bordersrc"
+                                        ? "borders/bordersrc"
+                                        : name == "yabairc"
+                                            ? "yabai/yabairc" : "sketchybar/sketchybarrc")
+                            )
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.tertiary)
                         }
                     }
                 }
             } header: {
                 Text("Generated config")
             } footer: {
-                Text("Authored by the app. Hand edits are not blocked — they're detected by hash, snapshotted and reported before being replaced. Wrap anything you want kept in a macarchy:keep block.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Authored by the app. Hand edits are not blocked — they're detected by hash, snapshotted and reported before being replaced. Wrap anything you want kept in a macarchy:keep block."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section {
@@ -100,13 +111,17 @@ struct AdvancedPane: View {
             } header: {
                 Text("Snapshots · keeping last 20")
             } footer: {
-                Text("Taken automatically before each write. Restoring snapshots the current state first, so it is itself undoable.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Taken automatically before each write. Restoring snapshots the current state first, so it is itself undoable."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
-        .task { await model.daemons.refresh(); model.snapshots.refresh() }
+        .task {
+            await model.daemons.refresh(); model.snapshots.refresh()
+        }
     }
 
     @ViewBuilder

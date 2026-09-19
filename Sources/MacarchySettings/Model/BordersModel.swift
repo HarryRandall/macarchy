@@ -1,12 +1,13 @@
 import Foundation
 import Observation
+import MacarchyKit
 
 @MainActor
 @Observable
 final class BordersModel {
     var width: Double = 6.0
     var visible = true
-    var blacklist: [String] = []
+    var excludedApps: [String] = []
 
     /// Global window corner radius (`NSConvolutionOverride1`).
     ///
@@ -40,6 +41,10 @@ final class BordersModel {
     /// rounded default, so the usable floor is just above that.
     static let cornerRadiusRange: ClosedRange<Double> = 0.3...12.0
 
+    /// Window-server corner radius. Global, AppKit-only, and ignored at or
+    /// below 0.25 — see the Borders pane footer.
+    static let cornerRadiusKey = "NSConvolutionOverride1"
+
     var cornerRadiusNeedsRestart: Bool {
         guard let applied = cornerRadiusApplied else { return false }
         return abs(applied - cornerRadius) > 0.001
@@ -50,9 +55,9 @@ final class BordersModel {
         if let raw = values["BORDER_WIDTH"], let parsed = Double(raw) { width = parsed }
         if let raw = values["BORDERS_VISIBLE"] { visible = raw != "false" }
         if let raw = values["BORDERS_BLACKLIST"], !raw.isEmpty {
-            blacklist = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            excludedApps = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         }
-        let result = await CommandRunner.run("/usr/bin/defaults", ["read", "-g", "NSConvolutionOverride1"])
+        let result = await backend.globalDefault(Self.cornerRadiusKey)
         if result.ok, let parsed = Double(result.stdout) {
             cornerRadius = parsed
             cornerRadiusApplied = parsed
@@ -62,7 +67,7 @@ final class BordersModel {
     func applyBorders() {
         pending?.cancel()
         let style = self.style
-        pending = Task { [backend, log, width, visible, blacklist, store] in
+        pending = Task { [backend, log, width, visible, excludedApps, store] in
             try? await Task.sleep(for: .milliseconds(80))
             guard !Task.isCancelled else { return }
 
@@ -71,19 +76,29 @@ final class BordersModel {
                 "style=\(style)",
                 "background_color=0x00000000"
             ]
-            var excludedApps = blacklist
-            if !excludedApps.contains("iPhone Mirroring") { excludedApps.append("iPhone Mirroring") }
+            var excludedApps = excludedApps
+            if !excludedApps.contains("iPhone Mirroring") {
+                excludedApps.append("iPhone Mirroring")
+            }
             arguments.append("blacklist=\(excludedApps.joined(separator: ","))")
 
             if visible {
-                let name = (try? String(contentsOf: Paths.themesDirectory.appending(path: ".current"), encoding: .utf8))?
+                let name =
+                    (try? String(
+                        contentsOf: Paths.themesDirectory.appending(path: ".current"),
+                        encoding: .utf8))?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let theme = ThemeCatalog.parseEnv(Paths.themesDirectory.appending(path: name).appending(path: "theme.env"))
+                let theme = EnvFile.parse(
+                    Paths.themesDirectory.appending(path: name).appending(path: "theme.env"))
                 var active = theme["BORDER_ACTIVE"] ?? "0xff45e8ff"
-                let colours = (theme["BORDER_ANIMATION_COLORS"] ?? "").split(whereSeparator: { $0.isWhitespace })
+                let colours = (theme["BORDER_ANIMATION_COLORS"] ?? "").split(whereSeparator: {
+                    $0.isWhitespace
+                })
                 if let first = colours.first {
-                    let second = colours.count > 3 ? colours[3] : (colours.count > 1 ? colours[1] : first)
-                    active = (theme["BORDER_ANIMATION_EFFECT"] ?? "glow") == "glow"
+                    let second =
+                        colours.count > 3 ? colours[3] : (colours.count > 1 ? colours[1] : first)
+                    active =
+                        (theme["BORDER_ANIMATION_EFFECT"] ?? "glow") == "glow"
                         ? "glow(\(first))"
                         : "gradient(top_left=\(first),bottom_right=\(second))"
                 }
@@ -106,7 +121,7 @@ final class BordersModel {
                 values["BORDER_WIDTH"] = String(format: "%.1f", width)
                 values["BORDER_STYLE"] = style
                 values["BORDERS_VISIBLE"] = visible ? "true" : "false"
-                values["BORDERS_BLACKLIST"] = blacklist.joined(separator: ",")
+                values["BORDERS_BLACKLIST"] = excludedApps.joined(separator: ",")
                 try store.write(values)
                 log.note("wrote settings.env", "\(values.count) keys")
             } catch {
@@ -119,12 +134,11 @@ final class BordersModel {
     /// so the two can never disagree.
     func applyCornerRadius() {
         cornerRadiusPending?.cancel()
-        cornerRadiusPending = Task { [log, cornerRadius] in
+        cornerRadiusPending = Task { [backend, log, cornerRadius] in
             try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
-            let result = await CommandRunner.run(
-                "/usr/bin/defaults",
-                ["write", "-g", "NSConvolutionOverride1", "-float", String(format: "%.2f", cornerRadius)])
+            let result = await backend.setGlobalDefault(
+                Self.cornerRadiusKey, float: String(format: "%.2f", cornerRadius))
             log.record(result)
             guard !Task.isCancelled else { return }
             await MainActor.run { self.applyBorders() }
@@ -132,8 +146,7 @@ final class BordersModel {
     }
 
     func resetCornerRadius() async {
-        let result = await CommandRunner.run(
-            "/usr/bin/defaults", ["delete", "-g", "NSConvolutionOverride1"])
+        let result = await backend.removeGlobalDefault(Self.cornerRadiusKey)
         log.record(result)
         cornerRadius = 0.5
         applyBorders()

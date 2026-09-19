@@ -23,6 +23,12 @@ let package = Package(
             path: "Sources/MacarchySettings",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        .testTarget(
+            name: "MacarchyKitTests",
+            dependencies: ["MacarchyKit"],
+            path: "Tests/MacarchyKitTests",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .executableTarget(
             name: "MacarchyCLI",
             dependencies: ["MacarchyKit"],

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import MacarchyKit
 
 /// sketchybar's bar geometry and item visibility.
 ///
@@ -26,8 +27,8 @@ final class MenuBarModel {
     /// items, so listing runtime items directly would bury the four things you
     /// actually think about behind ten near-identical Space rows.
     struct ItemGroup: Identifiable, Sendable {
-        let id: String          // source file stem
-        let items: [String]     // runtime item names
+        let id: String  // source file stem
+        let items: [String]  // runtime item names
         var visible: Bool
     }
 
@@ -71,7 +72,9 @@ final class MenuBarModel {
     /// `--add` lines out of each item script.
     private func rebuildGroups(runtimeItems: [String]) async {
         let fm = FileManager.default
-        let files = ((try? fm.contentsOfDirectory(at: Self.itemsDirectory, includingPropertiesForKeys: nil)) ?? [])
+        let files =
+            ((try? fm.contentsOfDirectory(at: Self.itemsDirectory, includingPropertiesForKeys: nil))
+            ?? [])
             .filter { $0.pathExtension == "sh" }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
@@ -92,9 +95,11 @@ final class MenuBarModel {
             var anyVisible = false
             for item in owned where await isDrawing(item) { anyVisible = true; break }
 
-            built.append(ItemGroup(id: file.deletingPathExtension().lastPathComponent,
-                                   items: owned,
-                                   visible: anyVisible))
+            built.append(
+                ItemGroup(
+                    id: file.deletingPathExtension().lastPathComponent,
+                    items: owned,
+                    visible: anyVisible))
         }
 
         let orphans = runtimeItems.filter { !claimed.contains($0) }
@@ -114,18 +119,20 @@ final class MenuBarModel {
             guard let r = Range(match.range(at: 1), in: script) else { continue }
             var name = String(script[r])
             // Strip a trailing dot-suffix so "space.1" maps back to "space".
-            if let dot = name.firstIndex(of: "."), name.hasPrefix("space") { name = String(name[..<dot]) }
+            if let dot = name.firstIndex(of: "."), name.hasPrefix("space") {
+                name = String(name[..<dot])
+            }
             names.append(name)
         }
         return names
     }
 
     private func isDrawing(_ item: String) async -> Bool {
-        let result = await CommandRunner.run(Paths.sketchybar, ["--query", item])
+        let result = await backend.sketchybar(["--query", item])
         guard result.ok, let data = result.stdout.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let geometry = object["geometry"] as? [String: Any],
-              let drawing = geometry["drawing"] as? String
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let geometry = object["geometry"] as? [String: Any],
+            let drawing = geometry["drawing"] as? String
         else { return true }
         return drawing == "on"
     }
@@ -145,8 +152,9 @@ final class MenuBarModel {
             guard let env = RCGenerator.envName(forBarKey: key) else { continue }
             values[env] = value
         }
-        do { try store.write(values) }
-        catch { log.note("settings.env seed failed", error.localizedDescription) }
+        do { try store.write(values) } catch {
+            log.note("settings.env seed failed", error.localizedDescription)
+        }
     }
 
     // MARK: - Applying
@@ -157,8 +165,7 @@ final class MenuBarModel {
         pending[key] = Task { [backend, log] in
             try? await Task.sleep(for: .milliseconds(80))
             guard !Task.isCancelled else { return }
-            _ = backend
-            log.record(await CommandRunner.run(Paths.sketchybar, ["--bar", "\(key)=\(value)"]))
+            log.record(await backend.sketchybar(["--bar", "\(key)=\(value)"]))
         }
         if let env = RCGenerator.envName(forBarKey: key) {
             try? store.set(env, value)
@@ -169,20 +176,18 @@ final class MenuBarModel {
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
         groups[index].visible = visible
 
-        Task { [log, items = group.items] in
+        Task { [backend, log, items = group.items] in
             var arguments: [String] = []
             for item in items {
                 arguments += ["--set", item, "drawing=\(visible ? "on" : "off")"]
             }
-            log.record(await CommandRunner.run(Paths.sketchybar, arguments))
+            log.record(await backend.sketchybar(arguments))
         }
     }
 
     func reloadSketchybar() {
-        Task { [log] in
-            log.record(await CommandRunner.run(
-                Paths.launchctl,
-                ["kickstart", "-k", "gui/\(getuid())/homebrew.mxcl.sketchybar"]))
+        Task { [backend, log] in
+            log.record(await backend.restart(.sketchybar))
         }
     }
 }

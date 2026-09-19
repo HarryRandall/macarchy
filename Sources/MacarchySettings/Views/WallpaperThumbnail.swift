@@ -15,8 +15,7 @@ struct WallpaperThumbnail: View {
         ZStack {
             if let image {
                 Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .resizable().scaledToFill()
             } else {
                 Rectangle().fill(.quaternary)
                 if url == nil {

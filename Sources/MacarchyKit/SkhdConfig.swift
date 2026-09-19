@@ -6,7 +6,7 @@ import Foundation
 /// exists, so this is ours. It lives in the Kit rather than the app because
 /// generating skhdrc later has to round-trip through the same model.
 public struct SkhdBinding: Identifiable, Sendable, Hashable {
-    public let id: Int              // source line, which is also a stable identity
+    public let id: Int  // source line, which is also a stable identity
     public let modifiers: [String]
     public let key: String
     public let command: String
@@ -17,7 +17,7 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public let appOverrides: [AppOverride]
 
     public struct AppOverride: Sendable, Hashable {
-        public let app: String      // "*" is the fallback
+        public let app: String  // "*" is the fallback
         public let command: String
     }
 
@@ -26,7 +26,7 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
         modifiers.map(Self.symbol(forModifier:)) + [Self.display(key: key)]
     }
 
-    static func symbol(forModifier modifier: String) -> String {
+    public static func symbol(forModifier modifier: String) -> String {
         switch modifier.lowercased() {
         case "cmd", "lcmd", "rcmd": "⌘"
         case "shift", "lshift", "rshift": "⇧"
@@ -39,13 +39,13 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     }
 
     /// skhd accepts raw keycodes; a table of the ones in use beats showing 0x18.
-    static let keycodeNames: [String: String] = [
+    public static let keycodeNames: [String: String] = [
         "0x18": "=", "0x1B": "-", "0x21": "[", "0x1E": "]",
         "0x29": ";", "0x27": "'", "0x2B": ",", "0x2F": ".", "0x2C": "/",
         "0x32": "`", "0x2A": "\\"
     ]
 
-    static func display(key: String) -> String {
+    public static func display(key: String) -> String {
         if let named = keycodeNames[key.uppercased().replacingOccurrences(of: "0X", with: "0x")] {
             return named
         }
@@ -96,15 +96,19 @@ public enum SkhdConfig {
                 pendingComment = []
             }
 
-            guard let parsed = parseBinding(line, at: index, section: section, lines: lines, cursor: &index)
+            guard
+                let parsed = parseBinding(
+                    line, at: index, section: section, lines: lines, cursor: &index)
             else { continue }
             bindings.append(parsed)
         }
         return bindings
     }
 
-    private static func parseBinding(_ line: String, at lineIndex: Int, section: String?,
-                                     lines: [String], cursor: inout Int) -> SkhdBinding? {
+    private static func parseBinding(
+        _ line: String, at lineIndex: Int, section: String?,
+        lines: [String], cursor: inout Int
+    ) -> SkhdBinding? {
         // App-specific form: `<keyspec> -> [` … `]`
         if let arrow = line.range(of: "->") {
             let keySpec = String(line[line.startIndex..<arrow.lowerBound])
@@ -119,7 +123,8 @@ public enum SkhdConfig {
                     guard let colon = entry.firstIndex(of: ":") else { continue }
                     let app = entry[entry.startIndex..<colon]
                         .trimmingCharacters(in: CharacterSet(charactersIn: " \"\t"))
-                    let command = entry[entry.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                    let command = entry[entry.index(after: colon)...].trimmingCharacters(
+                        in: .whitespaces)
                     if !app.isEmpty { overrides.append(.init(app: app, command: command)) }
                 }
                 cursor = scan - 1
@@ -127,9 +132,10 @@ public enum SkhdConfig {
 
             let (modifiers, key) = splitKeySpec(keySpec)
             guard !key.isEmpty else { return nil }
-            return SkhdBinding(id: lineIndex, modifiers: modifiers, key: key,
-                               command: overrides.first(where: { $0.app == "*" })?.command ?? "",
-                               section: section, passthrough: true, appOverrides: overrides)
+            return SkhdBinding(
+                id: lineIndex, modifiers: modifiers, key: key,
+                command: overrides.first(where: { $0.app == "*" })?.command ?? "",
+                section: section, passthrough: true, appOverrides: overrides)
         }
 
         // Standard form. Commands routinely contain colons (osascript, URLs), so
@@ -141,20 +147,23 @@ public enum SkhdConfig {
 
         let (modifiers, key) = splitKeySpec(keySpec)
         guard !key.isEmpty else { return nil }
-        return SkhdBinding(id: lineIndex, modifiers: modifiers, key: key, command: command,
-                           section: section, passthrough: false, appOverrides: [])
+        return SkhdBinding(
+            id: lineIndex, modifiers: modifiers, key: key, command: command,
+            section: section, passthrough: false, appOverrides: [])
     }
 
     /// "cmd + shift - h" → (["cmd","shift"], "h"). Media keys carry no modifier.
     private static func splitKeySpec(_ spec: String) -> ([String], String) {
         let trimmed = spec.trimmingCharacters(in: .whitespaces)
-        guard let dash = trimmed.range(of: " - ") ?? trimmed.range(of: "-", options: .backwards) else {
+        guard let dash = trimmed.range(of: " - ") ?? trimmed.range(of: "-", options: .backwards)
+        else {
             return ([], trimmed)
         }
         let modifierPart = trimmed[trimmed.startIndex..<dash.lowerBound]
         let key = trimmed[dash.upperBound...].trimmingCharacters(in: .whitespaces)
 
-        let modifiers = modifierPart
+        let modifiers =
+            modifierPart
             .components(separatedBy: "+")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }

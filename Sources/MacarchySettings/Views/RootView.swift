@@ -1,4 +1,5 @@
 import SwiftUI
+import MacarchyKit
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
@@ -49,9 +50,11 @@ private struct DaemonFooter: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: allRunning ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(allRunning ? .green : .orange)
-                .font(.caption)
+            Image(
+                systemName: allRunning ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(allRunning ? .green : .orange)
+            .font(.caption)
             Text("\(model.daemons.runningCount) of \(Daemon.allCases.count) running")
                 .font(.caption)
                 .foregroundStyle(.secondary)

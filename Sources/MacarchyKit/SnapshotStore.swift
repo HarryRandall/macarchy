@@ -6,46 +6,49 @@ import Foundation
 /// load-bearing rather than housekeeping. Pruning is enforced on write: an
 /// earlier iteration of this desktop accumulated 809 unpruned wallpaper
 /// backups, which is how a safety net becomes a disk problem.
-enum SnapshotError: LocalizedError {
+public enum SnapshotError: LocalizedError {
     case noMetadata(String)
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
-        case .noMetadata(let id): "Snapshot \(id) has no metadata, so its files can't be placed back."
+        case .noMetadata(let id):
+            "Snapshot \(id) has no metadata, so its files can't be placed back."
         }
     }
 }
 
-struct SnapshotStore: Sendable {
-    let root: URL
-    let keep: Int
+public struct SnapshotStore: Sendable {
+    public let root: URL
+    public let keep: Int
 
-    init(root: URL = Paths.snapshotsDirectory, keep: Int = 20) {
+    public init(root: URL = Paths.snapshotsDirectory, keep: Int = 20) {
         self.root = root
         self.keep = keep
     }
 
     private struct Meta: Codable, Sendable {
-        var reason: String
-        var paths: [String: String]
+        public var reason: String
+        public var paths: [String: String]
     }
 
     private func meta(for snapshot: Snapshot) -> Meta? {
-        guard let data = try? Data(contentsOf: snapshot.url.appending(path: ".meta.json")) else { return nil }
+        guard let data = try? Data(contentsOf: snapshot.url.appending(path: ".meta.json")) else {
+            return nil
+        }
         return try? JSONDecoder().decode(Meta.self, from: data)
     }
 
-    struct Snapshot: Identifiable, Sendable, Hashable {
-        let id: String          // the directory name: an ISO8601 stamp
-        let url: URL
-        let files: [String]
-        let created: Date
+    public struct Snapshot: Identifiable, Sendable, Hashable {
+        public let id: String  // the directory name: an ISO8601 stamp
+        public let url: URL
+        public let files: [String]
+        public let created: Date
     }
 
     private static let stamp: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd'T'HH-mm-ss-SSS"
-        f.timeZone = .current
-        return f
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH-mm-ss-SSS"
+        formatter.timeZone = .current
+        return formatter
     }()
 
     /// Milliseconds alone are not a guarantee, so collisions get a suffix.
@@ -68,7 +71,7 @@ struct SnapshotStore: Sendable {
     /// are skipped rather than failing the whole snapshot — a file that does
     /// not exist yet has nothing worth preserving.
     @discardableResult
-    func capture(_ sources: [URL], reason: String) throws -> Snapshot? {
+    public func capture(_ sources: [URL], reason: String) throws -> Snapshot? {
         let fm = FileManager.default
         let present = sources.filter { fm.fileExists(atPath: $0.path) }
         guard !present.isEmpty else { return nil }
@@ -94,44 +97,51 @@ struct SnapshotStore: Sendable {
         return Snapshot(id: id, url: directory, files: copied, created: .now)
     }
 
-    func list() -> [Snapshot] {
+    public func list() -> [Snapshot] {
         let fm = FileManager.default
-        let entries = (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.creationDateKey])) ?? []
-        return entries
+        let entries =
+            (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.creationDateKey]))
+            ?? []
+        return
+            entries
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
             .map { url in
                 let files = ((try? fm.contentsOfDirectory(atPath: url.path)) ?? [])
                     .filter { !$0.hasPrefix(".") }
                     .sorted()
-                let created = (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
+                let created =
+                    (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate)
+                    ?? .distantPast
                 return Snapshot(id: url.lastPathComponent, url: url, files: files, created: created)
             }
             .sorted { $0.id > $1.id }
     }
 
-    func reason(for snapshot: Snapshot) -> String { meta(for: snapshot)?.reason ?? "" }
+    public func reason(for snapshot: Snapshot) -> String { meta(for: snapshot)?.reason ?? "" }
 
     /// Puts files back where they came from. Takes a snapshot of the current
     /// state first, so restoring is itself undoable.
-    func restore(_ snapshot: Snapshot) throws {
+    public func restore(_ snapshot: Snapshot) throws {
         let fm = FileManager.default
         guard let meta = meta(for: snapshot) else { throw SnapshotError.noMetadata(snapshot.id) }
 
-        try capture(meta.paths.values.map { URL(fileURLWithPath: $0) },
-                    reason: "before restoring \(snapshot.id)")
+        try capture(
+            meta.paths.values.map { URL(fileURLWithPath: $0) },
+            reason: "before restoring \(snapshot.id)")
 
         for (stored, originalPath) in meta.paths {
             let source = snapshot.url.appending(path: stored)
             guard fm.fileExists(atPath: source.path) else { continue }
             let destination = URL(fileURLWithPath: originalPath)
-            try fm.createDirectory(at: destination.deletingLastPathComponent(),
-                                   withIntermediateDirectories: true)
+            try fm.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
             try? fm.removeItem(at: destination)
             try fm.copyItem(at: source, to: destination)
         }
     }
 
-    func prune() throws {
+    public func prune() throws {
         let all = list()
         guard all.count > keep else { return }
         for snapshot in all.dropFirst(keep) {

@@ -38,16 +38,13 @@ public enum GhosttyApplier {
             kept.append(line)
         }
 
-        var out = kept
-        out.append("")
-        out.append("\(marker)(\(themeName)) ---")
-        out.append(contentsOf: themeConf
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init))
-
-        // The shell appends with `cat`, which leaves exactly one trailing newline.
-        while out.last?.isEmpty == true { out.removeLast() }
-        return out.joined(separator: "\n") + "\n"
+        // The shell does `echo "" >> tmp; echo "# --- …" >> tmp; cat theme >> tmp`,
+        // so the theme file is appended verbatim — including whether it ends in a
+        // newline. Reconstructing it line-wise and forcing a trailing newline
+        // diverges for a theme file that has none.
+        var head = kept.joined(separator: "\n")
+        if !head.isEmpty { head += "\n" }
+        return head + "\n" + "\(marker)(\(themeName)) ---" + "\n" + themeConf
     }
 
     private static func isOwned(_ line: String) -> Bool {

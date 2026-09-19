@@ -1,4 +1,5 @@
 import SwiftUI
+import MacarchyKit
 
 /// The menu bar surface that retires the Raycast theme-switcher extension.
 struct MenuBarContent: View {
