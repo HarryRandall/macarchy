@@ -5,7 +5,7 @@ installation, preserve unrelated work, and commit focused, reviewable changes.
 
 ## Checks
 
-Run `swift build`, `swift test` and `./scripts/lint.sh`. After an installed
+Run `swift build`, `swift test` and `./tools/lint.sh`. After an installed
 configuration change, run `macarchy doctor`. Unit tests must use temporary
 configuration directories and must not alter the running desktop.
 
@@ -16,8 +16,8 @@ match their primary type. Keep conventional filenames such as `Package.swift`
 and `Info.plist`. Do not add empty folders for speculative future features.
 
 The App and CLI targets use the shared Macarchy target. UI state belongs in
-`src/app`; themes, configuration and integration behaviour belong in
-`src/macarchy`. Add targets or protocols only when a concrete dependency or test
+`macarchy/app`; themes, configuration and integration behaviour belong in
+`macarchy/core`. Add targets or protocols only when a concrete dependency or test
 needs them. Prefer small concrete types over generic frameworks.
 
 ## Behaviour

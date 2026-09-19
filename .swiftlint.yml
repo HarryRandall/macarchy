@@ -3,11 +3,9 @@
 # cannot see — force unwraps, oversized types, complexity.
 
 included:
-  - src
-  - tests
+  - macarchy
 excluded:
   - .build
-  - dist
 
 disabled_rules:
   # swift-format owns brace placement for multiline conditions.

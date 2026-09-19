@@ -11,5 +11,5 @@ indent_size = 4
 [*.{json,yml,yaml}]
 indent_size = 2
 
-[tests/fixtures/**]
+[macarchy/tests/fixtures/**]
 trim_trailing_whitespace = false

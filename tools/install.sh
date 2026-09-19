@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
-[ -x dist/macarchy ] || { echo 'Build first: ./scripts/build_app.sh release' >&2; exit 1; }
+[ -x .build/artifacts/macarchy ] || { echo 'Build first: ./tools/build.sh release' >&2; exit 1; }
 if pgrep -x MacarchySettings >/dev/null; then
   echo 'Close the running Macarchy app before installing.' >&2
   exit 1
@@ -41,12 +41,12 @@ rollback() {
 }
 trap rollback ERR
 echo "Rollback files: $BACKUP_DIR"
-cp dist/macarchy "$HOME/.local/bin/macarchy.new"
+cp .build/artifacts/macarchy "$HOME/.local/bin/macarchy.new"
 mv "$HOME/.local/bin/macarchy.new" "$HOME/.local/bin/macarchy"
 "$HOME/.local/bin/macarchy" migrate
-cp dotfiles/theme-switch "$HOME/.local/bin/theme-switch"
+cp tools/compat/theme-switch "$HOME/.local/bin/theme-switch"
 for entry in sync_float_rules.sh apply_float_state.sh toggle_float_persist.sh; do
-  cp "dotfiles/$entry" "$HOME/.config/yabai/$entry"
+  cp "tools/compat/$entry" "$HOME/.config/yabai/$entry"
 done
 "$HOME/.local/bin/macarchy" doctor
 trap - ERR

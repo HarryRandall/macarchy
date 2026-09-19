@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Macarchy"
 BINARY="MacarchySettings"
 CONFIG="${1:-release}"
-DIST="$ROOT/dist"
+DIST="$ROOT/.build/artifacts"
 APP="$DIST/$APP_NAME.app"
 
 echo "==> Building ($CONFIG)"
@@ -26,13 +26,13 @@ echo "==> Assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
-cp "$ROOT/src/app/resources/Info.plist" "$APP/Contents/Info.plist"
-[ -f "$ROOT/src/app/resources/AppIcon.icns" ] && cp "$ROOT/src/app/resources/AppIcon.icns" "$APP/Contents/Resources/"
+cp "$ROOT/macarchy/app/resources/Info.plist" "$APP/Contents/Info.plist"
+[ -f "$ROOT/macarchy/app/resources/AppIcon.icns" ] && cp "$ROOT/macarchy/app/resources/AppIcon.icns" "$APP/Contents/Resources/"
 
 # Shipped theme defaults, used as the reset-to-default baseline.
-if [ -d "$ROOT/themes" ]; then
-  cp -R "$ROOT/themes" "$APP/Contents/Resources/Themes"
-  echo "    bundled $(find "$ROOT/themes" -name theme.json | wc -l | tr -d ' ') default themes"
+if [ -d "$ROOT/macarchy/resources/themes" ]; then
+  cp -R "$ROOT/macarchy/resources/themes" "$APP/Contents/Resources/Themes"
+  echo "    bundled $(find "$ROOT/macarchy/resources/themes" -name theme.json | wc -l | tr -d ' ') default themes"
 fi
 
 echo "==> Signing"

@@ -2,7 +2,6 @@
 .build/
 .swiftpm/
 build/
-dist/
 *.app
 *.xcuserstate
 xcuserdata/

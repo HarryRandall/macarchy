@@ -9,7 +9,7 @@ import sys
 import tempfile
 
 binary = Path(sys.argv[1]).resolve()
-repo = Path(__file__).resolve().parents[2]
+repo = Path(__file__).resolve().parents[3]
 with tempfile.TemporaryDirectory(prefix="macarchy-migration-test-") as temporary:
     home = Path(temporary)
     config = home / ".config"
@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="macarchy-migration-test-") as temporary
     (root / "menu-bar.json").write_text('{"components":[],"geometry":{"height":"35"},"componentPadding":6,"componentSpacing":9}')
     themes = root / "themes"
     themes.mkdir()
-    shutil.copytree(repo / "tests/fixtures/themes/matte-black", themes / "matte-black")
+    shutil.copytree(repo / "macarchy/tests/fixtures/themes/matte-black", themes / "matte-black")
     (themes / ".current").write_text("matte-black\n")
     (themes / ".backgrounds.json").write_text('{"matte-black":"backgrounds/chosen.jpg"}')
     for program, filename, regions in [

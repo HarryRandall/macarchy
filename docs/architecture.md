@@ -54,5 +54,5 @@ preferences and custom regions survive, generated scripts parse, the second run
 changes nothing, and invalid JSON is never replaced by legacy data:
 
 ```sh
-python3 tests/integration/migration.py "$(swift build --show-bin-path)/macarchy"
+python3 macarchy/tests/integration/migration.py "$(swift build --show-bin-path)/macarchy"
 ```
