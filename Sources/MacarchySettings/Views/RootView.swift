@@ -37,8 +37,8 @@ struct RootView: View {
         case .advanced: AdvancedPane()
         case .borders: BordersPane()
         case .menuBar: MenuBarPane()
-        case .rules: StubPane(pane: .rules, note: "float_state.json merged with yabai -m rule --list.")
-        case .shortcuts: StubPane(pane: .shortcuts, note: "A read-only view of the 86 skhd bindings, grouped by section comment.")
+        case .rules: RulesPane()
+        case .shortcuts: ShortcutsPane()
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")
         }
     }
@@ -62,18 +62,4 @@ private struct DaemonFooter: View {
     }
 
     private var allRunning: Bool { model.daemons.runningCount == Daemon.allCases.count }
-}
-
-/// Placeholder for panes not yet wired, so the navigation is complete from day one.
-struct StubPane: View {
-    let pane: Pane
-    let note: String
-
-    var body: some View {
-        ContentUnavailableView {
-            Label(pane.title, systemImage: pane.symbol)
-        } description: {
-            Text(note)
-        }
-    }
 }

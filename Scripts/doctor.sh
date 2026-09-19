@@ -233,6 +233,25 @@ else
   bad "skhdrc missing"
 fi
 
+head_ "Window rules"
+STATE="$HOME/.config/yabai/float_state.json"
+if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if isinstance(d,list) else 1)" "$STATE" 2>/dev/null; then
+  n_float=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" "$STATE")
+  ok "float_state.json valid ($n_float apps)"
+else
+  bad "float_state.json missing or not a JSON array"
+fi
+
+# Every app in the JSON should be loaded as a labelled rule. A mismatch means
+# sync_float_rules.sh did not run, and those apps will tile on next launch.
+n_labelled=$(yabai -m rule --list 2>/dev/null \
+  | python3 -c "import json,sys; print(sum(1 for r in json.load(sys.stdin) if (r.get('label') or '').startswith('float_persist_')))" 2>/dev/null || echo 0)
+if [ "${n_labelled:-0}" -ge "${n_float:-0}" ]; then
+  ok "$n_labelled float rules loaded in yabai"
+else
+  warn "$n_labelled float rules loaded but $n_float in float_state.json — run sync_float_rules.sh"
+fi
+
 head_ "Borders source"
 if git -C "$HOME/projects/jankyborders-local" rev-parse --git-dir >/dev/null 2>&1; then
   ok "borders fork is under version control ($(git -C "$HOME/projects/jankyborders-local" rev-list --count HEAD) commits)"

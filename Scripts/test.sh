@@ -76,4 +76,14 @@ echo "ghostty comparisons: $ghostty_checks"
 echo "ghostty mismatches: $ghostty_fail (expected 0)"
 [ "$ghostty_fail" -eq 0 ] || exit 1
 
+echo "==> skhd parser against the real config"
+swiftc -O "$ROOT/Sources/MacarchyKit/SkhdConfig.swift" \
+       "$ROOT/Tests/SkhdParse/main.swift" -o "$OUT/skhdparse"
+"$OUT/skhdparse" | tee -a "$OUT/result.txt"
+
+grep -E '\(expected' "$OUT/result.txt" | while read -r line; do
+  got="${line%% (expected*}"; want="${line##*(expected }"; want="${want%)}"
+  case "$got" in *"$want"*) ;; *) echo "FAIL: $line"; exit 1 ;; esac
+done
+
 echo "==> OK"

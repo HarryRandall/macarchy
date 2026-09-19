@@ -60,6 +60,8 @@ final class AppModel {
     let snapshots: SnapshotBrowser
     let menuBar: MenuBarModel
     let rc: RCGenerator
+    let rules: RulesModel
+    let shortcuts: ShortcutsModel
 
     var selection: Pane? = .layout
 
@@ -73,6 +75,8 @@ final class AppModel {
         self.snapshots = SnapshotBrowser(log: log)
         self.menuBar = MenuBarModel(backend: backend, log: log)
         self.rc = RCGenerator(log: log)
+        self.rules = RulesModel(log: log)
+        self.shortcuts = ShortcutsModel(log: log)
     }
 
     /// Reads a key off whichever theme is currently applied.
