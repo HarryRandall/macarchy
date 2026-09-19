@@ -6,6 +6,7 @@ import Foundation
 /// This is the document the editor will eventually write, not a view model.
 /// The renderer must not invent layout — `frame` is the live bounding rect.
 struct SketchybarItem: Identifiable, Hashable, Sendable {
+    let members: [String]
     let id: String
     let type: String
     let position: String
@@ -49,6 +50,7 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
 
         let geometry = object["geometry"] as? [String: Any] ?? [:]
         return SketchybarItem(
+            members: object["bracket"] as? [String] ?? [],
             id: id,
             type: (object["type"] as? String) ?? "item",
             position: (geometry["position"] as? String) ?? "left",

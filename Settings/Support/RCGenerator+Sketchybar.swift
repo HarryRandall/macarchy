@@ -87,6 +87,12 @@ extension RCGenerator {
 
             sketchybar --update
 
+            # Replay app-owned component layout after the original items exist.
+            COMPONENTS="$HOME/.config/macarchy-settings/menu-bar.sh"
+            if [ -f "$COMPONENTS" ]; then
+              source "$COMPONENTS"
+            fi
+
             """
 
         record("sketchybarrc", file.write(content, reason: "menu bar settings changed"))

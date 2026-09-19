@@ -18,8 +18,6 @@ struct MenuBarItemView: View {
             }
         }
         .frame(width: item.frame.width, height: item.frame.height, alignment: .leading)
-        .padding(.leading, item.paddingLeft)
-        .padding(.trailing, item.paddingRight)
         .opacity(dimmed ? 0.28 : 1)
     }
 
@@ -30,10 +28,11 @@ struct MenuBarItemView: View {
             Image(nsImage: image)
                 .resizable()
                 .interpolation(.high)
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .frame(
                     width: image.size.width * scale,
-                    height: image.size.height * scale)
+                    height: image.size.height * scale
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if item.background.drawing {
             RoundedRectangle(cornerRadius: item.background.cornerRadius, style: .continuous)
