@@ -8,7 +8,10 @@ menu bar picker and a real settings window.
 
 Personal project. Not published, not notarized, not for distribution.
 
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — rules for working in this repo.
 - **[PLAN.md](PLAN.md)** — architecture, GUI design, and build order.
+- **[Docs/HANDOVER.md](Docs/HANDOVER.md)** — current state and what is left.
+- **[Docs/MIGRATION.md](Docs/MIGRATION.md)** — moving the live desktop in.
 
 ## Status
 
