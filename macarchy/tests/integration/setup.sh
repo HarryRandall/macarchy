@@ -59,6 +59,9 @@ grep -q 'yabai -m config window_gap' "$HOME_DIR/.config/yabai/yabairc" && fail "
 grep -q 'ghostty' "$HOME_DIR/.config/macarchy/backups/manifest.json" && fail "skipped Ghostty recorded"
 [ "$(cat "$HOME_DIR/.config/skhd/skhdrc")" = 'cmd - h : echo mine' ] || fail "kept skhdrc changed"
 [ -d "$HOME_DIR/.config/macarchy/themes/midnight" ] || fail "themes not installed"
+AGENT="$HOME_DIR/Library/LaunchAgents/io.github.harryrandall.macarchy.borders.plist"
+plutil -lint "$AGENT" >/dev/null || fail "borders agent missing or invalid"
+plutil -extract ProgramArguments.0 raw "$AGENT" | grep -q 'borders/bordersrc' || fail "agent does not run bordersrc"
 grep -q 'startup sketchybar' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "sketchybarrc missing"
 for rc in yabai/yabairc sketchybar/sketchybarrc borders/bordersrc; do
   bash -n "$HOME_DIR/.config/$rc" || fail "$rc syntax"
@@ -74,6 +77,7 @@ cmp -s "$HOME_DIR/before" "$HOME_DIR/.config/yabai/yabairc" || fail "second setu
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$ORIGINAL_YABAI" ] || fail "yabairc not restored"
 [ "$(cat "$HOME_DIR/.config/skhd/skhdrc")" = 'cmd - h : echo mine' ] || fail "skhdrc not restored"
 grep -q 'add item after right' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "sketchybarrc not restored"
+[ -e "$AGENT" ] && fail "borders agent not removed on uninstall"
 rm -f "$HOME_DIR/.config/sketchybar/sketchybarrc"
 
 # Setting up again after uninstalling adopts the restored files afresh.

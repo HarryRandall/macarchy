@@ -13,6 +13,7 @@ let usage = """
       setup [--keep|--replace] [--no-apply]
                                   Set up this Mac. --keep layers onto your existing
                                   configs (default); --replace starts from defaults.
+      services                    Start or restart yabai, skhd, SketchyBar and borders.
       uninstall                   Restore the files setup replaced.
       doctor                      Check dependencies, services and configuration.
       apply                       Reapply every saved setting to the desktop.
@@ -37,6 +38,15 @@ do {
             try require(await ThemeApplication().apply(name: theme))
         }
         print("Done. Restart the services from the app, or run: macarchy doctor")
+    case "services":
+        var failed = false
+        for result in await Setup.startServices() {
+            print(
+                (result.ok ? "ok   " : "FAIL ") + result.command
+                    + (result.ok ? "" : ": " + result.summary))
+            failed = failed || !result.ok
+        }
+        if failed { exit(1) }
     case "uninstall":
         for line in try await Setup.uninstall() { print(line) }
     case "doctor": try require(await Doctor.check())

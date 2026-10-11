@@ -29,7 +29,7 @@ public enum Daemon: String, CaseIterable, Identifiable, Sendable {
     public var knownLabels: [String] {
         switch self {
         case .yabai: ["com.asmvik.yabai", "com.koekeishiya.yabai"]
-        case .borders: ["sh.brew.borders", "homebrew.mxcl.borders"]
+        case .borders: [BordersService.label, "sh.brew.borders", "homebrew.mxcl.borders"]
         case .sketchybar: ["sh.brew.sketchybar", "homebrew.mxcl.sketchybar"]
         case .skhd: ["com.asmvik.skhd", "com.koekeishiya.skhd"]
         }
@@ -69,7 +69,7 @@ public enum Daemon: String, CaseIterable, Identifiable, Sendable {
         case .yabai: "yabai --start-service"
         case .skhd: "skhd --start-service"
         case .sketchybar: "brew services start sketchybar"
-        case .borders: "brew services start borders"
+        case .borders: "macarchy services"
         }
     }
 

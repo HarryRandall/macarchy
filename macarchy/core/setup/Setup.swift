@@ -194,6 +194,7 @@ public enum Setup {
 
         try backups.save([StartupConfiguration.bordersrc.url])
         try check(StartupConfiguration().generateBordersRC())
+        if Paths.isInstalled("borders") { try BordersService.install(backups: backups) }
 
         if ghosttyWanted {
             let target = GhosttyConfig.targetURL
@@ -212,8 +213,17 @@ public enum Setup {
 
     /// Restores every original from backups and removes what setup created.
     /// Settings, themes and snapshots stay, so setting up again is lossless.
-    public static func uninstall() async throws -> [String] {
-        try await OperationLock.run { try uninstallLocked() }
+    public static func uninstall(
+        integrations: Integrations = Integrations()
+    ) async throws
+        -> [String]
+    {
+        try await OperationLock.run {
+            await BordersService.stop(integrations: integrations)
+            let report = try uninstallLocked()
+            await BordersService.restoreHomebrew(integrations: integrations)
+            return report
+        }
     }
 
     static func uninstallLocked() throws -> [String] {
@@ -298,6 +308,12 @@ extension Setup {
     {
         var results: [CommandResult] = []
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+            if daemon == .borders,
+                FileManager.default.fileExists(atPath: BordersService.plist.path)
+            {
+                results.append(await BordersService.start(integrations: integrations))
+                continue
+            }
             if daemon.isRegistered {
                 results.append(await integrations.restart(daemon))
                 continue
