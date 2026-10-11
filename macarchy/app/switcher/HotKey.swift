@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 import Foundation
+import OSLog
 
 /// A system-wide shortcut registered with the Carbon event manager.
 ///
@@ -34,6 +35,8 @@ final class HotKey {
                     EventParamType(typeEventHotKeyID),
                     nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKey)
                 let id = hotKey.id
+                Logger(subsystem: "io.github.harryrandall.macarchy", category: "switcher")
+                    .notice("hotkey \(id, privacy: .public) pressed")
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated { HotKey.actions[id]?() }
                 }

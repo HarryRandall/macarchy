@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import SwiftUI
 
 /// The floating theme switcher, opened with ⌘⌃Space from anywhere.
@@ -18,9 +19,19 @@ final class ThemeSwitcher {
     /// shortcut uses the same keys unless it is turned off.
     var hotKeyAvailable: Bool { hotKey?.isRegistered ?? false }
 
+    /// Posted by `macarchy switcher`, so any shortcut tool can open the panel.
+    static let openNotification = Notification.Name("io.github.harryrandall.macarchy.switcher")
+
     func attach(_ model: AppModel) {
         self.model = model
         hotKey = HotKey.themeSwitcher { [weak self] in self?.toggle() }
+        DistributedNotificationCenter.default().addObserver(
+            forName: Self.openNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { ThemeSwitcher.shared.toggle() }
+        }
+        Logger(subsystem: "io.github.harryrandall.macarchy", category: "switcher").notice(
+            "Cmd-Ctrl-Space registered: \(self.hotKey?.isRegistered == true, privacy: .public)")
         if hotKey?.isRegistered == false {
             model.log.failure(
                 "theme switcher shortcut unavailable",

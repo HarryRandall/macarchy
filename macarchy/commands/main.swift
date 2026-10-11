@@ -20,6 +20,7 @@ let usage = """
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
       rules [toggle]              Reapply window rules, or float/tile the focused window.
       bar toggle                  Show or hide the menu bar.
+      switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
       startup yabai|sketchybar|borders   Run by the startup files at login.
     """
@@ -85,6 +86,11 @@ do {
             try await WindowRules.apply(
                 settings.floatingApps, customRules: settings.windowRules ?? [])
         }
+    case "switcher":
+        // Handled by the running app; opening it first covers a quit app.
+        DistributedNotificationCenter.default().postNotificationName(
+            Notification.Name("io.github.harryrandall.macarchy.switcher"), object: nil,
+            userInfo: nil, deliverImmediately: true)
     case "bar":
         guard args.dropFirst().first == "toggle" else { throw ConfigurationError(usage) }
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))
