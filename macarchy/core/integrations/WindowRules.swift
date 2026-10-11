@@ -68,8 +68,19 @@ extension WindowRules {
         _ rules: [CustomWindowRule], store: SettingsStore = SettingsStore(),
         integrations: Integrations = Integrations()
     ) async throws {
+        try await commitCustom(store: store, integrations: integrations) { _ in rules }
+    }
+
+    /// Edits the saved rules inside the lock, so two edits made at once cannot
+    /// each start from the same list and drop the other's change.
+    public static func commitCustom(
+        store: SettingsStore = SettingsStore(),
+        integrations: Integrations = Integrations(),
+        edit: @escaping @Sendable ([CustomWindowRule]) -> [CustomWindowRule]
+    ) async throws {
         try await OperationLock.run(root: store.url.deletingLastPathComponent()) {
             let previous = try store.read()
+            let rules = edit(previous.windowRules ?? [])
             var candidate = previous
             candidate.windowRules = rules
             try candidate.validate()
@@ -78,9 +89,15 @@ extension WindowRules {
                     previous.floatingApps, customRules: rules, integrations: integrations)
                 try store.update { $0.windowRules = rules }
             } catch {
-                try? await apply(
-                    previous.floatingApps, customRules: previous.windowRules ?? [],
-                    integrations: integrations)
+                do {
+                    try await apply(
+                        previous.floatingApps, customRules: previous.windowRules ?? [],
+                        integrations: integrations)
+                } catch let rollback {
+                    throw ConfigurationError(
+                        "\(error.localizedDescription) Restoring the previous rules also failed: "
+                            + "\(rollback.localizedDescription). Reapply rules to recover.")
+                }
                 throw error
             }
         }

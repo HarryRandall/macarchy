@@ -86,10 +86,10 @@ do {
         guard let snapshot = store.list().first(where: { $0.id == args[1] }) else {
             throw ConfigurationError("Snapshot not found")
         }
-        try store.restore(snapshot)
         if args.contains("--apply") {
-            try await DesktopConfiguration.apply()
+            try await DesktopConfiguration.restore(snapshot, store: store)
         } else {
+            try await store.restoreLocked(snapshot)
             print("Files restored. Run macarchy apply to update the desktop.")
         }
     case "ghostty":

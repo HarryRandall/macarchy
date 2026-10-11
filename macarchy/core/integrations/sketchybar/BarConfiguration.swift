@@ -14,7 +14,7 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
             [padding, spacing]
             + components.flatMap { component -> [Double] in
                 [
-                    component.customWidth, component.boxWidth ?? 24,
+                    component.customWidth, component.boxWidth ?? 24, component.cornerRadius,
                     component.paddingOverride ?? self.padding,
                     component.spacingOverride ?? self.spacing
                 ]

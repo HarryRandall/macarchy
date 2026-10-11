@@ -158,7 +158,8 @@ struct DaemonRestartTests {
                 arguments.first == Paths.tail
                     ? CommandResult(
                         command: "tail", status: 0,
-                        stdout: "skhd: secure keyboard entry is enabled by (48546) 'chatgpt'! abort..")
+                        stdout:
+                            "skhd: secure keyboard entry is enabled by (48546) 'chatgpt'! abort..")
                     : nil
             },
             // `launchctl print` succeeding with no state line is a loaded job
@@ -201,6 +202,10 @@ struct DaemonRestartTests {
     private final class Counter: @unchecked Sendable {
         private let lock = NSLock()
         private var value = 0
-        func next() -> Int { lock.withLock { defer { value += 1 }; return value } }
+        func next() -> Int {
+            lock.withLock {
+                defer { value += 1 }; return value
+            }
+        }
     }
 }

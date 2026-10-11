@@ -33,7 +33,7 @@ final class ShortcutsModel {
 
     func reload() {
         guard let text = try? String(contentsOf: Self.configURL, encoding: .utf8) else {
-            log.note("skhdrc unreadable", Self.configURL.path)
+            log.failure("skhdrc unreadable", Self.configURL.path)
             return
         }
         bindings = SkhdConfig.parse(text)
@@ -55,7 +55,12 @@ final class ShortcutsModel {
     ///
     /// The file is copied into the snapshot store first: this is the one place
     /// the app writes to a config a person almost certainly hand-edited.
-    func rebind(_ binding: SkhdBinding, to chord: Chord, daemons: DaemonMonitor) async {
+    @discardableResult
+    func rebind(_ binding: SkhdBinding, to chord: Chord, daemons: DaemonMonitor) async -> Bool {
+        if let other = conflict(for: chord, excluding: binding) {
+            lastError = "\(label(for: other)) already uses this combination."
+            return false
+        }
         isSaving = true
         defer { isSaving = false }
         do {
@@ -63,10 +68,11 @@ final class ShortcutsModel {
             let text = try String(contentsOf: url, encoding: .utf8)
             guard
                 let updated = SkhdConfig.rebind(
-                    text, line: binding.id, modifiers: Array(chord.modifiers), key: chord.key)
+                    text, binding: binding, modifiers: Array(chord.modifiers), key: chord.key)
             else {
-                lastError = "That line no longer looks like a shortcut. Reload and try again."
-                return
+                reload()
+                lastError = "skhdrc changed since it was read. Check the shortcut and try again."
+                return false
             }
             _ = try SnapshotStore().capture([url], reason: "shortcut rebind")
             try updated.write(to: url, atomically: true, encoding: .utf8)
@@ -74,21 +80,25 @@ final class ShortcutsModel {
             reload()
             lastError = nil
             await daemons.restart(.skhd)
+            return true
         } catch {
             lastError = error.localizedDescription
+            return false
         }
     }
 
     /// Comments a binding out and restarts skhd.
-    func disable(_ binding: SkhdBinding, daemons: DaemonMonitor) async {
+    @discardableResult
+    func disable(_ binding: SkhdBinding, daemons: DaemonMonitor) async -> Bool {
         isSaving = true
         defer { isSaving = false }
         do {
             let url = Self.configURL
             let text = try String(contentsOf: url, encoding: .utf8)
-            guard let updated = SkhdConfig.disable(text, line: binding.id) else {
-                lastError = "That line is already disabled."
-                return
+            guard let updated = SkhdConfig.disable(text, binding: binding) else {
+                reload()
+                lastError = "skhdrc changed since it was read. Check the shortcut and try again."
+                return false
             }
             _ = try SnapshotStore().capture([url], reason: "shortcut disabled")
             try updated.write(to: url, atomically: true, encoding: .utf8)
@@ -96,8 +106,10 @@ final class ShortcutsModel {
             reload()
             lastError = nil
             await daemons.restart(.skhd)
+            return true
         } catch {
             lastError = error.localizedDescription
+            return false
         }
     }
 

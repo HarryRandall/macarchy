@@ -38,20 +38,26 @@ public struct GeneratedFile: Sendable {
 
     // MARK: - Ledger
 
-    private func ledger() -> [String: String] {
-        guard let data = try? Data(contentsOf: ledgerURL),
-            let decoded = try? JSONDecoder().decode([String: String].self, from: data)
-        else { return [:] }
-        return decoded
+    /// A missing ledger is empty; an unreadable one is an error, because
+    /// treating it as empty would silently switch off drift detection.
+    private func ledger() throws -> [String: String] {
+        guard FileManager.default.fileExists(atPath: ledgerURL.path) else { return [:] }
+        do {
+            return try JSONDecoder().decode(
+                [String: String].self, from: Data(contentsOf: ledgerURL))
+        } catch {
+            throw ConfigurationError(
+                "\(ledgerURL.lastPathComponent) is unreadable: \(error.localizedDescription)")
+        }
     }
 
     private func recordHash(_ hash: String, for path: String) throws {
-        var current = ledger()
-        current[path] = hash
-        let data = try JSONEncoder().encode(current)
-        try FileManager.default.createDirectory(
-            at: ledgerURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: ledgerURL, options: .atomic)
+        try FileLock.withLock(ledgerURL) {
+            var current = try ledger()
+            current[path] = hash
+            let data = try JSONEncoder().encode(current)
+            try data.write(to: ledgerURL, options: .atomic)
+        }
     }
 
     public static func hash(_ text: String) -> String {
@@ -60,7 +66,7 @@ public struct GeneratedFile: Sendable {
 
     /// True when the file on disk is not what the app last generated.
     public var hasDrifted: Bool {
-        guard let recorded = ledger()[url.path],
+        guard let recorded = (try? ledger())?[url.path],
             let onDisk = try? String(contentsOf: url, encoding: .utf8)
         else { return false }
         return Self.hash(onDisk) != recorded

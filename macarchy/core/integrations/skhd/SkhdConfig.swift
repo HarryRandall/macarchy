@@ -46,51 +46,76 @@ public enum SkhdConfig {
         return bindings
     }
 
+    /// Where a binding line splits into its key spec and the rest.
+    ///
+    /// The key spec never contains `:` or `[`, so the first of either ends it.
+    /// Searching for `->` anywhere would match inside commands such as
+    /// `echo "a -> b"` and discard part of them on rewrite.
+    struct Split {
+        let keySpec: String
+        /// Index of the `:` or `[`, which is kept verbatim on rewrite.
+        let rest: String.Index
+        let isBlock: Bool
+        let passthrough: Bool
+    }
+
+    static func split(_ line: String) -> Split? {
+        guard let boundary = line.firstIndex(where: { $0 == ":" || $0 == "[" }) else {
+            return nil
+        }
+        var head = line[line.startIndex..<boundary].trimmingCharacters(in: .whitespaces)
+        let passthrough = head.hasSuffix("->")
+        if passthrough { head = head.dropLast(2).trimmingCharacters(in: .whitespaces) }
+        guard !head.isEmpty else { return nil }
+        return Split(
+            keySpec: head, rest: boundary, isBlock: line[boundary] == "[",
+            passthrough: passthrough)
+    }
+
     private static func parseBinding(
         _ line: String, at lineIndex: Int, section: String?,
         lines: [String], cursor: inout Int
     ) -> SkhdBinding? {
-        // App-specific form: `<keyspec> -> [` … `]`
-        if let arrow = line.range(of: "->") {
-            let keySpec = String(line[line.startIndex..<arrow.lowerBound])
+        guard let split = split(line) else { return nil }
+        let (modifiers, key) = splitKeySpec(split.keySpec)
+        guard !key.isEmpty else { return nil }
+
+        // App-specific form: `<keyspec> [` … `]`, optionally with `->`.
+        if split.isBlock {
             var overrides: [SkhdBinding.AppOverride] = []
-
-            if line[arrow.upperBound...].trimmingCharacters(in: .whitespaces).hasPrefix("[") {
-                var scan = cursor + 1
-                while scan < lines.count {
-                    let entry = lines[scan].trimmingCharacters(in: .whitespaces)
-                    scan += 1
-                    if entry.hasPrefix("]") { break }
-                    guard let colon = entry.firstIndex(of: ":") else { continue }
-                    let app = entry[entry.startIndex..<colon]
-                        .trimmingCharacters(in: CharacterSet(charactersIn: " \"\t"))
-                    let command = entry[entry.index(after: colon)...].trimmingCharacters(
-                        in: .whitespaces)
-                    if !app.isEmpty { overrides.append(.init(app: app, command: command)) }
-                }
-                cursor = scan - 1
+            var scan = cursor + 1
+            var closed = false
+            while scan < lines.count {
+                let entry = lines[scan].trimmingCharacters(in: .whitespaces)
+                scan += 1
+                if entry.hasPrefix("]") { closed = true; break }
+                guard let colon = entry.firstIndex(of: ":") else { continue }
+                let app = entry[entry.startIndex..<colon]
+                    .trimmingCharacters(in: CharacterSet(charactersIn: " \"\t"))
+                let command = entry[entry.index(after: colon)...].trimmingCharacters(
+                    in: .whitespaces)
+                if !app.isEmpty { overrides.append(.init(app: app, command: command)) }
             }
-
-            let (modifiers, key) = splitKeySpec(keySpec)
-            guard !key.isEmpty else { return nil }
+            cursor = scan - 1
+            // skhd rejects an unterminated block; its body must not surface as
+            // separate bindings either.
+            guard closed else { return nil }
             return SkhdBinding(
-                id: lineIndex, modifiers: modifiers, key: key,
+                id: lineIndex, endLine: cursor, source: Array(lines[lineIndex...cursor]),
+                modifiers: modifiers, key: key,
                 command: overrides.first(where: { $0.app == "*" })?.command ?? "",
-                section: section, passthrough: true, appOverrides: overrides)
+                section: section, passthrough: split.passthrough, appOverrides: overrides)
         }
 
         // Standard form. Commands routinely contain colons (osascript, URLs), so
         // only the first one separates the key spec from the command.
-        guard let colon = line.firstIndex(of: ":") else { return nil }
-        let keySpec = String(line[line.startIndex..<colon])
-        let command = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+        let command = line[line.index(after: split.rest)...].trimmingCharacters(
+            in: .whitespaces)
         guard !command.isEmpty else { return nil }
-
-        let (modifiers, key) = splitKeySpec(keySpec)
-        guard !key.isEmpty else { return nil }
         return SkhdBinding(
-            id: lineIndex, modifiers: modifiers, key: key, command: command,
-            section: section, passthrough: false, appOverrides: [])
+            id: lineIndex, endLine: lineIndex, source: [lines[lineIndex]],
+            modifiers: modifiers, key: key, command: command,
+            section: section, passthrough: split.passthrough, appOverrides: [])
     }
 
     /// "cmd + shift - h" → (["cmd","shift"], "h"). Media keys carry no modifier.
@@ -131,10 +156,9 @@ extension SkhdConfig {
 
     /// Replaces the key spec on one line, keeping the command untouched.
     ///
-    /// Only the part before the first `:` or the `->` is rewritten, because a
-    /// command routinely contains both — osascript calls and URLs especially.
-    /// Returns `nil` when the line is not a binding, so a miscounted index
-    /// cannot quietly corrupt the file.
+    /// Only the part before the first `:` or `[` is rewritten, because a
+    /// command routinely contains colons and arrows. Returns `nil` when the
+    /// line is not a binding, so a miscounted index cannot corrupt the file.
     public static func rebind(
         _ text: String, line index: Int, modifiers: [String], key: String
     ) -> String? {
@@ -142,25 +166,53 @@ extension SkhdConfig {
         guard lines.indices.contains(index) else { return nil }
 
         let line = lines[index]
-        let spec = keySpec(modifiers: modifiers, key: key)
+        guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("#"),
+            let split = split(line)
+        else { return nil }
         let indent = String(line.prefix { $0 == " " || $0 == "\t" })
-
-        if let arrow = line.range(of: "->") {
-            lines[index] = indent + spec + " " + String(line[arrow.lowerBound...])
-        } else if let colon = line.firstIndex(of: ":") {
-            lines[index] = indent + spec + " " + String(line[colon...])
-        } else {
-            return nil
-        }
+        let spec = keySpec(modifiers: modifiers, key: key) + (split.passthrough ? " ->" : "")
+        lines[index] = indent + spec + " " + String(line[split.rest...])
         return lines.joined(separator: "\n")
+    }
+
+    /// Rebinds `binding`, refusing if the file no longer holds it where it was read.
+    ///
+    /// Another editor may have inserted lines since the page loaded; trusting
+    /// the stored line number alone would then rewrite a different shortcut.
+    public static func rebind(
+        _ text: String, binding: SkhdBinding, modifiers: [String], key: String
+    ) -> String? {
+        guard matches(text, binding) else { return nil }
+        return rebind(text, line: binding.id, modifiers: modifiers, key: key)
     }
 
     /// Comments a binding out rather than deleting it, so the file keeps its
     /// line numbering and the change can be read back later.
     public static func disable(_ text: String, line index: Int) -> String? {
         var lines = text.components(separatedBy: "\n")
-        guard lines.indices.contains(index), !lines[index].hasPrefix("#") else { return nil }
+        guard lines.indices.contains(index),
+            !lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("#")
+        else { return nil }
         lines[index] = "# " + lines[index]
         return lines.joined(separator: "\n")
+    }
+
+    /// Comments out every line of `binding`, including a per-app block's body
+    /// and closing bracket, which would otherwise stay live or break parsing.
+    public static func disable(_ text: String, binding: SkhdBinding) -> String? {
+        guard matches(text, binding) else { return nil }
+        var lines = text.components(separatedBy: "\n")
+        for index in binding.id...binding.endLine {
+            lines[index] = "# " + lines[index]
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    static func matches(_ text: String, _ binding: SkhdBinding) -> Bool {
+        let lines = text.components(separatedBy: "\n")
+        guard binding.id <= binding.endLine, lines.indices.contains(binding.endLine) else {
+            return false
+        }
+        return Array(lines[binding.id...binding.endLine]) == binding.source
     }
 }

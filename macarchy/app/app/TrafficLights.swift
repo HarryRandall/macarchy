@@ -184,9 +184,12 @@ struct TrafficLights: NSViewRepresentable {
             windowButtons.forEach { $0.needsDisplay = true }
         }
 
+        // swiftlint:disable identifier_name
         /// A window button asks its superview whether the pointer is anywhere
         /// over the group before drawing its glyph. In the system title bar
-        /// that is AppKit's own view; here it is this one.
+        /// that is AppKit's own view; here it is this one. AppKit calls this
+        /// private selector by name, so it cannot be renamed.
         @objc func _mouseInGroup(_ button: NSButton) -> Bool { mouseInside }
+        // swiftlint:enable identifier_name
     }
 }

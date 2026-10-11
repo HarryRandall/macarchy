@@ -1,6 +1,20 @@
 import Foundation
 
 public enum DesktopConfiguration {
+    /// Restores a snapshot and reapplies everything it can affect, including
+    /// skhd, which reads its file only at startup.
+    public static func restore(
+        _ snapshot: SnapshotStore.Snapshot, store: SnapshotStore = SnapshotStore(),
+        integrations: Integrations = Integrations()
+    ) async throws {
+        try await store.restoreLocked(snapshot)
+        try await apply(integrations: integrations)
+        if store.originalPaths(of: snapshot).contains(where: { $0.hasSuffix("/skhdrc") }) {
+            let result = await integrations.restart(.skhd)
+            guard result.ok else { throw ConfigurationError(result.summary) }
+        }
+    }
+
     public static func apply(integrations: Integrations = Integrations()) async throws {
         let settings = try SettingsStore().read()
         if let name = settings.currentTheme {

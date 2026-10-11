@@ -80,4 +80,64 @@ struct SkhdRewriteTests {
         #expect(parsed[0].command == "yabai -m window --focus west")
         #expect(parsed[0].section == "Focus window")
     }
+
+    @Test("an arrow inside a command is not mistaken for passthrough")
+    func arrowInsideCommand() {
+        let text = #"cmd - a : echo "a -> b""#
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.count == 1)
+        #expect(parsed[0].passthrough == false)
+        #expect(parsed[0].command == #"echo "a -> b""#)
+        let updated = SkhdConfig.rebind(text, line: 0, modifiers: ["alt"], key: "a")
+        #expect(updated == #"alt - a : echo "a -> b""#)
+    }
+
+    @Test("passthrough survives a rebind of the colon form")
+    func passthroughColonForm() {
+        let text = "cmd - q -> : open -a Finder"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.first?.passthrough == true)
+        #expect(
+            SkhdConfig.rebind(text, line: 0, modifiers: ["ctrl"], key: "q")
+                == "ctrl - q -> : open -a Finder")
+    }
+
+    @Test("a per-app block without an arrow is parsed")
+    func blockWithoutArrow() {
+        let text = "cmd - w [\n    \"Messages\" : echo quit\n    * : echo close\n]"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.count == 1)
+        #expect(parsed[0].endLine == 3)
+        #expect(parsed[0].appOverrides.count == 2)
+        #expect(parsed[0].passthrough == false)
+    }
+
+    @Test("disabling a per-app block comments out its body and bracket")
+    func disableBlock() throws {
+        let text = "cmd - w -> [\n    \"Messages\" : echo quit\n]\ncmd - h : echo hi"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        let disabled = try #require(SkhdConfig.disable(text, binding: binding))
+        #expect(
+            disabled
+                == "# cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi")
+        let remaining = SkhdConfig.parse(disabled)
+        #expect(remaining.map(\.key) == ["h"])
+    }
+
+    @Test("edits refuse a file that changed since it was read")
+    func staleEditsAreRefused() throws {
+        let text = "cmd - a : one\ncmd - b : two"
+        let binding = try #require(SkhdConfig.parse(text).last)
+        let edited = "# inserted\n" + text
+        #expect(SkhdConfig.rebind(edited, binding: binding, modifiers: ["alt"], key: "b") == nil)
+        #expect(SkhdConfig.disable(edited, binding: binding) == nil)
+        #expect(
+            SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "b")
+                == "cmd - a : one\nalt - b : two")
+    }
+
+    @Test("an unterminated block is not offered for editing")
+    func unterminatedBlock() {
+        #expect(SkhdConfig.parse("cmd - w [\n    * : echo").isEmpty)
+    }
 }

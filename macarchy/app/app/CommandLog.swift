@@ -31,6 +31,11 @@ final class CommandLog {
         append(command: command, detail: detail, ok: true)
     }
 
+    /// A failure that did not come from a command, such as an unreadable file.
+    func failure(_ command: String, _ detail: String = "") {
+        append(command: command, detail: detail, ok: false)
+    }
+
     func clear() {
         entries.removeAll()
     }

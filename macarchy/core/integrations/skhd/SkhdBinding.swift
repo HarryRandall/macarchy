@@ -2,7 +2,11 @@ import Foundation
 
 /// One parsed skhdrc binding, plus how it is spelled on screen.
 public struct SkhdBinding: Identifiable, Sendable, Hashable {
-    public let id: Int  // source line, which is also a stable identity
+    public let id: Int  // first source line, which is also a stable identity
+    /// Last source line; differs from `id` for a per-app block.
+    public let endLine: Int
+    /// The lines as read, so an edit can refuse a file that changed underneath it.
+    public let source: [String]
     public let modifiers: [String]
     public let key: String
     public let command: String
@@ -41,21 +45,20 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
         "0x32": "`", "0x2A": "\\"
     ]
 
+    /// Named keys, including the media keys skhd reads as system events.
+    public static let keyGlyphs: [String: String] = [
+        "return": "↩", "space": "space", "left": "←", "right": "→", "up": "↑", "down": "↓",
+        "tab": "⇥", "escape": "⎋", "delete": "⌫", "home": "↖", "end": "↘", "pageup": "⇞",
+        "pagedown": "⇟", "play": "⏯", "next": "⏭", "previous": "⏮", "fast": "⏩",
+        "rewind": "⏪", "sound_up": "🔊", "sound_down": "🔉", "mute": "🔇",
+        "brightness_up": "🔆", "brightness_down": "🔅"
+    ]
+
     public static func display(key: String) -> String {
         if let named = keycodeNames[key.uppercased().replacingOccurrences(of: "0X", with: "0x")] {
             return named
         }
-        switch key.lowercased() {
-        case "return": return "↩"
-        case "space": return "space"
-        case "left": return "←"
-        case "right": return "→"
-        case "up": return "↑"
-        case "down": return "↓"
-        case "tab": return "⇥"
-        case "escape": return "⎋"
-        case "delete": return "⌫"
-        default: return key.count == 1 ? key.uppercased() : key
-        }
+        if let glyph = keyGlyphs[key.lowercased()] { return glyph }
+        return key.count == 1 ? key.uppercased() : key
     }
 }

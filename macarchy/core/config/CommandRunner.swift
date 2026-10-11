@@ -60,8 +60,13 @@ public enum CommandRunner {
             while process.isRunning {
                 if cancellation.isCancelled || ProcessInfo.processInfo.systemUptime >= deadline {
                     interrupted = true
+                    // A shell helper's children would otherwise keep changing
+                    // files after the caller was told the command stopped.
+                    let tree = descendants(of: process.processIdentifier)
+                    tree.forEach { kill($0, SIGTERM) }
                     process.terminate()
                     Thread.sleep(forTimeInterval: 0.1)
+                    tree.forEach { kill($0, SIGKILL) }
                     if process.isRunning { kill(process.processIdentifier, SIGKILL) }
                     break
                 }
@@ -79,6 +84,16 @@ public enum CommandRunner {
         } catch {
             return CommandResult(command: command, status: -1, stderr: error.localizedDescription)
         }
+    }
+
+    /// Every process below `pid`, deepest first.
+    static func descendants(of pid: pid_t) -> [pid_t] {
+        var buffer = [pid_t](repeating: 0, count: 256)
+        let count = proc_listchildpids(
+            pid, &buffer, Int32(buffer.count * MemoryLayout<pid_t>.size))
+        guard count > 0 else { return [] }
+        let children = buffer.prefix(Int(count)).filter { $0 > 0 }
+        return children.flatMap { descendants(of: $0) + [$0] }
     }
 
     private static func readOutput(_ url: URL) throws -> String {

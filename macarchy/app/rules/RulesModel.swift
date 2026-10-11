@@ -43,7 +43,7 @@ final class RulesModel {
             customRules = settings.windowRules ?? []
         } catch {
             lastError = error.localizedDescription
-            log.note("Window rules unreadable", error.localizedDescription); return
+            log.failure("Window rules unreadable", error.localizedDescription); return
         }
         let result = await backend.yabaiRules()
 
@@ -98,18 +98,20 @@ final class RulesModel {
         isBusy = true
         defer { isBusy = false }
         do {
-            var saved = try SettingsStore().read().windowRules ?? []
-            if let index = saved.firstIndex(where: { $0.id == rule.id }) {
-                saved[index] = rule
-            } else {
-                saved.append(rule)
+            try await WindowRules.commitCustom(integrations: backend) { saved in
+                var saved = saved
+                if let index = saved.firstIndex(where: { $0.id == rule.id }) {
+                    saved[index] = rule
+                } else {
+                    saved.append(rule)
+                }
+                return saved
             }
-            try await WindowRules.commitCustom(saved, integrations: backend)
             await reload()
             return true
         } catch {
             lastError = error.localizedDescription
-            log.note("Window rule failed", error.localizedDescription)
+            log.failure("Window rule failed", error.localizedDescription)
             return false
         }
     }
@@ -118,13 +120,13 @@ final class RulesModel {
         isBusy = true
         defer { isBusy = false }
         do {
-            let saved = try SettingsStore().read().windowRules ?? []
-            try await WindowRules.commitCustom(
-                saved.filter { $0.id != rule.id }, integrations: backend)
+            try await WindowRules.commitCustom(integrations: backend) { saved in
+                saved.filter { $0.id != rule.id }
+            }
             await reload()
         } catch {
             lastError = error.localizedDescription
-            log.note("Window rule failed", error.localizedDescription)
+            log.failure("Window rule failed", error.localizedDescription)
         }
     }
 
@@ -132,7 +134,7 @@ final class RulesModel {
         var owned: [String]
         do { owned = try Self.loadFloatState() } catch {
             lastError = error.localizedDescription
-            log.note("Window rules unreadable", error.localizedDescription); return
+            log.failure("Window rules unreadable", error.localizedDescription); return
         }
         guard !owned.contains(appName) else { return }
         owned.append(appName)
@@ -146,7 +148,7 @@ final class RulesModel {
             await write(owned, note: "removed \(rule.app)")
         } catch {
             lastError = error.localizedDescription
-            log.note("Window rules unreadable", error.localizedDescription)
+            log.failure("Window rules unreadable", error.localizedDescription)
         }
     }
 
@@ -159,7 +161,7 @@ final class RulesModel {
             try await WindowRules.commit(apps, integrations: backend)
         } catch {
             lastError = error.localizedDescription
-            log.note("Window rules failed", error.localizedDescription)
+            log.failure("Window rules failed", error.localizedDescription)
             return
         }
         await reload()

@@ -159,16 +159,10 @@ public struct SettingsStore: Sendable {
 
     /// The app and CLI may write at the same time. Lock the whole read-modify-write.
     public func update(_ edit: (inout SettingsDocument) throws -> Void) throws {
-        let fm = FileManager.default
-        try fm.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let descriptor = open(url.path + ".lock", O_CREAT | O_RDWR, 0o600)
-        guard descriptor >= 0 else { throw ConfigurationError("Cannot open settings lock") }
-        defer { close(descriptor) }
-        guard flock(descriptor, LOCK_EX) == 0 else {
-            throw ConfigurationError("Cannot lock settings")
-        }
-        defer { flock(descriptor, LOCK_UN) }
+        try FileLock.withLock(url) { try updateLocked(edit) }
+    }
+
+    private func updateLocked(_ edit: (inout SettingsDocument) throws -> Void) throws {
         var settings = try read()
         try edit(&settings)
         try settings.validate()

@@ -3,6 +3,17 @@ import Testing
 @testable import Macarchy
 
 struct BarConfigurationTests {
+    @Test("an out-of-range corner radius is rejected before startup replay")
+    func cornerRadiusIsValidated() {
+        var config = BarConfiguration()
+        var component = BarComponent(id: "clock", title: "Clock", side: "right", members: ["clock"])
+        component.cornerRadius = 1e308
+        config.components = [component]
+        #expect(throws: ConfigurationError.self) { try config.validate() }
+        config.components[0].cornerRadius = 6
+        #expect(throws: Never.self) { try config.validate() }
+    }
+
     @Test("moving a component preserves all members and changes side together")
     func groupedMove() {
         var config = BarConfiguration()

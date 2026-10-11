@@ -42,7 +42,8 @@ extension SecureInput {
         let registry = await execute(Paths.ioreg, ["-n", "Root", "-d1", "-w", "0"])
         guard registry.ok, let pid = pid(inConsoleUsers: registry.stdout) else { return nil }
         let name = await execute(Paths.ps, ["-p", "\(pid)", "-o", "comm="])
-        return SecureInput(pid: pid, owner: owner(fromCommand: name.ok ? name.stdout : "", pid: pid))
+        return SecureInput(
+            pid: pid, owner: owner(fromCommand: name.ok ? name.stdout : "", pid: pid))
     }
 
     /// The key is absent entirely while secure input is off, and a zero is left

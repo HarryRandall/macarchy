@@ -26,7 +26,7 @@ final class ThemeCatalog {
 
         let settings: SettingsDocument
         do { settings = try SettingsStore().read() } catch {
-            log.note("Settings unreadable", error.localizedDescription); return
+            log.failure("Settings unreadable", error.localizedDescription); return
         }
         current = settings.currentTheme
         let chosen = settings.wallpapers

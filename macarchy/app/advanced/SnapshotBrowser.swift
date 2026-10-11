@@ -17,13 +17,12 @@ final class SnapshotBrowser {
 
     func restore(_ snapshot: SnapshotStore.Snapshot) async {
         do {
-            try store.restore(snapshot)
-            try await DesktopConfiguration.apply()
+            try await DesktopConfiguration.restore(snapshot, store: store)
             log.note(
                 "restored \(snapshot.id)",
                 "Saved settings restored and applied")
         } catch {
-            log.note("restore failed", error.localizedDescription)
+            log.failure("restore failed", error.localizedDescription)
         }
         refresh()
     }

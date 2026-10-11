@@ -52,7 +52,7 @@ final class BordersModel {
     func hydrate() async {
         let values: [String: String]
         do { values = try store.load() } catch {
-            log.note("Settings unreadable", error.localizedDescription); return
+            log.failure("Settings unreadable", error.localizedDescription); return
         }
         if let raw = values["BORDER_WIDTH"], let parsed = Double(raw) { width = parsed }
         if let raw = values["BORDERS_VISIBLE"] { visible = raw != "false" }

@@ -8,8 +8,10 @@ excluded:
   - .build
 
 disabled_rules:
-  # swift-format owns brace placement for multiline conditions.
+  # swift-format owns brace placement for multiline conditions, and wraps
+  # long closure capture lists onto their own line.
   - opening_brace
+  - closure_parameter_position
   # SwiftUI view bodies are legitimately long and deeply nested; the real
   # signal is type size, which is kept below.
   - closure_body_length

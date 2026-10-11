@@ -23,4 +23,15 @@ struct CommandRunnerTests {
         #expect(!result.ok)
         #expect(result.stderr.contains("Cancelled"))
     }
+    @Test func timeoutStopsChildProcesses() async throws {
+        let marker = FileManager.default.temporaryDirectory.appending(
+            path: "macarchy-child-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: marker) }
+        // The child would write the marker after the parent has been stopped.
+        let result = await CommandRunner.run(
+            "/bin/bash", ["-c", "(sleep 0.6; touch '\(marker.path)') & wait"], timeout: 0.2)
+        #expect(!result.ok)
+        try await Task.sleep(for: .milliseconds(900))
+        #expect(!FileManager.default.fileExists(atPath: marker.path))
+    }
 }

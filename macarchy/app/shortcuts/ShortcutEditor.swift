@@ -119,8 +119,9 @@ struct ShortcutEditor: View {
             Button(confirmingDisable ? "Really disable?" : "Disable", role: .destructive) {
                 if confirmingDisable {
                     Task {
-                        await model.shortcuts.disable(binding, daemons: model.daemons)
-                        close()
+                        if await model.shortcuts.disable(binding, daemons: model.daemons) {
+                            close()
+                        }
                     }
                 } else {
                     withAnimation(Motion.snappy) { confirmingDisable = true }
@@ -133,13 +134,14 @@ struct ShortcutEditor: View {
             Button("Cancel", action: close).keyboardShortcut(.cancelAction)
             Button(model.shortcuts.isSaving ? "Saving…" : "Save") {
                 Task {
-                    await model.shortcuts.rebind(binding, to: chord, daemons: model.daemons)
-                    close()
+                    if await model.shortcuts.rebind(binding, to: chord, daemons: model.daemons) {
+                        close()
+                    }
                 }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
-            .disabled(!changed || chord.isEmpty || model.shortcuts.isSaving)
+            .disabled(!changed || chord.isEmpty || conflict != nil || model.shortcuts.isSaving)
             .hoverHelp(
                 conflict == nil
                     ? "Write this combination and restart the service"

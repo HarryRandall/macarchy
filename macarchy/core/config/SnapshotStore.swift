@@ -115,8 +115,19 @@ public struct SnapshotStore: Sendable {
 
     public func reason(for snapshot: Snapshot) -> String { meta(for: snapshot)?.reason ?? "" }
 
+    /// Where each file in the snapshot came from.
+    public func originalPaths(of snapshot: Snapshot) -> [String] {
+        meta(for: snapshot).map { Array($0.paths.values).sorted() } ?? []
+    }
+
     /// Puts files back where they came from. Takes a snapshot of the current
     /// state first, so restoring is itself undoable.
+    /// Restores under the desktop lock, so a concurrent apply cannot write
+    /// over the restored files halfway through.
+    public func restoreLocked(_ snapshot: Snapshot) async throws {
+        try await OperationLock.run { try restore(snapshot) }
+    }
+
     public func restore(_ snapshot: Snapshot) throws {
         let fm = FileManager.default
         guard let meta = meta(for: snapshot) else { throw SnapshotError.noMetadata(snapshot.id) }

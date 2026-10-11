@@ -160,7 +160,8 @@ struct Coverflow<Item: Identifiable, Content: View>: View {
         // They are all the same full-width rectangle underneath, so without
         // that the nearest one sat invisibly over all the others and answered
         // for them — a click three covers out stepped along by one.
-        return card
+        return
+            card
             .contentShape(
                 isFront
                     ? AnyShape(Rectangle())
@@ -173,17 +174,17 @@ struct Coverflow<Item: Identifiable, Content: View>: View {
                 guard !isFront else { return }
                 step(offset)
             }
-        .scaleEffect(isFront ? 1 : 1 - distance * 0.08)
-        // A slight turn away from the reader, so the row reads as a stack
-        // standing in space rather than flat cards sliding sideways.
-        .rotation3DEffect(
-            .degrees(reduceMotion ? 0 : Double(offset) * -13),
-            axis: (x: 0, y: 1, z: 0),
-            anchor: offset < 0 ? .trailing : .leading,
-            perspective: 0.42
-        )
-        .offset(x: shift(for: offset, width: width))
-        .zIndex(10 - Double(distance))
+            .scaleEffect(isFront ? 1 : 1 - distance * 0.08)
+            // A slight turn away from the reader, so the row reads as a stack
+            // standing in space rather than flat cards sliding sideways.
+            .rotation3DEffect(
+                .degrees(reduceMotion ? 0 : Double(offset) * -13),
+                axis: (x: 0, y: 1, z: 0),
+                anchor: offset < 0 ? .trailing : .leading,
+                perspective: 0.42
+            )
+            .offset(x: shift(for: offset, width: width))
+            .zIndex(10 - Double(distance))
     }
 
     /// How much of a cover is left showing past the one in front of it.

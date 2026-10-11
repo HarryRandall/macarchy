@@ -228,6 +228,9 @@ final class MenuBarModel {
     }
 
     private func schedule() {
+        // `pending` owns the apply once its debounce ends. Cancelling it then
+        // would abort daemon writes halfway; apply reschedules itself instead.
+        guard !isApplying else { return }
         pending?.cancel()
         guard live, hasChanges else { return }
         pending = Task {

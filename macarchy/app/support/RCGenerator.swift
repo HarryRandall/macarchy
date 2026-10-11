@@ -20,6 +20,6 @@ final class RCGenerator {
     func generateSketchybarRC() { record("sketchybarrc", configuration.generateSketchybarRC()) }
     private func record(_ name: String, _ outcome: GeneratedFile.Outcome) {
         lastOutcomes[name] = outcome
-        if case .failed(let message) = outcome { log.note(name, message) }
+        if case .failed(let message) = outcome { log.failure(name, message) }
     }
 }
