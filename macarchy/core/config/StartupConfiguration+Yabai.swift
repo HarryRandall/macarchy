@@ -39,21 +39,60 @@ extension StartupConfiguration {
         var kept: [String] = []
         var depth = 0
         var continued = false
+        var heredocEnd: String?
+        var openQuote: Character?
         for raw in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let line = String(raw)
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // Heredoc bodies and multi-line strings are data, not commands.
+            if let end = heredocEnd {
+                if trimmed == end { heredocEnd = nil }
+                kept.append(line)
+                continue
+            }
+            let insideString = openQuote != nil
+            openQuote = quoteState(after: line, starting: openQuote)
+            if insideString {
+                kept.append(line)
+                continue
+            }
             defer {
                 depth = max(0, depth + nesting(trimmed))
                 continued = trimmed.hasSuffix("\\")
+                heredocEnd = heredocTerminator(trimmed)
             }
             if trimmed.hasPrefix("#!") { continue }
-            if depth == 0, !continued, let (env, value) = literalConfig(trimmed) {
+            if depth == 0, !continued, openQuote == nil, let (env, value) = literalConfig(trimmed) {
                 values[env] = value
                 continue
             }
             kept.append(line)
         }
         return (values, tidy(kept))
+    }
+
+    /// The quote still open at the end of `line`, if any.
+    private static func quoteState(after line: String, starting: Character?) -> Character? {
+        var open = starting
+        var escaped = false
+        for character in line {
+            if escaped { escaped = false; continue }
+            if character == "\\", open != "'" { escaped = true; continue }
+            if open == nil, character == "#" { break }
+            if character == "'" || character == "\"" {
+                if open == nil { open = character } else if open == character { open = nil }
+            }
+        }
+        return open
+    }
+
+    /// The word that ends a heredoc started on this line, such as EOF.
+    private static func heredocTerminator(_ line: String) -> String? {
+        guard
+            let range = line.range(
+                of: "<<-?[ ]*['\"]?([A-Za-z_][A-Za-z0-9_]*)", options: .regularExpression)
+        else { return nil }
+        return String(line[range]).trimmingCharacters(in: CharacterSet(charactersIn: "<-'\" "))
     }
 
     /// `yabai -m config key value` with a value free of shell expansion.

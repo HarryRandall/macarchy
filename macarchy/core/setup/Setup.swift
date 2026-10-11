@@ -100,6 +100,13 @@ public enum Setup {
                     atPath: StartupConfiguration.bordersrc.url.path) ? .replace : .create,
                 detail: "Borders follow the theme and the Borders page")
         ]
+        if Paths.isInstalled("borders") {
+            changes.append(
+                Change(
+                    path: BordersService.plist, action: .create,
+                    detail: "Starts borders at login. Homebrew's borders agent is backed up "
+                        + "and switched off when the services start"))
+        }
         if ghosttyWanted {
             changes.append(
                 Change(

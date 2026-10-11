@@ -71,7 +71,7 @@ do {
             execv(borders, &argv)
             throw ConfigurationError("Could not start borders: \(String(cString: strerror(errno)))")
         }
-        try await Startup.apply(args[1])
+        try await OperationLock.run { try await Startup.apply(args[1]) }
     case "theme":
         guard args.count == 2 else {
             throw ConfigurationError("Usage: macarchy theme <name>|next|prev")
@@ -81,12 +81,7 @@ do {
         guard args.count == 3 else {
             throw ConfigurationError("Usage: macarchy wallpaper <theme> <relative-path>")
         }
-        let directory = Paths.themesDirectory.appending(path: args[1])
-        _ = try Theme.read(from: directory).wallpaperURL(in: directory, selected: args[2])
-        try SettingsStore().update { $0.wallpapers[args[1]] = args[2] }
-        if try SettingsStore().read().currentTheme == args[1] {
-            try require(await ThemeApplication().apply(name: args[1]))
-        }
+        try require(await ThemeApplication().chooseWallpaper(theme: args[1], path: args[2]))
     case "rules":
         switch args.dropFirst().first {
         case "toggle": try await WindowRules.toggle()

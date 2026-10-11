@@ -28,10 +28,15 @@ public enum Startup {
             if settings.bundledBar ?? true {
                 try require(await bundledBar(integrations: integrations))
             }
-            let arguments = StartupConfiguration.sketchybarKeys.map {
-                "\($0.key)=\(values[$0.env] ?? $0.fallback)"
+            // A person's own bar keeps its geometry unless they changed it
+            // in Macarchy; Macarchy's bar gets the defaults.
+            let bundled = settings.bundledBar ?? true
+            let arguments = StartupConfiguration.sketchybarKeys.compactMap { key in
+                (values[key.env] ?? (bundled ? key.fallback : nil)).map { "\(key.key)=\($0)" }
             }
-            try require(await integrations.sketchybar(["--bar"] + arguments))
+            if !arguments.isEmpty {
+                try require(await integrations.sketchybar(["--bar"] + arguments))
+            }
             for (name, visible) in settings.itemVisibility.sorted(by: { $0.key < $1.key }) {
                 try require(
                     await integrations.sketchybar([

@@ -27,6 +27,12 @@ if [ -n "$EXTERNAL" ]; then
   yabai -m config top_padding 40
 fi
 yabai -m config left_padding "$PAD"
+cat > /dev/null <<'NOTE'
+yabai -m config bottom_padding 30
+NOTE
+echo 'multi
+yabai -m config right_padding 31
+line'
 for app in Calculator Finder; do
   yabai -m rule --add app="^$app$" manage=off
 done
@@ -54,6 +60,9 @@ grep -q 'for app in Calculator Finder; do' "$HOME_DIR/.config/yabai/yabairc" || 
 grep -q '  yabai -m config top_padding 40' "$HOME_DIR/.config/yabai/yabairc" || fail "conditional setting moved"
 grep -q 'left_padding "$PAD"' "$HOME_DIR/.config/yabai/yabairc" || fail "expanded value moved"
 grep -q '"top_padding"' "$SETTINGS" && fail "conditional setting adopted"
+grep -q '"bottom_padding"' "$SETTINGS" && fail "heredoc setting adopted"
+grep -q '"right_padding"' "$SETTINGS" && fail "quoted setting adopted"
+grep -q '^yabai -m config bottom_padding 30$' "$HOME_DIR/.config/yabai/yabairc" || fail "heredoc body changed"
 grep -q 'startup yabai' "$HOME_DIR/.config/yabai/yabairc" || fail "yabairc not generated"
 grep -q 'yabai -m config window_gap' "$HOME_DIR/.config/yabai/yabairc" && fail "adopted line left in yabairc"
 grep -q 'ghostty' "$HOME_DIR/.config/macarchy/backups/manifest.json" && fail "skipped Ghostty recorded"

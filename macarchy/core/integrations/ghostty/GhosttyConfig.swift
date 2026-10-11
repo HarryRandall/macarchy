@@ -9,11 +9,15 @@ public enum GhosttyConfig {
     /// Every file Ghostty may load, in its loading order: XDG first, then
     /// Application Support, which therefore wins.
     public static var loadedFiles: [URL] {
-        let xdg = Paths.home.appending(path: ".config/ghostty")
+        // A relocated home is a test; it must not follow the real XDG folder.
+        let environment = ProcessInfo.processInfo.environment
+        let xdg = environment["MACARCHY_HOME"] == nil ? environment["XDG_CONFIG_HOME"] : nil
+        let base = xdg.map { URL(fileURLWithPath: $0) } ?? Paths.home.appending(path: ".config")
+        let folder = base.appending(path: "ghostty")
         let support = Paths.home.appending(
             path: "Library/Application Support/com.mitchellh.ghostty")
         return [
-            xdg.appending(path: "config"), xdg.appending(path: "config.ghostty"),
+            folder.appending(path: "config"), folder.appending(path: "config.ghostty"),
             support.appending(path: "config"), support.appending(path: "config.ghostty")
         ]
     }

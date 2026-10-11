@@ -55,19 +55,58 @@ public enum BordersService {
         if (try? Data(contentsOf: plist)) != data { try data.write(to: plist, options: .atomic) }
     }
 
-    /// Stops Homebrew's job, removes its agent so it cannot come back at
-    /// login, then loads and restarts Macarchy's.
+    /// Stops Homebrew's job, loads Macarchy's, and only once Macarchy's is
+    /// running removes Homebrew's agent so it cannot return at login. If
+    /// Macarchy's job fails, Homebrew's is loaded again rather than leaving
+    /// no borders at all.
     public static func start(integrations: Integrations) async -> CommandResult {
         guard !isolated else { return CommandResult(command: "borders service", status: 0) }
         let fm = FileManager.default
-        for homebrew in homebrewPlists where fm.fileExists(atPath: homebrew.path) {
-            let job = homebrew.deletingPathExtension().lastPathComponent
+        let homebrew = homebrewPlists.filter { fm.fileExists(atPath: $0.path) }
+        for agent in homebrew {
+            let job = agent.deletingPathExtension().lastPathComponent
             _ = await integrations.execute(Paths.launchctl, ["bootout", "\(domain)/\(job)"])
-            try? fm.removeItem(at: homebrew)
+            // bootout returns before the process has gone; two daemons would
+            // fight over the same windows.
+            for _ in 0..<20 {
+                let state = await integrations.execute(
+                    Paths.launchctl, ["print", "\(domain)/\(job)"])
+                if !state.ok { break }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
         }
-        // Bootstrapping a job that is already loaded fails harmlessly.
-        _ = await integrations.execute(Paths.launchctl, ["bootstrap", domain, plist.path])
-        return await integrations.restart(.borders)
+        let loaded = await integrations.execute(
+            Paths.launchctl, ["print", "\(domain)/\(label)"])
+        if !loaded.ok {
+            let bootstrap = await integrations.execute(
+                Paths.launchctl, ["bootstrap", domain, plist.path])
+            if !bootstrap.ok {
+                await reloadHomebrew(homebrew, integrations: integrations)
+                return bootstrap
+            }
+        }
+        let started = await integrations.restart(.borders)
+        guard started.ok else {
+            _ = await integrations.execute(Paths.launchctl, ["bootout", "\(domain)/\(label)"])
+            await reloadHomebrew(homebrew, integrations: integrations)
+            return started
+        }
+        for agent in homebrew {
+            do { try fm.removeItem(at: agent) } catch {
+                return CommandResult(
+                    command: "borders service", status: 1,
+                    stderr: "Borders runs from Macarchy, but Homebrew's agent could not be "
+                        + "removed and may start a second copy at login: "
+                        + error.localizedDescription)
+            }
+        }
+        return started
+    }
+
+    private static func reloadHomebrew(_ agents: [URL], integrations: Integrations) async {
+        for agent in agents {
+            _ = await integrations.execute(Paths.launchctl, ["bootstrap", domain, agent.path])
+        }
     }
 
     /// Before uninstall restores files: unload Macarchy's job.

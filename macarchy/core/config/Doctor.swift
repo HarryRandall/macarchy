@@ -170,8 +170,30 @@ public enum Doctor {
             results.append(
                 HealthCheck(.configuration, "Settings", .failed, error.localizedDescription))
         }
-        for file in StartupConfiguration.all where fm.fileExists(atPath: file.url.path) {
+        // After setup each installed tool needs its startup file, and launchd
+        // can only run it while it is executable.
+        let tools: [(GeneratedFile, String)] = [
+            (StartupConfiguration.yabairc, "yabai"),
+            (StartupConfiguration.sketchybarrc, "sketchybar"),
+            (StartupConfiguration.bordersrc, "borders")
+        ]
+        for (file, tool) in tools where Paths.isInstalled(tool) {
             let name = file.url.lastPathComponent
+            guard fm.fileExists(atPath: file.url.path) else {
+                results.append(
+                    HealthCheck(
+                        .configuration, name, .failed, "Missing, so \(tool) starts unconfigured",
+                        fix: "Run setup again"))
+                continue
+            }
+            guard fm.isExecutableFile(atPath: file.url.path) else {
+                results.append(
+                    HealthCheck(
+                        .configuration, name, .failed,
+                        "Not executable, so it will not run at login",
+                        fix: "Run setup again, which repairs it"))
+                continue
+            }
             let syntax = await integrations.execute("/bin/bash", ["-n", file.url.path])
             if !syntax.ok {
                 // bash echoes the offending line, which may hold a secret, so

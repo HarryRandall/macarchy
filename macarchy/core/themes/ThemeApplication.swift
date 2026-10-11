@@ -49,7 +49,30 @@ public struct ThemeApplication: Sendable {
     }
 
     // Keep the ordered desktop transaction together so partial failures are traceable.
-    private func applyLocked(name: String) async -> CommandResult {
+    /// Chooses a theme's wallpaper. For the active theme the desktop is
+    /// changed first and the choice saved only if that worked, so settings
+    /// never point at a wallpaper the desktop does not show.
+    public func chooseWallpaper(theme name: String, path: String) async -> CommandResult {
+        do {
+            return try await OperationLock.run {
+                let directory = Paths.themesDirectory.appending(path: name)
+                _ = try Theme.read(from: directory).wallpaperURL(in: directory, selected: path)
+                if try SettingsStore().read().currentTheme == name {
+                    let result = await applyLocked(name: name, wallpaper: path)
+                    guard result.ok else { return result }
+                }
+                try SettingsStore().update { $0.wallpapers[name] = path }
+                return CommandResult(command: "wallpaper \(name)", status: 0)
+            }
+        } catch {
+            return CommandResult(
+                command: "wallpaper \(name)", status: 1, stderr: error.localizedDescription)
+        }
+    }
+
+    /// The theme transaction itself. Callers must hold the desktop lock.
+    /// `wallpaper` overrides the saved choice for this application only.
+    func applyLocked(name: String, wallpaper chosen: String? = nil) async -> CommandResult {
         do {
             guard name.range(of: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$", options: .regularExpression) != nil
             else { throw ConfigurationError("Invalid theme name") }
@@ -62,7 +85,7 @@ public struct ThemeApplication: Sendable {
             let outputs = ThemeOutputs(theme: theme, ghostty: palette ?? "")
             let settings = try SettingsStore().read()
             let wallpaper = try theme.wallpaperURL(
-                in: directory, selected: settings.wallpapers[name])
+                in: directory, selected: chosen ?? settings.wallpapers[name])
 
             try SnapshotStore().capture(Self.outputs, reason: "apply theme \(name)")
             let generated = Paths.generatedDirectory

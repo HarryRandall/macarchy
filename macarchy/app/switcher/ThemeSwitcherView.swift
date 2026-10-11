@@ -262,22 +262,11 @@ struct ThemeSwitcherView: View {
     private func useBackground(_ background: SwitcherBackground, of theme: InstalledTheme) {
         status = .working("Applying \(background.name)…")
         Task {
-            do {
-                try SettingsStore().update { $0.wallpapers[theme.name] = background.relativePath }
-                if theme.name == model.themes.current {
-                    let result = await ThemeApplication(integrations: model.backend).apply(
-                        name: theme.name)
-                    model.log.record(result)
-                    guard result.ok else {
-                        status = .failed(result.summary)
-                        return
-                    }
-                }
-                model.themes.reload()
-                close()
-            } catch {
-                status = .failed(error.localizedDescription)
-            }
+            let result = await ThemeApplication(integrations: model.backend).chooseWallpaper(
+                theme: theme.name, path: background.relativePath)
+            model.log.record(result)
+            model.themes.reload()
+            if result.ok { close() } else { status = .failed(result.summary) }
         }
     }
 }

@@ -7,23 +7,37 @@ public enum DesktopConfiguration {
         _ snapshot: SnapshotStore.Snapshot, store: SnapshotStore = SnapshotStore(),
         integrations: Integrations = Integrations()
     ) async throws {
+        // Read before restoring: restoring snapshots the current files, and
+        // that capture can prune the snapshot being restored.
+        let restartsShortcuts = store.originalPaths(of: snapshot).contains {
+            $0.hasSuffix("/skhdrc") || $0.hasSuffix("/.skhdrc")
+        }
         try await store.restoreLocked(snapshot)
         try await apply(integrations: integrations)
-        if store.originalPaths(of: snapshot).contains(where: { $0.hasSuffix("/skhdrc") }) {
+        if restartsShortcuts, Paths.isInstalled("skhd") {
             let result = await integrations.restart(.skhd)
             guard result.ok else { throw ConfigurationError(result.summary) }
         }
     }
 
+    /// Reapplies every saved setting under one desktop lock, skipping tools
+    /// that are not installed rather than failing halfway.
     public static func apply(integrations: Integrations = Integrations()) async throws {
-        let settings = try SettingsStore().read()
-        if let name = settings.currentTheme {
-            let result = await ThemeApplication(integrations: integrations).apply(name: name)
-            guard result.ok else { throw ConfigurationError(result.stderr) }
+        try await OperationLock.run {
+            let settings = try SettingsStore().read()
+            if let name = settings.currentTheme {
+                let result = await ThemeApplication(integrations: integrations).applyLocked(
+                    name: name)
+                guard result.ok else { throw ConfigurationError(result.stderr) }
+            }
+            if Paths.isInstalled("yabai") {
+                try await Startup.apply("yabai", integrations: integrations)
+            }
+            if Paths.isInstalled("sketchybar") {
+                try await Startup.apply("sketchybar", integrations: integrations)
+            }
+            try await Startup.applyCorners(integrations: integrations)
         }
-        try await Startup.apply("yabai", integrations: integrations)
-        try await Startup.apply("sketchybar", integrations: integrations)
-        try await Startup.applyCorners(integrations: integrations)
     }
 }
 

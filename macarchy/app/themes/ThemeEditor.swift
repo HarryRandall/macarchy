@@ -233,12 +233,13 @@ struct ThemeEditor: View {
 
     private func choose(_ url: URL, in theme: InstalledTheme) {
         let relative = String(url.path.dropFirst(theme.directory.path.count + 1))
-        do {
-            try SettingsStore().update { $0.wallpapers[theme.name] = relative }
+        Task {
+            let result = await ThemeApplication(integrations: model.backend).chooseWallpaper(
+                theme: theme.name, path: relative)
+            model.log.record(result)
             model.themes.reload()
-            if model.themes.current == theme.name { Task { await model.themes.apply(theme) } }
-            error = nil
-        } catch { self.error = error.localizedDescription }
+            error = result.ok ? nil : result.summary
+        }
     }
 
     private func save(_ manifest: Theme, to theme: InstalledTheme) {
