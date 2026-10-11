@@ -34,7 +34,17 @@ RC
 ORIGINAL_YABAI="$(cat "$HOME_DIR/.config/yabai/yabairc")"
 echo 'cmd - h : echo mine' > "$HOME_DIR/.config/skhd/skhdrc"
 
+mkdir -p "$HOME_DIR/.config/sketchybar"
+printf '%s\n' '# >>> macarchy:keep items' 'sketchybar --add item mine left' '# <<< macarchy:keep' \
+  'sketchybar --add item after right' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+
 "$CLI" setup --keep --no-apply >/dev/null
+
+BAR="$HOME_DIR/.config/sketchybar/sketchybarrc"
+grep -q 'add item after right' "$BAR" || fail "content after a nested region lost"
+[ "$(grep -c 'macarchy:keep' "$BAR")" = 2 ] || fail "nested keep markers adopted"
+[ "$(grep -n 'add item mine' "$BAR" | cut -d: -f1)" -lt "$(grep -n 'startup sketchybar' "$BAR" | cut -d: -f1)" ] \
+  || fail "own bar items must run before startup"
 
 SETTINGS="$HOME_DIR/.config/macarchy/settings.json"
 [ -f "$SETTINGS" ] || fail "settings.json not created"
@@ -63,7 +73,8 @@ cmp -s "$HOME_DIR/before" "$HOME_DIR/.config/yabai/yabairc" || fail "second setu
 "$CLI" uninstall >/dev/null
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$ORIGINAL_YABAI" ] || fail "yabairc not restored"
 [ "$(cat "$HOME_DIR/.config/skhd/skhdrc")" = 'cmd - h : echo mine' ] || fail "skhdrc not restored"
-[ -e "$HOME_DIR/.config/sketchybar/sketchybarrc" ] && fail "created sketchybarrc not removed"
+grep -q 'add item after right' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "sketchybarrc not restored"
+rm -f "$HOME_DIR/.config/sketchybar/sketchybarrc"
 
 # Setting up again after uninstalling adopts the restored files afresh.
 "$CLI" setup --keep --no-apply >/dev/null

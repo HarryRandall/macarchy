@@ -16,17 +16,19 @@ extension StartupConfiguration {
         sketchybarKeys.first { $0.key == key }?.env
     }
 
-    /// The person's own items run after Macarchy's bar is built, so they can
-    /// add to it. Keeping an entire existing bar instead is a setup choice:
-    /// it switches the bundled items off rather than layering two bars.
+    /// With Macarchy's bar, the person's own items run after it is built, so
+    /// they can add to it. With their own bar, their region builds the items
+    /// first and Macarchy then applies geometry and layout edits on top.
     @discardableResult
     public func generateSketchybarRC(adopting: String? = nil) -> GeneratedFile.Outcome {
         let file = Self.sketchybarrc
+        let bundled = (try? SettingsStore().read().bundledBar) ?? nil ?? true
+        let startup = "\(Paths.cliInShell) startup sketchybar\n"
+        let yours = region(yours(file, adopting: adopting)) + "\n"
         let content =
             Self.header("The bar comes from the Menu Bar page and the active theme.")
-            + "\(Paths.cliInShell) startup sketchybar\n\n"
-            + region(yours(file, adopting: adopting)) + "\n\n"
-            + "sketchybar --update\n"
+            + (bundled ? startup + "\n" + yours : yours + "\n" + startup)
+            + "\nsketchybar --update\n"
         return file.write(content, reason: "menu bar startup changed")
     }
 }

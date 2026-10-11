@@ -40,9 +40,16 @@ public struct StartupConfiguration: Sendable {
     }
 
     /// The person's region, from this file or from content being adopted.
+    /// Region markers inside adopted content are dropped: nested regions
+    /// would end the outer one early and lose everything after it.
     func yours(_ file: GeneratedFile, adopting: String?) -> String {
-        if let adopting { return adopting }
-        return file.preservedRegions()[Self.yoursRegion] ?? ""
+        guard let adopting else { return file.preservedRegions()[Self.yoursRegion] ?? "" }
+        return Self.tidy(
+            adopting.components(separatedBy: "\n").filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix(GeneratedFile.beginKeep)
+                    && !trimmed.hasPrefix(GeneratedFile.endKeep)
+            })
     }
 
     func region(_ body: String) -> String {

@@ -24,12 +24,13 @@ public enum Daemon: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Labels each installer is known to use, newest first. yabai and skhd
-    /// moved from koekeishiya to asmvik; both spellings are still in the wild.
+    /// moved from koekeishiya to asmvik, and Homebrew services moved from
+    /// homebrew.mxcl to sh.brew; both spellings of each are still in the wild.
     public var knownLabels: [String] {
         switch self {
         case .yabai: ["com.asmvik.yabai", "com.koekeishiya.yabai"]
-        case .borders: ["homebrew.mxcl.borders"]
-        case .sketchybar: ["homebrew.mxcl.sketchybar"]
+        case .borders: ["sh.brew.borders", "homebrew.mxcl.borders"]
+        case .sketchybar: ["sh.brew.sketchybar", "homebrew.mxcl.sketchybar"]
         case .skhd: ["com.asmvik.skhd", "com.koekeishiya.skhd"]
         }
     }

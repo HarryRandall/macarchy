@@ -64,12 +64,28 @@ public struct GeneratedFile: Sendable {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// True when the file on disk is not what the app last generated.
+    /// The hash recorded for a generated file. Keep regions are blanked first,
+    /// because edits inside them are the person's to make and are not drift.
+    public static func generatedHash(_ text: String) -> String {
+        var lines: [Substring] = []
+        var inside = false
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix(beginKeep) { inside = true; lines.append(line); continue }
+            if trimmed.hasPrefix(endKeep) { inside = false }
+            if !inside { lines.append(line) }
+        }
+        return hash(lines.joined(separator: "\n"))
+    }
+
+    /// True when the file on disk differs from what the app last generated
+    /// outside its keep regions. Ledgers written before regions were ignored
+    /// hold a whole-file hash, which still counts as a match.
     public var hasDrifted: Bool {
         guard let recorded = (try? ledger())?[url.path],
             let onDisk = try? String(contentsOf: url, encoding: .utf8)
         else { return false }
-        return Self.hash(onDisk) != recorded
+        return Self.generatedHash(onDisk) != recorded && Self.hash(onDisk) != recorded
     }
 
     // MARK: - Preserved regions
@@ -108,7 +124,13 @@ public struct GeneratedFile: Sendable {
         let fm = FileManager.default
         let existing = try? String(contentsOf: url, encoding: .utf8)
 
-        if existing == content { return .unchanged }
+        if existing == content {
+            // Keeps the ledger current when only its hashing has changed.
+            if (try? ledger())?[url.path] != Self.generatedHash(content) {
+                try? recordHash(Self.generatedHash(content), for: url.path)
+            }
+            return .unchanged
+        }
 
         var driftSnapshot: String?
         do {
@@ -126,7 +148,7 @@ public struct GeneratedFile: Sendable {
             if content.hasPrefix("#!") {
                 try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
             }
-            try recordHash(Self.hash(content), for: url.path)
+            try recordHash(Self.generatedHash(content), for: url.path)
         } catch {
             return .failed(error.localizedDescription)
         }

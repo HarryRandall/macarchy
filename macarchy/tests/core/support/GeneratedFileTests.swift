@@ -58,6 +58,22 @@ struct GeneratedFileTests {
         #expect(file.hasDrifted == false)
     }
 
+    @Test("edits inside a keep region are not drift")
+    func keepRegionEditsAreNotDrift() throws {
+        let (file, root) = try sandboxedFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let begin = GeneratedFile.beginKeep + " yours"
+        _ = file.write("#!/bin/bash\n\(begin)\n\(GeneratedFile.endKeep)\nrun\n", reason: "t")
+        try "#!/bin/bash\n\(begin)\necho mine\n\(GeneratedFile.endKeep)\nrun\n".write(
+            to: file.url, atomically: true, encoding: .utf8)
+        #expect(file.hasDrifted == false)
+
+        try "#!/bin/bash\n\(begin)\necho mine\n\(GeneratedFile.endKeep)\nchanged\n".write(
+            to: file.url, atomically: true, encoding: .utf8)
+        #expect(file.hasDrifted)
+    }
+
     @Test("keep regions survive regeneration")
     func keepRegionsSurvive() throws {
         let (file, root) = try sandboxedFile()

@@ -3,7 +3,14 @@ import SwiftUI
 @main
 struct SettingsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
+    @State private var model: AppModel
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        // The switcher's hotkey must work before any window has opened.
+        ThemeSwitcher.shared.attach(model)
+    }
 
     var body: some Scene {
         Window("Macarchy", id: "main") {
