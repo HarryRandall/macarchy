@@ -58,7 +58,9 @@ struct ReportPane: View {
                 Button("Copy report") { copy() }
                 Button("Open on GitHub") { open() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || reportText.isEmpty)
+                    .disabled(
+                        title.trimmingCharacters(in: .whitespaces).isEmpty || reportText.isEmpty
+                    )
                     .hoverHelp("Opens a new public issue in your browser for you to submit")
             }
         }

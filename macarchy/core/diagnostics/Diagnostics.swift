@@ -112,7 +112,7 @@ public enum Diagnostics {
                 entry, "product-name" as CFString, kCFAllocatorDefault, 0)?
                 .takeRetainedValue() as? Data
         {
-            let name = String(decoding: property.prefix { $0 != 0 }, as: UTF8.self)
+            let name = String(bytes: property.prefix { $0 != 0 }, encoding: .utf8) ?? ""
             if !name.isEmpty { return name }
         }
         return hardwareModel()
@@ -129,7 +129,7 @@ public enum Diagnostics {
         guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return nil }
         var bytes = [UInt8](repeating: 0, count: size)
         guard sysctlbyname(name, &bytes, &size, nil, 0) == 0 else { return nil }
-        let value = String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        let value = String(bytes: bytes.prefix { $0 != 0 }, encoding: .utf8) ?? ""
         return value.isEmpty ? nil : value
     }
 }
