@@ -21,6 +21,13 @@ struct StatusChip: View {
     var live = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulses = 0
+
+    private enum Ring: CaseIterable {
+        case hidden, shown, expanded
+        var scale: CGFloat { self == .expanded ? 2.2 : 1 }
+        var opacity: Double { self == .shown ? 0.7 : 0 }
+    }
 
     var body: some View {
         HStack(spacing: Metrics.xs + 2) {
@@ -32,14 +39,26 @@ struct StatusChip: View {
                 .frame(width: 6, height: 6)
                 .overlay {
                     if live && !reduceMotion {
+                        // A few rings when the state becomes live, then still.
+                        // A ring repeating forever kept the window redrawing
+                        // every frame, and combining it with a phase animator
+                        // stacked a new endless animation on every re-render,
+                        // which is how the app reached a full core over time.
                         Circle()
                             .fill(tone.colour)
-                            .phaseAnimator([0.6, 1.0]) { view, phase in
-                                view.scaleEffect(phase * 2.2).opacity(1.6 - phase * 1.5)
-                            } animation: { _ in
-                                .easeOut(duration: 1.6).repeatForever(autoreverses: false)
+                            .phaseAnimator(Ring.allCases, trigger: pulses) { view, ring in
+                                view.scaleEffect(ring.scale).opacity(ring.opacity)
+                            } animation: { ring in
+                                ring == .expanded ? .easeOut(duration: 1.4) : nil
                             }
                             .allowsHitTesting(false)
+                    }
+                }
+                .task(id: live) {
+                    guard live, !reduceMotion else { return }
+                    for _ in 0..<3 {
+                        pulses += 1
+                        do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
                     }
                 }
                 .frame(width: 8, height: 8)

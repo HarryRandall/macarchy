@@ -170,8 +170,15 @@ public enum Doctor {
             results.append(
                 HealthCheck(.configuration, "Settings", .failed, error.localizedDescription))
         }
-        // After setup each installed tool needs its startup file, and launchd
-        // can only run it while it is executable.
+        results += await startupFileChecks(integrations: integrations)
+        return results
+    }
+
+    /// After setup each installed tool needs its startup file, and launchd
+    /// can only run it while it is executable.
+    static func startupFileChecks(integrations: Integrations) async -> [HealthCheck] {
+        let fm = FileManager.default
+        var results: [HealthCheck] = []
         let tools: [(GeneratedFile, String)] = [
             (StartupConfiguration.yabairc, "yabai"),
             (StartupConfiguration.sketchybarrc, "sketchybar"),
