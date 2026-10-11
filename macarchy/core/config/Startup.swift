@@ -82,9 +82,21 @@ public enum Startup {
         let missionControl =
             "sleep 0.25; \(reassert); \(Shell.quote(Paths.sketchybar))"
             + " --trigger macarchy_spaces_changed >/dev/null 2>&1"
+        // Arriving on a Space, yabai first still reports the previous Space's
+        // window as focused; a moment later macOS activates Finder or another
+        // app with no window here, and no border is drawn. So wait for it to
+        // settle, then focus a window here unless one already is.
+        let field = { (name: String) in
+            "/usr/bin/awk -F'[:,]' '/\"\(name)\"/ { print $2; exit }'"
+        }
+        let spaceRefocus =
+            "sleep 0.35; space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
+            + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
+            + " if [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]; then"
+            + " \(yabai) -m window --focus first >/dev/null 2>&1; fi"
         return [
             ("macarchy_mission_control_exit", "mission_control_exit", missionControl),
-            ("macarchy_refocus_space", "space_changed", refocus),
+            ("macarchy_refocus_space", "space_changed", spaceRefocus),
             ("macarchy_window_created", "window_created", "\(cli) rules window-created"),
             ("macarchy_window_deminimized", "window_deminimized", "\(cli) rules window-created"),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),
