@@ -65,12 +65,21 @@ public enum Startup {
         let refocus =
             "\(yabai) -m query --windows --window >/dev/null 2>&1"
             + " || \(yabai) -m window --focus first >/dev/null 2>&1"
-        // Leaving Mission Control on the same Space fires no Space change, and
-        // yabai reports the final Space a moment after the animation ends.
-        let spaces =
-            "sleep 0.25; \(Shell.quote(Paths.sketchybar)) --trigger macarchy_spaces_changed"
+        // After Mission Control, yabai can still believe a window is focused
+        // while macOS has handed focus elsewhere and no border is drawn, so
+        // focus is re-asserted rather than only filled in. yabai also reports
+        // the final Space a moment after the animation, so the bar looks again.
+        let reassert =
+            "id=$(\(yabai) -m query --windows --window 2>/dev/null"
+            + " | /usr/bin/awk -F'[:,]' '/\"id\"/ { print $2; exit }');"
+            + " if [ -n \"$id\" ]; then \(yabai) -m window --focus \"$id\" >/dev/null 2>&1;"
+            + " else \(yabai) -m window --focus first >/dev/null 2>&1; fi"
+        let missionControl =
+            "sleep 0.25; \(reassert); \(Shell.quote(Paths.sketchybar))"
+            + " --trigger macarchy_spaces_changed >/dev/null 2>&1"
         return [
-            ("macarchy_mission_control_exit", "mission_control_exit", spaces),
+            ("macarchy_mission_control_exit", "mission_control_exit", missionControl),
+            ("macarchy_refocus_space", "space_changed", refocus),
             ("macarchy_window_created", "window_created", "\(cli) rules window-created"),
             ("macarchy_window_deminimized", "window_deminimized", "\(cli) rules window-created"),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),
