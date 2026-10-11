@@ -37,4 +37,24 @@ struct GhosttyConfigTests {
         #expect(!GhosttyConfig.hasInclude(text))
         #expect(GhosttyConfig.removingInclude(from: text) == text)
     }
+
+    @Test("only colour settings from a theme reach Ghostty")
+    func coloursAreAllowlisted() {
+        let palette = """
+            background = #101010
+            palette = 4=#1e90ff
+            command = /bin/sh -c 'touch /tmp/owned'
+            initial-command = evil
+            foreground = not-a-colour
+            config-file = /tmp/elsewhere
+            window-padding-x = 8
+            """
+        let rendered = GhosttyConfig.colours(from: palette)
+        #expect(rendered.contains("background = #101010"))
+        #expect(rendered.contains("palette = 4=#1e90ff"))
+        #expect(!rendered.contains("command"))
+        #expect(!rendered.contains("config-file"))
+        #expect(!rendered.contains("not-a-colour"))
+        #expect(!rendered.contains("padding"))
+    }
 }

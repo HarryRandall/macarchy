@@ -61,24 +61,51 @@ struct Backups {
 
     /// Puts every original back, deletes files that did not exist before, and
     /// clears the record so the next setup starts from what is there then.
-    func restoreAll() throws -> [String] {
+    ///
+    /// Every stored copy is checked before anything changes, and the current
+    /// files are snapshotted first, so edits made since setup can be recovered
+    /// from Advanced. Each file is replaced atomically, never removed first.
+    func restoreAll(snapshots: SnapshotStore = SnapshotStore()) throws -> [String] {
         let fm = FileManager.default
+        let entries = try manifest().entries.sorted { $0.key < $1.key }
+        for case (_, .file(let name)) in entries
+        where !fm.isReadableFile(atPath: root.appending(path: name).path) {
+            throw ConfigurationError(
+                "The backup \(name) is missing, so nothing was restored. "
+                    + "Your current files are unchanged.")
+        }
+        try snapshots.capture(
+            entries.map { URL(fileURLWithPath: $0.key) }, reason: "before restoring originals")
+
         var report: [String] = []
-        for (path, original) in try manifest().entries.sorted(by: { $0.key < $1.key }) {
+        for (path, original) in entries {
             let url = URL(fileURLWithPath: path)
-            let present =
-                fm.fileExists(atPath: url.path)
-                || (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil
+            let isLink = (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil
+            let present = fm.fileExists(atPath: url.path) || isLink
             switch original {
             case .file(let name):
-                if present { try fm.removeItem(at: url) }
                 try fm.createDirectory(
                     at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try fm.copyItem(at: root.appending(path: name), to: url)
+                let staged = url.deletingLastPathComponent()
+                    .appending(path: ".\(url.lastPathComponent).macarchy-restore")
+                try? fm.removeItem(at: staged)
+                try fm.copyItem(at: root.appending(path: name), to: staged)
+                if present, !isLink {
+                    _ = try fm.replaceItemAt(url, withItemAt: staged)
+                } else {
+                    if isLink { try fm.removeItem(at: url) }
+                    try fm.moveItem(at: staged, to: url)
+                }
                 report.append("Restored \(Paths.display(url))")
             case .link(let destination):
-                if present { try fm.removeItem(at: url) }
-                try fm.createSymbolicLink(atPath: url.path, withDestinationPath: destination)
+                let staged = url.deletingLastPathComponent()
+                    .appending(path: ".\(url.lastPathComponent).macarchy-restore")
+                try? fm.removeItem(at: staged)
+                try fm.createSymbolicLink(atPath: staged.path, withDestinationPath: destination)
+                // rename(2) replaces the old file or link in one step.
+                guard rename(staged.path, url.path) == 0 else {
+                    throw ConfigurationError("Could not restore the link \(Paths.display(url))")
+                }
                 report.append("Restored the link \(Paths.display(url))")
             case .absent:
                 if present {

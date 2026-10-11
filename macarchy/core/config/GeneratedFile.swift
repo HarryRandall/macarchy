@@ -123,11 +123,23 @@ public struct GeneratedFile: Sendable {
     public func write(_ content: String, reason: String) -> Outcome {
         let fm = FileManager.default
         let existing = try? String(contentsOf: url, encoding: .utf8)
+        // An unreadable ledger must stop the write: overwriting first would
+        // lose an edit the ledger could no longer prove was hand-made.
+        let recorded: [String: String]
+        do { recorded = try ledger() } catch { return .failed(error.localizedDescription) }
 
         if existing == content {
-            // Keeps the ledger current when only its hashing has changed.
-            if (try? ledger())?[url.path] != Self.generatedHash(content) {
-                try? recordHash(Self.generatedHash(content), for: url.path)
+            do {
+                // Keeps the ledger current when only its hashing has changed,
+                // and repairs a startup file that lost its executable bit.
+                if recorded[url.path] != Self.generatedHash(content) {
+                    try recordHash(Self.generatedHash(content), for: url.path)
+                }
+                if content.hasPrefix("#!"), !fm.isExecutableFile(atPath: url.path) {
+                    try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+                }
+            } catch {
+                return .failed(error.localizedDescription)
             }
             return .unchanged
         }

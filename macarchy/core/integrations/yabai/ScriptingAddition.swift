@@ -101,7 +101,12 @@ public enum ScriptingAddition {
     /// one sudo cannot parse either, because that locks the user out of sudo.
     static func repairScript(user: String, digest: String, binary: String = Paths.yabai) -> String?
     {
-        guard user.allSatisfy({ $0.isLetter || $0.isNumber || "._-".contains($0) }), !user.isEmpty,
+        // sudoers has its own escaping rules, so the binary path is limited to
+        // characters that need none in either sudoers or the shell.
+        let safe = { (text: String) in
+            !text.isEmpty && text.allSatisfy { $0.isLetter || $0.isNumber || "._-/".contains($0) }
+        }
+        guard safe(user), !user.contains("/"), safe(binary), binary.hasPrefix("/"),
             digest.count == 64, digest.allSatisfy(\.isHexDigit)
         else { return nil }
         return """
@@ -111,7 +116,7 @@ public enum ScriptingAddition {
             printf '%s\\n' '\(user) ALL=(root) NOPASSWD: sha256:\(digest) \(binary) --load-sa' > "$tmp"
             /usr/sbin/visudo -cf "$tmp"
             /usr/bin/install -m 0644 -o root -g wheel "$tmp" \(sudoersPath)
-            \(binary) --load-sa
+            \(Shell.quote(binary)) --load-sa
             """
     }
 

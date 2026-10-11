@@ -119,4 +119,14 @@ grep -q 'config-file = ?' "$SUPPORT/config" || fail "include not in the last-loa
 grep -q 'config-file' "$HOME_DIR/.config/ghostty/config" && fail "include in an earlier file"
 "$CLI" uninstall >/dev/null
 
+# A missing backup stops uninstall before anything changes.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/yabai"
+echo 'yabai -m config window_gap 3' > "$HOME_DIR/.config/yabai/yabairc"
+"$CLI" setup --keep --no-apply >/dev/null
+GENERATED="$(cat "$HOME_DIR/.config/yabai/yabairc")"
+rm "$HOME_DIR/.config/macarchy/backups/"*-yabairc
+"$CLI" uninstall >/dev/null 2>&1 && fail "uninstall succeeded with a missing backup"
+[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$GENERATED" ] || fail "file changed despite a missing backup"
+
 echo "setup integration test passed"

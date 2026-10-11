@@ -46,8 +46,12 @@ public struct SnapshotStore: Sendable {
 
     private static let stamp: DateFormatter = {
         let formatter = DateFormatter()
+        // UTC with a fixed locale and calendar, so ids sort in creation order
+        // even when the clock moves back for daylight saving.
         formatter.dateFormat = "yyyy-MM-dd'T'HH-mm-ss-SSS"
-        formatter.timeZone = .current
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         return formatter
     }()
 

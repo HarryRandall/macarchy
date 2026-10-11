@@ -136,4 +136,19 @@ struct ScriptingAdditionTests {
             ScriptingAddition.status(binary: binaryPath, sudoers: rulesPath, bundle: bundlePath)
         }
     }
+
+    @Test("the repair refuses a binary path that could escape its quoting")
+    func repairRejectsUnsafeBinary() {
+        let digest = String(repeating: "a", count: 64)
+        #expect(
+            ScriptingAddition.repairScript(user: "alex", digest: digest, binary: "/opt/a'b") == nil)
+        #expect(
+            ScriptingAddition.repairScript(user: "alex", digest: digest, binary: "/opt/a b") == nil)
+        #expect(
+            ScriptingAddition.repairScript(user: "alex", digest: digest, binary: "yabai") == nil)
+        #expect(
+            ScriptingAddition.repairScript(
+                user: "alex", digest: digest, binary: "/opt/homebrew/bin/yabai")
+                != nil)
+    }
 }

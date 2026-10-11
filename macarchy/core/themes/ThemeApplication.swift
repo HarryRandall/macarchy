@@ -66,7 +66,9 @@ public struct ThemeApplication: Sendable {
 
             try SnapshotStore().capture(Self.outputs, reason: "apply theme \(name)")
             let generated = Paths.generatedDirectory
-            try Self.write(palette ?? "", to: generated.appending(path: "ghostty.conf"))
+            try Self.write(
+                GhosttyConfig.colours(from: palette ?? ""),
+                to: generated.appending(path: "ghostty.conf"))
             try Self.write(outputs.shell, to: generated.appending(path: "shell-env"))
             try Self.write(outputs.nvim + "\n", to: generated.appending(path: "nvim-colorscheme"))
             try Self.write(outputs.barColours, to: generated.appending(path: "bar-colours.sh"))

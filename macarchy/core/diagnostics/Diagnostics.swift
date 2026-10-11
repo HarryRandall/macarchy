@@ -81,9 +81,19 @@ public enum Diagnostics {
             (NSUserName(), "<user>")
         ]
         // Longest first, so a home path is replaced before the username inside it.
+        // Short names are matched as whole words, so "li" does not turn
+        // "click" into "c<user>ck" but is still removed where it stands alone.
         for (secret, replacement) in replacements.sorted(by: { $0.0.count > $1.0.count })
-        where secret.count >= 3 {
-            output = output.replacingOccurrences(of: secret, with: replacement)
+        where !secret.isEmpty {
+            if secret.count >= 4 {
+                output = output.replacingOccurrences(of: secret, with: replacement)
+            } else {
+                let pattern =
+                    "(?<![A-Za-z0-9])" + NSRegularExpression.escapedPattern(for: secret)
+                    + "(?![A-Za-z0-9])"
+                output = output.replacingOccurrences(
+                    of: pattern, with: replacement, options: [.regularExpression, .caseInsensitive])
+            }
         }
         return output
     }
