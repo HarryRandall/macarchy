@@ -4,8 +4,9 @@ import SwiftUI
 
 /// The Macarchy logo, drawn from the bundled SVG.
 enum BrandMark {
-    /// The logo in its own colours, for the window.
-    static let colour: NSImage? = image(strokeWidth: 7, template: false)
+    /// An outline for the sidebar, tinted with the theme's accent. Thicker
+    /// than the original so it holds up at sidebar size and on dark grey.
+    static let sidebar: NSImage? = image(strokeWidth: 26, template: true)
 
     /// A single-colour version for the menu bar, which macOS tints to match.
     /// Thicker strokes keep the outline legible at 16 points, and the window

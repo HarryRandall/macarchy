@@ -215,14 +215,14 @@ private struct Sidebar: View {
     private var header: some View {
         HStack(spacing: Metrics.small) {
             Group {
-                if let logo = BrandMark.colour {
+                if let logo = BrandMark.sidebar {
                     Image(nsImage: logo).resizable().scaledToFit()
                 } else {
                     Image(systemName: "circle.lefthalf.filled")
-                        .foregroundStyle(model.interfaceAccent)
                 }
             }
-            .frame(width: 22, height: 18)
+            .foregroundStyle(model.interfaceAccent)
+            .frame(width: 30, height: 24)
             if isVisible {
                 Text("Macarchy")
                     .font(.system(size: 14, weight: .semibold))

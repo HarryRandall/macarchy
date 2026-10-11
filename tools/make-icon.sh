@@ -8,7 +8,7 @@ trap 'rm -rf "$WORK"' EXIT
 swiftc -O "$ROOT/tools/icon.swift" -o "$WORK/icon"
 SET="$WORK/AppIcon.iconset"
 mkdir -p "$SET"
-stroke() { if [ "$1" -le 64 ]; then echo 22; elif [ "$1" -le 128 ]; then echo 18; else echo 14; fi; }
+stroke() { if [ "$1" -le 64 ]; then echo 24; elif [ "$1" -le 128 ]; then echo 20; else echo 16; fi; }
 for size in 16 32 128 256 512; do
   "$WORK/icon" "$ROOT/macarchy/resources/logo.svg" "$SET/icon_${size}x${size}.png" "$size" "$(stroke "$size")"
   double=$((size * 2))
