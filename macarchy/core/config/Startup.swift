@@ -65,7 +65,12 @@ public enum Startup {
         let refocus =
             "\(yabai) -m query --windows --window >/dev/null 2>&1"
             + " || \(yabai) -m window --focus first >/dev/null 2>&1"
+        // Leaving Mission Control on the same Space fires no Space change, and
+        // yabai reports the final Space a moment after the animation ends.
+        let spaces =
+            "sleep 0.25; \(Shell.quote(Paths.sketchybar)) --trigger macarchy_spaces_changed"
         return [
+            ("macarchy_mission_control_exit", "mission_control_exit", spaces),
             ("macarchy_window_created", "window_created", "\(cli) rules window-created"),
             ("macarchy_window_deminimized", "window_deminimized", "\(cli) rules window-created"),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),

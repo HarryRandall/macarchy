@@ -263,11 +263,21 @@ run_coalesced() {
   trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT INT TERM
 
   while :; do
-    rm -f "$DIRTY_FILE"
-    render "${RENDER_MODE:-update}"
-    RENDER_MODE=update
+    while :; do
+      rm -f "$DIRTY_FILE"
+      render "${RENDER_MODE:-update}"
+      RENDER_MODE=update
+      [ -e "$DIRTY_FILE" ] || break
+    done
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    # An event that arrived between the last check and releasing the lock saw
+    # the lock, left the flag and exited. Without this second look it is lost,
+    # which is how a burst of Space events (Mission Control) left the old
+    # Space highlighted.
     [ -e "$DIRTY_FILE" ] || break
+    mkdir "$LOCK_DIR" 2>/dev/null || break  # another run took over and will see the flag
   done
+  trap - EXIT INT TERM
 }
 
 case "${1:-}" in
