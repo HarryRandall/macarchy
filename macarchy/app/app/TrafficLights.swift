@@ -81,7 +81,29 @@ struct TrafficLights: NSViewRepresentable {
                     NotificationCenter.default.addObserver(
                         forName: name, object: window, queue: nil
                     ) { [weak self] _ in
-                        MainActor.assumeIsolated { self?.place() }
+                        MainActor.assumeIsolated {
+                            self?.place()
+                            self?.syncHover()
+                        }
+                    })
+            }
+            // The pointer can leave without an exit event: the window moves
+            // or resizes under it (yabai retiling, zoom, minimise), the
+            // tracking area is rebuilt while it is inside, or the Space
+            // changes. Each of these re-reads where the pointer really is.
+            for name: NSNotification.Name in [
+                NSWindow.didMoveNotification,
+                NSWindow.didResignKeyNotification,
+                NSWindow.didBecomeKeyNotification,
+                NSWindow.didChangeOcclusionStateNotification,
+                NSWindow.didMiniaturizeNotification,
+                NSWindow.didDeminiaturizeNotification
+            ] {
+                observers.append(
+                    NotificationCenter.default.addObserver(
+                        forName: name, object: window, queue: nil
+                    ) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.syncHover() }
                     })
             }
         }
@@ -173,10 +195,21 @@ struct TrafficLights: NSViewRepresentable {
                     rect: bounds,
                     options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                     owner: self))
+            // A rebuilt area does not report an exit for an entry it never saw.
+            syncHover()
         }
 
         override func mouseEntered(with event: NSEvent) { setMouseInside(true) }
         override func mouseExited(with event: NSEvent) { setMouseInside(false) }
+
+        /// Where the pointer really is, rather than what the last event said.
+        private var pointerIsInside: Bool {
+            guard let window, window.isVisible, !window.isMiniaturized else { return false }
+            let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            return bounds.contains(point)
+        }
+
+        private func syncHover() { setMouseInside(pointerIsInside) }
 
         private func setMouseInside(_ inside: Bool) {
             guard mouseInside != inside else { return }
@@ -189,7 +222,13 @@ struct TrafficLights: NSViewRepresentable {
         /// over the group before drawing its glyph. In the system title bar
         /// that is AppKit's own view; here it is this one. AppKit calls this
         /// private selector by name, so it cannot be renamed.
-        @objc func _mouseInGroup(_ button: NSButton) -> Bool { mouseInside }
+        @objc func _mouseInGroup(_ button: NSButton) -> Bool {
+            // Checked when drawing, so a missed exit can never leave the
+            // glyphs showing on the next redraw.
+            let inside = pointerIsInside
+            if inside != mouseInside { mouseInside = inside }
+            return inside
+        }
         // swiftlint:enable identifier_name
     }
 }

@@ -1,3 +1,5 @@
+<p align="center"><img src="macarchy/resources/logo.svg" width="180" alt="Macarchy logo"></p>
+
 # Macarchy
 
 A themed, tiling desktop for macOS in one app.

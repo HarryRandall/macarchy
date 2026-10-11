@@ -214,10 +214,15 @@ private struct Sidebar: View {
     /// heading for the navigation instead of as chrome.
     private var header: some View {
         HStack(spacing: Metrics.small) {
-            Image(systemName: "circle.lefthalf.filled")
-                .font(.system(size: 14))
-                .foregroundStyle(model.interfaceAccent)
-                .frame(width: 20)
+            Group {
+                if let logo = BrandMark.colour {
+                    Image(nsImage: logo).resizable().scaledToFit()
+                } else {
+                    Image(systemName: "circle.lefthalf.filled")
+                        .foregroundStyle(model.interfaceAccent)
+                }
+            }
+            .frame(width: 22, height: 18)
             if isVisible {
                 Text("Macarchy")
                     .font(.system(size: 14, weight: .semibold))
