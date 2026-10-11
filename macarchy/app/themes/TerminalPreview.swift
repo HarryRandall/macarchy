@@ -123,7 +123,7 @@ struct TerminalPreview: View {
             permissions(entry.mode)
             Text("  \(entry.size) ")
                 .foregroundStyle(entry.size.contains("-") ? palette.brightBlack : palette.green)
-            Text("harry ").foregroundStyle(palette.yellow)
+            Text("you ").foregroundStyle(palette.yellow)
             Text("\(entry.date) ").foregroundStyle(palette.brightBlack)
             Image(systemName: entry.kind.symbol)
                 .font(.system(size: compact ? 8 : 9))

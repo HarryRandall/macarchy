@@ -19,7 +19,7 @@ struct BarReplayTests {
         var component = BarComponent(
             id: "macarchy.test", title: "Text", side: "right", members: ["macarchy.test"])
         component.kind = "text"
-        component.text = "Harry's $(touch /tmp/never-execute)\n--remove calendar"
+        component.text = "Alex's $(touch /tmp/never-execute)\n--remove calendar"
         configuration.components = [component]
         try await BarCommands.replay(
             configuration,

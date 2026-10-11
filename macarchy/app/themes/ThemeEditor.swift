@@ -15,6 +15,8 @@ struct ThemeEditor: View {
     let close: () -> Void
 
     @State private var draft: Theme?
+    /// Read once per editor; listing plugin folders is cheap but not free.
+    @State private var installedColourschemes = NeovimColourschemes.discover()
     @State private var tab: Tab = .look
     @State private var error: String?
 
@@ -43,11 +45,16 @@ struct ThemeEditor: View {
                 HStack {
                     Spacer()
                     if let theme {
-                        Button(model.themes.isApplying ? "Applying…" : "Apply") {
+                        Button(
+                            model.themes.isApplying ? "Applying…" : isCurrent ? "Reapply" : "Apply"
+                        ) {
                             Task { await model.themes.apply(theme) }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(isCurrent || model.themes.isApplying)
+                        .disabled(model.themes.isApplying)
+                        .hoverHelp(
+                            isCurrent
+                                ? "Apply your edits to the desktop" : "Switch to this theme")
                     }
                 }
             }
@@ -184,23 +191,52 @@ struct ThemeEditor: View {
             colourRow("Menu bar background", \.colors.sketchybarBar, .argb, theme)
             colourRow("Menu bar text", \.colors.sketchybarText, .argb, theme)
             colourRow("Firefox accent", \.colors.firefoxAccent, .rgb, theme)
-            SettingRow("Neovim colorscheme") {
-                TextField(
-                    "",
-                    text: Binding(
-                        get: { draft?.apps.nvimColorscheme ?? "" },
-                        set: { value in
-                            guard var edited = draft else { return }
-                            edited.apps.nvimColorscheme = value.isEmpty ? nil : value
-                            draft = edited
-                        }
+            SettingRow(
+                "Neovim colourscheme",
+                help: "Found in your Neovim config and installed plugins. "
+                    + "Neovim needs a small hook to follow it; see the README."
+            ) {
+                Picker("Neovim colourscheme", selection: colourschemeBinding(theme)) {
+                    Text(
+                        "Theme default (\(ThemeOutputs(theme: defaultFor(theme), ghostty: "").nvim))"
                     )
-                )
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 180)
-                .onSubmit { if let draft { save(draft, to: theme) } }
+                    .tag(String?.none)
+                    Divider()
+                    ForEach(colourschemeOptions, id: \.self) { name in
+                        Text(installedColourschemes.contains(name) ? name : "\(name) (not found)")
+                            .tag(String?.some(name))
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 200)
             }
         }
+    }
+
+    private var colourschemeOptions: [String] {
+        var names = installedColourschemes
+        if let chosen = draft?.apps.nvimColorscheme, !names.contains(chosen) {
+            names.insert(chosen, at: 0)
+        }
+        return names
+    }
+
+    /// The manifest without an explicit scheme, to name what "default" means.
+    private func defaultFor(_ theme: InstalledTheme) -> Theme {
+        var manifest = draft ?? Theme(name: theme.name)
+        manifest.apps.nvimColorscheme = nil
+        return manifest
+    }
+
+    private func colourschemeBinding(_ theme: InstalledTheme) -> Binding<String?> {
+        Binding(
+            get: { draft?.apps.nvimColorscheme },
+            set: { value in
+                guard var edited = draft else { return }
+                edited.apps.nvimColorscheme = value
+                draft = edited
+                save(edited, to: theme)
+            })
     }
 
     private func colourRow(

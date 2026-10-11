@@ -234,3 +234,37 @@ public enum Setup {
         if case .failed(let message) = outcome { throw ConfigurationError(message) }
     }
 }
+
+extension Setup {
+    /// Starts every installed daemon: registers its LaunchAgent if needed,
+    /// otherwise restarts it so it reads the new startup files.
+    public static func startServices(
+        integrations: Integrations = Integrations()
+    ) async
+        -> [CommandResult]
+    {
+        var results: [CommandResult] = []
+        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+            if daemon.isRegistered {
+                results.append(await integrations.restart(daemon))
+                continue
+            }
+            switch daemon {
+            case .yabai, .skhd:
+                results.append(await integrations.execute(daemon.executable, ["--start-service"]))
+            case .sketchybar, .borders:
+                guard Paths.isInstalled("brew") else {
+                    results.append(
+                        CommandResult(
+                            command: daemon.startCommand, status: 1,
+                            stderr: "Homebrew is needed to start \(daemon.displayName)"))
+                    continue
+                }
+                results.append(
+                    await integrations.execute(
+                        Paths.executable("brew"), ["services", "start", daemon.rawValue]))
+            }
+        }
+        return results
+    }
+}

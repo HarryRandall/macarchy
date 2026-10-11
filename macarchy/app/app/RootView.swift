@@ -40,7 +40,11 @@ struct RootView: View {
                 ContentBar()
                 // On a narrow window the console takes the pane rather than
                 // squeezing a column in beside it.
-                if model.consoleOpen, !hasRoomForPanel {
+                if model.showingSetup {
+                    SetupView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
+                } else if model.consoleOpen, !hasRoomForPanel {
                     ConsolePanel(asPage: true)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
@@ -144,7 +148,8 @@ struct RootView: View {
         case .menuBar: MenuBarPane()
         case .rules: RulesPane()
         case .shortcuts: ShortcutsPane()
-        case .user: UserPane()
+        case .health: HealthPane()
+        case .report: ReportPane()
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")
         }
     }

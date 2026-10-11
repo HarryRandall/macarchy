@@ -26,7 +26,10 @@ final class AppModel {
     /// here rather than in a view so the palette and the menu can open it.
     var consoleOpen = false
 
-    private let backend: Integrations
+    /// Shown in place of the panes until setup has run, and from Advanced.
+    var showingSetup = !FileManager.default.fileExists(atPath: Paths.settings.path)
+
+    let backend: Integrations
 
     var selection: Pane? =
         Pane(rawValue: UserDefaults.standard.string(forKey: "selectedPane") ?? "home") ?? .home

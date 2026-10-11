@@ -12,7 +12,7 @@ struct SecureInputTests {
     private static func consoleUsers(_ extra: String) -> String {
         """
           |   "IOConsoleUsers" = ({"kCGSSessionOnConsoleKey"=Yes,"kCGSSessionIDKey"=257,\
-        "kCGSSessionUserNameKey"="harry"\(extra),"kCGSSessionUserIDKey"=501})
+        "kCGSSessionUserNameKey"="alex"\(extra),"kCGSSessionUserIDKey"=501})
         """
     }
 
@@ -39,7 +39,7 @@ struct SecureInputTests {
 
     @Test("names the app rather than its path")
     func ownerName() {
-        let path = "/Users/harry/Applications/Macarchy.app/Contents/MacOS/MacarchySettings\n"
+        let path = "/Users/alex/Applications/Macarchy.app/Contents/MacOS/MacarchySettings\n"
         #expect(SecureInput.owner(fromCommand: path, pid: 82230) == "MacarchySettings")
     }
 

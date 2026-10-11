@@ -2,8 +2,8 @@ import SwiftUI
 
 /// A listing in the grid.
 ///
-/// The card carries no hover help: it already shows its name, its category
-/// and its price, and a bubble describing it floated over the heading above.
+/// The card carries no hover help: it already shows its name and category,
+/// and a bubble describing it floated over the heading above.
 /// Hover reveals the action instead of describing the card.
 struct WorkshopCard: View {
     @Environment(AppModel.self) private var model
@@ -29,7 +29,7 @@ struct WorkshopCard: View {
         .animation(reduceMotion ? nil : Motion.hover, value: hovering)
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.name). \(item.subtitle). \(item.category). \(item.price)")
+        .accessibilityLabel("\(item.name). \(item.subtitle). \(item.category)")
     }
 
     private var artwork: some View {
@@ -64,22 +64,11 @@ struct WorkshopCard: View {
         .clipped()
     }
 
-    /// The price sits in the footer beside the name.
-    ///
-    /// Floated over the artwork it landed on the preview's own menu bar clock,
-    /// which read as a rendering fault rather than a badge.
     private var footer: some View {
         VStack(alignment: .leading, spacing: Metrics.xs + 1) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.small) {
                 Text(item.name).font(.cardTitle).lineLimit(1)
                 Spacer(minLength: Metrics.xs)
-                Text(item.price)
-                    .font(.badge)
-                    .monospacedDigit()
-                    .padding(.horizontal, Metrics.small)
-                    .padding(.vertical, 2)
-                    .background(item.accent.opacity(0.16), in: Capsule())
-                    .overlay(Capsule().strokeBorder(item.accent.opacity(0.35), lineWidth: 1))
             }
             Text(item.subtitle)
                 .font(.rowDetail).foregroundStyle(.secondary).lineLimit(1)
@@ -133,11 +122,6 @@ struct WorkshopRow: View {
             Spacer(minLength: Metrics.small)
 
             Text(item.category).font(.badge).foregroundStyle(Color.metaText)
-            Text(item.price)
-                .font(.badge)
-                .padding(.horizontal, Metrics.small)
-                .padding(.vertical, 2)
-                .background(item.accent.opacity(0.16), in: Capsule())
             Image(systemName: "chevron.right")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
         }
@@ -147,7 +131,7 @@ struct WorkshopRow: View {
         .overlay(shape.strokeBorder(Color.cardBorder, lineWidth: 1))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.name). \(item.subtitle). \(item.category). \(item.price)")
+        .accessibilityLabel("\(item.name). \(item.subtitle). \(item.category)")
     }
 
     private var shape: RoundedRectangle {

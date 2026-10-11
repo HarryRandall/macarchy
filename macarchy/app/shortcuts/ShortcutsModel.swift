@@ -113,6 +113,19 @@ final class ShortcutsModel {
         }
     }
 
+    func resetToDefaults(daemons: DaemonMonitor) async {
+        do {
+            _ = try SnapshotStore().capture([Self.configURL], reason: "reset shortcuts")
+            try Setup.installDefaultShortcuts()
+            log.note("reset shortcuts", "Installed the default shortcuts")
+            reload()
+            lastError = nil
+            await daemons.restart(.skhd)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     // MARK: - Rows
 
     /// The list flattened to headers and bindings.

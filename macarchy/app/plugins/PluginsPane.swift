@@ -22,15 +22,18 @@ struct PluginsPane: View {
     }
 
     var body: some View {
-        SettingsPage("Plugins", subtitle: "Your desktop. Only the extras you want.") {
+        SettingsPage("Plugins", subtitle: "Coming soon. Extras for the tools you already use.") {
             SearchField(prompt: "Search add-ons", text: $search, width: 190)
         } content: {
             filters
 
-            HStack {
-                SectionHeading("Optional add-ons", note: "\(filtered.count) shown")
-                HelpTooltip(text: "Catalogue preview. Installation is not available yet.")
-            }
+            Label(
+                "Plugins are not installable in this release. This is what is planned.",
+                systemImage: "clock"
+            )
+            .font(.meta).foregroundStyle(.secondary)
+
+            SectionHeading("Planned add-ons", note: "\(filtered.count) shown")
 
             if filtered.isEmpty {
                 ContentUnavailableView.search(text: search)

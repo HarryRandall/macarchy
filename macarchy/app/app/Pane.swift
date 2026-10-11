@@ -2,7 +2,7 @@ import Foundation
 
 enum Pane: String, CaseIterable, Identifiable, Hashable {
     case home, workshop, plugins, themes, borders, menuBar, layout, rules, shortcuts,
-        advanced, user
+        advanced, health, report
 
     var id: String { rawValue }
 
@@ -18,7 +18,8 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
         case .rules: "Rules"
         case .shortcuts: "Shortcuts"
         case .advanced: "Advanced"
-        case .user: "You"
+        case .health: "Setup health"
+        case .report: "Report a problem"
         }
     }
 
@@ -34,7 +35,8 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
         case .rules: "flag"
         case .shortcuts: "command"
         case .advanced: "gearshape"
-        case .user: "person.crop.circle"
+        case .health: "stethoscope"
+        case .report: "ladybug"
         }
     }
 
@@ -56,7 +58,7 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
             switch self {
             case .appearance: [.themes, .borders, .menuBar]
             case .behaviour: [.layout, .rules, .shortcuts]
-            case .system: [.advanced, .user]
+            case .system: [.health, .advanced, .report]
             }
         }
     }

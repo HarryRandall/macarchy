@@ -18,13 +18,9 @@ struct AddOn: Identifiable, Hashable {
         case exploring = "Exploring"
         case considering = "Considering"
 
-        var tone: StatusChip.Tone {
-            switch self {
-            case .planned: .good
-            case .exploring: .warning
-            case .considering: .idle
-            }
-        }
+        /// Neutral for every stage: nothing here is installable yet, and a
+        /// green badge read as "ready".
+        var tone: StatusChip.Tone { .idle }
     }
 
     static let categories = ["All", "Editor", "Terminal", "System", "Shell", "Bar"]
@@ -96,7 +92,7 @@ struct AddOn: Identifiable, Hashable {
             brings: ["Now-playing component", "Playback controls", "Themed to your palette"],
             stage: .planned),
         .init(
-            id: "aerospace", name: "Raycast", icon: "magnifyingglass",
+            id: "raycast", name: "Raycast", icon: "magnifyingglass",
             category: "System", tint: .pink,
             description: "A launcher that can drive the desktop as well as open apps.",
             detail: "The proposed integration would expose Macarchy actions as commands you can "

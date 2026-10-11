@@ -20,6 +20,8 @@ struct ShortcutsPane: View {
                 Button("Open configuration") {
                     NSWorkspace.shared.open(ShortcutsModel.configURL)
                 }
+                Divider()
+                Button("Reset to default shortcuts…") { confirmReset() }
             }
         } content: {
             HStack {
@@ -70,6 +72,19 @@ struct ShortcutsPane: View {
             }
         }
         .onAppear { if model.shortcuts.bindings.isEmpty { model.shortcuts.reload() } }
+    }
+
+    /// Replaces skhdrc with the defaults after a snapshot, so it can be undone
+    /// from Advanced.
+    private func confirmReset() {
+        let alert = NSAlert()
+        alert.messageText = "Reset to default shortcuts?"
+        alert.informativeText =
+            "Your current shortcuts are saved as a snapshot you can restore from Advanced."
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task { await model.shortcuts.resetToDefaults(daemons: model.daemons) }
     }
 
     private func edit(_ binding: SkhdBinding) {

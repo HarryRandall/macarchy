@@ -24,6 +24,7 @@ struct AdvancedPane: View {
             configuration
             backups
             compatibility
+            SetupCard()
         }
         .task {
             await model.daemons.refresh()
@@ -177,13 +178,13 @@ struct AdvancedPane: View {
 
     private var compatibility: some View {
         SettingsCard(
-            "Compatibility helpers",
-            help: "Helpers for this macOS version, checked whenever the page opens."
+            "yabai extras",
+            help: "Optional. Macarchy works without these, with System Integrity Protection on."
         ) {
             SettingRow(
-                "Switching between desktops",
+                "Scripting addition",
                 detail: addition?.explanation
-                    ?? "A helper keeps desktop switching working on macOS 27."
+                    ?? "Needed only for extras such as swapping whole desktops."
             ) {
                 HStack(spacing: Metrics.small) {
                     switch addition {
@@ -192,7 +193,7 @@ struct AdvancedPane: View {
                     case nil:
                         StatusChip(tone: .idle, label: "Checking…")
                     case .bundleMissing, .binaryMissing:
-                        StatusChip(tone: .bad, label: "Missing")
+                        StatusChip(tone: .idle, label: "Not installed")
                     case .ruleMissing, .hashStale:
                         StatusChip(tone: .warning, label: "Needs repair")
                         Button(repairingAddition ? "Repairing…" : "Repair") { repairAddition() }
@@ -202,9 +203,8 @@ struct AdvancedPane: View {
                 .motion(Motion.snappy, value: addition)
             }
             SettingRow(
-                "Recovering after sleep",
-                help: "A wake-up helper restores window features that may stop responding "
-                    + "after a long sleep."
+                "Window signals",
+                help: "Let floating rules reach new windows and keep focus when a window closes."
             ) {
                 switch wakeHelpers {
                 case true: StatusChip(tone: .good, label: "Active")

@@ -11,7 +11,7 @@ struct ScriptingAdditionTests {
     private static let stale = "372ad557a7c54a6199a78dcbcefe5b60fd0224e5c1f5139cfaed00dfdaa44501"
 
     private func rule(_ digest: String, binary: String = "/opt/homebrew/bin/yabai") -> String {
-        "harry ALL=(root) NOPASSWD: sha256:\(digest) \(binary) --load-sa\n"
+        "alex ALL=(root) NOPASSWD: sha256:\(digest) \(binary) --load-sa\n"
     }
 
     @Test("reads the pinned hash out of a real rule")
@@ -25,8 +25,8 @@ struct ScriptingAdditionTests {
     @Test("ignores rules for anything else")
     func otherRules() {
         let rules = """
-            harry ALL=(root) NOPASSWD: sha256:\(Self.stale) /usr/bin/something --else
-            harry ALL=(root) NOPASSWD: /opt/homebrew/bin/yabai --install-sa
+            alex ALL=(root) NOPASSWD: sha256:\(Self.stale) /usr/bin/something --else
+            alex ALL=(root) NOPASSWD: /opt/homebrew/bin/yabai --install-sa
             """
         #expect(ScriptingAddition.pinnedDigest(in: rules, binary: "/opt/homebrew/bin/yabai") == nil)
     }
@@ -36,7 +36,7 @@ struct ScriptingAdditionTests {
     @Test("treats a non-hex digest as no rule")
     func base64Digest() {
         let rules =
-            "harry ALL=(root) NOPASSWD: sha256:N60VV6fFSmGZ"
+            "alex ALL=(root) NOPASSWD: sha256:N60VV6fFSmGZ"
             + "p43by+9bYP0CJOXB9ROc+u0A39qkRQE= /opt/homebrew/bin/yabai --load-sa"
         #expect(ScriptingAddition.pinnedDigest(in: rules, binary: "/opt/homebrew/bin/yabai") == nil)
     }
@@ -75,10 +75,10 @@ struct ScriptingAdditionTests {
     @Test("refuses to build a script around an unexpected user name")
     func refusesOddUser() {
         let digest = String(repeating: "a", count: 64)
-        #expect(ScriptingAddition.repairScript(user: "harry'; rm -rf /", digest: digest) == nil)
+        #expect(ScriptingAddition.repairScript(user: "alex'; rm -rf /", digest: digest) == nil)
         #expect(ScriptingAddition.repairScript(user: "", digest: digest) == nil)
-        #expect(ScriptingAddition.repairScript(user: "harry", digest: "short") == nil)
-        #expect(ScriptingAddition.repairScript(user: "harry", digest: digest) != nil)
+        #expect(ScriptingAddition.repairScript(user: "alex", digest: "short") == nil)
+        #expect(ScriptingAddition.repairScript(user: "alex", digest: digest) != nil)
     }
 
     /// visudo has to run before install, or a rule this app got wrong becomes
@@ -86,7 +86,7 @@ struct ScriptingAdditionTests {
     @Test("validates the rule before installing it")
     func validatesBeforeInstalling() throws {
         let script = try #require(
-            ScriptingAddition.repairScript(user: "harry", digest: String(repeating: "b", count: 64))
+            ScriptingAddition.repairScript(user: "alex", digest: String(repeating: "b", count: 64))
         )
         let validate = try #require(script.range(of: "visudo -cf"))
         let install = try #require(script.range(of: "/usr/bin/install"))
@@ -127,7 +127,7 @@ struct ScriptingAdditionTests {
             if writeRule {
                 let pinned = rulePins ?? digest
                 try Data(
-                    "harry ALL=(root) NOPASSWD: sha256:\(pinned) \(binaryPath) --load-sa\n".utf8
+                    "alex ALL=(root) NOPASSWD: sha256:\(pinned) \(binaryPath) --load-sa\n".utf8
                 ).write(to: URL(fileURLWithPath: rulesPath))
             }
         }

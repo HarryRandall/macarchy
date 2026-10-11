@@ -98,6 +98,9 @@ public struct Theme: Codable, Sendable, Equatable {
                 throw ConfigurationError("Theme assets must stay inside the theme folder")
             }
         }
+        if let scheme = apps.nvimColorscheme, !NeovimColourschemes.isValidName(scheme) {
+            throw ConfigurationError("Invalid Neovim colourscheme name: \(scheme)")
+        }
         for colour in [
             colors.borderActive, colors.borderInactive, colors.sketchybarBar, colors.sketchybarText,
             colors.firefoxAccent

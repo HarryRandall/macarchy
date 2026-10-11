@@ -53,13 +53,6 @@ struct WorkshopDetail: View {
 
             Spacer(minLength: Metrics.medium)
 
-            Text(item.price)
-                .font(.cardTitle)
-                .padding(.horizontal, Metrics.medium)
-                .padding(.vertical, Metrics.xs)
-                .background(item.accent.opacity(0.16), in: Capsule())
-                .overlay(Capsule().strokeBorder(item.accent.opacity(0.35), lineWidth: 1))
-
             CloseButton(action: close)
         }
         .padding(Metrics.xl)
@@ -180,7 +173,7 @@ struct WorkshopDetail: View {
                 StatusChip(tone: .warning, label: "Concept preview")
                 HelpTooltip(
                     text:
-                        "Illustrative preview and price. Downloads and purchases are not available yet."
+                        "Illustrative preview. Downloads are not available yet."
                 )
             }
 

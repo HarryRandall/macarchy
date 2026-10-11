@@ -12,72 +12,63 @@
       "name": "Dusk",
       "category": "Desktop Packs",
       "subtitle": "A softer end to the day.",
-      "colour": "#C4A3DA",
-      "price": "\u00a38"
+      "colour": "#C4A3DA"
     },
     {
       "id": "moss",
       "name": "Moss",
       "category": "Themes",
       "subtitle": "A little closer to nature.",
-      "colour": "#9EB58B",
-      "price": "Free"
+      "colour": "#9EB58B"
     },
     {
       "id": "mono",
       "name": "Mono",
       "category": "Menu Bars",
       "subtitle": "Only the essentials.",
-      "colour": "#B8BEC8",
-      "price": "Free"
+      "colour": "#B8BEC8"
     },
     {
       "id": "clay",
       "name": "Clay",
       "category": "Themes",
       "subtitle": "Warmth in the small things.",
-      "colour": "#D69C80",
-      "price": "\u00a34"
+      "colour": "#D69C80"
     },
     {
       "id": "tide",
       "name": "Tide",
       "category": "Desktop Packs",
       "subtitle": "Room to find your flow.",
-      "colour": "#83BDBD",
-      "price": "\u00a38"
+      "colour": "#83BDBD"
     },
     {
       "id": "orbit",
       "name": "Orbit",
       "category": "Menu Bars",
       "subtitle": "Everything in its place.",
-      "colour": "#A5A9E0",
-      "price": "\u00a33"
+      "colour": "#A5A9E0"
     },
     {
       "id": "linen",
       "name": "Linen",
       "category": "Themes",
       "subtitle": "An easy kind of quiet.",
-      "colour": "#D1C7AC",
-      "price": "Free"
+      "colour": "#D1C7AC"
     },
     {
       "id": "ember",
       "name": "Ember",
       "category": "Themes",
       "subtitle": "A bright idea after dark.",
-      "colour": "#D58A73",
-      "price": "\u00a34"
+      "colour": "#D58A73"
     },
     {
       "id": "studio",
       "name": "Studio",
       "category": "Menu Bars",
       "subtitle": "Made for your working day.",
-      "colour": "#9BB0C7",
-      "price": "Free"
+      "colour": "#9BB0C7"
     }
   ]
 }
