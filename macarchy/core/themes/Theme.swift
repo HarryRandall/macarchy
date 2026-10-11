@@ -2,12 +2,8 @@ import Foundation
 
 /// A theme as portable data.
 ///
-/// `theme.env` is shell that gets `source`d by bordersrc, which makes an
-/// imported theme arbitrary code at login. A manifest is inert data: it can be
-/// validated before use, diffed against a default, and carry a version.
-///
-/// The env file is not replaced — it is *generated* from this, so theme-switch
-/// and bordersrc keep working untouched.
+/// A manifest is inert data: it can be validated before use, diffed against a
+/// default and carry a version. Nothing in a theme is ever executed.
 public struct Theme: Codable, Sendable, Equatable {
     public var schema: Int = 1
     public var name: String
@@ -60,8 +56,7 @@ public struct Theme: Codable, Sendable, Equatable {
 
     public static let fileName = "theme.json"
 
-    /// Maps manifest fields to the env keys the existing shell already reads.
-    /// One table drives both directions so they cannot drift apart.
+    /// Maps manifest colours to the flat keys integrations read.
     private static var colorKeys: [(WritableKeyPath<Colors, String?>, String)] {
         [
             (\.borderActive, "BORDER_ACTIVE"),
@@ -72,35 +67,8 @@ public struct Theme: Codable, Sendable, Equatable {
         ]
     }
 
-    // MARK: - Writing the legacy format
-
-    /// Regenerates the env file the shell still consumes.
-    public func envRepresentation() -> String {
-        func escaped(_ value: String) -> String {
-            value.replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "\"", with: "\\\"")
-                .replacingOccurrences(of: "$", with: "\\$")
-                .replacingOccurrences(of: "`", with: "\\`")
-        }
-        var lines = [
-            "# Generated from \(Self.fileName) by Macarchy Settings — do not edit by hand.",
-            "DARK_MODE=\(dark)"
-        ]
-        if let wallpaper { lines.append("WALLPAPER=\"\(escaped(wallpaper))\"") }
-        if let scheme = apps.nvimColorscheme {
-            lines.append("NVIM_COLORSCHEME=\"\(escaped(scheme))\"")
-        }
-        for (keyPath, envKey) in Self.colorKeys {
-            if let value = colors[keyPath: keyPath] {
-                lines.append("\(envKey)=\"\(escaped(value))\"")
-            }
-        }
-        return lines.joined(separator: "\n") + "\n"
-    }
-
-    /// The env dictionary this manifest represents, for comparing against an
-    /// existing file without writing anything.
-    public func envValues() -> [String: String] {
+    /// The manifest as flat values, keyed the way integrations consume them.
+    public func flatValues() -> [String: String] {
         var values: [String: String] = ["DARK_MODE": String(dark)]
         if let wallpaper { values["WALLPAPER"] = wallpaper }
         if let scheme = apps.nvimColorscheme { values["NVIM_COLORSCHEME"] = scheme }

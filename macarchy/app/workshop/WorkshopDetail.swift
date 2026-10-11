@@ -85,7 +85,7 @@ struct WorkshopDetail: View {
                 accent: item.accent,
                 background: palette.background
             ) {
-                TerminalPreview(palette: palette, themeName: "macarchy-settings")
+                TerminalPreview(palette: palette, themeName: "macarchy")
             }
         } else {
             ContentUnavailableView(

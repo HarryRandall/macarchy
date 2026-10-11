@@ -117,9 +117,8 @@ final class AppModel {
         previewTheme?.accent ?? Color(nsColor: .controlAccentColor)
     }
 
-    /// The two signals `yabairc` registers to put the desktop back together
-    /// after a long sleep. Reading them back is the only way to know they took:
-    /// a signal that failed to register leaves no other trace.
+    /// The signals `macarchy startup yabai` registers. Reading them back is
+    /// the only way to know they took: a failed registration leaves no trace.
     func wakeHelpersRegistered() async -> Bool {
         let result = await backend.execute(Paths.yabai, ["-m", "signal", "--list"])
         guard result.ok,
@@ -127,7 +126,7 @@ final class AppModel {
                 as? [[String: Any]]
         else { return false }
         let labels = Set(signals.compactMap { $0["label"] as? String })
-        return labels.isSuperset(of: ["reload_sa", "restart_borders"])
+        return labels.isSuperset(of: ["macarchy_window_created", "macarchy_refocus_destroyed"])
     }
 
     /// Re-pins the sudo rule that lets the desktop-switching helper load. The

@@ -44,7 +44,7 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
             }
         }
         var settings = SettingsDocument()
-        settings.mergeLegacy(
+        settings.mergeFlat(
             Dictionary(
                 uniqueKeysWithValues: geometry.compactMap { key, value in
                     StartupConfiguration.envName(forBarKey: key).map { ($0, value) }

@@ -5,7 +5,7 @@ import Macarchy
 struct InstalledTheme: Identifiable, Sendable {
     let name: String
     let directory: URL
-    var values: [String: String] { manifest?.envValues() ?? [:] }
+    var values: [String: String] { manifest?.flatValues() ?? [:] }
 
     var id: String { name }
 
@@ -15,11 +15,8 @@ struct InstalledTheme: Identifiable, Sendable {
     var isDark: Bool { manifest?.dark ?? (values["DARK_MODE"] != "false") }
     var colorscheme: String? { manifest?.apps.nvimColorscheme ?? values["NVIM_COLORSCHEME"] }
 
-    /// The background actually in force.
-    ///
-    /// `.backgrounds.json` records the per-theme choice and overrides the
-    /// `WALLPAPER` line in theme.env — for most themes the two already disagree,
-    /// so reading theme.env alone would show the wrong image.
+    /// The background actually in force: the saved per-theme choice, then the
+    /// manifest's default.
     var wallpaperRelativePath: String? { selectedBackground ?? manifest?.wallpaper }
 
     var selectedBackground: String?

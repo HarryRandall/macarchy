@@ -1,19 +1,17 @@
 import CryptoKit
 import Foundation
 
-/// Whether yabai is still permitted to load its scripting addition.
+/// yabai's optional scripting addition, and whether it is still permitted to load.
 ///
-/// Switching desktops is the one thing yabai cannot do through the public APIs,
-/// so it loads a scripting addition into Dock.app to do it. Loading needs root,
-/// and `yabairc` gets that from a passwordless sudo rule which pins the SHA-256
-/// of the yabai binary — an unpinned rule would hand a password-less root shell
-/// to anyone who could replace that file.
+/// Everything Macarchy itself does works with System Integrity Protection on,
+/// using yabai 7.1.25 or newer. The addition is only needed for extras such as
+/// swapping whole Spaces, window opacity or sticky windows, and it requires
+/// SIP to be partly disabled. So none of this is ever reported as a failure.
 ///
-/// Upgrading yabai changes the hash, so the rule stops matching. The failure is
-/// silent in the worst way: `sudo` asks for a password, launchd has no terminal
-/// to ask at, and the load fails at login with nothing on screen to say so.
-/// Every other yabai feature keeps working — only desktop switching goes quiet.
-/// Nothing here needs privileges; the sudoers file is world-readable by design.
+/// Loading needs root, which `yabairc` usually gets from a passwordless sudo
+/// rule pinning the SHA-256 of the yabai binary. Upgrading yabai changes the
+/// hash and the load silently stops working; this reads that state without
+/// privileges, because the sudoers file is world-readable by design.
 public enum ScriptingAddition {
     public static let sudoersPath = "/etc/sudoers.d/yabai"
     public static let bundlePath = "/Library/ScriptingAdditions/yabai.osax"
@@ -36,19 +34,18 @@ public enum ScriptingAddition {
         public var explanation: String {
             switch self {
             case .permitted:
-                "Desktop switching has the permission it needs."
+                "The scripting addition has permission to load."
             case .binaryMissing:
                 "The window manager is not installed at \(Paths.yabai)."
             case .bundleMissing:
-                "The desktop-switching helper is not installed. Run "
-                    + "`sudo yabai --install-sa` to put it in place."
+                "Not installed. It is optional and needs System Integrity "
+                    + "Protection partly disabled; `sudo yabai --load-sa` installs it."
             case .ruleMissing:
-                "The helper has no permission to load, so switching desktops "
-                    + "does nothing. Repairing grants it again."
+                "Installed, but it has no permission to load at login. "
+                    + "Repairing grants it again."
             case .hashStale:
-                "The window manager was updated, so the helper that switches "
-                    + "desktops lost permission to load. Every other window "
-                    + "feature keeps working, which is why this is easy to miss."
+                "yabai was updated, so the scripting addition lost permission "
+                    + "to load. Everything Macarchy needs keeps working."
             }
         }
     }

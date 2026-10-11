@@ -5,7 +5,7 @@ public enum Startup {
         _ name: String, integrations: Integrations = Integrations()
     ) async throws {
         let settings = try SettingsStore().read()
-        let values = settings.legacyValues
+        let values = settings.flatValues
         func require(_ result: CommandResult) throws {
             guard result.ok else {
                 throw ConfigurationError(result.command + ": " + result.summary)
@@ -18,10 +18,16 @@ public enum Startup {
                     await integrations.yabaiWrite(
                         setting.key, value: values[setting.env] ?? setting.fallback))
             }
+            for signal in signals {
+                try require(await integrations.execute(Paths.yabai, signal))
+            }
             try await WindowRules.apply(
                 settings.floatingApps, customRules: settings.windowRules ?? [],
                 integrations: integrations)
         case "sketchybar":
+            if settings.bundledBar ?? true {
+                try require(await bundledBar(integrations: integrations))
+            }
             let arguments = StartupConfiguration.sketchybarKeys.map {
                 "\($0.key)=\(values[$0.env] ?? $0.fallback)"
             }
@@ -49,5 +55,37 @@ public enum Startup {
                 await integrations.borders(BorderCommand.arguments(values: values, theme: theme)))
         default: throw ConfigurationError("Unknown integration: \(name)")
         }
+    }
+
+    /// yabai signals Macarchy relies on. Labels make re-adding them replace
+    /// the previous registration instead of stacking duplicates.
+    static var signals: [[String]] {
+        let cli = Paths.appLink.appending(path: "Contents/MacOS/macarchy").path
+        let refocus =
+            "\(Paths.yabai) -m query --windows --window >/dev/null 2>&1"
+            + " || \(Paths.yabai) -m window --focus first >/dev/null 2>&1"
+        return [
+            ("macarchy_window_created", "window_created", "'\(cli)' rules window-created"),
+            ("macarchy_window_deminimized", "window_deminimized", "'\(cli)' rules window-created"),
+            ("macarchy_refocus_destroyed", "window_destroyed", refocus),
+            ("macarchy_refocus_terminated", "application_terminated", refocus)
+        ].map { label, event, action in
+            ["-m", "signal", "--add", "label=\(label)", "event=\(event)", "action=\(action)"]
+        }
+    }
+
+    /// Builds the bar shipped with the app. The scripts are addressed through
+    /// the app link so the items keep working when the app is updated in place.
+    static func bundledBar(integrations: Integrations) async -> CommandResult {
+        let stable = Paths.appLink.appending(path: "Contents/Resources/sketchybar")
+        let directory =
+            FileManager.default.fileExists(atPath: stable.path)
+            ? stable : Paths.resources?.appending(path: "sketchybar")
+        guard let directory else {
+            return CommandResult(
+                command: "menu bar", status: 1,
+                stderr: "The bundled menu bar is missing. Reinstall Macarchy.")
+        }
+        return await integrations.execute("/bin/bash", [directory.appending(path: "bar.sh").path])
     }
 }

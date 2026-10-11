@@ -14,12 +14,12 @@ struct BorderExclusionTests {
     @Test("removing the initial exclusion survives settings encoding and command generation")
     func removedExclusion() throws {
         var settings = SettingsDocument()
-        settings.mergeLegacy(["BORDERS_BLACKLIST": ""])
+        settings.mergeFlat(["BORDERS_BLACKLIST": ""])
         let restored = try JSONDecoder().decode(
             SettingsDocument.self, from: JSONEncoder().encode(settings))
-        #expect(restored.legacyValues["BORDERS_BLACKLIST"]?.isEmpty == true)
+        #expect(restored.flatValues["BORDERS_BLACKLIST"]?.isEmpty == true)
         #expect(
-            BorderCommand.arguments(values: restored.legacyValues, theme: nil).contains(
+            BorderCommand.arguments(values: restored.flatValues, theme: nil).contains(
                 "blacklist="))
     }
 

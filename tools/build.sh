@@ -29,24 +29,25 @@ cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
 cp "$ROOT/macarchy/app/resources/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$ROOT/macarchy/app/resources/AppIcon.icns" ] && cp "$ROOT/macarchy/app/resources/AppIcon.icns" "$APP/Contents/Resources/"
 
-# Shipped theme defaults, used as the reset-to-default baseline.
-if [ -d "$ROOT/macarchy/resources/themes" ]; then
-  cp -R "$ROOT/macarchy/resources/themes" "$APP/Contents/Resources/Themes"
-  echo "    bundled $(find "$ROOT/macarchy/resources/themes" -name theme.json | wc -l | tr -d ' ') default themes"
-fi
+# Themes, the starter bar and default shortcuts. The command line tool ships
+# inside the app, so one bundle is the whole install.
+cp -R "$ROOT/macarchy/resources/." "$APP/Contents/Resources/"
+CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
+cp "$CLI_PATH" "$APP/Contents/MacOS/macarchy"
+echo "    bundled $(find "$ROOT/macarchy/resources/themes" -name theme.json | wc -l | tr -d ' ') themes, the menu bar and default shortcuts"
 
 echo "==> Signing"
 IDENTITY="${MACARCHY_SIGN_IDENTITY:-}"
 if [ -n "$IDENTITY" ]; then
+  codesign --force --options runtime --sign "$IDENTITY" "$APP/Contents/MacOS/macarchy"
   codesign --force --deep --options runtime --sign "$IDENTITY" "$APP"
   echo "    signed as: $IDENTITY"
 else
+  codesign --force --sign - "$APP/Contents/MacOS/macarchy"
   codesign --force --deep --sign - "$APP"
   echo "    signed ad-hoc — permissions will reset on each rebuild."
   echo "    Create a self-signed cert in Keychain Access and export"
   echo "    MACARCHY_SIGN_IDENTITY=\"<cert name>\" to keep a stable identity."
 fi
 
-CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
-cp "$CLI_PATH" "$DIST/macarchy"
-echo "==> Built: $APP and $DIST/macarchy (not installed)"
+echo "==> Built: $APP (not installed)"

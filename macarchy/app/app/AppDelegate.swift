@@ -1,4 +1,5 @@
 import AppKit
+import Macarchy
 
 /// Keeps Macarchy in the menu bar after its window is gone, like Docker Desktop.
 ///
@@ -11,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        repairAppLink()
         windowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: nil, queue: .main
         ) { notification in
@@ -24,6 +26,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if remaining.isEmpty { AppDelegate.hideToMenuBar() }
             }
         }
+    }
+
+    /// Startup files reach the CLI through a link to the app. If the app was
+    /// moved or replaced since setup, point the link at this copy. Before
+    /// setup there is no link, and opening the app changes nothing.
+    private func repairAppLink() {
+        let bundle = Bundle.main.bundleURL
+        guard bundle.pathExtension == "app",
+            let current = try? FileManager.default.destinationOfSymbolicLink(
+                atPath: Paths.appLink.path),
+            current != bundle.resolvingSymlinksInPath().path
+        else { return }
+        try? Setup.link(bundle)
     }
 
     /// Relaunching from Finder or Spotlight while hidden reopens the window.

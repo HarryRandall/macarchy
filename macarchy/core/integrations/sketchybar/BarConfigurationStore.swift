@@ -38,7 +38,7 @@ public struct BarConfigurationStore: Sendable {
             for (key, value) in configuration.geometry {
                 if let name = StartupConfiguration.envName(forBarKey: key) { values[name] = value }
             }
-            settings.mergeLegacy(values)
+            settings.mergeFlat(values)
             settings.itemOrder = []
             settings.itemVisibility = [:]
             settings.itemLabels = [:]

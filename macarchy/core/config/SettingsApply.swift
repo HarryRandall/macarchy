@@ -14,7 +14,7 @@ public actor SettingsApply {
             do {
                 return try await OperationLock.run(root: store.url.deletingLastPathComponent()) {
                     var proposed = try store.read()
-                    proposed.mergeLegacy(values)
+                    proposed.mergeFlat(values)
                     try proposed.validate()
                     let result = await command()
                     guard result.ok else { return result }

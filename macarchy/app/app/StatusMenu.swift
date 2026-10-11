@@ -1,7 +1,7 @@
 import SwiftUI
 import Macarchy
 
-/// The menu bar surface that retires the Raycast theme-switcher extension.
+/// The status item menu: theme switching and quick actions.
 struct StatusMenu: View {
     @Environment(AppModel.self) private var model
 

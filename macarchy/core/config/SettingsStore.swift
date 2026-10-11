@@ -46,6 +46,8 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var itemOrder: [String] = []
     public var itemVisibility: [String: Bool] = [:]
     public var itemLabels: [String: String] = [:]
+    /// False when setup kept the person's existing bar instead of Macarchy's.
+    public var bundledBar: Bool?
     public init() {}
 
     public func validate() throws {
@@ -81,7 +83,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
             "SKETCHYBAR_HEIGHT": 1...200, "SKETCHYBAR_BLUR_RADIUS": 0...100
         ]
         for (key, range) in ranges {
-            if let raw = legacyValues[key] {
+            if let raw = flatValues[key] {
                 guard let number = Double(raw), number.isFinite, range.contains(number) else {
                     throw ConfigurationError("\(key) is outside its supported range")
                 }
@@ -89,7 +91,8 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         }
     }
 
-    public var legacyValues: [String: String] {
+    /// Settings keyed the way integrations consume them, such as `YABAI_WINDOW_GAP`.
+    public var flatValues: [String: String] {
         var result: [String: String] = [:]
         for (prefix, values) in [("YABAI_", layout), ("", borders), ("SKETCHYBAR_", menuBar)] {
             for (key, value) in values {
@@ -104,7 +107,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         return result
     }
 
-    public mutating func mergeLegacy(_ values: [String: String]) {
+    public mutating func mergeFlat(_ values: [String: String]) {
         for (key, raw) in values {
             let value: SettingValue
             if ["true", "false", "on", "off"].contains(raw) {
@@ -131,18 +134,13 @@ public struct ConfigurationError: LocalizedError {
     public var errorDescription: String? { message }
 }
 
-/// JSON is authoritative. The legacy reader is used only before explicit migration.
+/// JSON is authoritative. A missing file reads as defaults; setup creates it.
 public struct SettingsStore: Sendable {
     public let url: URL
-    public init(url: URL = Paths.appRoot.appending(path: "settings.json")) { self.url = url }
+    public init(url: URL = Paths.settings) { self.url = url }
 
     public func read() throws -> SettingsDocument {
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            var settings = SettingsDocument()
-            settings.mergeLegacy(
-                EnvFile.parse(url.deletingLastPathComponent().appending(path: "settings.env")))
-            return settings
-        }
+        guard FileManager.default.fileExists(atPath: url.path) else { return SettingsDocument() }
         let settings = try JSONDecoder().decode(SettingsDocument.self, from: Data(contentsOf: url))
         guard settings.schema == 1 else {
             throw ConfigurationError("Unsupported settings schema: \(settings.schema)")
@@ -151,11 +149,11 @@ public struct SettingsStore: Sendable {
         return settings
     }
 
-    public func load() throws -> [String: String] { try read().legacyValues }
+    public func load() throws -> [String: String] { try read().flatValues }
     public func set(_ key: String, _ value: String) throws {
-        try update { $0.mergeLegacy([key: value]) }
+        try update { $0.mergeFlat([key: value]) }
     }
-    public func write(_ values: [String: String]) throws { try update { $0.mergeLegacy(values) } }
+    public func write(_ values: [String: String]) throws { try update { $0.mergeFlat(values) } }
 
     /// The app and CLI may write at the same time. Lock the whole read-modify-write.
     public func update(_ edit: (inout SettingsDocument) throws -> Void) throws {

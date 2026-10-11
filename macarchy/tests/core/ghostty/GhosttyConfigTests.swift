@@ -3,70 +3,38 @@ import Testing
 
 @testable import Macarchy
 
-/// The port is only trustworthy if it still matches the shell it replaced, so
-/// these run the original awk|grep pipeline (kept verbatim as reference.sh) and
-/// diff it against the Swift for the inputs most likely to diverge.
-@Suite("GhosttyConfig vs the shell it replaced")
-struct GhosttyApplierTests {
-    static let reference = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appending(path: "fixtures/ghostty/reference.sh")
+/// Ghostty's own config belongs to the person. Macarchy only ever adds or
+/// removes one include line, and both directions must leave everything else
+/// exactly as it was.
+@Suite("Ghostty include")
+struct GhosttyConfigTests {
+    @Test("adds the include once and keeps the rest of the file")
+    func addsOnce() {
+        let original = "font-size = 14\nbackground = #101010"
+        let updated = GhosttyConfig.addingInclude(to: original)
+        #expect(updated.hasPrefix(original + "\n"))
+        #expect(GhosttyConfig.hasInclude(updated))
+        #expect(GhosttyConfig.addingInclude(to: updated) == updated)
+    }
 
-    static let themeConf = """
-        background = #0A1622
-        foreground = #E4EDF5
-        palette = 0=#000000
-        palette = 4=#66CCFF
-        """
+    @Test("an empty or missing config gets just the include")
+    func emptyConfig() {
+        let updated = GhosttyConfig.addingInclude(to: "")
+        #expect(updated == GhosttyConfig.comment + "\n" + GhosttyConfig.includeLine + "\n")
+    }
 
-    /// Inputs chosen for the ways the pipeline can differ: blank-run handling
-    /// (the awk drops trailing but keeps interior), whitespace around keys, an
-    /// existing theme marker, and near-miss keys such as background-opacity that
-    /// a naive prefix match would eat.
-    static let cases: [(name: String, config: String)] = [
-        ("trailing-blanks", "font-size = 13\n\n\n\nwindow-padding-x = 8\n\n\n"),
-        ("interior-blanks", "a = 1\n\nb = 2\n\n\nc = 3\n"),
-        (
-            "colour-lines",
-            "background = #111111\nfont-size = 13\npalette = 0=#000000\ntheme = foo\n"
-        ),
-        ("whitespace", "  background   =   #111111\n\tforeground=#fff\nfont-size = 13\n"),
-        ("config-file-refs", "config-file = ~/.themes/x.conf\nconfig-file = ~/o/y.conf\nfont=13\n"),
-        ("existing-marker", "font-size = 13\n# --- THEME COLORS (old) ---\nbackground = #999\n"),
-        ("empty", ""),
-        ("near-miss-keys", "backgroundish = 1\nforegrounds = 2\nbackground-opacity = 0.9\n")
-    ]
+    @Test("removing the include restores the original text")
+    func removeRoundTrips() {
+        let original = "font-size = 14\n"
+        let added = GhosttyConfig.addingInclude(to: original)
+        #expect(GhosttyConfig.removingInclude(from: added).hasPrefix("font-size = 14\n"))
+        #expect(!GhosttyConfig.hasInclude(GhosttyConfig.removingInclude(from: added)))
+    }
 
-    @Test("matches the shell", arguments: cases)
-    func matchesShell(testCase: (name: String, config: String)) throws {
-        try #require(FileManager.default.isExecutableFile(atPath: Self.reference.path))
-
-        let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appending(path: "macarchy-ghostty-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-
-        let configURL = root.appending(path: "config")
-        let themeURL = root.appending(path: "theme.conf")
-        try testCase.config.write(to: configURL, atomically: true, encoding: .utf8)
-        try Self.themeConf.write(to: themeURL, atomically: true, encoding: .utf8)
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = [Self.reference.path, configURL.path, themeURL.path, "midnight"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        try process.run()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        let shell = try #require(String(data: data, encoding: .utf8))
-        let swift = GhosttyConfig.transform(
-            config: testCase.config, themeConf: Self.themeConf, themeName: "midnight")
-
-        #expect(swift == shell, "\(testCase.name) diverged from the shell")
+    @Test("other config-file lines are left alone")
+    func unrelatedIncludes() {
+        let text = "config-file = ?~/.config/ghostty/extra\n"
+        #expect(!GhosttyConfig.hasInclude(text))
+        #expect(GhosttyConfig.removingInclude(from: text) == text)
     }
 }

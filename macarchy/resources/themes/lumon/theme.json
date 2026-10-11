@@ -1,14 +1,13 @@
 {
-  "apps" : {
-    "ghosttyConfig" : "ghostty.conf",
-    "nvimColorscheme" : "lumon"
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "rose-pine-dawn"
   },
-  "colors" : {
-    "borderActive" : "0xfff2fcff",
-    "borderInactive" : "0x00000000"
+  "colors": {
+    "borderActive": "0xfff2fcff",
+    "borderInactive": "0x00000000"
   },
-  "dark" : true,
-  "name" : "lumon",
-  "schema" : 1,
-  "wallpaper" : "wall.jpg"
+  "dark": true,
+  "name": "lumon",
+  "schema": 1
 }

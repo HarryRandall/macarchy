@@ -54,7 +54,7 @@ final class ThemeCatalog {
                     palette: GhosttyPalette.load(from: url))
             }
 
-        log.note("loaded themes", "\(themes.count) in ~/.config/themes")
+        log.note("loaded themes", "\(themes.count) in \(Paths.display(Paths.themesDirectory))")
     }
 
     /// Saves the theme definition; compatibility outputs are refreshed when applied.
@@ -76,8 +76,8 @@ final class ThemeCatalog {
 
     /// Themes shipped inside the app bundle, used as the reset baseline.
     static func bundledDefault(named name: String) -> Theme? {
-        guard let resources = Bundle.main.resourceURL else { return nil }
-        return Theme.load(from: resources.appending(path: "Themes/\(name)"))
+        guard let resources = Paths.resources else { return nil }
+        return Theme.load(from: resources.appending(path: "themes/\(name)"))
     }
 
     func hasDefault(_ theme: InstalledTheme) -> Bool {
