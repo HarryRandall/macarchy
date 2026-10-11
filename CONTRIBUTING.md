@@ -5,9 +5,11 @@ installation, preserve unrelated work, and commit focused, reviewable changes.
 
 ## Checks
 
-Run `swift build`, `swift test` and `./tools/lint.sh`. After an installed
-configuration change, run `macarchy doctor`. Unit tests must use temporary
-configuration directories and must not alter the running desktop.
+Run `swift build`, `swift test`, `./tools/lint.sh` and
+`macarchy/tests/integration/setup.sh`. CI runs the same. Tests must use temporary
+homes (`MACARCHY_HOME`), fake tools (`MACARCHY_SEARCH_PATH`) and must never alter
+the running desktop. Tool versions: Xcode 27's `swift-format`, and the SwiftLint
+release pinned in `.github/workflows/ci.yml`.
 
 ## Structure and naming
 
@@ -32,12 +34,14 @@ needs them. Prefer small concrete types over generic frameworks.
   source in shell files.
 - Snapshot before destructive writes. Preserve custom startup regions and
   report externally edited generated files.
-- Keep wallpaper handling in the existing `set-wallpaper` helper. Preserve the
-  temporary macOS Space-switching workaround until separately verified.
-- Before removing a compatibility output, inspect its readers on the machine.
-  Shell hooks and external tools are not all discoverable in this repository.
-- Validate shell ports against reference output before changing the installed
-  entry point. Keep reference scripts in tests, not production code.
+- Everything Macarchy owns lives in `~/.config/macarchy`, through `Paths`.
+  Write outside it only where a tool requires a fixed location, and only after
+  `Setup` has backed the file up.
+- Every integration is optional. Detect it, skip it when it is missing, and say
+  so; never fail a whole operation because one tool is absent.
+- Locate executables with `Paths.executable`, never a hard-coded prefix.
+- Ship desktop files in `macarchy/resources`; they are bundled into the app.
+- Nothing here may require System Integrity Protection to be disabled.
 
 ## Style
 
@@ -45,9 +49,14 @@ Use British English, straight apostrophes and no em dashes in new prose.
 Comments explain constraints and decisions; avoid repeating code or recording
 volatile line counts. Use Swift 6 concurrency checks and the repository formatter.
 
-Commit messages use `feat:`, `fix:` or `refactor:`. Do not add agent co-author
-trailers. Preserve the existing app identity and executable during the visible
-rename so macOS permissions and launch references remain stable.
+Commit messages use `feat:`, `fix:`, `refactor:` or `docs:`.
+
+## Errors and logging
+
+Throw `ConfigurationError` with a sentence a person can act on. Use `try?` only
+where absence is an expected, documented outcome. In the app, record command
+results with `CommandLog.record`, notes with `note` and failures with `failure`.
+Report partial application explicitly rather than as success.
 
 ## Interface help
 

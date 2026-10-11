@@ -20,5 +20,9 @@
     <string>26.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Macarchy switches between light and dark mode to match your theme.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Free software under the GNU GPL v3.0.</string>
 </dict>
 </plist>
