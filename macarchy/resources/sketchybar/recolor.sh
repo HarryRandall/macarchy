@@ -14,7 +14,7 @@ SKETCHYBAR="$(macarchy_find sketchybar)"
 "$BAR_DIR/plugins/spaces.sh" --recolor
 
 # --default only affects items added later, so existing ones are set too.
-args=(--default icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR")
+args=(--bar color="$BAR_COLOR" --default icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR")
 for item in calendar battery cpu memory; do
   "$SKETCHYBAR" --query "$item" >/dev/null 2>&1 &&
     args+=(--set "$item" icon.color="$TEXT_COLOR" label.color="$TEXT_COLOR")

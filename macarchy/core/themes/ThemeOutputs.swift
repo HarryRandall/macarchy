@@ -39,7 +39,9 @@ public struct ThemeOutputs: Sendable {
         theme.colors.sketchybarText ?? "0xff"
             + colour("foreground", fallback: theme.dark ? "#ffffff" : "#000000").dropFirst()
     }
-    public var barBackground: String { theme.colors.sketchybarBar ?? "0x00000000" }
+    /// One step above transparent when unset: a fully transparent bar is
+    /// treated as pass-through by the compositor and leaves stale pixels.
+    public var barBackground: String { theme.colors.sketchybarBar ?? "0x01000000" }
     /// The theme's chosen colourscheme, or a default that matches its brightness.
     public var nvim: String {
         theme.apps.nvimColorscheme ?? (theme.dark ? "tokyonight-night" : "tokyonight-day")

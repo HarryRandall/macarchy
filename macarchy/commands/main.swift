@@ -31,13 +31,13 @@ do {
         let existing: Setup.Existing = args.contains("--replace") ? .replace : .keep
         // The CLI lives inside the app bundle, so its bundle is the app to link.
         let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
-        for line in try Setup.run(existing: existing, app: app) { print(line) }
+        for line in try await Setup.run(existing: existing, app: app) { print(line) }
         if !args.contains("--no-apply"), let theme = try SettingsStore().read().currentTheme {
             try require(await ThemeApplication().apply(name: theme))
         }
         print("Done. Restart the services from the app, or run: macarchy doctor")
     case "uninstall":
-        for line in try Setup.uninstall() { print(line) }
+        for line in try await Setup.uninstall() { print(line) }
     case "doctor": try require(await Doctor.check())
     case "apply": try await DesktopConfiguration.apply()
     case "startup":

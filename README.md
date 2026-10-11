@@ -23,7 +23,7 @@ things in a native settings window instead of editing dotfiles.
 1. Install the tools Macarchy configures:
 
    ```sh
-   brew bundle --file=https://raw.githubusercontent.com/HarryRandall/macarchy/main/Brewfile
+   curl -fsSL https://raw.githubusercontent.com/HarryRandall/macarchy/main/Brewfile | brew bundle --file=-
    ```
 
    Or one at a time: `brew install asmvik/formulae/yabai asmvik/formulae/skhd
@@ -48,9 +48,12 @@ things in a native settings window instead of editing dotfiles.
 
 Setup asks what to do with existing yabai, skhd and SketchyBar configs:
 
-- **Keep mine and add Macarchy.** Your shortcuts and bar stay as they are. Simple
-  `yabai -m config` lines move into Macarchy's Layout page; every other line,
-  including loops and conditionals, is kept word for word.
+- **Keep mine and add Macarchy.** Your shortcuts and bar stay as they are. Plain
+  top-level `yabai -m config` lines move into Macarchy's Layout page; every other
+  line, including anything inside loops and conditionals, is kept word for word.
+  If you keep your own bar, Macarchy triggers a `macarchy_theme_changed`
+  SketchyBar event on theme changes and writes the colours to
+  `~/.config/macarchy/generated/bar-colours.sh` for your items to use.
 - **Start fresh.** Macarchy's defaults replace them.
 
 Either way the originals are copied to `~/.config/macarchy/backups` first.
@@ -64,8 +67,8 @@ Your Ghostty config is never rewritten. Setup adds one line:
 config-file = ?/Users/you/.config/macarchy/generated/ghostty.conf
 ```
 
-Ghostty loads it last, so theme colours win and everything else is yours. No
-Ghostty? That step is skipped.
+It goes at the end of the last config file Ghostty loads, so theme colours win
+and everything else is yours. No Ghostty? That step is skipped.
 
 ## What it changes
 
@@ -78,7 +81,7 @@ startup files each tool reads from a fixed place:
 | `~/.config/yabai/yabairc` | Hands over to Macarchy, plus a region for your own commands |
 | `~/.config/sketchybar/sketchybarrc` | Same |
 | `~/.config/borders/bordersrc` | Same |
-| `~/.config/skhd/skhdrc` | Your shortcuts. Seeded with defaults on a fresh setup |
+| `~/.config/skhd/skhdrc` | Your shortcuts (or `~/.skhdrc` if that is what you use). Seeded with defaults on a fresh setup |
 | `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not

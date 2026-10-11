@@ -174,7 +174,15 @@ public enum Doctor {
             let name = file.url.lastPathComponent
             let syntax = await integrations.execute("/bin/bash", ["-n", file.url.path])
             if !syntax.ok {
-                results.append(HealthCheck(.configuration, name, .failed, syntax.stderr))
+                // bash echoes the offending line, which may hold a secret, so
+                // only its line number is kept.
+                let line = syntax.stderr.range(of: "line [0-9]+", options: .regularExpression)
+                    .map { String(syntax.stderr[$0]) }
+                results.append(
+                    HealthCheck(
+                        .configuration, name, .failed,
+                        "Syntax error" + (line.map { " on \($0)" } ?? ""),
+                        fix: "Open \(Paths.display(file.url)) and fix it, or regenerate it"))
             } else if file.hasDrifted {
                 results.append(
                     HealthCheck(
@@ -190,7 +198,7 @@ public enum Doctor {
     static func optionalChecks() -> [HealthCheck] {
         var results: [HealthCheck] = []
         if Setup.ghosttyWanted {
-            let text = (try? String(contentsOf: GhosttyConfig.configURL, encoding: .utf8)) ?? ""
+            let text = (try? String(contentsOf: GhosttyConfig.targetURL, encoding: .utf8)) ?? ""
             results.append(
                 GhosttyConfig.hasInclude(text)
                     ? HealthCheck(.optional, "Ghostty theme", .passed)

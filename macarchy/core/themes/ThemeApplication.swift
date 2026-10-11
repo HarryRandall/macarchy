@@ -72,18 +72,19 @@ public struct ThemeApplication: Sendable {
             try Self.write(outputs.barColours, to: generated.appending(path: "bar-colours.sh"))
 
             var skipped: [String] = []
-            if Paths.isInstalled("borders") {
+            // borders applies new arguments to a running instance. With none
+            // running it would become the daemon itself and never return, so
+            // a stopped service just picks the theme up when it starts.
+            if Paths.isInstalled("borders"), await integrations.state(of: .borders).isRunning {
                 let borders = await integrations.borders(
                     BorderCommand.arguments(values: settings.flatValues, theme: theme))
                 guard borders.ok else { return borders }
             } else {
                 skipped.append("borders")
             }
-            if Paths.isInstalled("sketchybar"),
-                let recolour = Paths.resources?.appending(
-                    path: "sketchybar/recolor.sh")
+            if Paths.isInstalled("sketchybar"), await integrations.state(of: .sketchybar).isRunning
             {
-                let result = await integrations.execute(recolour.path, [])
+                let result = await recolourBar(bundled: settings.bundledBar ?? true)
                 guard result.ok else { return result }
             } else {
                 skipped.append("menu bar")
@@ -94,13 +95,28 @@ public struct ThemeApplication: Sendable {
             }
             await refreshApplications()
             try SettingsStore().update { $0.currentTheme = name }
-            let note = skipped.isEmpty ? "" : " (not installed: \(skipped.joined(separator: ", ")))"
+            let note = skipped.isEmpty ? "" : " (not running: \(skipped.joined(separator: ", ")))"
             return CommandResult(
                 command: "theme \(name)", status: 0, stdout: "Applied \(name)\(note)")
         } catch {
             return CommandResult(
                 command: "theme \(name)", status: 1, stderr: error.localizedDescription)
         }
+    }
+
+    /// Macarchy's bar is recoloured in place. A person's own bar is told
+    /// instead, through an event its items can subscribe to.
+    private func recolourBar(bundled: Bool) async -> CommandResult {
+        guard bundled else {
+            // A bar that never registered the event is not an error.
+            _ = await integrations.sketchybar(["--trigger", "macarchy_theme_changed"])
+            return CommandResult(command: "menu bar", status: 0)
+        }
+        guard let script = Paths.resources?.appending(path: "sketchybar/recolor.sh") else {
+            return CommandResult(
+                command: "menu bar", status: 1, stderr: "The bundled menu bar is missing.")
+        }
+        return await integrations.execute(script.path, [])
     }
 
     static func write(_ text: String, to url: URL) throws {

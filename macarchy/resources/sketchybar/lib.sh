@@ -22,7 +22,7 @@ macarchy_find() {
 # Theme colours, written by Macarchy whenever a theme is applied.
 ACCENT_COLOR=0xffffffff
 TEXT_COLOR=0xffffffff
-BAR_COLOR=0x00000000
+BAR_COLOR=0x01000000
 COLOURS="$MACARCHY_ROOT/generated/bar-colours.sh"
 # shellcheck source=/dev/null
 [ -f "$COLOURS" ] && source "$COLOURS"

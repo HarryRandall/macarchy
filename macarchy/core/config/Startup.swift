@@ -60,13 +60,14 @@ public enum Startup {
     /// yabai signals Macarchy relies on. Labels make re-adding them replace
     /// the previous registration instead of stacking duplicates.
     static var signals: [[String]] {
-        let cli = Paths.appLink.appending(path: "Contents/MacOS/macarchy").path
+        let cli = Shell.quote(Paths.appLink.appending(path: "Contents/MacOS/macarchy").path)
+        let yabai = Shell.quote(Paths.yabai)
         let refocus =
-            "\(Paths.yabai) -m query --windows --window >/dev/null 2>&1"
-            + " || \(Paths.yabai) -m window --focus first >/dev/null 2>&1"
+            "\(yabai) -m query --windows --window >/dev/null 2>&1"
+            + " || \(yabai) -m window --focus first >/dev/null 2>&1"
         return [
-            ("macarchy_window_created", "window_created", "'\(cli)' rules window-created"),
-            ("macarchy_window_deminimized", "window_deminimized", "'\(cli)' rules window-created"),
+            ("macarchy_window_created", "window_created", "\(cli) rules window-created"),
+            ("macarchy_window_deminimized", "window_deminimized", "\(cli) rules window-created"),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),
             ("macarchy_refocus_terminated", "application_terminated", refocus)
         ].map { label, event, action in

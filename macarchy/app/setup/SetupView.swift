@@ -175,16 +175,18 @@ struct SetupView: View {
         let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
         Task {
             do {
-                report = try Setup.run(existing: choice, app: app)
+                report = try await Setup.run(existing: choice, app: app)
+                // Services first, so the theme reaches running daemons rather
+                // than starting them as short-lived commands.
+                for result in await Setup.startServices(integrations: model.backend) {
+                    model.log.record(result)
+                    if !result.ok { report.append("\(result.command): \(result.summary)") }
+                }
                 if let theme = try SettingsStore().read().currentTheme {
                     let applied = await ThemeApplication(integrations: model.backend).apply(
                         name: theme)
                     model.log.record(applied)
                     report.append(applied.ok ? applied.stdout : applied.stderr)
-                }
-                for result in await Setup.startServices(integrations: model.backend) {
-                    model.log.record(result)
-                    if !result.ok { report.append("\(result.command): \(result.summary)") }
                 }
                 await model.loadEverything()
                 finished = true

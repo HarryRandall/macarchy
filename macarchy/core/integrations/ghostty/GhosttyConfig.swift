@@ -6,7 +6,23 @@ import Foundation
 /// rest, so the theme wins without any of their own settings being touched.
 /// Removing that line is the whole uninstall.
 public enum GhosttyConfig {
-    public static var configURL: URL { Paths.home.appending(path: ".config/ghostty/config") }
+    /// Every file Ghostty may load, in its loading order: XDG first, then
+    /// Application Support, which therefore wins.
+    public static var loadedFiles: [URL] {
+        let xdg = Paths.home.appending(path: ".config/ghostty")
+        let support = Paths.home.appending(
+            path: "Library/Application Support/com.mitchellh.ghostty")
+        return [
+            xdg.appending(path: "config"), xdg.appending(path: "config.ghostty"),
+            support.appending(path: "config"), support.appending(path: "config.ghostty")
+        ]
+    }
+
+    /// The include goes in the last file Ghostty loads, so nothing after it
+    /// can override the theme. Without any config, the standard XDG file.
+    public static var targetURL: URL {
+        loadedFiles.last { FileManager.default.fileExists(atPath: $0.path) } ?? loadedFiles[0]
+    }
     public static var themeURL: URL { Paths.generatedDirectory.appending(path: "ghostty.conf") }
 
     static let comment = "# Theme colours from Macarchy"

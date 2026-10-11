@@ -13,10 +13,10 @@ export PLUGIN_DIR
 
 "$SKETCHYBAR" --remove '/.*/' >/dev/null 2>&1 || true
 
-# color is one step above transparent on purpose: a fully transparent bar is
-# treated as pass-through by the compositor, which leaves stale pixels where
-# items relayout. Bar, font and defaults go out as one call, since every call
-# is a repaint.
+# BAR_COLOR comes from the theme and defaults to one step above transparent:
+# a fully transparent bar is treated as pass-through by the compositor, which
+# leaves stale pixels where items relayout. Bar, font and defaults go out as
+# one call, since every call is a repaint.
 "$SKETCHYBAR" --bar height=35 \
                     blur_radius=0 \
                     display=all \
@@ -24,7 +24,7 @@ export PLUGIN_DIR
                     sticky=on \
                     padding_left=10 \
                     padding_right=10 \
-                    color=0x01000000 \
+                    color="$BAR_COLOR" \
               --load-font "$BAR_DIR/sketchybar-app-font.ttf" \
               --default icon.font="SF Pro:Semibold:15.0" \
                         icon.color="$TEXT_COLOR" \

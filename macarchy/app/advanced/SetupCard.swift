@@ -39,7 +39,7 @@ struct SetupCard: View {
         working = true
         Task {
             do {
-                let report = try Setup.uninstall()
+                let report = try await Setup.uninstall()
                 model.log.note("restored original files", report.joined(separator: "\n"))
                 for result in await Setup.startServices(integrations: model.backend) {
                     model.log.record(result)

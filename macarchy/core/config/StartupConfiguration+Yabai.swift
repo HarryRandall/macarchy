@@ -30,27 +30,62 @@ extension StartupConfiguration {
     ]
 
     /// Splits an existing yabairc into settings Macarchy now owns and lines it
-    /// keeps verbatim. Only single-line `yabai -m config <key> <value>` lines
-    /// for keys in `yabaiKeys` move; everything else, including loops and
-    /// conditionals, stays exactly as written.
+    /// keeps verbatim. A line moves only when it is a plain, top-level
+    /// `yabai -m config <key> <value>` for a key in `yabaiKeys` with a literal
+    /// value. Anything inside a loop, conditional, function or continued line
+    /// stays exactly as written, because moving it would change when it runs.
     public static func adoptYabai(_ text: String) -> (values: [String: String], kept: String) {
         var values: [String: String] = [:]
         var kept: [String] = []
+        var depth = 0
+        var continued = false
         for raw in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let line = String(raw)
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            defer {
+                depth = max(0, depth + nesting(trimmed))
+                continued = trimmed.hasSuffix("\\")
+            }
             if trimmed.hasPrefix("#!") { continue }
-            let words = trimmed.split(separator: " ", omittingEmptySubsequences: true)
-            if words.count == 5, words[0] == "yabai", words[1] == "-m", words[2] == "config",
-                let env = envName(forYabaiKey: String(words[3]))
-            {
-                values[env] = String(words[4]).trimmingCharacters(
-                    in: CharacterSet(charactersIn: "\"'"))
+            if depth == 0, !continued, let (env, value) = literalConfig(trimmed) {
+                values[env] = value
                 continue
             }
             kept.append(line)
         }
         return (values, tidy(kept))
+    }
+
+    /// `yabai -m config key value` with a value free of shell expansion.
+    private static func literalConfig(_ line: String) -> (String, String)? {
+        let words = line.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard words.count == 5, words[0] == "yabai", words[1] == "-m", words[2] == "config",
+            let env = envName(forYabaiKey: words[3])
+        else { return nil }
+        let value = words[4].trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        guard value.range(of: "^[A-Za-z0-9_.:-]+$", options: .regularExpression) != nil else {
+            return nil
+        }
+        return (env, value)
+    }
+
+    /// How much a line opens or closes shell blocks. Deliberately cautious:
+    /// anything that might open a block keeps later lines in place.
+    private static func nesting(_ line: String) -> Int {
+        guard !line.hasPrefix("#") else { return 0 }
+        let words = line.split(whereSeparator: { $0 == " " || $0 == ";" || $0 == "\t" })
+            .map(String.init)
+        var change = 0
+        for word in words {
+            switch word {
+            case "if", "for", "while", "until", "case", "{", "(": change += 1
+            case "fi", "done", "esac", "}", ")": change -= 1
+            default:
+                if word.hasSuffix("()") || word.hasSuffix("{") { change += 1 }
+                if word.hasPrefix("}") { change -= 1 }
+            }
+        }
+        return change
     }
 
     @discardableResult
