@@ -34,3 +34,15 @@ restart services or change desktop configuration.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the code, and
 [docs/architecture.md](docs/architecture.md) before changing desktop ownership.
 Installation is described in [docs/migration.md](docs/migration.md).
+
+## Live design iteration
+
+Run `./tools/run.sh debug` to build and open the development app. Debug builds
+watch `design/appearance.json` once a second. Changing the page width, sidebar
+width, card corners, catalogue spacing, Workshop copy or sample listings updates
+the running interface without a restart. Invalid edits keep the last valid
+appearance and show a small error message. Release builds use built-in defaults.
+
+Changes to Swift view structure still need a rebuild. The app remembers the
+selected page and whether the sidebar is visible. Workshop and Plugins currently
+show concept catalogues; they do not download, buy, install or remove anything.

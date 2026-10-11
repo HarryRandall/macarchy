@@ -1,21 +1,27 @@
 import SwiftUI
 import Macarchy
+import AppKit
 
 struct BordersPane: View {
     @Environment(AppModel.self) var model
-    @State private var newExclusion = ""
     var editor: BordersEditor { model.bordersEditor }
 
     var body: some View {
-        SettingsPage("Borders", subtitle: "The outline drawn around the focused window") {
-            previewCard()
-            VStack(spacing: 18) {
-                colourCard()
-                geometryCard()
-                cornersCard()
-                exclusionsCard()
+        SettingsPage("Borders", subtitle: "The outline drawn around the focused window.") {
+            LazyVStack(spacing: Metrics.cardGap, pinnedViews: editor.live ? [] : [.sectionHeaders])
+            {
+                Section {
+                    VStack(spacing: Metrics.cardGap) {
+                        colourCard()
+                        geometryCard()
+                        cornersCard()
+                        exclusionsCard()
+                    }
+                    .disabled(editor.isApplying || !editor.loaded)
+                } header: {
+                    previewHeader()
+                }
             }
-            .disabled(editor.isApplying || !editor.loaded)
         }
         .task(id: model.themes.current) {
             guard !editor.hasChanges, !editor.isApplying else { return }
@@ -33,17 +39,18 @@ struct BordersPane: View {
         @Bindable var editor = editor
         return SettingsCard(
             "Geometry",
-            footnote: "Width is measured in points. Changes affect all outlined windows.",
+            help:
+                "Width applies to every outlined window.",
             reset: resetGeometry,
             resetEnabled: editor.draft.width != 6 || !editor.draft.visible,
             resetLabel: "Reset",
-            resetHelp: "Restore 6 pt width and turn borders on. Colours and corners stay unchanged."
+            resetHelp: "Restore 6 pt width and turn borders on"
         ) {
-            SettingRow("Show borders", detail: "Outline the window that has focus") {
+            SettingRow("Show borders", help: "Outline the window that has focus") {
                 Toggle("Show borders", isOn: $editor.draft.visible)
                     .labelsHidden().toggleStyle(.switch)
             }
-            SettingRow("Width", detail: "Thickness of the outline") {
+            SettingRow("Width", help: "Thickness of the outline") {
                 ValueSlider(
                     value: $editor.draft.width, range: 0...16, step: 0.5, decimals: 1, unit: "pt"
                 ) { _ in }
@@ -56,14 +63,12 @@ struct BordersPane: View {
         @Bindable var editor = editor
         return SettingsCard(
             "Corners",
-            footnote:
-                "Square uses the smallest supported radius (0.3 pt). Rounded is 8 pt. "
-                + "Default removes the override and lets macOS choose. Drag the slider for a custom radius. Firefox and Chromium apps "
-                + "keep their own corners. The preview is illustrative.",
+            help:
+                "Corner changes affect newly opened windows. Relaunch an app to see them.",
             reset: resetCorners,
             resetEnabled: editor.draft.radius != nil,
             resetLabel: "Use default",
-            resetHelp: "Remove the custom corner radius. macOS will choose corners for new windows."
+            resetHelp: "Let macOS choose corners for new windows"
         ) {
             SettingRow("Shape") {
                 SegmentedPill(
@@ -86,9 +91,6 @@ struct BordersPane: View {
                     Text("System default").font(.callout).foregroundStyle(.secondary)
                 }
             }
-            Text("Corner changes affect newly opened windows. Relaunch an app to see them.")
-                .font(.caption).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading).padding(12)
         }
     }
 
@@ -128,43 +130,55 @@ struct BordersPane: View {
     private func exclusionsCard() -> some View {
         SettingsCard(
             "Excluded apps",
-            footnote: "These apps are never outlined. iPhone Mirroring is always excluded.",
+            help:
+                "These apps are never outlined. Add or remove apps to choose which windows have borders.",
             reset: resetExclusions,
-            resetEnabled: editor.draft.excludedApps.contains { $0 != "iPhone Mirroring" },
-            resetLabel: "Clear custom",
-            resetHelp: "Remove your exclusions, keeping iPhone Mirroring excluded."
+            resetEnabled: !editor.draft.excludedApps.isEmpty,
+            resetLabel: "Clear all",
+            resetHelp: "Remove all exclusions"
         ) {
             ForEach(editor.draft.excludedApps, id: \.self) { app in
                 SettingRow(app) {
-                    if app == "iPhone Mirroring" {
-                        Text("Always excluded").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        Button {
-                            editor.draft.excludedApps.removeAll { $0 == app }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                        }
-                        .buttonStyle(.plain).help("Stop excluding \(app)")
+                    AppIcon(name: app)
+                } accessory: {
+                    Button {
+                        editor.draft.excludedApps.removeAll { $0 == app }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .hoverHelp("Stop excluding \(app)")
+                    .accessibilityLabel("Stop excluding \(app)")
                 }
             }
-            HStack(spacing: 8) {
-                TextField("Application name", text: $newExclusion)
-                    .textFieldStyle(.roundedBorder).onSubmit(addExclusion)
-                Button("Add", action: addExclusion)
-                    .disabled(newExclusion.trimmingCharacters(in: .whitespaces).isEmpty)
-            }.padding(12)
+            HStack {
+                Button("Add Application…", action: pickExcludedApp)
+                    .hoverHelp("Never outline this app")
+                Spacer()
+            }
+            .padding(.horizontal, CardMetrics.horizontalPadding)
+            .padding(.vertical, Metrics.medium)
         }
     }
 
-    private func addExclusion() {
-        let name = newExclusion.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, !editor.draft.excludedApps.contains(name) else { return }
+    private func pickExcludedApp() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.prompt = "Exclude"
+        panel.message = "Choose an application that should have no window borders"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let name = FileManager.default.displayName(atPath: url.path)
+            .replacingOccurrences(of: ".app", with: "")
+        guard !editor.draft.excludedApps.contains(name) else { return }
         editor.draft.excludedApps.append(name)
-        newExclusion = ""
     }
 
     private func resetGeometry() { editor.draft.width = 6; editor.draft.visible = true }
     private func resetCorners() { editor.draft.radius = nil }
-    private func resetExclusions() { editor.draft.excludedApps = ["iPhone Mirroring"] }
+    private func resetExclusions() { editor.draft.excludedApps = [] }
 }

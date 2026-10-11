@@ -4,7 +4,6 @@ import Macarchy
 /// The menu bar surface that retires the Raycast theme-switcher extension.
 struct StatusMenu: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ForEach(model.themes.themes) { theme in
@@ -21,7 +20,7 @@ struct StatusMenu: View {
 
         Divider()
 
-        Button("Settings…") { openWindow(id: "main") }
+        Button("Settings…") { AppDelegate.showMainWindow() }
             .keyboardShortcut(",", modifiers: .command)
 
         Button("Restart All Daemons") {
@@ -32,7 +31,7 @@ struct StatusMenu: View {
 
         Divider()
 
-        Button("Quit Macarchy") { NSApplication.shared.terminate(nil) }
+        Button("Quit Macarchy") { AppDelegate.quit() }
             .keyboardShortcut("q", modifiers: .command)
     }
 }

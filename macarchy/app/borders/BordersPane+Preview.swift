@@ -1,9 +1,16 @@
 import SwiftUI
 
 extension BordersPane {
+    func previewHeader() -> some View {
+        previewCard()
+            .padding(.top, editor.live ? 0 : Metrics.large)
+            .background(Color.paneBackground)
+            .padding(.bottom, Metrics.cardGap)
+    }
+
     func previewCard() -> some View {
         SettingsCard {
-            VStack(spacing: 12) {
+            VStack(spacing: Metrics.medium) {
                 HStack(spacing: 10) {
                     Toggle(
                         "Live preview",
@@ -14,9 +21,7 @@ extension BordersPane {
                     .toggleStyle(.switch).controlSize(.small)
                     .disabled(!editor.live && (editor.isApplying || editor.hasChanges))
                     HelpTooltip(
-                        text: "Live applies edits and resets immediately. Turn it off to compare "
-                            + "Before and After, then choose Apply or Discard. Apply or discard pending edits "
-                            + "before turning Live back on. Corner changes still need new windows.")
+                        text: "Apply edits straight away, or hold them for a before and after")
                     Spacer()
                     if !editor.live {
                         Button("Discard") { editor.discard() }
@@ -33,25 +38,21 @@ extension BordersPane {
                     before: editor.live ? nil : editor.applied,
                     wallpaper: model.currentThemeWallpaper
                 )
-                HStack {
-                    Text(
-                        editor.live
-                            ? "Changes apply as you edit."
-                            : "Changes stay in this preview until you apply them."
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    if editor.isApplying {
-                        ProgressView().controlSize(.small)
-                    } else if editor.hasChanges {
-                        Text("Unsaved changes").font(.caption).foregroundStyle(.secondary)
+                if editor.isApplying || editor.hasChanges {
+                    HStack {
+                        Spacer()
+                        if editor.isApplying {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Unsaved changes").font(.meta).foregroundStyle(.secondary)
+                        }
                     }
                 }
                 if let error = editor.error {
-                    Text(error).font(.caption).foregroundStyle(.red)
+                    Text(error).font(.meta).foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }.padding(12)
+            }.padding(Metrics.medium)
         }
     }
 }

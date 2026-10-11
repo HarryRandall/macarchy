@@ -45,11 +45,11 @@ struct ColorPickerPopover: View {
 
     private var hexField: some View {
         HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.radiusSmall, style: .continuous)
                 .fill(color)
                 .frame(width: 22, height: 22)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: Metrics.radiusSmall, style: .continuous)
                         .strokeBorder(Color.cardBorder)
                 )
 
@@ -58,7 +58,9 @@ struct ColorPickerPopover: View {
                 .font(.system(size: 12, design: .monospaced))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(Color.controlWell, in: RoundedRectangle(cornerRadius: 7))
+                .background(
+                    Color.controlWell, in: RoundedRectangle(cornerRadius: Metrics.radiusControl)
+                )
                 .onSubmit(applyHex)
         }
     }
@@ -149,7 +151,7 @@ private struct SaturationBrightnessField: View {
                         y: (1 - brightness) * proxy.size.height
                     )
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Metrics.radiusControl, style: .continuous))
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)

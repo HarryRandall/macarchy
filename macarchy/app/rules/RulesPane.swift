@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Macarchy
 
 struct RulesPane: View {
     @Environment(AppModel.self) private var model
@@ -8,75 +9,110 @@ struct RulesPane: View {
     private var declared: [RulesModel.Rule] { model.rules.rules.filter { $0.source == .declared } }
 
     var body: some View {
-        Form {
-            Section {
+        SettingsPage("Rules", subtitle: "Apps that sit outside the layout.") {
+            Menu("Add", systemImage: "plus") {
+                Button("Add application…") { pickApp() }
+                Button("Add custom rule…") { editCustom() }
+                Divider()
+                Button("Finder file dialogs…") {
+                    editCustom(
+                        CustomWindowRule(app: "Finder", title: "^Copy$|^Move$|^Delete$|^Trash$"))
+                }
+                Button("Calculator…") { editCustom(CustomWindowRule(app: "Calculator")) }
+            }
+            .disabled(model.rules.isBusy)
+            .hoverHelp(
+                "Add an app to float all its windows, or a custom rule for specific window titles.")
+        } content: {
+            SettingsCard(
+                "Floating apps",
+                help: "These apps keep their own window size and position instead of being "
+                    + "tiled. The list survives a restart of the window manager."
+            ) {
                 if owned.isEmpty {
-                    Text("No floating apps yet.")
-                        .font(.caption).foregroundStyle(.secondary)
-                } else {
-                    ForEach(owned) { rule in
-                        LabeledContent {
-                            Button {
-                                Task { await model.rules.remove(rule) }
-                            } label: {
-                                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Stop floating \(rule.app)")
+                    SettingRow(
+                        "No floating apps yet",
+                        help:
+                            "Use Add application to choose an app that should stay outside the tiled layout."
+                    )
+                }
+                ForEach(owned) { rule in
+                    SettingRow(rule.app) {
+                        AppIcon(name: rule.app)
+                    } accessory: {
+                        Button {
+                            Task { await model.rules.remove(rule) }
                         } label: {
-                            HStack(spacing: 8) {
-                                AppIcon(name: rule.app)
-                                Text(rule.app)
-                            }
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.secondary)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .hoverHelp("Stop floating \(rule.app)")
+                        .accessibilityLabel("Stop floating \(rule.app)")
+                        .disabled(model.rules.isBusy)
                     }
                 }
-
-                Button("Add Application…") { pickApp() }
-                    .controlSize(.small)
-                    .disabled(model.rules.isBusy)
-            } header: {
-                Text("Floating apps · \(owned.count)")
-            } footer: {
-                Text(
-                    "Kept in float_state.json and reapplied by sync_float_rules.sh, so they survive a yabai restart."
-                )
-                .font(.caption).foregroundStyle(.secondary)
             }
 
+            customRulesCard
+            if let error = model.rules.lastError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.meta).foregroundStyle(.orange)
+            }
             if !declared.isEmpty {
-                Section {
+                SettingsCard(
+                    "External rules",
+                    help:
+                        "Rules managed outside Macarchy. Change them in your window manager configuration."
+                ) {
                     ForEach(declared) { rule in
-                        LabeledContent {
-                            Text("read-only")
-                                .font(.caption2).foregroundStyle(.tertiary)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack(spacing: 8) {
-                                    AppIcon(name: rule.app)
-                                    Text(rule.app)
-                                }
-                                if let title = rule.title {
-                                    Text("windows matching \(title)")
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
-                                }
-                            }
+                        SettingRow(rule.app, detail: rule.title.map { "Windows matching \($0)" }) {
+                            AppIcon(name: rule.app)
+                        } accessory: {
+                            Text("Read only")
+                                .font(.meta)
+                                .foregroundStyle(Color.metaText)
                         }
                     }
-                } header: {
-                    Text("Declared in yabairc · \(declared.count)")
-                } footer: {
-                    Text(
-                        "Hand-written rules inside yabairc's macarchy:keep region. The app never rewrites these."
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
-        .formStyle(.grouped)
         .task { await model.rules.reload() }
+    }
+
+    private var customRulesCard: some View {
+        SettingsCard(
+            "Custom rules",
+            help:
+                "Match an application and optional window title pattern. Use a preset or add your own."
+        ) {
+            if model.rules.customRules.isEmpty {
+                SettingRow(
+                    "No custom rules", help: "Choose Add custom rule or a preset from the Add menu."
+                )
+            }
+            ForEach(model.rules.customRules) { rule in
+                SettingRow(rule.app, detail: rule.title.isEmpty ? "All windows" : rule.title) {
+                    AppIcon(name: rule.app)
+                } accessory: {
+                    HStack {
+                        IconButton(symbol: "pencil", help: "Edit rule for \(rule.app)") {
+                            editCustom(rule)
+                        }
+                        IconButton(symbol: "minus.circle", help: "Remove rule for \(rule.app)") {
+                            Task { await model.rules.removeCustom(rule) }
+                        }
+                    }.disabled(model.rules.isBusy)
+                }
+            }
+        }
+    }
+
+    private func editCustom(_ rule: CustomWindowRule? = nil) {
+        model.modal.present {
+            WindowRuleEditor(rule: rule) { model.modal.dismiss() }
+        }
     }
 
     private func pickApp() {
@@ -98,16 +134,16 @@ struct RulesPane: View {
 }
 
 /// The real app icon when it can be found; a neutral placeholder otherwise.
-private struct AppIcon: View {
+struct AppIcon: View {
     let name: String
 
     var body: some View {
         if let path = Self.path(for: name) {
             Image(nsImage: NSWorkspace.shared.icon(forFile: path))
-                .resizable().frame(width: 16, height: 16)
+                .resizable().frame(width: 18, height: 18)
         } else {
             Image(systemName: "app.dashed")
-                .foregroundStyle(.tertiary).frame(width: 16, height: 16)
+                .foregroundStyle(.secondary).frame(width: 18, height: 18)
         }
     }
 

@@ -6,14 +6,17 @@ import SwiftUI
 /// job, so no pane can get it half-right:
 ///
 /// ```swift
-/// SettingsCard("Geometry") {
+/// SettingsCard("Geometry", help: "Width applies to every outlined window") {
 ///     SettingRow("Show borders", detail: "…") { Toggle(…) }
 ///     SettingRow("Width") { … }
 /// }
 /// ```
+///
+/// Secondary instructions belong in `help`, beside the section title.
+/// Keep values and essential status in the rows.
 struct SettingsCard<Content: View>: View {
     private let title: String?
-    private let footnote: String?
+    private let help: String?
     private let reset: (() -> Void)?
     private let resetEnabled: Bool
     private let resetLabel: String
@@ -22,7 +25,7 @@ struct SettingsCard<Content: View>: View {
 
     init(
         _ title: String? = nil,
-        footnote: String? = nil,
+        help: String? = nil,
         reset: (() -> Void)? = nil,
         resetEnabled: Bool = true,
         resetLabel: String = "Reset",
@@ -30,7 +33,7 @@ struct SettingsCard<Content: View>: View {
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
-        self.footnote = footnote
+        self.help = help
         self.reset = reset
         self.resetEnabled = resetEnabled
         self.resetLabel = resetLabel
@@ -39,37 +42,14 @@ struct SettingsCard<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let title {
-                HStack(spacing: 7) {
-                    Text(title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    if let footnote { HelpTooltip(text: footnote) }
-                    Spacer()
-                    if let reset {
-                        Button(action: reset) {
-                            Label(resetLabel, systemImage: "arrow.counterclockwise")
-                                .font(.system(size: 12))
-                                .frame(height: 24)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .disabled(!resetEnabled)
-                        .help(resetHelp ?? "Reset \(title.lowercased()) to default")
-                        .accessibilityLabel(resetHelp ?? "Reset \(title.lowercased()) to default")
-                    }
-                }
-                .padding(.horizontal, 4)
-            }
+        VStack(alignment: .leading, spacing: Metrics.small) {
+            if let title { header(title) }
 
             Group(subviews: content) { rows in
                 VStack(spacing: 0) {
                     ForEach(rows.indices, id: \.self) { index in
                         if index > 0 {
-                            Divider()
-                                .padding(.leading, CardMetrics.dividerInset)
+                            Divider().padding(.leading, CardMetrics.dividerInset)
                         }
                         rows[index]
                     }
@@ -77,8 +57,31 @@ struct SettingsCard<Content: View>: View {
             }
             .background(Color.cardSurface, in: card)
             .overlay(card.strokeBorder(Color.cardBorder, lineWidth: 1))
-
         }
+    }
+
+    private func header(_ title: String) -> some View {
+        HStack(spacing: Metrics.small) {
+            Text(title)
+                .font(.cardTitle)
+                .foregroundStyle(.secondary)
+            if let help { HelpTooltip(text: help) }
+            Spacer()
+            if let reset {
+                Button(action: reset) {
+                    Label(resetLabel, systemImage: "arrow.counterclockwise")
+                        .font(.meta)
+                        .frame(height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .disabled(!resetEnabled)
+                .hoverHelp(resetHelp ?? "Restore the shipped \(title.lowercased()) settings")
+                .accessibilityLabel("Reset \(title.lowercased())")
+            }
+        }
+        .padding(.horizontal, Metrics.xs)
     }
 
     private var card: RoundedRectangle {

@@ -20,7 +20,7 @@ struct NumberField: View {
         HStack(spacing: 6) {
             TextField("", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12, design: .monospaced))
+                .monospacedDigit().font(.system(size: 12, design: .monospaced))
                 .multilineTextAlignment(.center)
                 .focused($isFocused)
                 .frame(width: width)
@@ -34,14 +34,14 @@ struct NumberField: View {
 
             if let unit {
                 Text(unit)
-                    .font(.system(size: 12))
+                    .monospacedDigit().font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
         }
     }
 
     private var field: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 7, style: .continuous)
+        RoundedRectangle(cornerRadius: Metrics.radiusControl, style: .continuous)
     }
 
     private var borderColor: Color {

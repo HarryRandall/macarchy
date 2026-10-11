@@ -7,7 +7,9 @@ actor ThumbnailCache {
     private var cache: [String: NSImage] = [:]
 
     func thumbnail(for url: URL, height: CGFloat) async -> NSImage? {
-        let key = "\(url.path)@\(Int(height))"
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+            .contentModificationDate
+        let key = "\(url.path)@\(Int(height))@\(modified?.timeIntervalSince1970 ?? 0)"
         if let hit = cache[key] { return hit }
 
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }

@@ -8,6 +8,8 @@ actor MenuBarTestBackend {
     var names = ["calendar"]
     var writes: [[String]] = []
     var failWrites = false
+    var failedQueriesRemaining = 0
+    func failQueries(_ count: Int) { failedQueriesRemaining = count }
     func setFailure(_ value: Bool) { failWrites = value }
     func recordedWrites() -> [[String]] { writes }
     func result(_ stdout: String = "", failure: Bool = false) -> CommandResult {
@@ -26,6 +28,9 @@ actor MenuBarTestBackend {
             return result(text)
         }
         if arguments.first == "--query" {
+            if failedQueriesRemaining > 0 {
+                failedQueriesRemaining -= 1; return result(failure: true)
+            }
             return result(
                 "{\"geometry\":{\"position\":\"right\",\"drawing\":\"on\"},\"bounding_rects\":{\"display-1\":{\"origin\":[100,0],\"size\":[100,35]}}}"
             )

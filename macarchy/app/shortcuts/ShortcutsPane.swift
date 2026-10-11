@@ -1,97 +1,107 @@
-import SwiftUI
 import AppKit
 import Macarchy
+import SwiftUI
 
 struct ShortcutsPane: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         @Bindable var shortcuts = model.shortcuts
-
-        Form {
-            Section {
-                TextField("Filter by key, command or section", text: $shortcuts.search)
-                    .textFieldStyle(.roundedBorder)
-            } footer: {
+        SettingsPage("Shortcuts") {
+            SearchField(
+                prompt: "Find a shortcut",
+                text: $shortcuts.search,
+                width: 230,
+                help: "Search keys, source comments and commands")
+            IconMenu(symbol: "ellipsis", help: "Shortcut actions") {
+                Menu("Filters") { filterOptions }
+                Divider()
+                Button("Refresh shortcuts") { shortcuts.reload() }
+                Button("Open configuration") {
+                    NSWorkspace.shared.open(ShortcutsModel.configURL)
+                }
+            }
+        } content: {
+            HStack {
                 Text(
-                    "\(model.shortcuts.bindings.count) bindings parsed from skhdrc. Read-only for now — editing writes back through a macarchy:keep block."
+                    shortcuts.hasFilters
+                        ? "\(shortcuts.matchCount) of \(shortcuts.bindings.count) shortcuts"
+                        : "\(shortcuts.bindings.count) shortcuts"
                 )
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.meta).foregroundStyle(.secondary)
+                Spacer()
+                if shortcuts.hasFilters {
+                    Button("Clear filters") { shortcuts.clearFilters() }
+                        .font(.meta)
+                }
+                HelpTooltip(
+                    text: "Click a key combination to change it. Expand a row to see its command.")
             }
-
-            ForEach(model.shortcuts.sections, id: \.self) { section in
-                Section(section) {
-                    ForEach(model.shortcuts.bindings(in: section)) { binding in
-                        BindingRow(binding: binding)
+            if let message = shortcuts.lastError {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.meta).foregroundStyle(.orange)
+            }
+            if shortcuts.rows.isEmpty {
+                ContentUnavailableView("No shortcuts found", systemImage: "keyboard")
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(shortcuts.rows) { row in
+                        switch row.kind {
+                        case .header(let title, let count):
+                            HStack {
+                                Text(title).font(.meta).foregroundStyle(.secondary).lineLimit(2)
+                                CountBadge(count: count)
+                                Spacer()
+                            }
+                            .padding(.horizontal, Metrics.medium).padding(.vertical, Metrics.small)
+                            .background(Color.controlWell)
+                        case .binding(let binding):
+                            ShortcutRow(binding: binding, title: shortcuts.label(for: binding)) {
+                                edit(binding)
+                            }
+                        }
                     }
                 }
-            }
-
-            if !model.shortcuts.ungrouped.isEmpty {
-                Section("Other") {
-                    ForEach(model.shortcuts.ungrouped) { binding in
-                        BindingRow(binding: binding)
-                    }
-                }
-            }
-
-            Section {
-                Button("Open skhdrc") { NSWorkspace.shared.open(ShortcutsModel.configURL) }
+                .background(Color.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: Metrics.radiusSmall))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.radiusSmall)
+                        .strokeBorder(Color.cardBorder, lineWidth: 1))
             }
         }
-        .formStyle(.grouped)
         .onAppear { if model.shortcuts.bindings.isEmpty { model.shortcuts.reload() } }
     }
-}
 
-private struct BindingRow: View {
-    let binding: SkhdBinding
-
-    var body: some View {
-        LabeledContent {
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(binding.command.isEmpty ? "per-app" : binding.command)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(binding.command)
-
-                if !binding.appOverrides.isEmpty {
-                    Text(binding.appOverrides.map(\.app).joined(separator: ", "))
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-            }
-        } label: {
-            HStack(spacing: 3) {
-                ForEach(Array(binding.keyCaps.enumerated()), id: \.offset) { _, cap in
-                    KeyCap(cap)
-                }
-                if binding.passthrough {
-                    Image(systemName: "arrow.turn.down.right")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                        .help("Also forwarded to the focused app")
-                }
-            }
-            .frame(width: 150, alignment: .leading)
+    private func edit(_ binding: SkhdBinding) {
+        model.modal.present {
+            ShortcutEditor(binding: binding) { model.modal.dismiss() }
         }
     }
-}
 
-private struct KeyCap: View {
-    let label: String
-    init(_ label: String) { self.label = label }
-
-    var body: some View {
-        Text(label)
-            .font(.system(size: 11, weight: .medium))
-            .frame(minWidth: 18)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
-            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.separator))
+    private var filterOptions: some View {
+        @Bindable var shortcuts = model.shortcuts
+        return Group {
+            Section("Scope") {
+                Picker("Scope", selection: $shortcuts.scopeFilter) {
+                    ForEach(ShortcutsModel.Scope.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+            }
+            Section("Modifiers") {
+                ForEach(["cmd", "alt", "ctrl", "shift"], id: \.self) { modifier in
+                    Toggle(
+                        SkhdBinding.symbol(forModifier: modifier),
+                        isOn: Binding(
+                            get: { shortcuts.modifierFilter.contains(modifier) },
+                            set: { _ in shortcuts.toggle(modifier) }))
+                }
+            }
+            Section("Source group") {
+                Picker("Source group", selection: $shortcuts.sectionFilter) {
+                    Text("All groups").tag(String?.none)
+                    ForEach(shortcuts.allSections, id: \.self) { Text($0).tag(Optional($0)) }
+                }
+            }
+            if shortcuts.hasFilters { Button("Clear filters") { shortcuts.clearFilters() } }
+        }
     }
 }

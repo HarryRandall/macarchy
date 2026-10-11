@@ -4,138 +4,210 @@ struct LayoutPane: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        SettingsPage("Layout", subtitle: "Give every window a place.") {
+            SettingsCard(
+                "Your workspace",
+                help: "Illustrative preview. Changes apply to the desktop as you edit."
+            ) {
+                VStack(alignment: .leading, spacing: Metrics.medium) {
+                    LayoutPreview(
+                        mode: model.layout.layout, gap: model.layout.windowGap,
+                        padding: model.layout.padding, wallpaper: model.currentThemeWallpaper
+                    )
+                    .frame(height: 230)
+                }.padding(Metrics.medium)
+            }
+            layoutChoices
+            arrangement
+            spacing
+            mouse
+        }
+    }
+
+    private var layoutChoices: some View {
+        VStack(alignment: .leading, spacing: Metrics.medium) {
+            SectionHeading("Choose your layout")
+            HStack(spacing: Metrics.gridGap) {
+                layoutChoice("bsp", "Tile", "Fit windows neatly beside each other")
+                layoutChoice("stack", "Stack", "Keep windows together and switch between them")
+                layoutChoice("float", "Freeform", "Move and resize windows yourself")
+            }
+        }
+    }
+
+    private func layoutChoice(_ mode: String, _ title: String, _ help: String) -> some View {
+        ChoiceCard(label: title, isSelected: model.layout.layout == mode, height: 95) {
+            model.layout.layout = mode
+            model.layout.apply("layout", mode)
+        } preview: {
+            LayoutPreview(mode: mode, gap: 12, padding: 18, wallpaper: nil)
+        }
+        .hoverHelp(help)
+    }
+
+    private var arrangement: some View {
         @Bindable var layout = model.layout
-
-        Form {
-            Section {
-                TilingPreview(gap: layout.windowGap, padding: layout.padding)
-                    .frame(height: 150)
-                    .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
-            } header: {
-                Text("Preview")
-            } footer: {
-                Text(
-                    "Gaps and padding are spatial, so the miniature shows the change before it reaches the desktop."
+        return SettingsCard(
+            "Window arrangement",
+            help: "Choose where new windows appear and how they share the available space."
+        ) {
+            SettingRow(
+                "Split direction",
+                help:
+                    "Place tiled windows side by side or one above the other. Automatic chooses for the available space."
+            ) {
+                layoutPicker(
+                    "Split direction", selection: $layout.splitType,
+                    options: [
+                        ("auto", "Automatic"), ("vertical", "Side by side"),
+                        ("horizontal", "Above and below")
+                    ]
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section("Tiling") {
-                Picker("Layout mode", selection: $layout.layout) {
-                    Text("Binary space partitioning").tag("bsp")
-                    Text("Stack").tag("stack")
-                    Text("Float").tag("float")
-                }
-                .onChange(of: layout.layout) { _, new in layout.apply("layout", new) }
-
-                Picker("Split type", selection: $layout.splitType) {
-                    Text("Auto").tag("auto")
-                    Text("Vertical").tag("vertical")
-                    Text("Horizontal").tag("horizontal")
-                }
-                .onChange(of: layout.splitType) { _, new in layout.apply("split_type", new) }
-
-                Picker("New window placement", selection: $layout.windowPlacement) {
-                    Text("Second child").tag("second_child")
-                    Text("First child").tag("first_child")
-                }
-                .onChange(of: layout.windowPlacement) { _, new in
-                    layout.apply("window_placement", new)
-                }
-
-                Toggle("Auto balance", isOn: $layout.autoBalance)
-                    .onChange(of: layout.autoBalance) { _, new in
-                        layout.apply("auto_balance", new ? "on" : "off")
-                    }
-            }
-
-            Section("Gaps and padding") {
-                LabeledContent("Window gap") {
-                    HStack {
-                        Slider(value: $layout.windowGap, in: 0...32, step: 1)
-                            .frame(width: 160)
-                            .onChange(of: layout.windowGap) { _, new in
-                                layout.apply("window_gap", String(Int(new)))
-                            }
-                        Text("\(Int(layout.windowGap))")
-                            .monospacedDigit()
-                            .frame(width: 28, alignment: .trailing)
-                    }
-                }
-
-                Toggle("Link all edges", isOn: $layout.linkPadding)
-
-                LabeledContent("Padding") {
-                    HStack {
-                        Slider(value: $layout.padding, in: 0...40, step: 1)
-                            .frame(width: 160)
-                            .onChange(of: layout.padding) { _, new in layout.applyPadding(new) }
-                        Text("\(Int(layout.padding))")
-                            .monospacedDigit()
-                            .frame(width: 28, alignment: .trailing)
-                    }
+                .onChange(of: layout.splitType) { _, value in layout.apply("split_type", value)
                 }
             }
-
-            Section("Mouse") {
-                Picker("Modifier", selection: $layout.mouseModifier) {
-                    Text("Control").tag("ctrl")
-                    Text("Option").tag("alt")
-                    Text("Command").tag("cmd")
-                    Text("Shift").tag("shift")
+            SettingRow(
+                "New windows",
+                help: "Choose which side of the current window gets a newly opened window."
+            ) {
+                layoutPicker(
+                    "New windows", selection: $layout.windowPlacement,
+                    options: [("second_child", "After current"), ("first_child", "Before current")]
+                )
+                .onChange(of: layout.windowPlacement) { _, value in
+                    layout.apply("window_placement", value)
                 }
-                .onChange(of: layout.mouseModifier) { _, new in layout.apply("mouse_modifier", new)
-                }
-
-                Toggle("Focus follows mouse", isOn: $layout.mouseFollowsFocus)
-                    .onChange(of: layout.mouseFollowsFocus) { _, new in
-                        layout.apply("mouse_follows_focus", new ? "autofocus" : "off")
+            }
+            SettingRow(
+                "Balance window sizes",
+                help: "Automatically share space more evenly when windows are added or removed."
+            ) {
+                Toggle("Balance window sizes", isOn: $layout.autoBalance).labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: layout.autoBalance) { _, value in
+                        layout.apply("auto_balance", value ? "on" : "off")
                     }
+            }
+        }.disabled(layout.layout != "bsp")
+    }
 
-                Picker("Drop action", selection: $layout.mouseDropAction) {
-                    Text("Stack").tag("stack")
-                    Text("Swap").tag("swap")
+    private var spacing: some View {
+        @Bindable var layout = model.layout
+        return SettingsCard("Room to breathe") {
+            SettingRow(
+                "Between windows", help: "The empty space separating neighbouring windows."
+            ) {
+                ValueSlider(value: $layout.windowGap, range: 0...32, unit: "pt") {
+                    layout.apply("window_gap", String(Int($0)))
                 }
-                .onChange(of: layout.mouseDropAction) { _, new in
-                    layout.apply("mouse_drop_action", new)
+            }
+            SettingRow(
+                "Match all screen edges",
+                help:
+                    "Keep the same margin around every edge. When off, the margin control changes only the top edge."
+            ) {
+                Toggle("Match all screen edges", isOn: $layout.linkPadding).labelsHidden()
+                    .toggleStyle(.switch)
+            }
+            SettingRow(
+                layout.linkPadding ? "Screen margins" : "Top margin",
+                help: "Leave space between your windows and the edge of the display."
+            ) {
+                ValueSlider(value: $layout.padding, range: 0...40, unit: "pt") {
+                    layout.applyPadding($0)
                 }
             }
         }
-        .formStyle(.grouped)
     }
-}
 
-/// A miniature of the current BSP split, driven by the same values as the sliders.
-private struct TilingPreview: View {
-    let gap: Double
-    let padding: Double
-
-    var body: some View {
-        GeometryReader { proxy in
-            let scale = proxy.size.width / 1440
-            let g = max(1, gap * scale * 2.4)
-            let inset = max(1, padding * scale * 2.4)
-
-            HStack(spacing: g) {
-                tile(emphasised: true)
-                VStack(spacing: g) {
-                    tile()
-                    tile()
+    private var mouse: some View {
+        @Bindable var layout = model.layout
+        return SettingsCard("Mouse and movement") {
+            SettingRow(
+                "Hold to move or resize",
+                help: "Hold this key while dragging a window to move or resize it."
+            ) {
+                layoutPicker(
+                    "Modifier key", selection: $layout.mouseModifier,
+                    options: [
+                        ("ctrl", "Control"), ("alt", "Option"), ("cmd", "Command"),
+                        ("shift", "Shift")
+                    ]
+                )
+                .onChange(of: layout.mouseModifier) { _, value in
+                    layout.apply("mouse_modifier", value)
                 }
-                .frame(width: proxy.size.width * 0.38)
             }
-            .padding(inset)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            SettingRow(
+                "Move pointer to focused window",
+                help: "Bring the pointer to the window you switch to using your keyboard."
+            ) {
+                Toggle("Move pointer to focused window", isOn: $layout.mouseFollowsFocus)
+                    .labelsHidden().toggleStyle(.switch)
+                    .onChange(of: layout.mouseFollowsFocus) { _, value in
+                        layout.apply("mouse_follows_focus", value ? "autofocus" : "off")
+                    }
+            }
+            SettingRow(
+                "Drop onto another window",
+                help: "Group the two windows into a stack, or exchange their positions."
+            ) {
+                layoutPicker(
+                    "Drop action", selection: $layout.mouseDropAction,
+                    options: [("stack", "Stack together"), ("swap", "Swap places")]
+                )
+                .onChange(of: layout.mouseDropAction) { _, value in
+                    layout.apply("mouse_drop_action", value)
+                }
+            }
         }
     }
 
-    private func tile(emphasised: Bool = false) -> some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(Color.accentColor.opacity(emphasised ? 0.30 : 0.16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 3)
-                    .strokeBorder(Color.accentColor.opacity(emphasised ? 0.9 : 0.45), lineWidth: 1)
+    /// Native pickers keep their intrinsic width inside a frame. Size the menu
+    /// label itself so every dropdown shares the same edges and text inset.
+    private func layoutPicker(
+        _ title: String, selection: Binding<String>, options: [(value: String, label: String)]
+    ) -> some View {
+        Menu {
+            Picker(title, selection: selection) {
+                ForEach(options, id: \.value) { option in
+                    Text(option.label).tag(option.value)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack {
+                Text(
+                    options.first { $0.value == selection.wrappedValue }?.label
+                        ?? selection.wrappedValue
+                )
+                .lineLimit(1)
+                Spacer(minLength: Metrics.small)
+                Image(systemName: "chevron.up.chevron.down").font(
+                    .system(size: 10, weight: .medium)
+                )
+                .accessibilityHidden(true)
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, Metrics.small)
+            .padding(.vertical, 6)
+            .frame(width: 176)
+            .glassEffect(
+                .regular.interactive(),
+                in: RoundedRectangle(cornerRadius: Metrics.radiusControl)
             )
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(title)
+            .accessibilityValue(
+                options.first { $0.value == selection.wrappedValue }?.label
+                    ?? selection.wrappedValue)
+        }
+        .menuStyle(.button)
+        .buttonStyle(InteractiveButtonStyle(cornerRadius: Metrics.radiusControl))
+        .menuIndicator(.hidden)
+        .accessibilityLabel(title)
+        .accessibilityValue(
+            options.first { $0.value == selection.wrappedValue }?.label ?? selection.wrappedValue)
     }
 }

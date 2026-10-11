@@ -18,7 +18,9 @@ public enum Startup {
                     await integrations.yabaiWrite(
                         setting.key, value: values[setting.env] ?? setting.fallback))
             }
-            try await WindowRules.apply(settings.floatingApps, integrations: integrations)
+            try await WindowRules.apply(
+                settings.floatingApps, customRules: settings.windowRules ?? [],
+                integrations: integrations)
         case "sketchybar":
             let arguments = StartupConfiguration.sketchybarKeys.map {
                 "\($0.key)=\(values[$0.env] ?? $0.fallback)"

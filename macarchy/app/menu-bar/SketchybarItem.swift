@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Macarchy
 
 /// A full `--query` snapshot of one SketchyBar item.
 ///
@@ -11,13 +12,14 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
     let type: String
     let position: String
     let drawing: Bool
-    let frame: CGRect
+    var frame: CGRect
     let paddingLeft: Double
     let paddingRight: Double
-    let width: Double
-    let icon: Layer
-    let label: Layer
-    let background: Background
+    var width: Double
+    var alignment: String?
+    var icon: Layer
+    var label: Layer
+    var background: Background
 
     struct Layer: Hashable, Sendable {
         var value: String
@@ -27,6 +29,8 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
         var yOffset: Double
         var paddingLeft: Double
         var paddingRight: Double
+        var width: Double?
+        var alignment: String = "left"
     }
 
     struct Background: Hashable, Sendable {
@@ -35,6 +39,8 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
         var cornerRadius: Double
         var height: Double
         var imageURL: URL?
+        var imagePaddingLeft: Double = 0
+        var imageYOffset: Double = 0
         var imageScale: Double
     }
 
@@ -73,7 +79,9 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
             font: raw["font"] as? String,
             yOffset: number(raw["y_offset"]),
             paddingLeft: number(raw["padding_left"]),
-            paddingRight: number(raw["padding_right"])
+            paddingRight: number(raw["padding_right"]),
+            width: number(raw["width"]) > 0 ? number(raw["width"]) : nil,
+            alignment: raw["align"] as? String ?? "left"
         )
     }
 
@@ -88,6 +96,8 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
             height: number(raw["height"]),
             imageURL: imageOn && path != nil && path != "(null)"
                 ? URL(fileURLWithPath: path ?? "") : nil,
+            imagePaddingLeft: number(image["padding_left"]),
+            imageYOffset: number(image["y_offset"]),
             imageScale: number(image["scale"])
         )
     }
@@ -95,7 +105,8 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
     /// `bounding_rects["display-1"].origin/size` — off-screen items sit at -9999.
     private static func rect(_ raw: Any?) -> CGRect {
         guard let displays = raw as? [String: Any],
-            let first = displays.values.first as? [String: Any]
+            let key = displays.keys.min(),
+            let first = displays[key] as? [String: Any]
         else { return .zero }
         let origin = pair(first["origin"])
         let size = pair(first["size"])
@@ -118,5 +129,95 @@ struct SketchybarItem: Identifiable, Hashable, Sendable {
         if let value = raw as? NSNumber { return value.doubleValue }
         if let value = raw as? String { return Double(value) ?? 0 }
         return 0
+    }
+}
+
+// Only native presentation properties are exposed. Reading values, scripts and
+// subscriptions never enter this map, so an edit cannot freeze a live source.
+extension SketchybarItem {
+    var editableSettings: [String: String] {
+        var result: [String: String] = [
+            "padding_left": String(paddingLeft), "padding_right": String(paddingRight),
+            "width": width > 0 ? String(width) : "dynamic",
+            "align": alignment ?? position,
+            "background.drawing": background.drawing ? "on" : "off",
+            "background.corner_radius": String(background.cornerRadius),
+            "background.image.scale": String(background.imageScale),
+            "background.image.padding_left": String(background.imagePaddingLeft),
+            "background.image.y_offset": String(background.imageYOffset),
+            "background.image": background.imageURL?.path ?? "",
+            "icon": icon.value,
+            "background.image.drawing": background.imageURL == nil ? "off" : "on"
+        ]
+        for (name, layer) in [("icon", icon), ("label", label)] {
+            result[name + ".width"] = layer.width.map { String($0) } ?? "dynamic"
+            result[name + ".align"] = layer.alignment
+            result[name + ".drawing"] = layer.drawing ? "on" : "off"
+            result[name + ".font"] = layer.font
+            result[name + ".color"] = layer.color
+            result[name + ".y_offset"] = String(layer.yOffset)
+            result[name + ".padding_left"] = String(layer.paddingLeft)
+            result[name + ".padding_right"] = String(layer.paddingRight)
+        }
+        result["background.color"] = background.color
+        return result
+    }
+
+    func presenting(_ component: Macarchy.BarComponent) -> SketchybarItem {
+        var copy = self
+        let settings = component.presentation[id] ?? [:]
+        for (prefix, original) in [("icon", icon), ("label", label)] {
+            var layer = original
+            if let value = settings[prefix + ".width"] { layer.width = Double(value) }
+            if let value = settings[prefix + ".align"] { layer.alignment = value }
+            if let value = settings[prefix + ".drawing"] { layer.drawing = value == "on" }
+            if let value = settings[prefix + ".font"] { layer.font = value }
+            if let value = settings[prefix + ".color"] { layer.color = value }
+            if let value = settings[prefix + ".y_offset"], let number = Double(value) {
+                layer.yOffset = number
+            }
+            if let value = settings[prefix + ".padding_left"], let number = Double(value) {
+                layer.paddingLeft = number
+            }
+            if let value = settings[prefix + ".padding_right"], let number = Double(value) {
+                layer.paddingRight = number
+            }
+            if prefix == "icon" { copy.icon = layer } else { copy.label = layer }
+        }
+        copy.alignment = settings["align"] ?? alignment
+        copy.applyImageAndSize(settings)
+        return copy
+    }
+
+    private mutating func applyImageAndSize(_ settings: [String: String]) {
+        if let value = settings["background.image.padding_left"], let number = Double(value) {
+            background.imagePaddingLeft = number
+        }
+        if let value = settings["background.image.y_offset"], let number = Double(value) {
+            background.imageYOffset = number
+        }
+        if let value = settings["icon"] { icon.value = value }
+        if let value = settings["background.image.drawing"], value == "off" {
+            background.imageURL = nil
+        }
+        if let value = settings["background.image"], !value.isEmpty {
+            background.imageURL = URL(fileURLWithPath: value)
+        }
+        if let value = settings["background.image.scale"], let number = Double(value) {
+            background.imageScale = number
+        }
+        if let value = settings["width"], let number = Double(value) {
+            width = number
+            frame.size.width = number
+        }
+    }
+}
+
+// Numeric rows already have a reserved, right-aligned slot. Sensor formatting
+// spaces must not add a second alignment offset to the displayed reading.
+extension SketchybarItem.Layer {
+    var displayValue: String {
+        alignment == "right" && value.contains(where: \.isNumber)
+            ? value.trimmingCharacters(in: .whitespaces) : value
     }
 }

@@ -20,14 +20,17 @@ struct ColorWell: View {
             HStack(spacing: 8) {
                 Text(isUnset ? "not set" : (color.macarchyString(format) ?? "—"))
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(isUnset ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(
+                        isUnset ? AnyShapeStyle(Color.metaText) : AnyShapeStyle(.secondary))
 
                 swatch
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Color.controlWell, in: RoundedRectangle(cornerRadius: 7))
-            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .background(
+                Color.controlWell, in: RoundedRectangle(cornerRadius: Metrics.radiusControl)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusControl))
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
@@ -38,11 +41,11 @@ struct ColorWell: View {
     }
 
     private var swatch: some View {
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
+        RoundedRectangle(cornerRadius: Metrics.radiusSmall, style: .continuous)
             .fill(isUnset ? Color.clear : color)
             .frame(width: 20, height: 20)
             .overlay(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: Metrics.radiusSmall, style: .continuous)
                     .strokeBorder(
                         Color.cardBorder,
                         style: StrokeStyle(lineWidth: 1, dash: isUnset ? [2, 2] : []))

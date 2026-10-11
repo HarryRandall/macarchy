@@ -29,9 +29,14 @@ struct InstalledTheme: Identifiable, Sendable {
     var manifestURL: URL { directory.appending(path: Theme.fileName) }
 
     var wallpaperURL: URL? {
-        guard let relative = wallpaperRelativePath, !relative.isEmpty else { return nil }
-        let url = directory.appending(path: relative)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        guard let relative = wallpaperRelativePath, !relative.isEmpty else {
+            return availableBackgrounds.first
+        }
+        let expanded = (relative as NSString).expandingTildeInPath
+        let url =
+            expanded.hasPrefix("/")
+            ? URL(fileURLWithPath: expanded) : directory.appending(path: relative)
+        return FileManager.default.fileExists(atPath: url.path) ? url : availableBackgrounds.first
     }
 
     /// Every image the theme ships, for the background picker.

@@ -20,13 +20,11 @@ extension BordersPane {
     func colourCard() -> some View {
         SettingsCard(
             "Colour",
-            footnote: "Colours are saved to the active theme when applied. Click a swatch to edit "
-                + "its colour, opacity or hex value. Imported themes may not have a bundled default.",
+            help: "Edit colour, opacity or hex values. Apply saves them to the active theme.",
             reset: resetColours,
             resetEnabled: coloursModified,
             resetLabel: "Theme colours",
-            resetHelp:
-                "Restore only the active theme's original border colours. Other theme settings stay unchanged."
+            resetHelp: "Restore this theme's original border colours"
         ) {
             borderColourRow("Active", detail: "The window with focus", key: \.activeColour)
             borderColourRow("Inactive", detail: "Every other window", key: \.inactiveColour)
@@ -37,7 +35,7 @@ extension BordersPane {
     private func borderColourRow(
         _ title: String, detail: String, key: WritableKeyPath<BorderAppearance, String?>
     ) -> some View {
-        SettingRow(title, detail: detail) {
+        SettingRow(title, help: detail) {
             ColorWell(
                 color: Binding(
                     get: { Color(macarchyHex: editor.draft[keyPath: key]) ?? .clear },
@@ -47,7 +45,7 @@ extension BordersPane {
                 isUnset: editor.draft[keyPath: key] == nil
             ) { _ in }
             .accessibilityLabel("\(title) border colour")
-            .help("Edit \(title.lowercased()) border colour")
+            .hoverHelp("Edit \(title.lowercased()) border colour")
         }
     }
 

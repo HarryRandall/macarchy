@@ -20,7 +20,5 @@
     <string>26.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>NSSupportsAutomaticTermination</key>
-    <true/>
 </dict>
 </plist>

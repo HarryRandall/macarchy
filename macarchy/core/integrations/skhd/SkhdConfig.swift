@@ -112,3 +112,55 @@ public enum SkhdConfig {
         return (modifiers, key)
     }
 }
+
+// MARK: - Writing
+
+extension SkhdConfig {
+    /// Renders a key spec in the form skhd parses back: `cmd + shift - h`.
+    ///
+    /// Modifier order is normalised so two bindings that mean the same chord
+    /// read the same in the file, whatever order they were recorded in.
+    public static func keySpec(modifiers: [String], key: String) -> String {
+        let order = ["fn", "ctrl", "alt", "shift", "cmd", "hyper"]
+        let sorted = modifiers.map { $0.lowercased() }.sorted {
+            (order.firstIndex(of: $0) ?? order.count) < (order.firstIndex(of: $1) ?? order.count)
+        }
+        guard !sorted.isEmpty else { return key }
+        return sorted.joined(separator: " + ") + " - " + key
+    }
+
+    /// Replaces the key spec on one line, keeping the command untouched.
+    ///
+    /// Only the part before the first `:` or the `->` is rewritten, because a
+    /// command routinely contains both — osascript calls and URLs especially.
+    /// Returns `nil` when the line is not a binding, so a miscounted index
+    /// cannot quietly corrupt the file.
+    public static func rebind(
+        _ text: String, line index: Int, modifiers: [String], key: String
+    ) -> String? {
+        var lines = text.components(separatedBy: "\n")
+        guard lines.indices.contains(index) else { return nil }
+
+        let line = lines[index]
+        let spec = keySpec(modifiers: modifiers, key: key)
+        let indent = String(line.prefix { $0 == " " || $0 == "\t" })
+
+        if let arrow = line.range(of: "->") {
+            lines[index] = indent + spec + " " + String(line[arrow.lowerBound...])
+        } else if let colon = line.firstIndex(of: ":") {
+            lines[index] = indent + spec + " " + String(line[colon...])
+        } else {
+            return nil
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Comments a binding out rather than deleting it, so the file keeps its
+    /// line numbering and the change can be read back later.
+    public static func disable(_ text: String, line index: Int) -> String? {
+        var lines = text.components(separatedBy: "\n")
+        guard lines.indices.contains(index), !lines[index].hasPrefix("#") else { return nil }
+        lines[index] = "# " + lines[index]
+        return lines.joined(separator: "\n")
+    }
+}

@@ -3,185 +3,279 @@ import Macarchy
 
 struct AdvancedPane: View {
     @Environment(AppModel.self) private var model
+    @State private var busy: Set<Daemon> = []
+    @State private var restoring = false
+    @State private var showAllBackups = false
+    @State private var addition: ScriptingAddition.Status?
+    @State private var repairingAddition = false
+    @State private var wakeHelpers: Bool?
 
     var body: some View {
-        Form {
-            Section("Daemons") {
-                ForEach(Daemon.allCases) { daemon in
-                    LabeledContent {
-                        HStack(spacing: 8) {
-                            StatusBadge(state: model.daemons.states[daemon] ?? .unknown)
-                            Button("Restart") { Task { await model.daemons.restart(daemon) } }
-                                .controlSize(.small)
-                            Button("Stop") { Task { await model.daemons.stop(daemon) } }
-                                .controlSize(.small)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(daemon.displayName)
-                            Text(daemon.launchdLabel)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+        SettingsPage("Advanced", subtitle: "Keep your desktop running smoothly.") {
+            IconButton(symbol: "arrow.clockwise", help: "Check service status again") {
+                Task {
+                    await model.daemons.refresh()
+                    await refreshCompatibility()
                 }
-
-                Button("Refresh") { Task { await model.daemons.refresh() } }
-                    .controlSize(.small)
             }
-
-            Section {
-                workaround(
-                    "macOS 27 Space switching",
-                    detail:
-                        "switch_space_macos27.sh · InstantSpaceSwitcher PR #88 · added 16 Sep 2026")
-                workaround(
-                    "Scripting addition reload on wake",
-                    detail: "Deep sleep breaks the SA and borders until the Dock restarts")
-            } header: {
-                Text("Active workarounds")
-            } footer: {
-                Text("Surfaced here so a stopgap cannot quietly become permanent.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                ForEach(["bordersrc", "yabairc", "sketchybarrc"], id: \.self) { name in
-                    LabeledContent {
-                        HStack(spacing: 8) {
-                            outcomeBadge(model.rc.lastOutcomes[name])
-                            Button("Regenerate") {
-                                switch name {
-                                case "bordersrc": model.rc.generateBordersRC()
-                                case "yabairc": model.rc.generateYabaiRC()
-                                default: model.rc.generateSketchybarRC()
-                                }
-                            }
-                            .controlSize(.small)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(name)
-                            Text(
-                                "~/.config/"
-                                    + (name == "bordersrc"
-                                        ? "borders/bordersrc"
-                                        : name == "yabairc"
-                                            ? "yabai/yabairc" : "sketchybar/sketchybarrc")
-                            )
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-            } header: {
-                Text("Generated config")
-            } footer: {
-                Text(
-                    "Authored by the app. Hand edits are not blocked — they're detected by hash, snapshotted and reported before being replaced. Wrap anything you want kept in a macarchy:keep block."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                if model.snapshots.snapshots.isEmpty {
-                    Text("No snapshots yet. One is taken before each write.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(model.snapshots.snapshots) { snapshot in
-                        LabeledContent {
-                            Button("Restore and apply") {
-                                Task {
-                                    await model.snapshots.restore(snapshot)
-                                    await model.loadEverything()
-                                }
-                            }
-                            .controlSize(.small)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(snapshot.id.replacingOccurrences(of: "T", with: "  "))
-                                    .font(.system(size: 12, design: .monospaced))
-                                Text(captionFor(snapshot))
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                }
-                Button("Refresh") { model.snapshots.refresh() }
-                    .controlSize(.small)
-            } header: {
-                Text("Snapshots · keeping last 20")
-            } footer: {
-                Text(
-                    "Taken automatically before each write. Restoring snapshots the current state first, so it is itself undoable."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+        } content: {
+            AdvancedOverview()
+            services
+            configuration
+            backups
+            compatibility
         }
-        .formStyle(.grouped)
         .task {
-            await model.daemons.refresh(); model.snapshots.refresh()
+            await model.daemons.refresh()
+            model.snapshots.refresh()
+            await refreshCompatibility()
         }
     }
+
+    // MARK: - Services
+
+    private var services: some View {
+        SettingsCard(
+            "Desktop services",
+            help: "Restart a service if its feature stops responding. Stop turns that feature off."
+        ) {
+            ForEach(Array(Daemon.allCases.enumerated()), id: \.element) { index, daemon in
+                SettingRow(
+                    AdvancedOverview.serviceName(daemon),
+                    help: AdvancedOverview.serviceDetail(daemon)
+                ) {
+                    Image(systemName: AdvancedOverview.serviceSymbol(daemon))
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                } accessory: {
+                    HStack(spacing: Metrics.small) {
+                        StatusChip(
+                            tone: isRunning(daemon) ? .good : .idle,
+                            label: status(daemon),
+                            live: isRunning(daemon))
+                        ActionCluster {
+                            IconButton(
+                                symbol: "arrow.clockwise",
+                                help:
+                                    "Restart \(AdvancedOverview.serviceName(daemon).lowercased())",
+                                isBusy: busy.contains(daemon)
+                            ) { perform(daemon, stop: false) }
+                            IconButton(
+                                symbol: "stop.fill",
+                                help: "Stop \(AdvancedOverview.serviceName(daemon).lowercased())",
+                                isBusy: false
+                            ) { perform(daemon, stop: true) }
+                            .disabled(busy.contains(daemon) || !isRunning(daemon))
+                        }
+                    }
+                    .motion(Motion.snappy, value: isRunning(daemon))
+                }
+                .appearStagger(index)
+            }
+        }
+    }
+
+    // MARK: - Configuration
+
+    private var configuration: some View {
+        SettingsCard(
+            "Saved setup",
+            help:
+                "Rebuild files from saved preferences. Custom edits are backed up before replacement."
+        ) {
+            ForEach(Array(Self.generated.enumerated()), id: \.element.id) { index, entry in
+                SettingRow(entry.title) {
+                    Image(systemName: entry.symbol)
+                        .font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 20)
+                } accessory: {
+                    HStack(spacing: Metrics.small) {
+                        outcomeBadge(model.rc.lastOutcomes[entry.file])
+                        IconButton(symbol: "hammer", help: "Rebuild this file from preferences") {
+                            switch entry.file {
+                            case "bordersrc": model.rc.generateBordersRC()
+                            case "yabairc": model.rc.generateYabaiRC()
+                            default: model.rc.generateSketchybarRC()
+                            }
+                        }
+                    }
+                }
+                .appearStagger(index)
+            }
+        }
+    }
+
+    /// The files the app generates, and how each is named to a reader.
+    private struct Generated: Identifiable {
+        let file: String
+        let title: String
+        let symbol: String
+        var id: String { file }
+    }
+
+    private static let generated: [Generated] = [
+        .init(file: "bordersrc", title: "Window borders", symbol: "square.dashed"),
+        .init(file: "yabairc", title: "Window layout", symbol: "rectangle.3.group"),
+        .init(file: "sketchybarrc", title: "Menu bar", symbol: "menubar.rectangle")
+    ]
+
+    // MARK: - Backups
+
+    private var visibleSnapshots: [SnapshotStore.Snapshot] {
+        showAllBackups ? model.snapshots.snapshots : Array(model.snapshots.snapshots.prefix(4))
+    }
+
+    private var backups: some View {
+        SettingsCard(
+            "Restore a previous setup",
+            help:
+                "Restore replaces current settings after backing them up. Changes create backups automatically."
+        ) {
+            if model.snapshots.snapshots.isEmpty {
+                SettingRow(
+                    "No backups yet",
+                    detail: "Your saved setups will appear here when settings change.")
+            }
+            ForEach(Array(visibleSnapshots.enumerated()), id: \.element.id) { index, snapshot in
+                SettingRow(
+                    snapshot.created.formatted(date: .abbreviated, time: .shortened),
+                    detail: snapshot.files.count == 1
+                        ? "1 saved file" : "\(snapshot.files.count) saved files"
+                ) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 20)
+                } accessory: {
+                    Button(restoring ? "Restoring…" : "Restore") { restore(snapshot) }
+                        .disabled(restoring)
+                }
+                .appearStagger(index)
+            }
+            if model.snapshots.snapshots.count > 4 {
+                Button {
+                    withAnimation(Motion.snappy) { showAllBackups.toggle() }
+                } label: {
+                    HStack(spacing: Metrics.xs) {
+                        Text(
+                            showAllBackups
+                                ? "Show fewer"
+                                : "Show all \(model.snapshots.snapshots.count) backups")
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(showAllBackups ? 180 : 0))
+                    }
+                    .font(.meta)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Metrics.medium)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Compatibility
+
+    private var compatibility: some View {
+        SettingsCard(
+            "Compatibility helpers",
+            help: "Helpers for this macOS version, checked whenever the page opens."
+        ) {
+            SettingRow(
+                "Switching between desktops",
+                detail: addition?.explanation
+                    ?? "A helper keeps desktop switching working on macOS 27."
+            ) {
+                HStack(spacing: Metrics.small) {
+                    switch addition {
+                    case .permitted:
+                        StatusChip(tone: .good, label: "Active")
+                    case nil:
+                        StatusChip(tone: .idle, label: "Checking…")
+                    case .bundleMissing, .binaryMissing:
+                        StatusChip(tone: .bad, label: "Missing")
+                    case .ruleMissing, .hashStale:
+                        StatusChip(tone: .warning, label: "Needs repair")
+                        Button(repairingAddition ? "Repairing…" : "Repair") { repairAddition() }
+                            .disabled(repairingAddition)
+                    }
+                }
+                .motion(Motion.snappy, value: addition)
+            }
+            SettingRow(
+                "Recovering after sleep",
+                help: "A wake-up helper restores window features that may stop responding "
+                    + "after a long sleep."
+            ) {
+                switch wakeHelpers {
+                case true: StatusChip(tone: .good, label: "Active")
+                case false: StatusChip(tone: .warning, label: "Not registered")
+                case nil: StatusChip(tone: .idle, label: "Checking…")
+                }
+            }
+        }
+    }
+
+    /// Both rows used to read "Active" whether or not they were, which is how
+    /// a broken desktop-switching helper went unnoticed for a day. They report
+    /// what is actually installed now.
+    private func refreshCompatibility() async {
+        addition = ScriptingAddition.status()
+        wakeHelpers = await model.wakeHelpersRegistered()
+    }
+
+    private func repairAddition() {
+        repairingAddition = true
+        Task {
+            await model.repairScriptingAddition()
+            await refreshCompatibility()
+            repairingAddition = false
+        }
+    }
+
+    // MARK: - Helpers
 
     @ViewBuilder
     private func outcomeBadge(_ outcome: GeneratedFile.Outcome?) -> some View {
         switch outcome {
-        case .written:
-            Label("generated", systemImage: "checkmark")
-                .font(.caption2).foregroundStyle(.green).labelStyle(.titleAndIcon)
-        case .unchanged:
-            Text("up to date").font(.caption2).foregroundStyle(.secondary)
-        case .writtenOverDrift:
-            Label("hand edits snapshotted", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption2).foregroundStyle(.orange)
+        case .written: StatusChip(tone: .good, label: "Rebuilt")
+        case .unchanged: StatusChip(tone: .idle, label: "Up to date")
+        case .writtenOverDrift: StatusChip(tone: .warning, label: "Edits backed up")
         case .failed(let message):
-            Label(message, systemImage: "xmark.circle.fill")
-                .font(.caption2).foregroundStyle(.red)
-        case nil:
-            Text("not yet generated").font(.caption2).foregroundStyle(.tertiary)
+            StatusChip(tone: .bad, label: "Failed").hoverHelp(message)
+        case nil: StatusChip(tone: .idle, label: "Not checked")
         }
     }
 
-    private func captionFor(_ snapshot: SnapshotStore.Snapshot) -> String {
-        let reason = model.snapshots.reason(for: snapshot)
-        let files = snapshot.files.count == 1 ? "1 file" : "\(snapshot.files.count) files"
-        return reason.isEmpty ? files : "\(reason) · \(files)"
+    private func restore(_ snapshot: SnapshotStore.Snapshot) {
+        restoring = true
+        Task {
+            await model.snapshots.restore(snapshot)
+            await model.loadEverything()
+            restoring = false
+        }
     }
 
-    private func workaround(_ title: String, detail: String) -> some View {
-        LabeledContent {
-            Text("active")
-                .font(.caption2)
-                .foregroundStyle(.orange)
-        } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                Text(detail)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+    private func perform(_ daemon: Daemon, stop: Bool) {
+        busy.insert(daemon)
+        Task {
+            if stop {
+                await model.daemons.stop(daemon)
+            } else {
+                await model.daemons.restart(daemon)
             }
+            busy.remove(daemon)
         }
     }
-}
 
-private struct StatusBadge: View {
-    let state: DaemonState
+    private func isRunning(_ daemon: Daemon) -> Bool {
+        model.daemons.states[daemon]?.isRunning == true
+    }
 
-    var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(state.isRunning ? Color.green : Color.secondary)
-                .frame(width: 6, height: 6)
-            Text(state.label)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
+    private func status(_ daemon: Daemon) -> String {
+        switch model.daemons.states[daemon] ?? .unknown {
+        case .running: "Running"
+        case .stopped: "Stopped"
+        case .unknown: "Unavailable"
         }
-        .frame(width: 104, alignment: .leading)
     }
 }

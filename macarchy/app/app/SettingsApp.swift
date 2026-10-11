@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct SettingsApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel()
 
     var body: some Scene {
@@ -10,13 +11,37 @@ struct SettingsApp: App {
                 .environment(model)
                 .task { await model.loadEverything() }
         }
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .defaultSize(width: 860, height: 620)
-        .commands { CommandGroup(replacing: .newItem) {} }
+        .defaultSize(width: 1000, height: 720)
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .toolbar) {
+                Button("Search…") {
+                    model.modal.present(inContent: true) { CommandPalette() }
+                }
+                .keyboardShortcut("k", modifiers: .command)
 
-        MenuBarExtra("Macarchy", systemImage: "circle.lefthalf.filled") {
+                Button(model.consoleOpen ? "Hide Console" : "Show Console") {
+                    model.consoleOpen.toggle()
+                }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+
+                Button("Back") { model.goBack() }
+                    .keyboardShortcut("[", modifiers: .command)
+                    .disabled(!model.canGoBack)
+
+                Button("Forward") { model.goForward() }
+                    .keyboardShortcut("]", modifiers: .command)
+                    .disabled(!model.canGoForward)
+            }
+        }
+
+        MenuBarExtra {
             StatusMenu()
                 .environment(model)
+        } label: {
+            StatusLabel()
         }
     }
 }

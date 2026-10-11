@@ -8,17 +8,26 @@ import SwiftUI
 struct MenuBarItemView: View {
     let item: SketchybarItem
     var dimmed = false
+    /// Colours from the draft, drawn instead of the queried ones.
+    ///
+    /// The query is a snapshot of what SketchyBar is showing now, so on its
+    /// own this view can never preview an unapplied edit — restyling a widget
+    /// looked like it did nothing until Apply landed.
+    var iconOverride: String?
+    var labelOverride: String?
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            backdrop
-            HStack(spacing: 0) {
-                glyph(item.icon)
-                glyph(item.label)
+        let layout = SketchybarTextLayout(item)
+        return Color.clear
+            .frame(width: item.frame.width, height: item.frame.height)
+            .overlay(alignment: .leading) { backdrop }
+            .overlay(alignment: .leading) {
+                glyph(item.icon, override: iconOverride).offset(x: layout.iconX)
             }
-        }
-        .frame(width: item.frame.width, height: item.frame.height, alignment: .leading)
-        .opacity(dimmed ? 0.28 : 1)
+            .overlay(alignment: .leading) {
+                glyph(item.label, override: labelOverride).offset(x: layout.labelX)
+            }
+            .opacity(dimmed ? 0.28 : 1)
     }
 
     @ViewBuilder
@@ -33,7 +42,8 @@ struct MenuBarItemView: View {
                     width: image.size.width * scale,
                     height: image.size.height * scale
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: item.frame.width, height: item.frame.height, alignment: .leading)
+                .offset(x: item.background.imagePaddingLeft, y: -item.background.imageYOffset)
         } else if item.background.drawing {
             RoundedRectangle(cornerRadius: item.background.cornerRadius, style: .continuous)
                 .fill(Color(macarchyHex: item.background.color) ?? .clear)
@@ -44,30 +54,18 @@ struct MenuBarItemView: View {
     }
 
     @ViewBuilder
-    private func glyph(_ layer: SketchybarItem.Layer) -> some View {
+    private func glyph(_ layer: SketchybarItem.Layer, override: String?) -> some View {
         if layer.drawing, !layer.value.trimmingCharacters(in: .whitespaces).isEmpty {
-            Text(layer.value)
-                .font(Self.font(layer.font))
-                .foregroundStyle(Color(macarchyHex: layer.color) ?? .white)
-                .padding(.leading, layer.paddingLeft)
-                .padding(.trailing, layer.paddingRight)
-                .offset(y: layer.yOffset)
+            Text(layer.displayValue)
+                .font(SketchybarFont(layer.font).swiftUI)
+                .foregroundStyle(
+                    Color(macarchyHex: override) ?? Color(macarchyHex: layer.color) ?? .white
+                )
+                // SketchyBar uses an upward-positive text coordinate system.
+                .offset(y: -layer.yOffset)
                 .lineLimit(1)
                 .fixedSize()
         }
     }
 
-    /// `SF Pro:Semibold:15.00`. SF stays `.system` so calendar/battery
-    /// private-use symbols resolve; everything else is the named face
-    /// (`sketchybar-app-font` for `:firefox:` ligatures).
-    private static func font(_ raw: String?) -> Font {
-        let parts = (raw ?? "").split(separator: ":")
-        let size = Double(parts.count > 2 ? parts[2] : "") ?? 12
-        let family = parts.isEmpty ? "" : String(parts[0])
-        let weight = parts.count > 1 ? String(parts[1]) : ""
-        if family.hasPrefix("SF") || family.isEmpty {
-            return .system(size: size, weight: weight == "Bold" ? .bold : .semibold)
-        }
-        return .custom(family, size: size)
-    }
 }

@@ -7,7 +7,7 @@ import Macarchy
 final class BordersModel {
     var width: Double = 6.0
     var visible = true
-    var excludedApps: [String] = []
+    var excludedApps = BorderAppearance().excludedApps
 
     /// Global window corner radius (`NSConvolutionOverride1`).
     ///
@@ -56,9 +56,8 @@ final class BordersModel {
         }
         if let raw = values["BORDER_WIDTH"], let parsed = Double(raw) { width = parsed }
         if let raw = values["BORDERS_VISIBLE"] { visible = raw != "false" }
-        if let raw = values["BORDERS_BLACKLIST"], !raw.isEmpty {
-            excludedApps = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        }
+        excludedApps = (values["BORDERS_BLACKLIST"] ?? "iPhone Mirroring")
+            .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let result = await backend.globalDefault(Self.cornerRadiusKey)
         if result.ok, let parsed = Double(result.stdout) {
             cornerRadius = parsed

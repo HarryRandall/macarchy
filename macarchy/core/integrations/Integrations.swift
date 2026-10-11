@@ -89,11 +89,78 @@ public struct Integrations: Sendable {
         return isRunning ? .unknown : .stopped
     }
 
-    public func restart(_ daemon: Daemon) async -> CommandResult {
+    /// The app that currently holds Secure Keyboard Entry, or `nil` when it is
+    /// off.
+    public func secureInput() async -> SecureInput? {
+        await SecureInput.current(execute: execute)
+    }
+
+    /// Restarts a daemon and waits to see whether it actually survived.
+    ///
+    /// `kickstart` exits 0 the moment launchd has *spawned* the job, which says
+    /// nothing about what happened next. skhd aborts within milliseconds when
+    /// Secure Keyboard Entry is on, and reporting that spawn as a success is
+    /// how a stopped service came to sit under a green console line.
+    ///
+    /// The polling defaults are loose enough for a slow starter and tight
+    /// enough that a person does not notice; tests pass their own.
+    public func restart(
+        _ daemon: Daemon, attempts: Int = 8, settle: Duration = .milliseconds(120)
+    ) async -> CommandResult {
+        if let blocked = await refusedStart(daemon) { return blocked }
         // -k kills then restarts; matches what yabairc now does for borders on wake.
-        await execute(
+        let kickstart = await execute(
             Paths.launchctl,
             ["kickstart", "-k", "gui/\(getuid())/\(daemon.launchdLabel)"])
+        guard kickstart.ok else { return kickstart }
+        // A daemon on its way out can still read as running for the first
+        // instant after the spawn, so "running" has to hold across two reads
+        // before it counts as a start.
+        var consecutive = 0
+        for _ in 0..<max(1, attempts) {
+            try? await Task.sleep(for: settle)
+            consecutive = await state(of: daemon).isRunning ? consecutive + 1 : 0
+            if consecutive >= 2 { return kickstart }
+        }
+        return await startupFailure(daemon, kickstart: kickstart)
+    }
+
+    /// Secure input is the one condition that makes a start pointless rather
+    /// than merely uncertain, so it is checked before launchd is asked to do
+    /// work that cannot succeed.
+    private func refusedStart(_ daemon: Daemon) async -> CommandResult? {
+        guard daemon == .skhd, let holder = await secureInput() else { return nil }
+        return CommandResult(
+            command: "restart \(daemon.rawValue)", status: 1,
+            stderr: "\(holder.explanation) \(daemon.displayName) cannot start until it is off.")
+    }
+
+    /// The job spawned and died. launchd keeps no record of why, but every one
+    /// of these daemons redirects its own stderr to a file, and the reason is
+    /// the last line of it.
+    private func startupFailure(_ daemon: Daemon, kickstart: CommandResult) async -> CommandResult {
+        let reason = await lastErrorLine(of: daemon) ?? "It started and stopped immediately."
+        return CommandResult(
+            command: kickstart.command, status: 1,
+            stderr: "\(daemon.displayName) did not stay running. \(reason)")
+    }
+
+    /// `launchctl list` prints the job's own `StandardErrorPath`, so the log is
+    /// found rather than hard-coded: the four daemons each put theirs somewhere
+    /// different, and a wrong guess would report silence as the diagnosis.
+    private func lastErrorLine(of daemon: Daemon) async -> String? {
+        let job = await execute(Paths.launchctl, ["list", daemon.launchdLabel])
+        guard job.ok, let path = Self.standardErrorPath(inJobDescription: job.stdout)
+        else { return nil }
+        let tail = await execute(Paths.tail, ["-n", "1", path])
+        guard tail.ok, !tail.stdout.isEmpty else { return nil }
+        return tail.stdout
+    }
+
+    static func standardErrorPath(inJobDescription description: String) -> String? {
+        guard let match = description.firstMatch(of: /"StandardErrorPath"\s*=\s*"([^"]+)"/)
+        else { return nil }
+        return String(match.1)
     }
 
     public func stop(_ daemon: Daemon) async -> CommandResult {

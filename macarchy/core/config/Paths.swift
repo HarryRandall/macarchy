@@ -12,6 +12,9 @@ public enum Paths {
     public static let skhd = "/opt/homebrew/bin/skhd"
     public static let launchctl = "/bin/launchctl"
     public static let defaults = "/usr/bin/defaults"
+    public static let ioreg = "/usr/sbin/ioreg"
+    public static let ps = "/bin/ps"
+    public static let tail = "/usr/bin/tail"
 
     public static var home: URL {
         URL(

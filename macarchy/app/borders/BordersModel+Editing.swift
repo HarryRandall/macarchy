@@ -6,9 +6,6 @@ extension BordersModel {
         appearance.width = width
         appearance.visible = visible
         appearance.excludedApps = excludedApps
-        if !appearance.excludedApps.contains("iPhone Mirroring") {
-            appearance.excludedApps.append("iPhone Mirroring")
-        }
         appearance.radius = hasCornerRadiusOverride ? cornerRadius : nil
         appearance.activeColour = theme?.manifest?.colors.borderActive
         appearance.inactiveColour = theme?.manifest?.colors.borderInactive

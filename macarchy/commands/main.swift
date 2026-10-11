@@ -72,7 +72,11 @@ do {
         switch args.dropFirst().first {
         case "toggle": try await WindowRules.toggle()
         case "window-created": try await WindowRules.windowCreated()
-        default: try await WindowRules.apply(SettingsStore().read().floatingApps)
+        case "retire-defaults": try await LegacyWindowRules.retire()
+        default:
+            let settings = try SettingsStore().read()
+            try await WindowRules.apply(
+                settings.floatingApps, customRules: settings.windowRules ?? [])
         }
     case "restore":
         guard args.count >= 2 else {

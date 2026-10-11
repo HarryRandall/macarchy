@@ -2,11 +2,24 @@ import Macarchy
 import Foundation
 
 extension MenuBarModel {
+    var hasChanges: Bool {
+        draft != applied || ComponentBoxLayout.normalising(draft, items: items) != draft
+    }
+
     func applyConfiguration(_ configuration: BarConfiguration) async throws {
         let actual = Set(items.map(\.id))
         for component in configuration.components
         where component.isCustom && !actual.contains(component.id) {
             try await send(BarCommands.customArguments(component))
+        }
+        for component in configuration.components where component.hasBoxLayout {
+            for member in component.members
+            where member.hasPrefix("gap.") && !actual.contains(member) {
+                try await send([
+                    "--add", "item", member, component.side, "--set", member, "icon.drawing=off",
+                    "label.drawing=off"
+                ])
+            }
         }
         let removed = applied.components.filter { component in
             component.isCustom && !configuration.components.contains { $0.id == component.id }
@@ -14,7 +27,9 @@ extension MenuBarModel {
         for component in removed where actual.contains(component.id) {
             try await send(["--remove", component.id])
         }
-        let arguments = BarCommands.settings(configuration)
+        let arguments = BarCommands.changes(
+            configuration, from: applied,
+            baseline: Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.editableSettings) }))
         if !arguments.isEmpty { try await send(arguments) }
     }
 
@@ -24,20 +39,27 @@ extension MenuBarModel {
         guard result.ok else { throw BorderApplyError(message: result.summary) }
     }
 
-    func readSnapshot() async throws -> [String: String] {
+    func readSnapshot(logQuery: Bool = true) async throws -> [String: String] {
         let (result, state) = await backend.barState()
-        log.record(result)
+        if logQuery { log.record(result) }
+        try Task.checkCancellation()
         guard result.ok, let state else { throw BorderApplyError(message: result.summary) }
         var snapshots: [SketchybarItem] = []
         for name in state.items ?? [] {
-            let result = await backend.sketchybar(["--query", name])
+            try Task.checkCancellation()
+            var result = await backend.sketchybar(["--query", name])
+            if !result.ok || SketchybarItem.parse(id: name, json: result.stdout) == nil {
+                try await Task.sleep(for: .milliseconds(150))
+                result = await backend.sketchybar(["--query", name])
+            }
             guard result.ok, let item = SketchybarItem.parse(id: name, json: result.stdout) else {
                 throw BorderApplyError(
                     message: "Could not read component \(name). Refresh and try again.")
             }
             snapshots.append(item)
         }
-        replaceSnapshot(snapshots, colour: state.color)
+        try Task.checkCancellation()
+        if logQuery || !isApplying { replaceSnapshot(snapshots, colour: state.color) }
         return [
             "height": String(state.height ?? 35), "position": state.position ?? "top",
             "padding_left": String(state.paddingLeft ?? 10),

@@ -8,28 +8,41 @@ import AppKit
 struct WallpaperThumbnail: View {
     let url: URL?
     var height: CGFloat = 92
+    /// Which part of the image survives the crop.
+    ///
+    /// A bar preview is a very wide, very short strip; filling it from the
+    /// centre magnifies a thin band out of the middle of the picture, which
+    /// reads as a stretch. A bar along the top of the screen should show the
+    /// top of the wallpaper.
+    var crop: Alignment = .center
 
     @State private var image: NSImage?
 
     var body: some View {
-        ZStack {
-            if let image {
-                Image(nsImage: image)
-                    .resizable().scaledToFill()
-            } else {
-                Rectangle().fill(.quaternary)
-                if url == nil {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.tertiary)
-                        .font(.title3)
+        GeometryReader { geometry in
+            ZStack(alignment: crop) {
+                if let image {
+                    Image(nsImage: image)
+                        .resizable().scaledToFill()
+                } else {
+                    Rectangle().fill(.quaternary)
+                    if url == nil {
+                        Image(systemName: "photo")
+                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                    }
                 }
             }
+            .frame(width: geometry.size.width, height: height, alignment: crop)
+            .clipped()
         }
         .frame(height: height)
-        .clipped()
-        .task(id: url) {
+        .task(id: "\(url?.absoluteString ?? "")@\(height)") {
+            image = nil
             guard let url else { return }
-            image = await ThumbnailCache.shared.thumbnail(for: url, height: height * 2)
+            let loaded = await ThumbnailCache.shared.thumbnail(for: url, height: height * 2)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }

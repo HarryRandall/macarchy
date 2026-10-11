@@ -27,6 +27,7 @@ struct SegmentedPill<Value: Hashable>: View {
     /// Tabs heading a page need more presence than a control inside a row.
     var isProminent = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var pill
 
     var body: some View {
@@ -41,7 +42,9 @@ struct SegmentedPill<Value: Hashable>: View {
         let isSelected = option.value == selection
         return Button {
             guard !isSelected else { return }
-            withAnimation(.snappy(duration: 0.18)) { selection = option.value }
+            withAnimation(reduceMotion ? nil : .snappy(duration: 0.18)) {
+                selection = option.value
+            }
         } label: {
             HStack(spacing: 6) {
                 Text(option.label)
@@ -54,8 +57,8 @@ struct SegmentedPill<Value: Hashable>: View {
                 }
             }
             .font(.system(size: isProminent ? 13 : 12, weight: isSelected ? .medium : .regular))
-            .padding(.horizontal, isProminent ? 12 : 10)
-            .padding(.vertical, isProminent ? 6 : 4)
+            .padding(.horizontal, isProminent ? Metrics.medium : Metrics.small)
+            .padding(.vertical, isProminent ? Metrics.small - 2 : Metrics.xs)
             .background {
                 if isSelected {
                     Capsule(style: .continuous)

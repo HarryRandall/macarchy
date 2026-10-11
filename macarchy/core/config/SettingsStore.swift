@@ -41,6 +41,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var borders: [String: SettingValue] = [:]
     public var menuBar: [String: SettingValue] = [:]
     public var floatingApps: [String] = []
+    public var windowRules: [CustomWindowRule]?
     public var barConfiguration: BarConfiguration?
     public var itemOrder: [String] = []
     public var itemVisibility: [String: Bool] = [:]
@@ -49,6 +50,11 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
 
     public func validate() throws {
         try barConfiguration?.validate()
+        let rules = windowRules ?? []
+        guard Set(rules.map(\.id)).count == rules.count else {
+            throw ConfigurationError("Window rule identifiers must be unique")
+        }
+        for rule in rules { try rule.validate() }
         guard schema == 1 else { throw ConfigurationError("Unsupported settings schema") }
         let numeric = [layout, borders, menuBar].flatMap { $0.values }
         for value in numeric {

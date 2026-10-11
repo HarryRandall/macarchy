@@ -89,7 +89,7 @@ struct BarConfigurationTests {
         #expect(BarCommands.settings(config, startup: true).contains("updates=off"))
         #expect(BarCommands.settings(config, startup: true).contains("drawing=off"))
     }
-    @Test("uniform spacing replaces legacy spacers and uses the same edge padding")
+    @Test("explicit global spacing updates native spacers and widget padding")
     func uniformSpacing() {
         var config = BarConfiguration()
         config.components = [
@@ -101,10 +101,10 @@ struct BarConfigurationTests {
         config.componentPadding = 8
         config.componentSpacing = 12
         let args = BarCommands.settings(config)
-        #expect(args.contains("width=0"))
+        #expect(args.contains("width=12.0"))
         #expect(args.filter { $0 == "padding_left=8.0" }.count == 2)
-        #expect(args.filter { $0 == "padding_right=20.0" }.count == 2)
-        #expect(BarCommands.startupScript(config).contains("padding_right=20.0"))
+        #expect(args.filter { $0 == "padding_right=12.0" }.count == 1)
+        #expect(BarCommands.startupScript(config).contains("width=12.0"))
     }
 
     @Test("multiple groups keep their order when dragged and overrides survive replay")

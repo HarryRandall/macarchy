@@ -2,14 +2,7 @@ import Foundation
 import Observation
 import Macarchy
 
-/// Per-app window rules.
-///
-/// Two sources that have to be shown as one list: `float_state.json` (a flat
-/// array the app owns) and `yabai -m rule --list` (what is actually loaded,
-/// including rules declared by hand in yabairc). The `float_persist_` label is
-/// what distinguishes them — sync_float_rules.sh removes every rule carrying it
-/// and re-adds from the JSON, so the app writes the file and calls the script
-/// rather than reimplementing that reconciliation.
+/// Saved app preferences and custom title filters, alongside externally loaded rules.
 @MainActor
 @Observable
 final class RulesModel {
@@ -22,11 +15,14 @@ final class RulesModel {
 
         enum Source: Sendable {
             case floatState  // app-owned, editable here
-            case declared  // hand-written in yabairc's keep region
+            case custom
+            case declared  // managed outside the app
         }
     }
 
     private(set) var rules: [Rule] = []
+    private(set) var customRules: [CustomWindowRule] = []
+    private(set) var lastError: String?
     private(set) var isBusy = false
 
     private let backend: Integrations
@@ -41,32 +37,48 @@ final class RulesModel {
 
     func reload() async {
         let owned: [String]
-        do { owned = try Self.loadFloatState() } catch {
+        do {
+            let settings = try SettingsStore().read()
+            owned = settings.floatingApps
+            customRules = settings.windowRules ?? []
+        } catch {
+            lastError = error.localizedDescription
             log.note("Window rules unreadable", error.localizedDescription); return
         }
         let result = await backend.yabaiRules()
 
-        var built: [Rule] = []
-        if result.ok, let data = result.stdout.data(using: .utf8),
+        guard result.ok else {
+            lastError = result.summary
+            return
+        }
+        guard let data = result.stdout.data(using: .utf8),
             let live = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
-            for entry in live {
-                let label = entry["label"] as? String ?? ""
-                let pattern = entry["app"] as? String ?? ""
-                let name = Self.unanchor(pattern)
-                let isOwned = label.hasPrefix(Self.managedLabelPrefix) || owned.contains(name)
-                built.append(
-                    Rule(
-                        id: label.isEmpty ? pattern : label,
-                        app: name,
-                        title: (entry["title"] as? String).flatMap { $0.isEmpty ? nil : $0 },
-                        managed: (entry["manage"] as? Bool) ?? true,
-                        source: isOwned ? .floatState : .declared))
-            }
+        else {
+            lastError = "The window manager returned an unreadable rules list."
+            return
+        }
+        var built: [Rule] = []
+        for entry in live {
+            let label = entry["label"] as? String ?? ""
+            let pattern = entry["app"] as? String ?? ""
+            let name = Self.unanchor(pattern)
+            let isOwned =
+                label.hasPrefix(Self.managedLabelPrefix)
+                || (label.isEmpty && owned.contains(name))
+            built.append(
+                Rule(
+                    id: label.isEmpty ? pattern : label,
+                    app: name,
+                    title: (entry["title"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                    managed: (entry["manage"] as? Bool) ?? true,
+                    source: label.hasPrefix("macarchy_custom_")
+                        ? .custom : isOwned ? .floatState : .declared))
         }
 
+        lastError = nil
         // Anything in the JSON that yabai hasn't loaded yet still belongs on screen.
-        for name in owned where !built.contains(where: { $0.app == name }) {
+        for name in owned
+        where !built.contains(where: { $0.app == name && $0.source == .floatState }) {
             built.append(
                 Rule(
                     id: "pending-\(name)", app: name, title: nil,
@@ -82,9 +94,44 @@ final class RulesModel {
         }
     }
 
+    func saveCustom(_ rule: CustomWindowRule) async -> Bool {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            var saved = try SettingsStore().read().windowRules ?? []
+            if let index = saved.firstIndex(where: { $0.id == rule.id }) {
+                saved[index] = rule
+            } else {
+                saved.append(rule)
+            }
+            try await WindowRules.commitCustom(saved, integrations: backend)
+            await reload()
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            log.note("Window rule failed", error.localizedDescription)
+            return false
+        }
+    }
+
+    func removeCustom(_ rule: CustomWindowRule) async {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let saved = try SettingsStore().read().windowRules ?? []
+            try await WindowRules.commitCustom(
+                saved.filter { $0.id != rule.id }, integrations: backend)
+            await reload()
+        } catch {
+            lastError = error.localizedDescription
+            log.note("Window rule failed", error.localizedDescription)
+        }
+    }
+
     func add(_ appName: String) async {
         var owned: [String]
         do { owned = try Self.loadFloatState() } catch {
+            lastError = error.localizedDescription
             log.note("Window rules unreadable", error.localizedDescription); return
         }
         guard !owned.contains(appName) else { return }
@@ -97,7 +144,10 @@ final class RulesModel {
         do {
             let owned = try Self.loadFloatState().filter { $0 != rule.app }
             await write(owned, note: "removed \(rule.app)")
-        } catch { log.note("Window rules unreadable", error.localizedDescription) }
+        } catch {
+            lastError = error.localizedDescription
+            log.note("Window rules unreadable", error.localizedDescription)
+        }
     }
 
     private func write(_ apps: [String], note: String) async {
@@ -107,7 +157,11 @@ final class RulesModel {
         do {
             _ = try SettingsStore().read()
             try await WindowRules.commit(apps, integrations: backend)
-        } catch { log.note("Window rules failed", error.localizedDescription) }
+        } catch {
+            lastError = error.localizedDescription
+            log.note("Window rules failed", error.localizedDescription)
+            return
+        }
         await reload()
     }
 

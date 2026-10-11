@@ -1,30 +1,25 @@
 import SwiftUI
 
-/// Native hover help plus a keyboard-accessible popover for longer explanations.
+/// The small question mark that reveals a line of help.
+///
+/// It is a button rather than a bare image so it can be reached by Tab and
+/// read by VoiceOver. Hover help supplies the description as an accessibility
+/// hint, so the label here names the control instead of repeating the text —
+/// setting both made VoiceOver read the same sentence twice.
 struct HelpTooltip: View {
     let text: String
-    @State private var isPresented = false
 
     var body: some View {
         Button {
-            isPresented.toggle()
         } label: {
-            Image(systemName: "info.circle")
+            Image(systemName: "questionmark.circle")
                 .font(.system(size: 12))
+                .foregroundStyle(.secondary)
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .help(text)
-        .accessibilityLabel("More information")
-        .accessibilityHint(text)
-        .popover(isPresented: $isPresented) {
-            Text(text)
-                .font(.callout)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(width: 280, alignment: .leading)
-                .padding(14)
-        }
+        .hoverHelp(text)
+        .accessibilityLabel("Help")
     }
 }

@@ -48,3 +48,11 @@ volatile line counts. Use Swift 6 concurrency checks and the repository formatte
 Commit messages use `feat:`, `fix:` or `refactor:`. Do not add agent co-author
 trailers. Preserve the existing app identity and executable during the visible
 rename so macOS permissions and launch references remain stable.
+
+## Interface help
+
+Prefer contextual tooltips for secondary instructions over persistent explanatory
+lines. Use `HelpTooltip` for help beside a group and `hoverHelp` for an individual
+control. Keep wording brief and describe the action. Keep essential status, errors
+and information needed to make a decision visible. Use the shared tooltip host so
+wrapped text stays inside its bubble and above scrolling content.

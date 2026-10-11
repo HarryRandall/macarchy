@@ -3,166 +3,106 @@ import AppKit
 import UniformTypeIdentifiers
 import Macarchy
 
+/// The sections of the theme dialog.
+enum ThemeTab: Hashable {
+    case look, wallpaper, colours
+}
+
 struct ThemesPane: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AppModel.self) var model
 
-    @State private var selected: InstalledTheme.ID?
+    @State var selected: InstalledTheme.ID?
     @State var draft: Theme?
-    @State private var error: String?
-
-    private let columns = [GridItem(.adaptive(minimum: 172), spacing: 12)]
+    @State var error: String?
+    @State var editorTab: ThemeTab = .look
 
     var theme: InstalledTheme? {
         model.themes.themes.first { $0.id == selected }
     }
 
+    private var current: InstalledTheme? {
+        model.themes.themes.first { $0.name == model.themes.current }
+    }
+
     var body: some View {
-        Form {
-            Section {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(model.themes.themes) { candidate in
+        SettingsPage("Themes", subtitle: "A familiar desktop. A different feeling.") {
+            Button("Import…") { runImport() }
+        } content: {
+            if let current {
+                HeroBanner(
+                    eyebrow: "CURRENT THEME",
+                    title: current.name,
+                    subtitle: "Your wallpaper, palette and finishing touches."
+                ) {
+                    DesktopArtwork(
+                        accent: current.accent, wallpaper: current.wallpaperURL,
+                        palette: current.palette, height: 240)
+                } trailing: {
+                    Button("Customise") { openEditor(current) }
+                }
+                .overlay(alignment: .topTrailing) {
+                    StatusChip(tone: .good, label: "Applied", live: true)
+                        .padding(Metrics.medium)
+                }
+            }
+
+            SectionHeading(
+                "Your collection", note: "\(model.themes.themes.count) installed")
+
+            if model.themes.themes.isEmpty {
+                ContentUnavailableView(
+                    "Your collection starts here", systemImage: "paintpalette",
+                    description: Text("Import a theme folder to make it your own."))
+            }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 280), spacing: Metrics.gridGap)],
+                spacing: Metrics.gridGap
+            ) {
+                ForEach(
+                    Array(model.themes.themes.enumerated()), id: \.element.id
+                ) { index, candidate in
+                    Button {
+                        openEditor(candidate)
+                    } label: {
                         ThemeCard(
-                            theme: candidate,
-                            isCurrent: candidate.name == model.themes.current,
-                            isSelected: candidate.id == selected,
-                            isModified: model.themes.isModified(candidate)
-                        )
-                        .onTapGesture { select(candidate) }
-                        .simultaneousGesture(
-                            TapGesture(count: 2).onEnded {
-                                Task { await model.themes.apply(candidate) }
-                            })
+                            theme: candidate, isCurrent: candidate.name == model.themes.current,
+                            isSelected: false, isModified: model.themes.isModified(candidate),
+                            apply: { Task { await model.themes.apply(candidate) } },
+                            isApplying: model.themes.isApplying)
                     }
-                }
-                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
-            } header: {
-                HStack {
-                    Text("Installed")
-                    Spacer()
-                    Button("Import…") { runImport() }
-                        .controlSize(.small)
+                    .buttonStyle(.plain)
+                    .hoverLift()
+                    .appearStagger(index)
                 }
             }
 
-            if let theme, draft != nil {
-                if let palette = theme.palette {
-                    Section {
-                        TerminalPreview(palette: palette, themeName: theme.name)
-                            .listRowInsets(
-                                EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-                    } header: {
-                        Text("Terminal")
-                    } footer: {
-                        Text(
-                            "Rendered from the theme's ghostty.conf — background, foreground and all 16 ANSI colours."
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                backgroundSection(theme)
-                editorSection(theme)
-                actionsSection(theme)
-            }
-
-            if let error = error ?? model.themes.lastError {
-                Section {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .font(.caption)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .onAppear {
-            if selected == nil,
-                let current = model.themes.themes.first(where: { $0.name == model.themes.current })
-            {
-                select(current)
+            if let message = error ?? model.themes.lastError {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.meta).foregroundStyle(.orange)
             }
         }
     }
 
-    private func select(_ candidate: InstalledTheme) {
+    /// Presented inside the window, so the grid behind it goes inert.
+    func openEditor(_ candidate: InstalledTheme) {
+        model.modal.present {
+            ThemeEditor(themeID: candidate.id) { model.modal.dismiss() }
+        }
+    }
+
+    func select(_ candidate: InstalledTheme) {
         selected = candidate.id
         draft = candidate.manifest ?? Theme(name: candidate.name)
         error = nil
     }
 
-    // MARK: - Background
-
-    @ViewBuilder
-    private func backgroundSection(_ theme: InstalledTheme) -> some View {
-        let backgrounds = theme.availableBackgrounds
-        Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(backgrounds, id: \.self) { url in
-                        let isChosen =
-                            url.lastPathComponent == theme.wallpaperURL?.lastPathComponent
-                        WallpaperThumbnail(url: url, height: 58)
-                            .frame(width: 100)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .strokeBorder(
-                                        isChosen
-                                            ? Color.accentColor : Color(nsColor: .separatorColor),
-                                        lineWidth: isChosen ? 2 : 1)
-                            )
-                            .help(url.lastPathComponent)
-                            .onTapGesture { chooseBackground(url, in: theme) }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-        } header: {
-            Text("Background · \(backgrounds.count) available")
-        }
-    }
-
-    private func chooseBackground(_ url: URL, in theme: InstalledTheme) {
+    func chooseBackground(_ url: URL, in theme: InstalledTheme) {
         let relative = String(url.path.dropFirst(theme.directory.path.count + 1))
         do {
             try SettingsStore().update { $0.wallpapers[theme.name] = relative }
             model.themes.reload()
             if model.themes.current == theme.name { Task { await model.themes.apply(theme) } }
         } catch { self.error = error.localizedDescription }
-    }
-
-    // MARK: - Editor
-
-    // MARK: - Actions
-
-    @ViewBuilder
-    private func actionsSection(_ theme: InstalledTheme) -> some View {
-        Section {
-            HStack {
-                Button("Apply \(theme.name)") { Task { await model.themes.apply(theme) } }
-                    .disabled(model.themes.isApplying)
-
-                if model.themes.isModified(theme) {
-                    Button("Reset to default") { reset(theme) }
-                }
-
-                Spacer()
-
-                Button("Export…") { runExport(theme) }
-                Button("Open theme.json") { NSWorkspace.shared.open(theme.manifestURL) }
-                Button("Reveal") {
-                    NSWorkspace.shared.activateFileViewerSelecting([theme.directory])
-                }
-            }
-        } footer: {
-            Text(
-                model.themes.hasDefault(theme)
-                    ? "Edits are saved to theme.json. Apply the theme to update the desktop."
-                    : "This theme didn't ship with the app, so there's no default to reset to."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
     }
 
     func save(_ manifest: Theme, to theme: InstalledTheme) {
@@ -174,7 +114,7 @@ struct ThemesPane: View {
         }
     }
 
-    private func reset(_ theme: InstalledTheme) {
+    func reset(_ theme: InstalledTheme) {
         do {
             try model.themes.resetToDefault(theme)
             if let refreshed = model.themes.themes.first(where: { $0.name == theme.name }) {
@@ -205,7 +145,7 @@ struct ThemesPane: View {
         }
     }
 
-    private func runExport(_ theme: InstalledTheme) {
+    func runExport(_ theme: InstalledTheme) {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = theme.name
         panel.prompt = "Export"

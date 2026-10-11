@@ -12,7 +12,7 @@ struct BordersEditorTests {
         original.width = 7
         original.radius = 0.3
         editor.load(original)
-        editor.setLive(false)
+        #expect(!editor.live)
         editor.draft.width = 6
         editor.draft.radius = nil
         editor.draft.activeColour = "0xff123456"
@@ -45,6 +45,7 @@ struct BordersEditorTests {
         var writes = 0
         let editor = BordersEditor { _ in writes += 1 }
         editor.load(BorderAppearance())
+        editor.setLive(true)
         editor.draft.width = 9
         editor.changed()
         editor.setLive(false)
@@ -60,6 +61,7 @@ struct BordersEditorTests {
         var writes: [BorderAppearance] = []
         let editor = BordersEditor { writes.append($0) }
         editor.load(BorderAppearance())
+        editor.setLive(true)
         editor.draft.width = 9
         editor.changed()
         editor.draft.width = 10

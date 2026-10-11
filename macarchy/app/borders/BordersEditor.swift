@@ -7,7 +7,7 @@ import Observation
 final class BordersEditor {
     var draft = BorderAppearance()
     private(set) var applied = BorderAppearance()
-    private(set) var live = true
+    private(set) var live = false
     private(set) var isApplying = false
     private(set) var loaded = false
     var error: String?

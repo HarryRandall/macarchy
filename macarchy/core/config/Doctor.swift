@@ -10,9 +10,18 @@ public enum Doctor {
             messages.append("\(success ? "PASS" : "FAIL") \(message)")
             if !success { failures += 1 }
         }
+        var states: [Daemon: DaemonState] = [:]
         for daemon in Daemon.allCases {
             let state = await integrations.state(of: daemon)
+            states[daemon] = state
             check(state.isRunning, "\(daemon.rawValue) running")
+        }
+        // A stopped hotkey daemon nearly always has one cause, and it is not a
+        // broken config: secure input was on the last time launchd tried to
+        // start it. Worth saying only when skhd is actually down — secure input
+        // is perfectly normal while someone is typing a password.
+        if states[.skhd]?.isRunning == false, let holder = await integrations.secureInput() {
+            check(false, "skhd blocked: \(holder.explanation)")
         }
         check(await integrations.yabaiRead("window_gap").ok, "yabai responds")
         check(await integrations.barState().0.ok, "SketchyBar responds")
@@ -57,6 +66,14 @@ public enum Doctor {
                 "\(file.url.lastPathComponent) syntax")
             check(!file.hasDrifted, "\(file.url.lastPathComponent) matches generated version")
         }
+        // The one failure that hides: every other yabai check passes while
+        // switching desktops silently does nothing.
+        let addition = ScriptingAddition.status()
+        check(
+            addition.isPermitted,
+            addition.isPermitted
+                ? "yabai scripting addition permitted"
+                : "yabai scripting addition permitted — \(addition.explanation)")
         let signals = await integrations.execute(Paths.yabai, ["-m", "signal", "--list"])
         let parsed =
             try? JSONSerialization.jsonObject(with: Data(signals.stdout.utf8)) as? [[String: Any]]

@@ -6,6 +6,7 @@ import SwiftUI
 /// type when you already know the number. `onChange` fires continuously from
 /// the slider, so callers that talk to a daemon should already be debounced.
 struct ValueSlider: View {
+    @Environment(AppModel.self) private var model
     @Binding var value: Double
     let range: ClosedRange<Double>
     var step: Double = 1
@@ -29,6 +30,9 @@ struct ValueSlider: View {
     var body: some View {
         HStack(spacing: 10) {
             Slider(value: quantisedValue, in: range)
+                .tint(model.interfaceAccent)
+                .accentColor(model.interfaceAccent)
+                .hoverHelp("Drag to adjust, or type an exact value")
                 .frame(width: sliderWidth)
                 .onChange(of: value) { _, new in onChange(new) }
 
