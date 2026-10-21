@@ -1,14 +1,13 @@
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import type { CustomWindowRule } from "~/bridge/protocol";
-import { SettingRow } from "~/components/layout/setting-row";
-import { SettingsSection } from "~/components/layout/settings-section";
 import { Button } from "~/components/ui/button";
 import { Dialog } from "~/components/ui/dialog";
-import { HelpTooltip } from "~/components/ui/help-tooltip";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { Notice } from "~/components/ui/notice";
 import { TextField } from "~/components/ui/text-field";
+import { Tooltip } from "~/components/ui/tooltip";
 import { useStore } from "~/lib/store";
 
 import type { RulesStore } from "./rules-store";
@@ -51,7 +50,7 @@ export function WindowRuleEditor({
       dismissOnEscape={!busy}
       dismissOnOutsidePress={false}
     >
-      <Dialog.Popup>
+      <Dialog.Popup size="sm" className="w-[460px]">
         <form
           className="contents"
           onSubmit={(event) => {
@@ -59,46 +58,17 @@ export function WindowRuleEditor({
             if (!busy && !unavailable && app.trim()) void save();
           }}
         >
-          <Dialog.Header closable={!busy}>
-            <Dialog.Title help="Matching windows float outside the tiled layout. Nothing changes until you Save.">
-              {editing ? "Edit custom rule" : "Add custom rule"}
-            </Dialog.Title>
-          </Dialog.Header>
-          <Dialog.Body>
-            <SettingsSection title="Match windows">
-              <SettingRow
-                title="Application"
-                help="Enter the application's display name exactly, for example Finder or Calculator."
-              >
-                <TextField
-                  label="Application"
-                  hideLabel
-                  placeholder="For example, Finder"
-                  value={app}
-                  disabled={busy}
-                  onValueChange={setApp}
-                  fieldClassName="w-56"
-                />
-              </SettingRow>
-              <SettingRow
-                title="Window title"
-                help="Optional regular expression. For example, ^Copy$ matches Copy exactly. Leave empty for all windows."
-              >
-                <TextField
-                  label="Window title"
-                  hideLabel
-                  placeholder="All windows"
-                  value={title}
-                  disabled={busy}
-                  onValueChange={setTitle}
-                  fieldClassName="w-56"
-                />
-              </SettingRow>
-            </SettingsSection>
-            <div className="flex items-center gap-1">
+          <Dialog.Header
+            closable={!busy}
+            actions={
               <Menu>
-                <MenuTrigger render={<Button disabled={busy} />}>Presets</MenuTrigger>
-                <MenuPopup>
+                <Tooltip content="Fill the fields with a common rule">
+                  <MenuTrigger render={<Button size="sm" variant="ghost" disabled={busy} />}>
+                    Presets
+                    <ChevronDown aria-hidden />
+                  </MenuTrigger>
+                </Tooltip>
+                <MenuPopup align="end">
                   <MenuItem onClick={() => preset("Finder", finderTitles)}>
                     Finder file dialogs
                   </MenuItem>
@@ -106,8 +76,30 @@ export function WindowRuleEditor({
                   <MenuItem onClick={() => preset("", "")}>Blank rule</MenuItem>
                 </MenuPopup>
               </Menu>
-              <HelpTooltip text="Presets fill the fields. Adjust them and Save to enable the rule." />
-            </div>
+            }
+          >
+            <Dialog.Title help="Matching windows float outside the tiled layout. Nothing changes until you Save.">
+              {editing ? "Edit custom rule" : "Add custom rule"}
+            </Dialog.Title>
+          </Dialog.Header>
+          <Dialog.Body>
+            <TextField
+              label="Application"
+              description="The app's name exactly as macOS shows it."
+              placeholder="For example, Finder"
+              value={app}
+              disabled={busy}
+              onValueChange={setApp}
+            />
+            <TextField
+              label="Window title"
+              variant="mono"
+              description="Optional regular expression, such as ^Copy$. Empty matches every window."
+              placeholder="All windows"
+              value={title}
+              disabled={busy}
+              onValueChange={setTitle}
+            />
             {unavailable ? (
               <Notice.Root variant="warning">
                 <Notice.Description>{unavailable}</Notice.Description>
@@ -120,10 +112,16 @@ export function WindowRuleEditor({
             ) : null}
           </Dialog.Body>
           <Dialog.Footer>
-            <Button disabled={busy} onClick={close}>
+            <Button size="sm" disabled={busy} onClick={close}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!app.trim() || busy || !!unavailable}>
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={!app.trim() || !!unavailable}
+              busy={busy}
+            >
               {busy ? "Saving…" : "Save"}
             </Button>
           </Dialog.Footer>

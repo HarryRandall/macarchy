@@ -1,117 +1,199 @@
+import { ChevronRight, FolderOpen } from "lucide-react";
+import { useState } from "react";
+
 import { PageHeader } from "~/components/layout/page-header";
-import { SettingRow } from "~/components/layout/setting-row";
-import { SettingsSection } from "~/components/layout/settings-section";
 import { Button } from "~/components/ui/button";
+import { Card, CardHeader, CardRows, Row } from "~/components/ui/card";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Spinner } from "~/components/ui/spinner";
-import { StatusChip, type StatusTone } from "~/components/ui/status-chip";
+import { TruncatedText } from "~/components/ui/truncated-text";
 import { ReadNotice } from "~/features/overview/read-notice";
+import { cn } from "~/lib/cn";
 import { useStore } from "~/lib/store";
 import type { PageContext } from "~/shell/page";
-import type { HealthStore } from "./health-store";
 
-const groups = {
-  Dependencies: "The programs Macarchy configures. Install any that are missing.",
-  Services: "Whether each program is set to start at login and is running.",
-  Configuration: "Macarchy's settings and the startup files it writes.",
-  Optional: "Extras that are not needed for Macarchy to work.",
-};
-const tones: Record<string, StatusTone> = {
-  passed: "success",
-  warning: "warning",
-  failed: "danger",
-  unknown: "neutral",
-};
+import { type Check, listNames, othersTitle, partitionChecks } from "./check-list";
+import { CheckDetail, CheckRow } from "./check-rows";
+import { historyLabels } from "./health-mock";
+import { HealthSummaryCard } from "./health-summary-card";
+import type { HealthStore } from "./health-store";
+import { StatusIcon } from "./status-icon";
+
+const time = (seconds: number) =>
+  new Date(seconds * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 export function HealthPage({ store, context }: { store: HealthStore; context: PageContext }) {
   const snapshot = useStore(store);
   const state = snapshot.state;
-  const failed = state?.checks.filter((check) => check.status === "failed").length ?? 0;
-  const warnings = state?.checks.filter((check) => check.status === "warning").length ?? 0;
+  /** `undefined` until a row is toggled: the worst problem starts open. */
+  const [open, setOpen] = useState<string | null>();
+  const [showOthers, setShowOthers] = useState(false);
+  const refreshing = snapshot.refreshing;
+  const run = () => void store.load();
+
+  const header = (
+    <PageHeader
+      title="Setup health"
+      actions={
+        <Button size="sm" onClick={() => context.navigate("report")}>
+          Report a problem
+        </Button>
+      }
+    />
+  );
+  const notice = <ReadNotice error={snapshot.error} retry={run} busy={refreshing} />;
+
+  if (!state)
+    return (
+      <>
+        {header}
+        {notice}
+        {snapshot.status === "loading" ? <Spinner label="Running checks" /> : null}
+      </>
+    );
+
+  const { problems, others } = partitionChecks(state.checks);
+  const unchecked = others.some((check) => check.status === "unknown");
+  const openId = open === undefined ? (problems[0]?.id ?? null) : open;
+  const toggle = (id: string) => setOpen(openId === id ? null : id);
+  const checkedAt = time(state.checkedAt);
+  // Mock: the history's days end on the real last run.
+  const days = historyLabels(state.checkedAt);
+  const detail = (check: Check) => (
+    <CheckDetail check={check} days={days} checkedAt={checkedAt} busy={refreshing} onRun={run} />
+  );
+
   return (
-    <>
-      <PageHeader
-        title="Setup health"
-        subtitle="What is installed, and what needs attention."
-        actions={
-          <>
-            <Button disabled={snapshot.refreshing} onClick={() => void store.load()}>
-              {snapshot.refreshing ? "Checking…" : "Check again"}
-            </Button>
-            <Button onClick={() => context.navigate("report")}>Report a problem</Button>
-          </>
-        }
+    <div className="@container flex flex-col gap-4">
+      {header}
+      {notice}
+      <HealthSummaryCard
+        checks={state.checks}
+        problems={problems.length}
+        checkedAt={checkedAt}
+        days={days}
+        refreshing={refreshing}
+        onRun={run}
       />
-      <ReadNotice
-        error={snapshot.error}
-        retry={() => void store.load()}
-        busy={snapshot.refreshing}
-      />
-      {snapshot.refreshing ? (
-        <div role="status" className="flex items-center gap-2 text-meta text-fg-secondary">
-          <Spinner size="sm" />
-          Checking…
-        </div>
+
+      {problems.length ? (
+        <Card aria-labelledby="health-problems" className="overflow-hidden">
+          <CardHeader
+            id="health-problems"
+            title="Needs attention"
+            action={
+              <span className="text-meta text-fg-tertiary tabular-nums">
+                {problems.length} of {state.checks.length}
+              </span>
+            }
+          />
+          <CardRows>
+            {problems.map((check) => (
+              <CheckRow
+                key={check.id}
+                check={check}
+                state={refreshing ? "checking" : check.status}
+                expanded={openId === check.id}
+                onToggle={() => toggle(check.id)}
+                action={
+                  check.fix ? (
+                    <CopyButton
+                      size="sm"
+                      text={check.fix}
+                      label="Copy fix"
+                      tooltip={check.fix}
+                      write={async () => {
+                        if (!(await store.copyFix(check.id)))
+                          throw new Error("The fix could not be copied.");
+                      }}
+                    />
+                  ) : null
+                }
+              >
+                {detail(check)}
+              </CheckRow>
+            ))}
+          </CardRows>
+        </Card>
       ) : null}
-      {state ? (
-        <>
-          <div role="status" className="flex flex-wrap items-center gap-2">
-            <StatusChip
-              tone={failed ? "danger" : "success"}
-              label={failed ? `${failed} to fix` : "Everything Macarchy needs is working"}
-            />
-            {warnings ? <StatusChip tone="warning" label={`${warnings} to review`} /> : null}
-            <span className="ml-auto text-meta text-fg-meta">
-              Checked{" "}
-              {new Date(state.checkedAt * 1000).toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-          {Object.entries(groups).map(([group, help]) => {
-            const checks = state.checks.filter((check) => check.group === group);
-            return checks.length ? (
-              <SettingsSection key={group} title={group} help={help}>
-                {checks.map((check) => (
-                  <SettingRow
-                    key={check.id}
-                    title={check.title}
-                    detail={check.detail}
-                    leading={<StatusChip tone={tones[check.status]} label={check.status} />}
-                  >
-                    {check.fix && check.status !== "passed" ? (
-                      <CopyButton
-                        text={check.fix}
-                        label="Copy fix"
-                        tooltip={check.fix}
-                        write={async () => {
-                          if (!(await store.copyFix(check.id)))
-                            throw new Error("The fix could not be copied.");
-                        }}
-                      />
-                    ) : null}
-                  </SettingRow>
-                ))}
-              </SettingsSection>
-            ) : null;
-          })}
-          <SettingsSection
-            title="This Mac"
-            help="Included in problem reports, without your name or paths."
+
+      {others.length ? (
+        <Card aria-label="Checks without problems" className="overflow-hidden">
+          <button
+            type="button"
+            aria-expanded={showOthers}
+            onClick={() => setShowOthers((shown) => !shown)}
+            className="flex w-full min-w-0 items-center gap-4 rounded-[inherit] px-5 py-3 text-left transition-colors duration-150 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
           >
-            <SettingRow
-              title="Mac"
-              detail={`${state.environment.model} · ${state.environment.architecture}`}
+            <StatusIcon state={refreshing ? "checking" : unchecked ? "unknown" : "passed"} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-medium text-fg">{othersTitle(others)}</span>
+              <span className="block truncate text-small text-fg-secondary">
+                {listNames(others.map((check) => check.title))}
+              </span>
+            </span>
+            <span className="shrink-0 text-meta text-fg-tertiary">
+              {showOthers ? "Hide" : "Show all"}
+            </span>
+            <ChevronRight
+              aria-hidden
+              size={14}
+              className={cn(
+                "shrink-0 text-fg-tertiary transition-transform duration-150 motion-reduce:transition-none",
+                showOthers && "rotate-90",
+              )}
             />
-            <SettingRow title="macOS" detail={state.environment.macOS} />
-            <SettingRow title="Macarchy" detail={state.environment.app} />
-            <SettingRow title="Settings folder" detail={state.environment.settingsFolder}>
-              <Button onClick={() => void store.reveal()}>Reveal</Button>
-            </SettingRow>
-          </SettingsSection>
-        </>
+          </button>
+          {showOthers ? (
+            <CardRows>
+              {others.map((check) => (
+                <CheckRow
+                  key={check.id}
+                  compact
+                  check={check}
+                  state={refreshing ? "checking" : check.status}
+                  expanded={openId === check.id}
+                  onToggle={() => toggle(check.id)}
+                  trailing={refreshing ? "Checking" : checkedAt}
+                >
+                  {detail(check)}
+                </CheckRow>
+              ))}
+            </CardRows>
+          ) : null}
+        </Card>
       ) : null}
-    </>
+
+      <Card aria-labelledby="health-mac">
+        <CardHeader
+          id="health-mac"
+          title="This Mac"
+          help="Included in problem reports, without your name or paths."
+        />
+        <CardRows>
+          <Row
+            title="Mac"
+            description={`${state.environment.model} · ${state.environment.architecture}`}
+          />
+          <Row title="macOS" description={state.environment.macOS} />
+          <Row title="Macarchy" description={state.environment.app} />
+          <Row
+            title="Settings folder"
+            description={
+              <TruncatedText
+                text={state.environment.settingsFolder}
+                className="font-mono text-caption"
+              />
+            }
+            control={
+              <Button size="sm" onClick={() => void store.reveal()}>
+                <FolderOpen aria-hidden />
+                Reveal
+              </Button>
+            }
+          />
+        </CardRows>
+      </Card>
+    </div>
   );
 }

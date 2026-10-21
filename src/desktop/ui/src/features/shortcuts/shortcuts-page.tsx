@@ -1,16 +1,14 @@
-import { ChevronDown, ChevronUp, Keyboard, MoreHorizontal } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Keyboard, MoreHorizontal, RotateCcw, SearchX } from "lucide-react";
+import { useState } from "react";
 
-import type { ShortcutBinding } from "~/bridge/protocol";
+import { usePageSearch } from "~/components/layout/page-chrome";
 import { PageHeader } from "~/components/layout/page-header";
-import { CardContent, SettingsCard } from "~/components/layout/settings-section";
 import { Button } from "~/components/ui/button";
+import { Card, Row } from "~/components/ui/card";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { EmptyState } from "~/components/ui/empty-state";
-import { HelpTooltip } from "~/components/ui/help-tooltip";
 import { IconButton } from "~/components/ui/icon-button";
-import { KbdGroup } from "~/components/ui/kbd";
-import { ListGroupHeader, ListRow } from "~/components/ui/list-row";
+import { ListGroupHeader } from "~/components/ui/list-row";
 import {
   Menu,
   MenuCheckboxItem,
@@ -24,244 +22,282 @@ import {
   MenuTrigger,
 } from "~/components/ui/menu";
 import { Notice } from "~/components/ui/notice";
-import { SearchField } from "~/components/ui/search-field";
+import { Switch } from "~/components/ui/switch";
+import { TabPanel, Tabs } from "~/components/ui/tabs";
 import { useStore } from "~/lib/store";
 
-import { ShortcutDetails, ShortcutEditor } from "./shortcut-editor";
+import { ShortcutEditor } from "./shortcut-editor";
 import {
-  emptyFilters,
-  filterBindings,
-  type ShortcutFilters,
-  shortcutLabel,
-} from "./shortcut-presentation";
+  findConflicts,
+  groupByCategory,
+  type ShortcutCategory,
+  shortcutCategory,
+  shortcutTitle,
+} from "./shortcut-groups";
+import { emptyFilters, filterBindings, type ShortcutFilters } from "./shortcut-presentation";
+import { ShortcutRow } from "./shortcut-row";
 import type { ShortcutsStore } from "./shortcuts-store";
+import { UsageCard } from "./shortcuts-usage";
 
-function ShortcutRow({
-  binding,
-  all,
-  store,
-}: {
-  binding: ShortcutBinding;
-  all: ShortcutBinding[];
-  store: ShortcutsStore;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const label = shortcutLabel(binding, all);
-  return (
-    <div data-shortcut-id={binding.id}>
-      <ListRow
-        size="compact"
-        title={label}
-        titleMono={label === binding.command}
-        detail={binding.appOverrides.length ? "Per app" : undefined}
-        trailing={
-          <Button
-            variant="ghost"
-            aria-label={`Edit shortcut: ${binding.caps.join(" ")}`}
-            onClick={() => store.edit(binding)}
-          >
-            <KbdGroup variant="key" keys={binding.caps} />
-          </Button>
-        }
-        actions={
-          <IconButton
-            label={`${expanded ? "Hide" : "Show"} command details: ${label}`}
-            aria-expanded={expanded}
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? <ChevronUp /> : <ChevronDown />}
-          </IconButton>
-        }
-      />
-      {expanded ? (
-        <CardContent className="bg-well">
-          <ShortcutDetails binding={binding} />
-        </CardContent>
-      ) : null}
-    </div>
-  );
-}
+type Tab = "all" | ShortcutCategory;
+
+const modifierChoices = [
+  ["cmd", "⌘ Command"],
+  ["alt", "⌥ Option"],
+  ["ctrl", "⌃ Control"],
+  ["shift", "⇧ Shift"],
+] as const;
+
+const total = (n: number) => (n === 1 ? "1 shortcut" : `${n} shortcuts`);
 
 export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
   const snapshot = useStore(store);
-  const [filters, setFilters] = useState<ShortcutFilters>(emptyFilters);
+  const [query, setQuery] = usePageSearch("Search shortcuts");
+  const [chosenTab, setTab] = useState<Tab>("all");
+  const [filters, setFilters] = useState<Omit<ShortcutFilters, "search">>(emptyFilters);
   const [resetRevision, setResetRevision] = useState<string | null>(null);
   const state = snapshot.state;
   const all = state?.bindings ?? [];
+  if (snapshot.status === "loading") return null;
+
   const sections = [
     ...new Set(all.flatMap((binding) => (binding.section ? [binding.section] : []))),
   ];
-  const filtered = filterBindings(all, filters);
-  const groups = [
-    ...new Set(filtered.map((binding) => binding.section).filter((section) => section !== null)),
-    null,
-  ];
-  const hasFilters =
-    filters.search !== "" ||
-    !!filters.modifiers.length ||
-    filters.scope !== "all" ||
-    filters.section !== "";
-  if (snapshot.status === "loading") return null;
+  const groups = groupByCategory(all);
+  // A group can empty out when skhdrc changes; its tab goes and the view falls back to All.
+  const tab = groups.some((group) => group.category === chosenTab) ? chosenTab : "all";
+  const searched = filterBindings(all, { ...filters, search: query });
+  const shown = tab === "all" ? searched : searched.filter((b) => shortcutCategory(b) === tab);
+  const shownGroups = groupByCategory(shown);
+  const conflicts = findConflicts(all);
+  const firstConflict = all.find((binding) => conflicts.has(binding.id));
+  const menuFilters =
+    !!filters.modifiers.length || filters.scope !== "all" || filters.section !== "";
+  const hasFilters = query.trim() !== "" || menuFilters || tab !== "all";
+  const clear = () => {
+    setQuery("");
+    setFilters(emptyFilters);
+    setTab("all");
+  };
+
   return (
-    <>
+    <div className="@container">
       <PageHeader
         title="Shortcuts"
         actions={
-          <>
-            <SearchField
-              label="Find a shortcut"
-              help="Search keys, source comments and commands"
-              className="w-56"
-              value={filters.search}
-              onValueChange={(search) => setFilters({ ...filters, search })}
-            />
-            <Menu>
-              <MenuTrigger render={<IconButton label="Shortcut actions" />}>
-                <MoreHorizontal />
-              </MenuTrigger>
-              <MenuPopup align="end">
-                <MenuGroup>
-                  <MenuGroupLabel>Scope</MenuGroupLabel>
-                  <MenuRadioGroup
-                    value={filters.scope}
-                    onValueChange={(scope) =>
-                      setFilters({ ...filters, scope: scope as ShortcutFilters["scope"] })
+          <Menu>
+            <MenuTrigger render={<IconButton label="Shortcut actions" />}>
+              <MoreHorizontal aria-hidden />
+            </MenuTrigger>
+            <MenuPopup align="end">
+              <MenuGroup>
+                <MenuGroupLabel>Scope</MenuGroupLabel>
+                <MenuRadioGroup
+                  value={filters.scope}
+                  onValueChange={(scope) =>
+                    setFilters({ ...filters, scope: scope as ShortcutFilters["scope"] })
+                  }
+                >
+                  <MenuRadioItem value="all">All apps and scopes</MenuRadioItem>
+                  <MenuRadioItem value="global">Global shortcuts</MenuRadioItem>
+                  <MenuRadioItem value="perApp">Per-app shortcuts</MenuRadioItem>
+                </MenuRadioGroup>
+              </MenuGroup>
+              <MenuSeparator />
+              <MenuGroup>
+                <MenuGroupLabel>Modifiers</MenuGroupLabel>
+                {modifierChoices.map(([value, label]) => (
+                  <MenuCheckboxItem
+                    key={value}
+                    checked={filters.modifiers.includes(value)}
+                    onCheckedChange={(checked) =>
+                      setFilters({
+                        ...filters,
+                        modifiers: checked
+                          ? [...filters.modifiers, value]
+                          : filters.modifiers.filter((item) => item !== value),
+                      })
                     }
                   >
-                    <MenuRadioItem value="all">All apps and scopes</MenuRadioItem>
-                    <MenuRadioItem value="global">Global shortcuts</MenuRadioItem>
-                    <MenuRadioItem value="perApp">Per-app shortcuts</MenuRadioItem>
-                  </MenuRadioGroup>
-                </MenuGroup>
-                <MenuSeparator />
-                <MenuGroup>
-                  <MenuGroupLabel>Modifiers</MenuGroupLabel>
-                  {[
-                    ["cmd", "⌘ Command"],
-                    ["alt", "⌥ Option"],
-                    ["ctrl", "⌃ Control"],
-                    ["shift", "⇧ Shift"],
-                  ].map(([value = "", label]) => (
-                    <MenuCheckboxItem
-                      key={value}
-                      checked={filters.modifiers.includes(value)}
-                      onCheckedChange={(checked) =>
-                        setFilters({
-                          ...filters,
-                          modifiers: checked
-                            ? [...filters.modifiers, value]
-                            : filters.modifiers.filter((item) => item !== value),
-                        })
-                      }
-                    >
-                      {label}
-                    </MenuCheckboxItem>
+                    {label}
+                  </MenuCheckboxItem>
+                ))}
+              </MenuGroup>
+              <MenuSeparator />
+              <MenuGroup>
+                <MenuGroupLabel>Source group</MenuGroupLabel>
+                <MenuRadioGroup
+                  value={filters.section}
+                  onValueChange={(section) => setFilters({ ...filters, section })}
+                >
+                  <MenuRadioItem value="">All groups</MenuRadioItem>
+                  {sections.map((section) => (
+                    <MenuRadioItem key={section} value={section}>
+                      {section}
+                    </MenuRadioItem>
                   ))}
-                </MenuGroup>
-                <MenuSeparator />
-                <MenuGroup>
-                  <MenuGroupLabel>Source group</MenuGroupLabel>
-                  <MenuRadioGroup
-                    value={filters.section}
-                    onValueChange={(section) => setFilters({ ...filters, section })}
-                  >
-                    <MenuRadioItem value="">All groups</MenuRadioItem>
-                    {sections.map((section) => (
-                      <MenuRadioItem key={section} value={section}>
-                        {section}
-                      </MenuRadioItem>
-                    ))}
-                  </MenuRadioGroup>
-                </MenuGroup>
-                {hasFilters ? (
-                  <MenuItem onClick={() => setFilters(emptyFilters)}>Clear filters</MenuItem>
-                ) : null}
-                <MenuSeparator />
-                <MenuItem
-                  disabled={snapshot.busy || snapshot.refreshing}
-                  onClick={() => void store.refresh()}
-                >
-                  Refresh shortcuts
-                </MenuItem>
-                <MenuItem onClick={() => void store.openConfiguration()}>
-                  Open configuration
-                </MenuItem>
-                <MenuSeparator />
-                <MenuItem
-                  disabled={!state || snapshot.busy}
-                  onClick={() => setResetRevision(state?.revision ?? null)}
-                >
-                  Reset to default shortcuts…
-                </MenuItem>
-              </MenuPopup>
-            </Menu>
-          </>
+                </MenuRadioGroup>
+              </MenuGroup>
+              {hasFilters ? <MenuItem onClick={clear}>Clear filters</MenuItem> : null}
+              <MenuSeparator />
+              <MenuItem
+                disabled={snapshot.busy || snapshot.refreshing}
+                onClick={() => void store.refresh()}
+              >
+                Refresh shortcuts
+              </MenuItem>
+              <MenuItem onClick={() => void store.openConfiguration()}>Open configuration</MenuItem>
+              <MenuSeparator />
+              <MenuItem
+                disabled={!state || snapshot.busy}
+                onClick={() => setResetRevision(state?.revision ?? null)}
+              >
+                Reset to default shortcuts…
+              </MenuItem>
+            </MenuPopup>
+          </Menu>
         }
       />
-      {snapshot.error ? (
-        <Notice.Root variant="error">
-          <Notice.Title>
-            {state ? "Could not change or refresh shortcuts" : "Could not read your shortcuts"}
-          </Notice.Title>
-          <Notice.Description>{snapshot.error}</Notice.Description>
-          <Notice.Actions>
-            <Button
-              disabled={snapshot.refreshing || snapshot.busy}
-              onClick={() => void store.refresh()}
-            >
-              Try again
-            </Button>
-          </Notice.Actions>
-        </Notice.Root>
-      ) : null}
-      {snapshot.warning ? (
-        <Notice.Root variant="warning">
-          <Notice.Description>{snapshot.warning}</Notice.Description>
-        </Notice.Root>
-      ) : null}
-      {state ? (
-        <>
-          <div className="flex items-center gap-2 text-meta text-fg-secondary">
-            <p role="status">
-              {snapshot.busy
-                ? "Saving…"
-                : snapshot.refreshing
-                  ? "Refreshing…"
-                  : hasFilters
-                    ? `${filtered.length} of ${all.length} shortcuts`
-                    : `${all.length} shortcuts`}
-            </p>
-            <div className="ml-auto flex items-center gap-2">
-              {hasFilters ? (
-                <Button size="sm" variant="ghost" onClick={() => setFilters(emptyFilters)}>
-                  Clear filters
-                </Button>
+      <div className="flex flex-col gap-4">
+        {snapshot.error ? (
+          <Notice.Root variant="error">
+            <Notice.Title>
+              {state ? "Could not change or refresh shortcuts" : "Could not read your shortcuts"}
+            </Notice.Title>
+            <Notice.Description>{snapshot.error}</Notice.Description>
+            <Notice.Actions>
+              <Button
+                size="sm"
+                disabled={snapshot.refreshing || snapshot.busy}
+                onClick={() => void store.refresh()}
+              >
+                Try again
+              </Button>
+            </Notice.Actions>
+          </Notice.Root>
+        ) : null}
+        {snapshot.warning ? (
+          <Notice.Root variant="warning">
+            <Notice.Description>{snapshot.warning}</Notice.Description>
+          </Notice.Root>
+        ) : null}
+        {state ? (
+          <>
+            <Tabs
+              id="shortcut-groups"
+              label="Shortcut groups"
+              value={tab}
+              onChange={setTab}
+              tabs={[
+                { id: "all", label: "All", count: all.length },
+                ...groups.map((group) => ({
+                  id: group.category,
+                  label: group.category,
+                  count: group.bindings.length,
+                })),
+              ]}
+            />
+            <TabPanel tabs="shortcut-groups" value={tab} className="flex flex-col gap-4">
+              {tab === "all" && !query.trim() && all.length ? (
+                <UsageCard
+                  bindings={all}
+                  onPick={(name) => {
+                    setTab("all");
+                    setQuery(name);
+                  }}
+                />
               ) : null}
-              <HelpTooltip text="Click a key combination to change it. Expand a row to see its command." />
-            </div>
-          </div>
-          {filtered.length ? (
-            <SettingsCard>
-              {groups.map((section) => {
-                const bindings = filtered.filter((binding) => binding.section === section);
-                if (!bindings.length) return null;
-                return (
-                  <Fragment key={section ?? "ungrouped"}>
-                    {section && bindings.length > 1 ? (
-                      <ListGroupHeader title={section} count={bindings.length} />
-                    ) : null}
-                    {bindings.map((binding) => (
-                      <ShortcutRow key={binding.id} binding={binding} all={all} store={store} />
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </SettingsCard>
-          ) : (
-            <EmptyState icon={<Keyboard />} title="No shortcuts found" />
-          )}
-        </>
-      ) : null}
+              {firstConflict ? (
+                <Notice.Root variant="warning">
+                  <Notice.Title>
+                    {conflicts.size === 1
+                      ? "1 shortcut conflicts"
+                      : `${conflicts.size} shortcuts conflict`}
+                  </Notice.Title>
+                  <Notice.Description>
+                    {shortcutTitle(firstConflict, all).title}: {conflicts.get(firstConflict.id)}
+                  </Notice.Description>
+                  <Notice.Actions>
+                    <Button
+                      size="sm"
+                      disabled={snapshot.busy}
+                      onClick={() => store.edit(firstConflict)}
+                    >
+                      <Keyboard aria-hidden />
+                      Record new
+                    </Button>
+                  </Notice.Actions>
+                </Notice.Root>
+              ) : null}
+              {shownGroups.map((group) => (
+                <Card key={group.category} aria-label={group.category} className="overflow-hidden">
+                  <ListGroupHeader
+                    title={group.category}
+                    count={group.bindings.length}
+                    level={2}
+                    className="px-4"
+                  />
+                  {group.bindings.map((binding) => (
+                    <ShortcutRow
+                      key={binding.id}
+                      binding={binding}
+                      all={all}
+                      conflict={conflicts.get(binding.id)}
+                      disabled={snapshot.busy}
+                      onEdit={() => store.edit(binding)}
+                    />
+                  ))}
+                </Card>
+              ))}
+              {shown.length === 0 ? (
+                <EmptyState
+                  icon={all.length ? <SearchX /> : <Keyboard />}
+                  title={
+                    query.trim() ? `No shortcuts match "${query.trim()}"` : "No shortcuts found"
+                  }
+                  action={
+                    hasFilters ? (
+                      <Button size="sm" onClick={clear}>
+                        {query.trim() && !menuFilters ? "Clear search" : "Clear filters"}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : null}
+            </TabPanel>
+            <Card>
+              <Row
+                title="Vim-style direction keys"
+                description="H J K L. Not available yet."
+                control={
+                  // Mock: there is no Vim key setting yet, so the switch stays off and disabled.
+                  <Switch aria-label="Vim-style direction keys" checked={false} disabled />
+                }
+              />
+              <div data-row="" className="flex items-center justify-between gap-3 px-5 py-3">
+                <p role="status" className="text-small text-fg-secondary">
+                  {snapshot.busy
+                    ? "Saving…"
+                    : snapshot.refreshing
+                      ? "Refreshing…"
+                      : hasFilters
+                        ? `${shown.length} of ${total(all.length)}`
+                        : total(all.length)}
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={snapshot.busy}
+                  onClick={() => setResetRevision(state.revision)}
+                >
+                  <RotateCcw aria-hidden />
+                  Restore defaults
+                </Button>
+              </div>
+            </Card>
+          </>
+        ) : null}
+      </div>
       {snapshot.draft ? (
         <ShortcutEditor
           key={`${snapshot.draft.revision}-${snapshot.draft.binding.id}`}
@@ -279,6 +315,6 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
         busyLabel="Resetting…"
         onConfirm={() => store.reset(resetRevision!)}
       />
-    </>
+    </div>
   );
 }

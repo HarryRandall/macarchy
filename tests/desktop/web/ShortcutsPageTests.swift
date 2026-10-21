@@ -101,6 +101,26 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("the top bar's search filters the bindings read from skhdrc")
+        func pageSearch() async throws {
+            try await withHarness { harness in
+                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                let (_, surface) = try harness.settingsPage(pane: .shortcuts)
+                try await waitForShortcuts(surface)
+                try await run(
+                    surface,
+                    #"page.setValue(document.querySelector('input[aria-label="Search shortcuts"]'), 'focus');"#
+                )
+                try await waitFor(
+                    surface, "the two focus bindings",
+                    #"return document.querySelectorAll('[data-shortcut-id]').length === 2 && page.text().includes('2 of 4 shortcuts');"#
+                )
+                try await shortcutClick(surface, "Clear search")
+                try await waitForShortcuts(surface)
+                #expect(try String(contentsOf: Setup.skhdrc, encoding: .utf8) == shortcutsFixture)
+            }
+        }
+
         @Test("recording reaches Swift, saves only the chord, snapshots and restarts skhd")
         func rebind() async throws {
             try await withHarness(tools: ["skhd"]) { harness in

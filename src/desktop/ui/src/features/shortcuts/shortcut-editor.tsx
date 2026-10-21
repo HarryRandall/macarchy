@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { type ReactNode, useState } from "react";
 
 import type { ShortcutBinding } from "~/bridge/protocol";
-import { CardContent, SettingsSection } from "~/components/layout/settings-section";
-import { SettingRow } from "~/components/layout/setting-row";
 import { Button } from "~/components/ui/button";
 import { Dialog } from "~/components/ui/dialog";
+import { focusRing } from "~/components/ui/focus-ring";
+import { HelpTooltip } from "~/components/ui/help-tooltip";
+import { InlineStatus } from "~/components/ui/inline-status";
 import { KbdGroup } from "~/components/ui/kbd";
 import { Notice } from "~/components/ui/notice";
 import { Tooltip } from "~/components/ui/tooltip";
+import { cn } from "~/lib/cn";
 import { useStore } from "~/lib/store";
 
 import { recordedChord, shortcutLabel } from "./shortcut-presentation";
@@ -17,18 +20,36 @@ export function ShortcutDetails({ binding }: { binding: ShortcutBinding }) {
   return (
     <>
       {binding.command ? (
-        <p className="font-mono text-mono-detail break-all select-text">{binding.command}</p>
+        <p className="font-mono text-mono-detail break-all text-fg select-text">
+          {binding.command}
+        </p>
       ) : null}
       {binding.appOverrides.map((entry, index) => (
         <div key={index}>
-          <p className="text-meta">{entry.app === "*" ? "Other apps" : entry.app}</p>
-          <p className="font-mono text-mono-detail break-all select-text">{entry.command}</p>
+          <p className="text-meta text-fg-secondary">
+            {entry.app === "*" ? "Other apps" : entry.app}
+          </p>
+          <p className="font-mono text-mono-detail break-all text-fg select-text">
+            {entry.command}
+          </p>
         </div>
       ))}
       {binding.passthrough ? (
         <p className="text-meta text-fg-secondary">Also sent to the focused app</p>
       ) : null}
     </>
+  );
+}
+
+function Section({ title, help, children }: { title: string; help?: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <h3 className="text-small font-medium text-fg">{title}</h3>
+        {help ? <HelpTooltip text={help} /> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -55,98 +76,102 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
       dismissOnEscape={!recording && !snapshot.busy}
       dismissOnOutsidePress={false}
     >
-      <Dialog.Popup className="h-[560px]">
+      <Dialog.Popup>
         <Dialog.Header closable={!snapshot.busy} actions={<KbdGroup variant="key" keys={caps} />}>
           <Dialog.Title>Edit shortcut</Dialog.Title>
           <Dialog.Description>{label}</Dialog.Description>
         </Dialog.Header>
         <Dialog.Body>
-          <SettingsSection
+          <Section
             title="Key combination"
-            help="Record a new combination, then Save to update the shortcut."
+            help="Record a new combination, then Save to update the shortcut. Some system shortcuts are taken by macOS before they reach the recorder."
           >
-            <CardContent>
-              <Button
-                aria-label="Record key combination"
-                aria-pressed={recording}
-                disabled={snapshot.busy || snapshot.external}
-                className="h-auto min-h-10 w-full justify-between py-2"
-                onClick={() => setRecording(!recording)}
-                onBlur={() => setRecording(false)}
-                onKeyDown={(event) => {
-                  if (!recording) return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (
-                    event.key === "Escape" &&
-                    !event.metaKey &&
-                    !event.altKey &&
-                    !event.ctrlKey &&
-                    !event.shiftKey
-                  ) {
-                    setRecording(false);
-                    return;
-                  }
-                  const chord = recordedChord(event.nativeEvent);
-                  if (chord) {
-                    setRecording(false);
-                    void store.record(chord);
-                  }
-                }}
-              >
-                {recording ? "Press a key combination…" : <KbdGroup variant="key" keys={caps} />}
-                <span className="text-meta text-fg-secondary">
-                  {recording ? "Esc to cancel" : "Change"}
+            <button
+              type="button"
+              aria-label="Record key combination"
+              aria-pressed={recording}
+              disabled={snapshot.busy || snapshot.external}
+              className={cn(
+                "flex min-h-10 w-full items-center justify-between gap-3 rounded-control border px-3 py-2 text-left transition-colors disabled:pointer-events-none disabled:opacity-50",
+                recording
+                  ? "border-dashed border-accent bg-accent-soft text-accent-text"
+                  : "border-hairline bg-card shadow-card hover:bg-hover",
+                focusRing,
+              )}
+              onClick={() => setRecording(!recording)}
+              onBlur={() => setRecording(false)}
+              onKeyDown={(event) => {
+                if (!recording) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (
+                  event.key === "Escape" &&
+                  !event.metaKey &&
+                  !event.altKey &&
+                  !event.ctrlKey &&
+                  !event.shiftKey
+                ) {
+                  setRecording(false);
+                  return;
+                }
+                const chord = recordedChord(event.nativeEvent);
+                if (chord) {
+                  setRecording(false);
+                  void store.record(chord);
+                }
+              }}
+            >
+              {recording ? (
+                <span className="flex items-center gap-2 text-detail">
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full bg-accent animate-status-pulse"
+                  />
+                  Press a key combination…
                 </span>
-              </Button>
-              {draft.validating ? (
-                <p role="status" className="text-meta">
-                  Checking combination…
-                </p>
-              ) : null}
-              {changed && draft.validation ? (
-                <div className="flex items-center gap-2">
-                  <KbdGroup variant="key" keys={binding.caps} />
-                  <span aria-label="changes to">→</span>
-                  <KbdGroup variant="key" keys={caps} />
-                </div>
-              ) : null}
-              {draft.validation ? (
-                <p className="font-mono text-mono-detail text-fg-secondary">
-                  {draft.validation.spec}
-                </p>
-              ) : null}
-              {conflict ? (
-                <p role="alert" className="text-meta text-warning">
-                  Already used by {conflict.section || "another shortcut"}
-                </p>
-              ) : null}
-              {draft.validationError ? (
-                <p role="alert" className="text-meta text-danger">
-                  {draft.validationError}
-                </p>
-              ) : null}
-              <p className="text-meta text-fg-secondary">
-                Some system shortcuts may be intercepted by macOS and never reach this recorder.
+              ) : (
+                <KbdGroup variant="key" keys={caps} />
+              )}
+              <span className="text-meta text-fg-tertiary">
+                {recording ? "Esc to cancel" : "Change"}
+              </span>
+            </button>
+            {draft.validating ? (
+              <InlineStatus icon={false}>Checking combination…</InlineStatus>
+            ) : null}
+            {changed && draft.validation ? (
+              <div className="flex items-center gap-2">
+                <KbdGroup variant="key" keys={binding.caps} />
+                <ArrowRight aria-hidden className="size-3.5 text-fg-tertiary" />
+                <span className="sr-only">changes to</span>
+                <KbdGroup variant="key" keys={caps} />
+              </div>
+            ) : null}
+            {draft.validation ? (
+              <p className="font-mono text-mono-detail text-fg-secondary">
+                {draft.validation.spec}
               </p>
-            </CardContent>
-          </SettingsSection>
-          <SettingsSection title="What it does">
-            {!binding.command ? (
-              <SettingRow
-                title="Different per app"
-                help="Runs a different command in each app below."
-              />
             ) : null}
-            <CardContent>
+            {conflict ? (
+              <p role="alert" className="text-meta text-warning">
+                Already used by {conflict.section || "another shortcut"}
+              </p>
+            ) : null}
+            {draft.validationError ? (
+              <InlineStatus tone="danger">{draft.validationError}</InlineStatus>
+            ) : null}
+          </Section>
+          <Section
+            title={binding.command ? "What it does" : "Different per app"}
+            help={binding.command ? undefined : "Runs a different command in each app below."}
+          >
+            <div className="flex flex-col gap-2 rounded-tile border border-hairline bg-side px-3 py-2.5">
               <ShortcutDetails binding={binding} />
-            </CardContent>
-            {binding.section ? (
-              <SettingRow title="Group">
-                <span className="text-meta text-fg-secondary">{binding.section}</span>
-              </SettingRow>
-            ) : null}
-          </SettingsSection>
+              {binding.section ? (
+                <p className="text-meta text-fg-secondary">Group: {binding.section}</p>
+              ) : null}
+            </div>
+          </Section>
           {snapshot.external ? (
             <Notice.Root variant="warning">
               <Notice.Title>skhdrc changed since it was read</Notice.Title>
@@ -166,8 +191,9 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
           leading={
             <Tooltip content="Comment this shortcut out, keeping it in the file">
               <Button
+                size="sm"
                 variant="ghost"
-                className="text-danger"
+                className="text-danger hover:text-danger"
                 disabled={snapshot.busy || snapshot.external}
                 onClick={() => {
                   if (confirmingDisable) void store.disable();
@@ -179,7 +205,7 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
             </Tooltip>
           }
         >
-          <Button disabled={snapshot.busy} onClick={() => store.close()}>
+          <Button size="sm" disabled={snapshot.busy} onClick={() => store.close()}>
             Cancel
           </Button>
           <Tooltip
@@ -190,6 +216,7 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
             }
           >
             <Button
+              size="sm"
               variant="primary"
               disabled={
                 !changed ||

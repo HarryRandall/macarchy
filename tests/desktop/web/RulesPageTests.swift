@@ -12,6 +12,9 @@ private let rulesDOM = """
         [...input.labels].some(label => label.textContent.trim() === name)),
       menu: (name) => [...document.querySelectorAll('[role=menuitem]')]
         .find(item => item.textContent.trim() === name),
+      // The cards have Add buttons of their own; this is the top bar's menu.
+      addMenu: () => [...document.querySelectorAll('[data-slot=top-bar-actions] button')]
+        .find(button => button.textContent.trim() === 'Add'),
     };
     """
 
@@ -49,7 +52,7 @@ private func rulesPage(_ harness: Harness, unavailable: Bool = false) async thro
 
 @MainActor
 private func openRule(_ surface: WebSurface, item: String = "Add custom rule…") async throws {
-    try await rulesRun(surface, "rules.button('Add').click();")
+    try await rulesRun(surface, "rules.addMenu().click();")
     let encoded = String(data: try JSONEncoder().encode(item), encoding: .utf8) ?? "\"\""
     try await rulesWait(surface, "return !!rules.menu(\(encoded));")
     try await rulesRun(surface, "rules.menu(\(encoded)).click();")
@@ -69,7 +72,7 @@ extension WebInterfaceTests {
                 try await rulesWait(
                     surface,
                     """
-                    return !!rules.button('Stop floating Messages')
+                    return !!rules.button('Tile instead of floating Messages')
                       && page.text().includes('System Settings')
                       && page.text().includes('Windows matching ^General$')
                       && page.text().includes('Read only');
@@ -85,18 +88,20 @@ extension WebInterfaceTests {
         func floatingApps() async throws {
             try await withHarness { harness in
                 let surface = try await rulesPage(harness)
-                try await rulesRun(surface, "rules.button('Add').click();")
+                try await rulesRun(surface, "rules.addMenu().click();")
                 try await rulesWait(surface, "return !!rules.menu('Add application…');")
                 try await rulesRun(surface, "rules.menu('Add application…').click();")
                 try await waitUntil("Calculator saved") {
                     (try? harness.store.read().floatingApps) == ["Calculator"]
                 }
-                try await rulesWait(surface, "return !!rules.button('Stop floating Calculator');")
+                try await rulesWait(
+                    surface, "return !!rules.button('Tile instead of floating Calculator');")
                 #expect(
                     await harness.desktop.calls(to: "yabai").contains {
                         $0.contains("app=^Calculator$") && $0.contains("manage=off")
                     })
-                try await rulesRun(surface, "rules.button('Stop floating Calculator').click();")
+                try await rulesRun(
+                    surface, "rules.button('Tile instead of floating Calculator').click();")
                 try await waitUntil("Calculator removed") {
                     (try? harness.store.read().floatingApps.isEmpty) == true
                 }
@@ -197,8 +202,9 @@ extension WebInterfaceTests {
                     surface,
                     """
                     return !!rules.button('Try again')
-                      && page.disabled(rules.button('Stop floating Messages'))
-                      && page.disabled(rules.button('Add'))
+                      && page.disabled(rules.button('Tile instead of floating Messages'))
+                      && page.disabled(rules.addMenu())
+                      && page.disabled(rules.button('Add an app to float'))
                       && !page.text().includes('Could not read your rules');
                     """)
                 await harness.desktop.answer(
@@ -208,8 +214,8 @@ extension WebInterfaceTests {
                     surface,
                     """
                     return !page.text().includes('Showing your saved rules')
-                      && !page.disabled(rules.button('Stop floating Messages'))
-                      && !page.disabled(rules.button('Add'));
+                      && !page.disabled(rules.button('Tile instead of floating Messages'))
+                      && !page.disabled(rules.addMenu());
                     """)
                 #expect(harness.settingsData == before)
             }
@@ -229,7 +235,7 @@ extension WebInterfaceTests {
                 try await rulesWait(
                     surface,
                     """
-                    return !!rules.button('Stop floating Messages')
+                    return !!rules.button('Tile instead of floating Messages')
                       && rules.field('Application').value === 'Calculator'
                       && rules.field('Window title').value === '^My draft$';
                     """)
