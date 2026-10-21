@@ -47,6 +47,20 @@ final class StateBroadcast {
         lastSettings = try? Data(contentsOf: model.settingsStore.url)
     }
 
+    func rulesWritten(_ model: AppModel) async {
+        settingsWritten()
+        await publishRules(model)
+    }
+
+    private func publishRules(_ model: AppModel) async {
+        do {
+            settings()?.send(.rulesChanged(try await model.readRulesState()))
+        } catch {
+            model.log.failure("read rules", error.localizedDescription)
+            settings()?.send(.rulesUnavailable(error.localizedDescription))
+        }
+    }
+
     /// Pages that have loaded. One still loading fetches current state itself.
     private var surfaces: [WebSurface] { [settings(), switcher()].compactMap { $0 } }
 
@@ -123,6 +137,7 @@ final class StateBroadcast {
             guard data != self.lastSettings else { return }
             self.lastSettings = data
             model.themes.reload()
+            await self.publishRules(model)
             if let snapshot = await model.refreshLayout() {
                 self.settings()?.send(.layoutChanged(model.layoutState(snapshot)))
             }

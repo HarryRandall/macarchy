@@ -48,17 +48,33 @@ extension WindowRules {
     public static func commit(
         _ apps: [String], integrations: Integrations = Integrations()
     ) async throws {
-        try await OperationLock.run {
-            let store = SettingsStore()
+        try await commit(integrations: integrations) { _ in apps }
+    }
+
+    public static func commit(
+        store: SettingsStore = SettingsStore(), integrations: Integrations = Integrations(),
+        edit: @escaping @Sendable ([String]) -> [String]
+    ) async throws {
+        try await OperationLock.run(root: store.url.deletingLastPathComponent()) {
             let previous = try store.read()
+            let apps = edit(previous.floatingApps).sorted()
+            var candidate = previous
+            candidate.floatingApps = apps
+            try candidate.validate()
             do {
                 try await apply(
                     apps, customRules: previous.windowRules ?? [], integrations: integrations)
-                try store.update { $0.floatingApps = apps.sorted() }
+                try store.update { $0.floatingApps = apps }
             } catch {
-                try? await apply(
-                    previous.floatingApps, customRules: previous.windowRules ?? [],
-                    integrations: integrations)
+                do {
+                    try await apply(
+                        previous.floatingApps, customRules: previous.windowRules ?? [],
+                        integrations: integrations)
+                } catch let rollback {
+                    throw ConfigurationError(
+                        "\(error.localizedDescription) Restoring the previous rules also failed: "
+                            + "\(rollback.localizedDescription). Reapply rules to recover.")
+                }
                 throw error
             }
         }

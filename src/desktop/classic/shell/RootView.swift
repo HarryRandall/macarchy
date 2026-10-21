@@ -141,14 +141,14 @@ struct RootView: View {
         case .home: HomePane()
         case .workshop: WorkshopPane()
         case .plugins: PluginsPane()
-        case .layout:
+        case .layout, .rules:
             // Never selected here: `AppModel` sends it to the React window.
-            ContentUnavailableView("Layout is in the new settings window", systemImage: "macwindow")
+            ContentUnavailableView(
+                "This page is in the new settings window", systemImage: "macwindow")
         case .themes: ThemesPane()
         case .advanced: AdvancedPane()
         case .borders: BordersPane()
         case .menuBar: MenuBarPane()
-        case .rules: RulesPane()
         case .shortcuts: ShortcutsPane()
         case .health: HealthPane()
         case .report: ReportPane()

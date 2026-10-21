@@ -112,3 +112,18 @@ folder renders each state of both pages there as PNGs for review.
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
 4. Delete the SwiftUI pane and anything only it used.
+
+## Rules
+
+The Rules page uses `WindowRuleSettings` in the core to read saved floating
+apps and custom rules alongside live external rules. Custom rules apply before
+saving through `WindowRules.commitCustom`; floating edits read the latest list
+inside the same desktop lock. Failed applies or saves replay the previous rules
+and report a failed replay explicitly. Opening and refreshing only read.
+
+The bridge exposes `rules.getState`, `rules.addApplication` (the native application
+picker), `rules.removeFloating`, `rules.saveCustom` and `rules.removeCustom`.
+`rules.changed` publishes saved state after edits and external settings changes;
+`rules.unavailable` reports unreadable external changes. React keeps open editor
+drafts separate from incoming state. Saving enables a custom rule; removing it
+stops applying it. External rules remain read-only.

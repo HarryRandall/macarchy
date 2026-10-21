@@ -20,6 +20,7 @@ import type {
   LayoutValues,
   ParamsOf,
   Reply,
+  RulesState,
   ResultOf,
   ShellState,
   SwitcherState,
@@ -217,6 +218,13 @@ export function installMockHost() {
     mouseDropAction: "stack",
   };
 
+  const rules: RulesState = {
+    floatingApps: ["Messages"],
+    customRules: [],
+    externalRules: [],
+    icons: {},
+  };
+
   let switcher: SwitcherState = { themes, current: "awakening" };
 
   function layoutState(): LayoutState {
@@ -243,6 +251,23 @@ export function installMockHost() {
   };
 
   const handlers: Handlers = {
+    "rules.getState": () => rules,
+    "rules.addApplication": () => {
+      rules.floatingApps.push("Calculator");
+      return null;
+    },
+    "rules.removeFloating": ({ app }) => {
+      rules.floatingApps = rules.floatingApps.filter((name) => name !== app);
+      return null;
+    },
+    "rules.saveCustom": ({ rule }) => {
+      rules.customRules = [...rules.customRules.filter((entry) => entry.id !== rule.id), rule];
+      return null;
+    },
+    "rules.removeCustom": ({ id }) => {
+      rules.customRules = rules.customRules.filter((rule) => rule.id !== id);
+      return null;
+    },
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;
