@@ -72,24 +72,14 @@ struct SwitcherRow<Icon: View, Title: View, Accessories: View>: View {
 
 struct SwitcherFooter: View {
     let title: String
-    let status: ThemeSwitcherView.Status?
     let primary: String
     let showActions: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            switch status {
-            case .working(let message):
-                ProgressView().controlSize(.small)
-                Text(message).foregroundStyle(.secondary)
-            case .failed(let message):
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                Text(message).foregroundStyle(.orange).lineLimit(1)
-            case nil:
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable().frame(width: 20, height: 20)
-                Text(title).foregroundStyle(.secondary)
-            }
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable().frame(width: 20, height: 20)
+            Text(title).foregroundStyle(.secondary)
             Spacer()
             Text(primary).fontWeight(.semibold)
             SwitcherKeys(keys: ["↵"])

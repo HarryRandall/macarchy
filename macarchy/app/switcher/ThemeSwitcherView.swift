@@ -22,13 +22,7 @@ struct ThemeSwitcherView: View {
     @State var selection: Row?
     @State var mode: Mode = .themes
     @State var showingActions = false
-    @State var status: Status?
     @FocusState private var searchFocused: Bool
-
-    enum Status: Equatable {
-        case working(String)
-        case failed(String)
-    }
 
     private var themes: [InstalledTheme] {
         let all = model.themes.themes.sorted { $0.name < $1.name }
@@ -66,7 +60,7 @@ struct ThemeSwitcherView: View {
             .frame(maxHeight: .infinity)
             Divider().opacity(0.6)
             SwitcherFooter(
-                title: "Switch Theme", status: status, primary: primaryTitle,
+                title: "Switch Theme", primary: primaryTitle,
                 showActions: { showingActions.toggle() })
         }
         .background(SwitcherBackdrop())
@@ -250,23 +244,23 @@ struct ThemeSwitcherView: View {
     }
 
     private func apply(_ theme: InstalledTheme) {
-        status = .working("Applying \(theme.title)…")
+        let model = model
+        close()
         Task {
             let result = await ThemeApplication(integrations: model.backend).apply(name: theme.name)
             model.log.record(result)
             model.themes.reload()
-            if result.ok { close() } else { status = .failed(result.summary) }
         }
     }
 
     private func useBackground(_ background: SwitcherBackground, of theme: InstalledTheme) {
-        status = .working("Applying \(background.name)…")
+        let model = model
+        close()
         Task {
             let result = await ThemeApplication(integrations: model.backend).chooseWallpaper(
                 theme: theme.name, path: background.relativePath)
             model.log.record(result)
             model.themes.reload()
-            if result.ok { close() } else { status = .failed(result.summary) }
         }
     }
 }
