@@ -39,9 +39,14 @@ export function createShellStore(deps: {
     set({ error: errorMessage(error) });
   }
 
-  deps.subscribe("shell.changed", (event) =>
-    set({ status: "ready", state: event.state, error: null }),
-  );
+  // A selection is saved by a request; an event the host sent before that
+  // request arrived still carries the old pane and must not undo the click.
+  let pendingPane: PaneId | null = null;
+
+  deps.subscribe("shell.changed", (event) => {
+    const state = pendingPane ? { ...event.state, selectedPane: pendingPane } : event.state;
+    set({ status: "ready", state, error: null });
+  });
 
   return {
     subscribe: listeners.subscribe,
@@ -68,7 +73,13 @@ export function createShellStore(deps: {
     selectPane(pane: PaneId) {
       if (reactPanes.has(pane)) {
         patchState({ selectedPane: pane });
-        deps.request("shell.setPreferences", { selectedPane: pane }).catch(report);
+        pendingPane = pane;
+        deps
+          .request("shell.setPreferences", { selectedPane: pane })
+          .catch(report)
+          .finally(() => {
+            if (pendingPane === pane) pendingPane = null;
+          });
       } else {
         deps.request("shell.openClassic", { pane }).catch(report);
       }

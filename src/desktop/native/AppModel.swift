@@ -28,9 +28,6 @@ final class AppModel {
     /// here rather than in a view so the palette and the menu can open it.
     var consoleOpen = false
 
-    /// Shown in place of the panes until setup has run, and from Advanced.
-    var showingSetup = !FileManager.default.fileExists(atPath: Paths.settings.path)
-
     let backend: Integrations
 
     var selection: Pane? = AppModel.restoredSelection {
@@ -91,6 +88,7 @@ final class AppModel {
         let log = CommandLog()
         self.log = log
         self.backend = backend
+        self.setupSession = SetupSession(integrations: backend)
         self.settingsStore = settingsStore
         self.themes = ThemeCatalog(backend: backend, log: log)
         self.daemons = DaemonMonitor(backend: backend, log: log)
@@ -100,7 +98,7 @@ final class AppModel {
         self.bordersEditor = BordersEditor { appearance in
             try await borders.commit(appearance, themes: themes)
         }
-        self.snapshots = SnapshotBrowser(log: log)
+        self.snapshots = SnapshotBrowser()
         self.menuBar = MenuBarModel(backend: backend, log: log)
         self.rc = RCGenerator(log: log)
         self.shortcuts = ShortcutsModel(log: log)
@@ -135,23 +133,10 @@ final class AppModel {
         previewTheme?.accent ?? Color(nsColor: .controlAccentColor)
     }
 
-    /// The signals `macarchy startup yabai` registers. Reading them back is
-    /// the only way to know they took: a failed registration leaves no trace.
-    func wakeHelpersRegistered() async -> Bool {
-        let result = await backend.execute(Paths.yabai, ["-m", "signal", "--list"])
-        guard result.ok,
-            let signals = try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))
-                as? [[String: Any]]
-        else { return false }
-        let labels = Set(signals.compactMap { $0["label"] as? String })
-        return labels.isSuperset(of: ["macarchy_window_created", "macarchy_refocus_destroyed"])
+    var advancedConfiguration: AdvancedConfiguration {
+        AdvancedConfiguration(integrations: backend)
     }
-
-    /// Re-pins the sudo rule that lets the desktop-switching helper load. The
-    /// system asks for the password itself; nothing here ever sees it.
-    func repairScriptingAddition() async {
-        log.record(await ScriptingAddition.repair())
-    }
+    var setupSession: SetupSession
 
     var yabaiLayout: YabaiLayout { YabaiLayout(integrations: backend, store: settingsStore) }
 

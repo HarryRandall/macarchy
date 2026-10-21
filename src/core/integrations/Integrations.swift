@@ -26,8 +26,11 @@ public struct BarState: Codable, Sendable {
 public struct Integrations: Sendable {
     public typealias Execute = @Sendable (String, [String]) async -> CommandResult
     public let execute: Execute
-    public init(execute: @escaping Execute = { await CommandRunner.run($0, $1) }) {
-        self.execute = execute
+    /// Administrator prompts wait on a person rather than a daemon.
+    public let administratorExecute: Execute
+    public init(execute: Execute? = nil) {
+        self.execute = execute ?? { await CommandRunner.run($0, $1) }
+        self.administratorExecute = execute ?? { await CommandRunner.run($0, $1, timeout: 300) }
     }
 
     public func yabaiRead(_ key: String) async -> CommandResult {

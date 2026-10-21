@@ -92,7 +92,7 @@ export function SettingsShell({
         <TopBar
           services={state.services}
           onSearch={() => store.openClassic({ show: "search" })}
-          onServices={() => store.openClassic({ pane: "advanced" })}
+          onServices={() => store.selectPane("advanced")}
           onConsole={() => store.openClassic({ show: "console" })}
         />
         <main className="min-h-0 flex-1 overflow-y-auto">
@@ -106,20 +106,6 @@ export function SettingsShell({
                   </div>
                   <Notice.Dismiss onClick={() => store.dismissError()} />
                 </div>
-              </Notice.Root>
-            ) : null}
-            {state.setupRequired ? (
-              <Notice.Root variant="warning">
-                <Notice.Title>Finish setting up Macarchy</Notice.Title>
-                <Notice.Description>
-                  Setup has not run yet, so your desktop is not managed. It runs in the classic
-                  window.
-                </Notice.Description>
-                <Notice.Actions>
-                  <Button variant="primary" onClick={() => store.openClassic({})}>
-                    Open setup
-                  </Button>
-                </Notice.Actions>
               </Notice.Root>
             ) : null}
             {children}

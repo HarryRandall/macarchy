@@ -41,7 +41,7 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
     }
 
     /// Panes the React settings window shows. Choosing one here opens it there.
-    static let migrated: Set<Pane> = [.layout, .rules]
+    static let migrated: Set<Pane> = [.layout, .rules, .advanced]
 
     /// The ungrouped panes at the top of the sidebar.
     static let overview: [Pane] = [.home, .workshop, .plugins]
