@@ -4,6 +4,7 @@ import {
   type PointerEvent,
   type RefObject,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -12,6 +13,7 @@ import type { LogEntry } from "~/bridge/protocol";
 import { IconButton } from "~/components/ui/icon-button";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { cn } from "~/lib/cn";
+import { observeResize } from "~/lib/observe-resize";
 
 import {
   clampLogHeight,
@@ -81,10 +83,19 @@ export function LogsPanel({
   const counts = countBySource(entries);
   const failures = entries.filter((entry) => !entry.ok).length;
   const available = () => containerRef.current?.clientHeight ?? window.innerHeight;
+  const [room, setRoom] = useState(() => window.innerHeight);
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const measure = () => setRoom(element.clientHeight);
+    measure();
+    return observeResize(element, measure);
+  }, [containerRef]);
 
   useEffect(() => {
     const element = body.current;
     if (open && element) element.scrollTo({ top: element.scrollHeight });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- new entries scroll into view.
   }, [open, shown.length]);
 
   // A height saved in a taller window may no longer leave the page any room.
@@ -166,7 +177,7 @@ export function LogsPanel({
         aria-label="Resize logs"
         aria-valuenow={height}
         aria-valuemin={140}
-        aria-valuemax={Math.max(140, available() - 160)}
+        aria-valuemax={Math.max(140, room - 160)}
         tabIndex={0}
         onPointerDown={startDrag}
         onKeyDown={resizeByKey}
@@ -269,7 +280,9 @@ export function LogsPanel({
                   <span className={cn("font-semibold", style.text)}>{style.label}</span>
                   <span className="truncate text-fg-secondary">{logSource(entry)}</span>
                   <span className="min-w-0 break-words whitespace-pre-wrap">
-                    <span className={entry.ok ? (ran ? "text-fg" : "text-fg-secondary") : "text-danger"}>
+                    <span
+                      className={entry.ok ? (ran ? "text-fg" : "text-fg-secondary") : "text-danger"}
+                    >
                       {ran ? <span className="text-fg-tertiary select-none">$ </span> : null}
                       {entry.command}
                       {entry.status !== null && entry.status !== 0 ? (

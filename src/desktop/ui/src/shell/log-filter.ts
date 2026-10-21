@@ -68,7 +68,7 @@ export function unreadFailures(entries: readonly LogEntry[], seen: ReadonlySet<s
 export function chronological(entries: readonly LogEntry[]): LogEntry[] {
   return entries
     .map((entry, index) => ({ entry, index }))
-    .sort((a, b) => a.entry.at - b.entry.at || a.index - b.index)
+    .toSorted((a, b) => a.entry.at - b.entry.at || a.index - b.index)
     .map(({ entry }) => entry);
 }
 

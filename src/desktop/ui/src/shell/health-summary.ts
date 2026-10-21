@@ -23,6 +23,7 @@ export function healthSummary(snapshot: unknown): HealthSummary {
     return status === "failed" || status === "warning";
   }).length;
   const environment = isRecord(state.environment) ? state.environment : {};
-  const model = typeof environment.model === "string" && environment.model ? environment.model : null;
+  const model =
+    typeof environment.model === "string" && environment.model ? environment.model : null;
   return { issues, model };
 }

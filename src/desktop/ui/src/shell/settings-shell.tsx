@@ -12,7 +12,11 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { errorMessage, request } from "~/bridge/client";
 import type { AppearanceMode, LogEntry, PaneId, Rect, ShellState } from "~/bridge/protocol";
-import { type PageChrome, PageChromeContext, type PageSearch } from "~/components/layout/page-chrome";
+import {
+  type PageChrome,
+  PageChromeContext,
+  type PageSearch,
+} from "~/components/layout/page-chrome";
 import { Notice } from "~/components/ui/notice";
 import { copyText } from "~/lib/clipboard";
 import { useStore } from "~/lib/store";
@@ -131,10 +135,12 @@ export function SettingsShell({
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- each route starts at the top.
   }, [route]);
 
   useEffect(() => {
     if (logsOpen) logs.markSeen();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- entries that arrive while the panel is open are seen.
   }, [logs, logsOpen, log.entries]);
 
   const fail = (error: unknown) => {
@@ -276,17 +282,15 @@ export function SettingsShell({
   }, []);
 
   const commands: PaletteCommand[] = [
-    ...[...overview, ...groups.flatMap((group) => group.panes)].map(
-      (id): PaletteCommand => ({
-        id: `go-${id}`,
-        label: panes[id].title,
-        hint: groups.find((group) => group.panes.includes(id))?.title ?? "Overview",
-        keywords: reactPanes.has(id) ? undefined : ["classic"],
-        section: "Go to",
-        icon: panes[id].icon,
-        run: () => go(id),
-      }),
-    ),
+    ...[...overview, ...groups.flatMap((group) => group.panes)].map((id): PaletteCommand => ({
+      id: `go-${id}`,
+      label: panes[id].title,
+      hint: groups.find((group) => group.panes.includes(id))?.title ?? "Overview",
+      keywords: reactPanes.has(id) ? undefined : ["classic"],
+      section: "Go to",
+      icon: panes[id].icon,
+      run: () => go(id),
+    })),
     {
       id: "go-changelog",
       label: "Changelog",
@@ -296,16 +300,14 @@ export function SettingsShell({
       icon: Sparkles,
       run: () => go("changelog"),
     },
-    ...(Object.keys(shellActions) as ShellAction[]).map(
-      (action): PaletteCommand => ({
-        id: `action-${action}`,
-        label: shellActions[action].label,
-        keys: shellActions[action].keys,
-        section: "Actions",
-        icon: shellActions[action].icon,
-        run: () => runAction(action),
-      }),
-    ),
+    ...(Object.keys(shellActions) as ShellAction[]).map((action): PaletteCommand => ({
+      id: `action-${action}`,
+      label: shellActions[action].label,
+      keys: shellActions[action].keys,
+      section: "Actions",
+      icon: shellActions[action].icon,
+      run: () => runAction(action),
+    })),
     {
       id: "toggle-sidebar",
       label: collapsed ? "Show sidebar" : "Hide sidebar",
@@ -314,27 +316,23 @@ export function SettingsShell({
       icon: PanelLeft,
       run: toggleSidebar,
     },
-    ...modes.map(
-      ({ id, label, icon }): PaletteCommand => ({
-        id: `appearance-${id}`,
-        label: `Appearance: ${label}`,
-        hint: state.appearance.mode === id ? "Current" : undefined,
-        keywords: ["theme", "mode"],
-        section: "Actions",
-        icon,
-        run: () => shell.setAppearance(id),
-      }),
-    ),
-    ...state.serviceList.map(
-      (service): PaletteCommand => ({
-        id: `service-${service.id}`,
-        label: `${service.state === "running" ? "Restart" : "Start"} ${service.name}`,
-        keywords: ["service"],
-        section: "Actions",
-        icon: service.state === "running" ? RotateCw : Play,
-        run: () => restart(service),
-      }),
-    ),
+    ...modes.map(({ id, label, icon }): PaletteCommand => ({
+      id: `appearance-${id}`,
+      label: `Appearance: ${label}`,
+      hint: state.appearance.mode === id ? "Current" : undefined,
+      keywords: ["theme", "mode"],
+      section: "Actions",
+      icon,
+      run: () => shell.setAppearance(id),
+    })),
+    ...state.serviceList.map((service): PaletteCommand => ({
+      id: `service-${service.id}`,
+      label: `${service.state === "running" ? "Restart" : "Start"} ${service.name}`,
+      keywords: ["service"],
+      section: "Actions",
+      icon: service.state === "running" ? RotateCw : Play,
+      run: () => restart(service),
+    })),
   ];
 
   const selectPane = (pane: PaneId) => go(pane);

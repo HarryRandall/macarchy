@@ -57,10 +57,10 @@ describe("logSource", () => {
   });
 });
 
-describe("filterLog", () => {
-  const shown = (filter: Partial<LogFilter>) =>
-    ids(filterLog(entries, { source: "all", level: "all", query: "", ...filter }));
+const shown = (filter: Partial<LogFilter>) =>
+  ids(filterLog(entries, { source: "all", level: "all", query: "", ...filter }));
 
+describe("filterLog", () => {
   it("keeps everything with no filter", () => {
     expect(shown({})).toEqual(["1", "2", "3", "4", "5"]);
   });

@@ -87,7 +87,8 @@ export function ServiceStatus({
   const trigger = useRef<HTMLButtonElement>(null);
   const [stopping, setStopping] = useState<Service | null>(null);
   // Mock: CPU samples are placeholders, so their clock labels are made when the panel opens.
-  const times = useMemo(() => (open ? usageTimes(new Date()) : []), [open]);
+  const [openedAt] = useState(() => new Date());
+  const times = useMemo(() => (open ? usageTimes(openedAt) : []), [open, openedAt]);
 
   const running = services.filter((service) => service.state === "running").length;
   const total = services.length;
@@ -218,7 +219,10 @@ export function ServiceStatus({
                   return (
                     <li
                       key={service.id}
-                      className={cn(columns, "rounded-[8px] px-2 py-1.5 transition-colors hover:bg-side")}
+                      className={cn(
+                        columns,
+                        "rounded-[8px] px-2 py-1.5 transition-colors hover:bg-side",
+                      )}
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
                         <StatusDot tone={dotTone(service, action)} pulse={Boolean(action)} />
@@ -246,7 +250,11 @@ export function ServiceStatus({
                         format={(value) => `${value}%`}
                       />
                       <span className="text-right text-[12px] text-fg-secondary tabular-nums">
-                        {typeof now === "number" ? `${now}%` : <span className="text-fg-tertiary">Off</span>}
+                        {typeof now === "number" ? (
+                          `${now}%`
+                        ) : (
+                          <span className="text-fg-tertiary">Off</span>
+                        )}
                       </span>
                       <div className="flex items-center justify-end gap-0.5">
                         <Button

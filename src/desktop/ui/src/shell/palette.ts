@@ -42,7 +42,7 @@ export function filterPalette<T extends PaletteItem>(items: readonly T[], query:
       return terms.every((term) => haystack.includes(term));
     })
     .map((entry) => ({ ...entry, rank: needle ? rank(entry.item, needle) : 0 }))
-    .sort(
+    .toSorted(
       (a, b) =>
         sectionOrder.indexOf(a.item.section) - sectionOrder.indexOf(b.item.section) ||
         a.rank - b.rank ||

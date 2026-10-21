@@ -18,7 +18,10 @@ const seed = { command: "note", detail: "", ok: true, status: null, category: "S
 
 describe("mock log", () => {
   it("starts with a dozen entries in every category, oldest first", () => {
-    const log = createLogMock(() => 1_000_000, () => {});
+    const log = createLogMock(
+      () => 1_000_000,
+      () => {},
+    );
     const entries = log.entries();
     expect(entries).toHaveLength(12);
     expect(new Set(entries.map((entry) => entry.category))).toEqual(new Set(categories));
@@ -29,7 +32,7 @@ describe("mock log", () => {
   });
 
   it("appends newest last with a fresh id and reports each change", () => {
-    const changed = vi.fn();
+    const changed = vi.fn<() => void>();
     const log = createLogMock(() => 2_000_000, changed);
     const ids = new Set(log.entries().map((entry) => entry.id));
     log.append(seed);
@@ -42,7 +45,10 @@ describe("mock log", () => {
   });
 
   it("keeps only the newest entries, as the host does", () => {
-    const log = createLogMock(() => 0, () => {});
+    const log = createLogMock(
+      () => 0,
+      () => {},
+    );
     for (let index = 0; index < logLimit; index += 1) {
       log.append({ ...seed, command: `note ${index}` });
     }

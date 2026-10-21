@@ -95,9 +95,7 @@ function PaletteBody({
   const groups = groupPalette(results);
 
   useEffect(() => {
-    list.current
-      ?.querySelector(`[data-index="${active}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    list.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
   }, [active]);
 
   const run = (command: PaletteCommand | undefined) => {

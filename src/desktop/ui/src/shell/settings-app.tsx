@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { bridge, request } from "~/bridge/client";
 import type { PaneId } from "~/bridge/protocol";
@@ -93,19 +93,17 @@ export function SettingsApp({
     if (next.current !== "changelog") shell.selectPane(next.current);
   };
 
-  const go = (target: Route) => {
-    if (target !== "changelog" && !reactPanes.has(target)) {
-      shell.selectPane(target);
-      return;
-    }
-    if (history) showPane(visit(history, target));
-  };
-
-  // Pages keep the context they were given, so it reads the latest `go`.
-  const goRef = useRef(go);
-  useLayoutEffect(() => {
-    goRef.current = go;
-  });
+  // Stable, because pages keep the context they were given.
+  const go = useCallback(
+    (target: Route) => {
+      if (target !== "changelog") shell.selectPane(target);
+      if (target !== "changelog" && !reactPanes.has(target)) return;
+      setNavigation((current) =>
+        current.history ? { ...current, history: visit(current.history, target) } : current,
+      );
+    },
+    [shell, setNavigation],
+  );
 
   const pane = route === "changelog" ? null : route;
   const page = pane ? pages.find((candidate) => candidate.id === pane) : undefined;
@@ -121,10 +119,10 @@ export function SettingsApp({
 
   const context = useMemo<PageContext>(
     () => ({
-      navigate: (pane) => goRef.current(pane),
+      navigate: (target) => go(target),
       openClassic: (params) => shell.openClassic(params),
     }),
-    [shell],
+    [go, shell],
   );
 
   // Before paint, so the first frame already carries the theme's accent.

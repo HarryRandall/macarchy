@@ -98,6 +98,7 @@ export function ChangelogPage({
     update();
     scroller.addEventListener("scroll", update, { passive: true });
     return () => scroller.removeEventListener("scroll", update);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new filter changes which release is in view.
   }, [filter]);
 
   const jump = (version: string) => {
