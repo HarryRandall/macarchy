@@ -8,10 +8,11 @@ import { cn } from "~/lib/cn";
 const inputVariants = cva(
   [
     "w-full min-w-0 rounded-control border border-hairline bg-well text-fg outline-none placeholder:text-fg-secondary",
-    // Focus thickens the border to a 2 pt accent ring, as macOS draws it.
-    "transition-[border-color,box-shadow] focus:border-accent-stroke focus:shadow-[0_0_0_1px_var(--accent-stroke)] focus-visible:outline-none",
+    // Focus thickens the border inwards to a 2 pt accent ring, as macOS draws
+    // it, so a scrolling container's edge cannot clip it.
+    "transition-[border-color,box-shadow] focus:border-accent-stroke focus:shadow-[inset_0_0_0_1px_var(--accent-stroke)] focus-visible:outline-none",
     "disabled:opacity-45 aria-invalid:border-danger data-invalid:border-danger",
-    "aria-invalid:focus:shadow-[0_0_0_1px_var(--status-danger)] data-invalid:focus:shadow-[0_0_0_1px_var(--status-danger)]",
+    "aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--status-danger)] data-invalid:focus:shadow-[inset_0_0_0_1px_var(--status-danger)]",
   ],
   {
     variants: {

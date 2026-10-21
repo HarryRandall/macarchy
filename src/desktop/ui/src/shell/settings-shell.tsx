@@ -95,17 +95,15 @@ export function SettingsShell({
           onServices={() => store.selectPane("advanced")}
           onConsole={() => store.openClassic({ show: "console" })}
         />
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        {/* A classic scrollbar would otherwise push the centred column sideways. */}
+        <main className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
           <div className="mx-auto flex max-w-[1008px] flex-col gap-4 px-6 pt-8 pb-10">
             {error ? (
               <Notice.Root variant="error">
-                <div className="flex items-start gap-2">
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <Notice.Title>Something went wrong</Notice.Title>
-                    <Notice.Description>{error}</Notice.Description>
-                  </div>
-                  <Notice.Dismiss onClick={() => store.dismissError()} />
-                </div>
+                <Notice.Header onDismiss={() => store.dismissError()}>
+                  <Notice.Title>Something went wrong</Notice.Title>
+                  <Notice.Description>{error}</Notice.Description>
+                </Notice.Header>
               </Notice.Root>
             ) : null}
             {children}

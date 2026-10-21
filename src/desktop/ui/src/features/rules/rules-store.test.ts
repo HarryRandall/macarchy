@@ -65,19 +65,49 @@ describe("Rules store", () => {
     expect(test.store.getSnapshot()).toMatchObject({ status: "ready", error: null });
   });
 
-  it("routes each edit to its named operation and refreshes", async () => {
+  it("routes each edit to its named operation and shows the saved result", async () => {
     const test = setup();
+    let saved: RulesState = state;
+    test.getState.mockImplementation(async () => saved);
+    test.addApplication.mockImplementation(async () => {
+      saved = { ...saved, floatingApps: [...saved.floatingApps, "Calculator"] };
+      return null;
+    });
+    test.removeFloating.mockImplementation(async (app) => {
+      saved = { ...saved, floatingApps: saved.floatingApps.filter((name) => name !== app) };
+      return null;
+    });
+    test.saveCustom.mockImplementation(async (rule) => {
+      saved = { ...saved, customRules: [...saved.customRules, rule] };
+      return null;
+    });
+    test.removeCustom.mockImplementation(async (id) => {
+      saved = { ...saved, customRules: saved.customRules.filter((rule) => rule.id !== id) };
+      return null;
+    });
     await test.store.load();
-    const rule = { id: "id", app: "Finder", title: "^Copy$" };
-    await test.store.addApplication();
-    await test.store.removeFloating("Messages");
-    await test.store.saveCustom(rule);
-    await test.store.removeCustom("id");
+
+    expect(await test.store.addApplication()).toBe(true);
+    expect(test.store.getSnapshot().state?.floatingApps).toEqual(["Messages", "Calculator"]);
+
+    expect(await test.store.removeFloating("Messages")).toBe(true);
+    expect(test.store.getSnapshot().state?.floatingApps).toEqual(["Calculator"]);
+
+    expect(await test.store.saveCustom({ id: "copy", app: "Finder", title: "^Copy$" })).toBe(true);
+    expect(test.store.getSnapshot().state?.customRules).toEqual([
+      { id: "copy", app: "Finder", title: "^Copy$" },
+    ]);
+
+    expect(await test.store.removeCustom("copy")).toBe(true);
+    expect(test.store.getSnapshot()).toMatchObject({
+      status: "ready",
+      busy: false,
+      error: null,
+      state: { floatingApps: ["Calculator"], customRules: [] },
+    });
     expect(test.addApplication).toHaveBeenCalledOnce();
     expect(test.removeFloating).toHaveBeenCalledWith("Messages");
-    expect(test.saveCustom).toHaveBeenCalledWith(rule);
-    expect(test.removeCustom).toHaveBeenCalledWith("id");
-    expect(test.getState).toHaveBeenCalledTimes(5);
+    expect(test.removeCustom).toHaveBeenCalledWith("copy");
   });
 
   it("keeps saved state and exposes failed apply", async () => {

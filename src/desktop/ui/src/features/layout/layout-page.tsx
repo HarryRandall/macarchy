@@ -91,13 +91,10 @@ export function LayoutPage({ store }: { store: LayoutStore }) {
 
       {snapshot.error ? (
         <Notice.Root variant="error">
-          <div className="flex items-start gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <Notice.Title>Could not apply that change</Notice.Title>
-              <Notice.Description>{snapshot.error}</Notice.Description>
-            </div>
-            <Notice.Dismiss onClick={() => store.dismissError()} />
-          </div>
+          <Notice.Header onDismiss={() => store.dismissError()}>
+            <Notice.Title>Could not apply that change</Notice.Title>
+            <Notice.Description>{snapshot.error}</Notice.Description>
+          </Notice.Header>
         </Notice.Root>
       ) : null}
 

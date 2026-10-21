@@ -96,13 +96,7 @@ function SectionAction({
   tooltip?: string;
 }) {
   const button = (
-    <Button
-      variant="ghost"
-      size="sm"
-      data-slot="section-action"
-      className={cn("h-[22px] px-1.5 text-fg-secondary hover:text-fg [&_svg]:size-3", className)}
-      {...props}
-    >
+    <Button variant="quiet" size="xs" data-slot="section-action" className={className} {...props}>
       {icon}
       {children}
     </Button>

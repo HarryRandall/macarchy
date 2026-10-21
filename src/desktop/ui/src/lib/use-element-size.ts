@@ -1,6 +1,8 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
 
-/** The element's content box, kept current with a ResizeObserver. */
+import { observeResize } from "./observe-resize";
+
+/** The element's rendered size, kept current before each paint. */
 export function useElementSize(ref: RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   useLayoutEffect(() => {
@@ -13,9 +15,7 @@ export function useElementSize(ref: RefObject<HTMLElement | null>) {
       );
     };
     measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
+    return observeResize(element, measure);
   }, [ref]);
   return size;
 }
