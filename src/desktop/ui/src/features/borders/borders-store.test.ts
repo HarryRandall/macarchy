@@ -148,6 +148,42 @@ describe("Borders draft editor", () => {
       applied: { width: 10 },
     });
   });
+  it("accepts edits during a live apply and applies the latest draft afterwards", async () => {
+    const { store, apply } = setup();
+    await store.load();
+    store.setLive(true);
+    let finish!: () => void;
+    apply.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    store.edit({ width: 10 });
+    await vi.advanceTimersByTimeAsync(180);
+    expect(store.getSnapshot().applying).toBe(true);
+    store.edit({ width: 11 });
+    store.edit({ width: 12 });
+    expect(store.getSnapshot().draft?.width).toBe(12);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(apply).toHaveBeenCalledTimes(1);
+    finish();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.getSnapshot()).toMatchObject({
+      applying: false,
+      applied: { width: 10 },
+      draft: { width: 12 },
+    });
+    await vi.advanceTimersByTimeAsync(180);
+    expect(apply).toHaveBeenCalledTimes(2);
+    expect(apply.mock.calls[1]?.[0].appearance).toMatchObject({ width: 12 });
+    expect(store.getSnapshot()).toMatchObject({
+      live: true,
+      applying: false,
+      applied: { width: 12 },
+      draft: { width: 12 },
+    });
+  });
   it("updates idle pages, keeps drafts on external changes and refuses a stale theme", async () => {
     const { store, receive, apply } = setup();
     await store.load();

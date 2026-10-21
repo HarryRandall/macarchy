@@ -127,7 +127,7 @@ export function createBordersStore(host: PageHost) {
     load,
     apply,
     edit(patch: Partial<BorderAppearance>) {
-      if (!snapshot.draft || snapshot.applying || snapshot.state?.unavailableReason) return;
+      if (!snapshot.draft || snapshot.state?.unavailableReason) return;
       ++revision;
       set({ draft: { ...snapshot.draft, ...patch } });
       changed();

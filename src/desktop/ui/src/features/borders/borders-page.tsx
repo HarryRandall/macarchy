@@ -37,7 +37,7 @@ export function BordersPage({ store }: { store: BordersStore }) {
       </>
     );
   const dirty = JSON.stringify(draft) !== JSON.stringify(applied);
-  const disabled = applying || !!state.unavailableReason;
+  const disabled = !!state.unavailableReason;
   const preset =
     draft.radius === null
       ? "system"
@@ -77,7 +77,7 @@ export function BordersPage({ store }: { store: BordersStore }) {
                   </Button>
                   <Button
                     variant="primary"
-                    disabled={!dirty || disabled}
+                    disabled={!dirty || applying || disabled}
                     onClick={() => void store.apply()}
                   >
                     {applying ? "Applying..." : "Apply"}
