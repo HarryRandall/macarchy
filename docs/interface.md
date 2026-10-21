@@ -165,8 +165,11 @@ stops applying it. External rules remain read-only.
 Borders uses named requests: borders.getState, borders.apply and
 borders.pickApplication. BorderSettings in the core reads preferences, the
 global macOS corner override and active theme colours. BorderEdit applies the
-complete appearance before saving it. The page keeps manual drafts separate
-and coalesces live edits over 180 ms. borders.changed and themes.changed keep
+complete appearance before saving it, and writes theme colours only after
+settings are saved. A failed apply or save restores the previous corner
+override and saved settings, and reports a failed restore explicitly. The page
+keeps manual drafts separate and coalesces live edits over 180 ms. Controls stay
+enabled while an apply runs; later edits apply next. borders.changed and themes.changed keep
 it current without replacing an unsaved draft. A draft for a previous theme
 must be discarded before editing the new theme.
 
