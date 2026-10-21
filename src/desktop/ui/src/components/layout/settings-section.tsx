@@ -2,13 +2,14 @@ import { RotateCcw } from "lucide-react";
 import { type ComponentProps, type ReactNode, useId } from "react";
 
 import { Button } from "~/components/ui/button";
-import { HelpTooltip } from "~/components/ui/help-tooltip";
+import { Card, CardHeader, CardRows, cardSurface } from "~/components/ui/card";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
 /**
- * A titled card of rows. Rows are plain children; the hairline between them
- * is drawn here, inset to the text column, so no page can get it half right.
+ * A titled card of rows: a `Card` with a `CardHeader` and `CardRows`. Rows
+ * are plain children; the hairlines between them are drawn here, so no
+ * page can get them half right.
  */
 function SettingsSection({
   title,
@@ -28,37 +29,26 @@ function SettingsSection({
 }) {
   const titleId = useId();
   return (
-    <section
+    <Card
       aria-labelledby={title ? titleId : undefined}
-      className={cn("flex flex-col gap-2", className)}
+      aria-disabled={disabled || undefined}
+      className={cn("transition-opacity duration-snappy", disabled && "opacity-50", className)}
       {...props}
     >
-      {title ? (
-        <div className="flex min-h-[22px] items-center gap-2 px-1">
-          <h3 id={titleId} className="text-card-title text-fg-secondary">
-            {title}
-          </h3>
-          {help ? <HelpTooltip text={help} /> : null}
-          {action ? <div className="ml-auto flex items-center gap-1">{action}</div> : null}
-        </div>
-      ) : null}
-      <SettingsCard
-        aria-disabled={disabled || undefined}
-        className={cn("transition-opacity duration-snappy", disabled && "opacity-50")}
-      >
-        {children}
-      </SettingsCard>
-    </section>
+      {title ? <CardHeader id={titleId} title={title} help={help} action={action} /> : null}
+      <CardRows>{children}</CardRows>
+    </Card>
   );
 }
 
+/** A card of rows with no header, for a list that a `SectionLabel` already names. */
 function SettingsCard({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="settings-card"
       className={cn(
-        "rounded-card border border-hairline bg-card",
-        "[&>*+*]:relative [&>*+*]:before:absolute [&>*+*]:before:inset-x-0 [&>*+*]:before:top-0 [&>*+*]:before:left-4 [&>*+*]:before:h-px [&>*+*]:before:bg-hairline",
+        cardSurface,
+        "[&>*+*]:border-t [&>*+*]:border-hairline [&>*:first-child]:rounded-t-[9px] [&>*:last-child]:rounded-b-[9px]",
         className,
       )}
       {...props}
@@ -74,7 +64,7 @@ function CardContent({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="card-content"
-      className={cn("flex flex-col gap-3 px-4 py-3", className)}
+      className={cn("flex min-w-0 flex-col gap-3 px-5 py-3.5", className)}
       {...props}
     />
   );
@@ -96,7 +86,7 @@ function SectionAction({
   tooltip?: string;
 }) {
   const button = (
-    <Button variant="quiet" size="xs" data-slot="section-action" className={className} {...props}>
+    <Button variant="ghost" size="sm" data-slot="section-action" className={className} {...props}>
       {icon}
       {children}
     </Button>

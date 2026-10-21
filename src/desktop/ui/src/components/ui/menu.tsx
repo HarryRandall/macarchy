@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import { cn } from "~/lib/cn";
 
+import { popupItem, popupMotion, popupSurface } from "./surface";
+
 const Menu = MenuPrimitive.Root;
 const MenuTrigger = MenuPrimitive.Trigger;
 
@@ -22,16 +24,13 @@ function MenuPopup({
       <MenuPrimitive.Positioner
         side={side}
         align={align}
-        sideOffset={4}
+        sideOffset={6}
+        collisionPadding={8}
         className="z-50 outline-none"
       >
         <MenuPrimitive.Popup
           data-slot="menu-popup"
-          className={cn(
-            "min-w-44 rounded-control border border-hairline bg-popover/95 p-[5px] text-row-title text-fg shadow-[0_8px_24px_rgb(0_0_0/0.28)] backdrop-blur-xl outline-none",
-            "origin-(--transform-origin) transition-[opacity,scale] duration-140 data-ending-style:opacity-0 data-starting-style:scale-97 data-starting-style:opacity-0",
-            className,
-          )}
+          className={cn("min-w-48", popupSurface, popupMotion, className)}
           {...props}
         >
           {children}
@@ -47,20 +46,18 @@ function MenuItem({
   shortcut,
   children,
   ...props
-}: MenuPrimitive.Item.Props & { icon?: ReactNode; shortcut?: ReactNode }) {
+}: MenuPrimitive.Item.Props & {
+  /** A 14px glyph before the label; mark it `aria-hidden`. */
+  icon?: ReactNode;
+  /** Keys or a hint after the label, such as "⌘L". */
+  shortcut?: ReactNode;
+}) {
   return (
-    <MenuPrimitive.Item
-      data-slot="menu-item"
-      className={cn(
-        "flex h-[22px] items-center gap-2 rounded-[5px] px-2 outline-none select-none data-disabled:opacity-45 data-highlighted:bg-accent data-highlighted:text-accent-fg [&_svg]:size-3.5",
-        className,
-      )}
-      {...props}
-    >
+    <MenuPrimitive.Item data-slot="menu-item" className={cn(popupItem, className)} {...props}>
       {icon}
-      <span className="flex-1">{children}</span>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
       {shortcut ? (
-        <span className="ml-4 text-fg-secondary in-data-highlighted:text-accent-fg/80">
+        <span className="ml-4 shrink-0 text-meta tracking-[0.04em] text-fg-tertiary">
           {shortcut}
         </span>
       ) : null}
@@ -75,14 +72,13 @@ function MenuGroupLabel({ className, ...props }: MenuPrimitive.GroupLabel.Props)
   return (
     <MenuPrimitive.GroupLabel
       data-slot="menu-group-label"
-      className={cn("px-2 pt-1 pb-0.5 text-meta font-medium text-fg-secondary", className)}
+      className={cn("px-2 pt-1.5 pb-1 text-caption font-medium text-fg-tertiary", className)}
       {...props}
     />
   );
 }
 
-const choiceItem =
-  "grid h-[22px] grid-cols-[16px_1fr] items-center gap-1 rounded-[5px] pr-3 pl-1 outline-none select-none data-disabled:opacity-45 data-highlighted:bg-accent data-highlighted:text-accent-fg";
+const choiceItem = cn(popupItem, "grid grid-cols-[14px_1fr] gap-2 pr-3 [&_svg]:text-fg");
 
 /** An item that toggles on and off and stays open, such as a modifier filter. */
 function MenuCheckboxItem({ className, children, ...props }: MenuPrimitive.CheckboxItem.Props) {
@@ -93,9 +89,9 @@ function MenuCheckboxItem({ className, children, ...props }: MenuPrimitive.Check
       {...props}
     >
       <MenuPrimitive.CheckboxItemIndicator className="col-start-1 flex">
-        <Check aria-hidden className="size-3" strokeWidth={3} />
+        <Check aria-hidden strokeWidth={2.5} />
       </MenuPrimitive.CheckboxItemIndicator>
-      <span className="col-start-2 whitespace-nowrap">{children}</span>
+      <span className="col-start-2 truncate">{children}</span>
     </MenuPrimitive.CheckboxItem>
   );
 }
@@ -111,19 +107,16 @@ function MenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioIte
       {...props}
     >
       <MenuPrimitive.RadioItemIndicator className="col-start-1 flex">
-        <Check aria-hidden className="size-3" strokeWidth={3} />
+        <Check aria-hidden strokeWidth={2.5} />
       </MenuPrimitive.RadioItemIndicator>
-      <span className="col-start-2 whitespace-nowrap">{children}</span>
+      <span className="col-start-2 truncate">{children}</span>
     </MenuPrimitive.RadioItem>
   );
 }
 
 function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
-    <MenuPrimitive.Separator
-      className={cn("mx-2 my-[5px] h-px bg-hairline", className)}
-      {...props}
-    />
+    <MenuPrimitive.Separator className={cn("-mx-1 my-1 h-px bg-hairline", className)} {...props} />
   );
 }
 

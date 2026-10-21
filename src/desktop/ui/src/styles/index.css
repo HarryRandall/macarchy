@@ -254,45 +254,140 @@
 }
 
 @theme {
-  /* Apple's macOS scale, by role. Nothing goes below the 10 pt floor. */
-  --text-page-title: 26px;
-  --text-page-title--line-height: 32px;
-  --text-page-title--font-weight: 600;
-  --text-hero-title: 22px;
-  --text-hero-title--line-height: 28px;
+  /*
+   * Studio's type scale, by role. Weight is part of a role only where every
+   * use shares it; add `font-medium` or `font-semibold` otherwise. Nothing
+   * goes below the 10px floor. Register new roles in ~/lib/cn.ts too.
+   */
+  /* The current theme's name over its wallpaper on Home. */
+  --text-hero-title: 28px;
+  --text-hero-title--line-height: 32px;
   --text-hero-title--font-weight: 600;
+  --text-hero-title--letter-spacing: -0.025em;
+  /* Large figures: a stat strip's values, Usage's total. */
+  --text-stat: 18px;
+  --text-stat--line-height: 22px;
+  --text-stat--font-weight: 600;
+  --text-stat--letter-spacing: -0.02em;
+  /* A dialog's or an empty page's title. */
+  --text-title: 15px;
+  --text-title--line-height: 20px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-card-title: 14px;
+  --text-card-title--line-height: 20px;
+  --text-card-title--font-weight: 600;
+  --text-card-title--letter-spacing: -0.01em;
+  /* A name that leads a block: an empty state's title, a theme card's name. */
+  --text-emphasis: 13.5px;
+  --text-emphasis--line-height: 19px;
+  --text-body: 13px;
+  --text-body--line-height: 18px;
+  /* A description under a card title or in a dialog. */
+  --text-detail: 12.5px;
+  --text-detail--line-height: 17px;
+  /* A row's hint, a field label, a small button. */
+  --text-small: 12px;
+  --text-small--line-height: 16px;
+  /* Badges, chips, tooltips, key caps, captions under a value. */
+  --text-meta: 11.5px;
+  --text-meta--line-height: 16px;
+  /* Stat labels, column headings, group titles in the sidebar. */
+  --text-caption: 11px;
+  --text-caption--line-height: 14px;
+  --text-axis: 10.5px;
+  --text-axis--line-height: 14px;
+  /* The smallest tag: Preview, a count in a pill. */
+  --text-tag: 10px;
+  --text-tag--line-height: 12px;
+  --text-tag--font-weight: 500;
+  /* Small caps grouping a run of cards. Pair with `uppercase`. */
+  --text-label: 11.5px;
+  --text-label--line-height: 14px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.04em;
+  /* Code, paths and logs. Pair with `font-mono`. */
+  --text-mono: 11.5px;
+  --text-mono--line-height: 18px;
+  /* A hex value or number set in a field. Pair with `font-mono`. */
+  --text-mono-value: 12px;
+  --text-mono-value--line-height: 16px;
+
+  /* Earlier names, kept so pages not yet migrated still compile. */
+  --text-page-title: 22px;
+  --text-page-title--line-height: 28px;
+  --text-page-title--font-weight: 600;
+  --text-page-title--letter-spacing: -0.02em;
   --text-section-title: 15px;
   --text-section-title--line-height: 20px;
   --text-section-title--font-weight: 600;
-  --text-card-title: 13px;
-  --text-card-title--line-height: 16px;
-  --text-card-title--font-weight: 600;
+  --text-section-title--letter-spacing: -0.01em;
   --text-row-title: 13px;
-  --text-row-title--line-height: 16px;
-  --text-row-detail: 11px;
-  --text-row-detail--line-height: 14px;
-  --text-meta: 11px;
-  --text-meta--line-height: 14px;
-  --text-eyebrow: 10px;
+  --text-row-title--line-height: 18px;
+  --text-row-detail: 12px;
+  --text-row-detail--line-height: 16px;
+  --text-eyebrow: 11px;
   --text-eyebrow--line-height: 14px;
   --text-eyebrow--font-weight: 600;
-  --text-eyebrow--letter-spacing: 0.8px;
-  --text-badge: 10px;
-  --text-badge--line-height: 12px;
+  --text-eyebrow--letter-spacing: 0.06em;
+  --text-badge: 11.5px;
+  --text-badge--line-height: 16px;
   --text-badge--font-weight: 500;
-  --text-mono-detail: 11px;
-  --text-mono-detail--line-height: 14px;
+  --text-mono-detail: 11.5px;
+  --text-mono-detail--line-height: 16px;
 
+  /* Key caps, tags and swatches. */
+  --radius-key: 5px;
+  /* Badges, chips, menu items, tooltips. */
   --radius-small: 6px;
-  --radius-control: 8px;
-  --radius-card: 12px;
+  /* Buttons, fields, segmented controls. */
+  --radius-control: 7px;
+  /* Icon tiles, chart tooltips, code blocks. */
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  /* Popovers, dialogs, heroes. */
+  --radius-panel: 12px;
 
   /* Spring approximations of Motion.snappy and Motion.smooth. */
   --ease-snappy: cubic-bezier(0.2, 0.9, 0.25, 1);
   --ease-smooth: cubic-bezier(0.25, 0.85, 0.3, 1);
+  /* The segmented control's sliding pill. */
+  --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-hover: ease-out;
-  --default-transition-duration: 140ms;
+  --default-transition-duration: 150ms;
   --default-transition-timing-function: ease-out;
+
+  --animate-pop-in: pop-in 120ms ease-out;
+  --animate-tip-in: tip-in 100ms ease-out;
+  /* One animation on the dot itself, so a list of busy rows never stacks timers. */
+  --animate-status-pulse: status-pulse 1.4s ease-in-out infinite;
+  --animate-spin-slow: spin 1.2s linear infinite;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98) translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes status-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
 }
 
 @utility duration-snappy {
@@ -327,6 +422,8 @@
   html {
     font-family: var(--font-sans);
     font-size: 13px;
+    line-height: 18px;
+    font-feature-settings: "cv11", "ss01";
     color: var(--ink-primary);
     -webkit-font-smoothing: antialiased;
     /* WKWebView rubber-bands the whole page; a native window does not. */

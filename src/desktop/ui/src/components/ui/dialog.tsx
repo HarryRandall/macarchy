@@ -43,11 +43,9 @@ function Root({
 
 const popupVariants = cva(
   [
-    "flex max-h-[calc(100dvh-48px)] max-w-[calc(100vw-48px)] flex-col overflow-hidden rounded-card border border-hairline bg-page text-fg outline-none",
-    "shadow-[0_12px_40px_rgb(0_0_0/0.35)]",
-    // Fades and rises in over 280 ms and out over 220 ms, as ModalRouter did.
-    "transition-[opacity,scale,translate] duration-[280ms] ease-out data-ending-style:duration-[220ms] data-ending-style:ease-in-out",
-    "data-starting-style:translate-y-2 data-starting-style:scale-[0.985] data-starting-style:opacity-0 data-ending-style:opacity-0",
+    "flex max-h-[calc(100dvh-48px)] max-w-[calc(100vw-48px)] flex-col overflow-hidden rounded-panel border border-hairline bg-card text-fg shadow-pop outline-none",
+    "transition-[opacity,scale,translate] duration-200 ease-out data-ending-style:duration-150",
+    "data-starting-style:translate-y-1 data-starting-style:scale-[0.985] data-starting-style:opacity-0 data-ending-style:opacity-0",
   ],
   {
     variants: {
@@ -55,14 +53,20 @@ const popupVariants = cva(
         /** A question with two buttons. */
         sm: "w-[420px]",
         /** A form: a rule, a shortcut. */
-        default: "w-[540px]",
+        default: "w-[520px]",
         /** A workspace with tabs and previews: a theme. */
         lg: "w-[640px]",
+        /** A gallery or a log: a theme's images. */
+        xl: "w-[820px]",
       },
     },
     defaultVariants: { size: "default" },
   },
 );
+
+/** The dim layer behind dialogs, shared with the confirmation dialog. */
+const backdropClass =
+  "fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px] transition-opacity duration-200 ease-out data-ending-style:duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0";
 
 const firstField =
   "[data-slot=dialog-body] :is(input, textarea, select):not(:disabled, [type=hidden])";
@@ -83,7 +87,7 @@ function Popup({
   const popupRef = useRef<HTMLDivElement>(null);
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/32 transition-opacity duration-[280ms] ease-out data-ending-style:duration-[220ms] data-ending-style:opacity-0 data-starting-style:opacity-0" />
+      <DialogPrimitive.Backdrop className={backdropClass} />
       <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-6">
         <DialogPrimitive.Popup
           ref={popupRef}
@@ -125,7 +129,7 @@ function Header({
     <div
       data-slot="dialog-header"
       className={cn(
-        "flex shrink-0 items-start gap-3 border-b border-hairline px-5 py-4",
+        "flex shrink-0 items-start gap-3 border-b border-hairline px-5 pt-4 pb-3",
         className,
       )}
       {...props}
@@ -133,8 +137,10 @@ function Header({
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">{children}</div>
       {actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
       {closable ? (
-        <DialogPrimitive.Close render={<IconButton label={closeLabel} className="-mr-1.5" />}>
-          <X aria-hidden strokeWidth={2.25} />
+        <DialogPrimitive.Close
+          render={<IconButton label={closeLabel} keys="Esc" className="-mt-0.5 -mr-1.5" />}
+        >
+          <X aria-hidden strokeWidth={2} />
         </DialogPrimitive.Close>
       ) : null}
     </div>
@@ -151,7 +157,7 @@ function Title({
   const title = (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("truncate text-section-title text-fg", className)}
+      className={cn("truncate text-card-title text-fg", className)}
       {...props}
     >
       {children}
@@ -159,7 +165,7 @@ function Title({
   );
   if (!help) return title;
   return (
-    <div className="flex min-w-0 items-center gap-[3px]">
+    <div className="flex min-w-0 items-center gap-1">
       {title}
       <HelpTooltip text={help} />
     </div>
@@ -170,7 +176,7 @@ function Description({ className, ...props }: DialogPrimitive.Description.Props)
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-meta text-fg-secondary", className)}
+      className={cn("text-detail text-fg-secondary", className)}
       {...props}
     />
   );
@@ -202,7 +208,7 @@ function Footer({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex shrink-0 items-center gap-2 border-t border-hairline px-5 py-4",
+        "flex shrink-0 items-center gap-2 border-t border-hairline bg-side px-5 py-3",
         className,
       )}
       {...props}
@@ -220,4 +226,4 @@ const Close = DialogPrimitive.Close;
 
 const Dialog = { Root, Trigger, Popup, Header, Title, Description, Body, Footer, Close };
 
-export { Dialog, popupVariants as dialogVariants };
+export { backdropClass as dialogBackdropClass, Dialog, popupVariants as dialogVariants };

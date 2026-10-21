@@ -4,20 +4,29 @@ import { Check, ChevronsUpDown } from "lucide-react";
 
 import { cn } from "~/lib/cn";
 
+import { focusRing } from "./focus-ring";
+import { popupItem, popupMotion, popupSurface } from "./surface";
+
 const selectTriggerVariants = cva(
-  "inline-flex items-center justify-between gap-2 text-left text-row-title text-fg outline-none transition-[background-color,opacity] select-none data-disabled:opacity-45",
+  [
+    "inline-flex items-center justify-between gap-2 rounded-control border border-hairline bg-card text-left text-fg shadow-card select-none",
+    "transition-[background-color,border-color,opacity] hover:bg-hover data-popup-open:bg-hover data-disabled:opacity-50",
+    focusRing,
+  ],
   {
     variants: {
       variant: {
-        /** The glass dropdown the SwiftUI settings rows use. */
-        glass:
-          "rounded-control border border-hairline bg-well shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_1px_2px_rgb(0_0_0/0.12)] hover:bg-hover data-popup-open:bg-hover",
+        /** The outlined pop-up button every settings row uses. */
+        default: "",
+        /** Earlier name for `default`. */
+        glass: "",
       },
       size: {
-        default: "h-7 w-44 px-2",
+        sm: "h-7 w-40 pr-2 pl-2.5 text-small",
+        default: "h-8 w-48 pr-2 pl-3 text-body",
       },
     },
-    defaultVariants: { variant: "glass", size: "default" },
+    defaultVariants: { variant: "default", size: "default" },
   },
 );
 
@@ -65,32 +74,30 @@ function Select<V extends string>({
         className={cn(selectTriggerVariants({ variant, size }), className)}
       >
         <SelectPrimitive.Value className="min-w-0 flex-1 truncate" />
-        <SelectPrimitive.Icon className="flex text-fg-secondary">
-          <ChevronsUpDown aria-hidden className="size-2.5" strokeWidth={2.5} />
+        <SelectPrimitive.Icon className="flex text-fg-tertiary">
+          <ChevronsUpDown aria-hidden className="size-3.5" strokeWidth={2} />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
         <SelectPrimitive.Positioner
           alignItemWithTrigger
-          sideOffset={4}
+          sideOffset={6}
+          collisionPadding={8}
           className="z-50 outline-none"
         >
           <SelectPrimitive.Popup
             data-slot="select-popup"
-            className={cn(
-              "min-w-(--anchor-width) rounded-control border border-hairline bg-popover/95 p-[5px] text-row-title text-fg shadow-[0_8px_24px_rgb(0_0_0/0.28)] backdrop-blur-xl outline-none",
-              "origin-(--transform-origin) transition-opacity duration-140 data-ending-style:opacity-0 data-starting-style:opacity-0",
-            )}
+            className={cn("min-w-(--anchor-width)", popupSurface, popupMotion)}
           >
             <SelectPrimitive.List>
               {options.map((option) => (
                 <SelectPrimitive.Item
                   key={option.value}
                   value={option.value}
-                  className="grid h-[22px] grid-cols-[16px_1fr] items-center gap-1 rounded-[5px] pr-3 pl-1 outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-fg"
+                  className={cn(popupItem, "grid grid-cols-[14px_1fr] gap-2 pr-3 [&_svg]:text-fg")}
                 >
                   <SelectPrimitive.ItemIndicator className="col-start-1 flex">
-                    <Check aria-hidden className="size-3" strokeWidth={3} />
+                    <Check aria-hidden strokeWidth={2.5} />
                   </SelectPrimitive.ItemIndicator>
                   <SelectPrimitive.ItemText className="col-start-2 whitespace-nowrap">
                     {option.label}

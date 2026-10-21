@@ -3,11 +3,11 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "~/lib/cn";
 
-const emptyStateVariants = cva("flex flex-col items-center justify-center gap-3 px-6 text-center", {
+const emptyStateVariants = cva("flex flex-col items-center justify-center px-6 text-center", {
   variants: {
     variant: {
-      /** In place of a whole list or grid. */
-      card: "rounded-card border border-hairline bg-card py-10",
+      /** In place of a whole list or grid: a dashed outline where the content would be. */
+      card: "rounded-card border border-dashed border-line-strong py-10",
       /** Inside a card or a dialog that is already drawn. */
       plain: "py-8",
     },
@@ -30,7 +30,7 @@ function EmptyState({
   ...props
 }: Omit<ComponentProps<"div">, "title" | "children"> &
   VariantProps<typeof emptyStateVariants> & {
-    /** A lucide glyph; drawn large and quiet. */
+    /** A lucide glyph, drawn in a small outlined tile. */
     icon?: ReactNode;
     title: string;
     description?: ReactNode;
@@ -45,16 +45,16 @@ function EmptyState({
       {icon ? (
         <span
           aria-hidden
-          className="flex size-10 items-center justify-center rounded-full bg-well text-fg-secondary [&_svg]:size-5"
+          className="mb-3 grid size-9 place-items-center rounded-tile border border-hairline bg-side text-fg-secondary [&_svg]:size-4"
         >
           {icon}
         </span>
       ) : null}
-      <div className="flex max-w-80 flex-col gap-1">
-        <p className="text-section-title text-fg">{title}</p>
-        {description ? <p className="text-row-title text-fg-secondary">{description}</p> : null}
-      </div>
-      {action ? <div className="flex items-center gap-2 pt-1">{action}</div> : null}
+      <p className="text-emphasis font-medium text-fg">{title}</p>
+      {description ? (
+        <p className="mt-1 max-w-80 text-detail text-fg-secondary">{description}</p>
+      ) : null}
+      {action ? <div className="mt-4 flex items-center gap-2">{action}</div> : null}
     </div>
   );
 }

@@ -80,6 +80,7 @@ function CopyButton({
         <IconButton
           label={label}
           tooltip={tooltip}
+          size={size === "sm" || size === "icon-sm" ? "sm" : "default"}
           className={className}
           onClick={() => void copy()}
           {...props}

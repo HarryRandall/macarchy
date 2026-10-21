@@ -1,5 +1,5 @@
-import { CircleX, Search } from "lucide-react";
-import { type ComponentProps, useRef } from "react";
+import { Search, X } from "lucide-react";
+import { type ComponentProps, type ReactNode, useRef } from "react";
 
 import { cn } from "~/lib/cn";
 
@@ -12,18 +12,21 @@ type SearchFieldProps = Omit<ComponentProps<"input">, "value" | "onChange" | "ty
   label: string;
   /** Help on hover, such as what the search looks through. */
   help?: string;
+  /** Trailing content while empty, such as the ⌘K hint. */
+  hint?: ReactNode;
 };
 
 /**
- * The one search field: a capsule with a magnifier and a clear button.
- * Escape clears it first and only then reaches a dialog behind it. Size it
- * with a width class; it fills its container by default.
+ * The one search field: a magnifier, the query and a clear button. Escape
+ * clears it first and only then reaches a dialog behind it. Size it with a
+ * width class; it fills its container by default.
  */
 function SearchField({
   value,
   onValueChange,
   label,
   help,
+  hint,
   placeholder,
   className,
   onKeyDown,
@@ -34,13 +37,13 @@ function SearchField({
     <div
       data-slot="search-field"
       className={cn(
-        "flex h-7 w-full min-w-0 items-center gap-2 rounded-full border border-hairline bg-well px-3",
-        "transition-[border-color,box-shadow] focus-within:border-accent-stroke focus-within:shadow-[inset_0_0_0_1px_var(--accent-stroke)]",
-        "has-disabled:opacity-45",
+        "flex h-8 w-full min-w-0 items-center gap-2 rounded-control border border-hairline bg-side px-2.5",
+        "transition-[border-color,box-shadow] hover:border-line-strong focus-within:border-accent focus-within:ring-[3px] focus-within:ring-accent-soft",
+        "has-disabled:opacity-50",
         className,
       )}
     >
-      <Search aria-hidden className="size-3 shrink-0 text-fg-secondary" strokeWidth={2.25} />
+      <Search aria-hidden className="size-3.5 shrink-0 text-fg-tertiary" strokeWidth={2} />
       <Tooltip content={help ?? ""} disabled={!help}>
         <input
           ref={inputRef}
@@ -60,7 +63,7 @@ function SearchField({
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"
-          className="h-full min-w-0 flex-1 bg-transparent text-row-title text-fg outline-none placeholder:text-fg-secondary focus-visible:outline-none [&::-webkit-search-cancel-button]:appearance-none"
+          className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-tertiary focus-visible:outline-none [&::-webkit-search-cancel-button]:appearance-none"
           {...props}
         />
       </Tooltip>
@@ -72,11 +75,13 @@ function SearchField({
             onValueChange("");
             inputRef.current?.focus();
           }}
-          className="-mr-1.5 flex size-5 shrink-0 items-center justify-center rounded-full text-fg-secondary transition-colors hover:text-fg"
+          className="-mr-1 grid size-5 shrink-0 place-items-center rounded-small text-fg-tertiary transition-colors outline-none hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <CircleX aria-hidden className="size-3.5" />
+          <X aria-hidden className="size-3" strokeWidth={2.25} />
         </button>
-      ) : null}
+      ) : (
+        hint
+      )}
     </div>
   );
 }
