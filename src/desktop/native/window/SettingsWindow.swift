@@ -76,6 +76,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         // One line per feature the settings window shows.
         surface.router.registerShell(model: model, surface: surface)
         surface.router.registerLayout(model: model)
+        surface.router.registerThemes(model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),

@@ -58,6 +58,16 @@ running daemon and applies edits through `SettingsApply`, the same serialised,
 apply-then-save path every other setting uses. The switcher calls
 `ThemeApplication`, as the CLI and the status menu do.
 
+Themes reads the shared native catalogue through `ThemeCollection` in `src/core`.
+Its named `themes.setDark`, `themes.setColour`, `themes.setColourscheme` and
+`themes.reset` operations save through `ThemeLibrary`; edits apply to the desktop
+only when Apply or Reapply is chosen. `themes.apply` and
+`themes.chooseWallpaper` use the same injectable `ThemeActions` as the switcher.
+`themes.importFolder` and `themes.exportFolder` open native panels through an
+injectable `ThemePanels`; filesystem destinations never cross the bridge.
+`themes.reveal` validates the installed theme before showing it in Finder.
+The page re-reads on `themes.changed`, preserving queued field edits.
+
 Events flow the other way through `window.macarchyBridge.receive`. A
 document-start script queues any that arrive before the page's client starts.
 `StateBroadcast` sends them whenever the models the status menu reads change,
@@ -89,7 +99,7 @@ Debug builds also read these, and release builds ignore them:
 | Variable | Effect |
 |---|---|
 | `MACARCHY_UI_DEV_SERVER=http://localhost:5173` | Load the pages from the Vite server, for hot reload. |
-| `MACARCHY_DEBUG_DRY_THEMES=1` | The switcher records theme and background choices instead of applying them, which would change the real wallpaper and appearance. |
+| `MACARCHY_DEBUG_DRY_THEMES=1` | Theme controls record theme and background choices instead of applying them, which would change the real wallpaper and appearance. |
 | `MACARCHY_DEBUG_NO_SHORTCUT=1` | Skip ⌘⌃Space and `macarchy switcher`, which an installed copy would also answer. |
 
 With `MACARCHY_HOME` and `MACARCHY_SEARCH_PATH` pointing at a temporary home

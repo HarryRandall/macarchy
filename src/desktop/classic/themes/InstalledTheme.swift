@@ -39,13 +39,6 @@ struct InstalledTheme: Identifiable, Sendable {
 
     /// Every image the theme ships, for the background picker.
     var availableBackgrounds: [URL] {
-        let fm = FileManager.default
-        let extensions: Set<String> = ["png", "jpg", "jpeg", "heic", "webp"]
-        return [directory.appending(path: "backgrounds"), directory]
-            .flatMap {
-                (try? fm.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)) ?? []
-            }
-            .filter { extensions.contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        ThemeCollection.backgrounds(in: directory)
     }
 }

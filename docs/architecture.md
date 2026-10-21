@@ -74,7 +74,7 @@ a file edited outside its keep region is snapshotted and reported.
 ## Checks
 
 `swift test` covers persistence, locking, process cancellation, skhd parsing and
-rewriting, theme outputs, Neovim discovery, rules, the menu bar editor, layout
+rewriting, theme outputs, the shared theme collection and library, Neovim discovery, rules, the menu bar editor, layout
 editing, and the bridge and web views against the built interface.
 `corepack pnpm run check` in `src/desktop/ui` covers the interface.
 `tests/integration/setup.sh` runs setup, a repeat setup and uninstall

@@ -33,10 +33,13 @@ export interface Rect {
   height: number;
 }
 
+import type { ThemesMethods } from "./contract/themes";
+
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
 import type { ShellEvent, ShellMethods } from "./contract/shell";
 import type { SwitcherEvent, SwitcherMethods } from "./contract/switcher";
 
+export type * from "./contract/themes";
 export type * from "./contract/layout";
 export type * from "./contract/shell";
 export type * from "./contract/switcher";
@@ -46,7 +49,8 @@ interface AppMethods {
   "app.ready": { params: { surface: Surface }; result: null };
 }
 
-export interface BridgeMethods extends AppMethods, ShellMethods, LayoutMethods, SwitcherMethods {}
+export interface BridgeMethods
+  extends AppMethods, ShellMethods, LayoutMethods, SwitcherMethods, ThemesMethods {}
 
 export type BridgeMethod = keyof BridgeMethods;
 export type ParamsOf<M extends BridgeMethod> = BridgeMethods[M]["params"];

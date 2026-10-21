@@ -165,7 +165,8 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
         let file = theme.appending(path: parts[2...].joined(separator: "/"))
             .resolvingSymlinksInPath()
         let images: Set<String> = ["png", "jpg", "jpeg", "heic", "webp"]
-        guard file.path.hasPrefix(theme.path + "/"),
+        guard theme.path.hasPrefix(themesDirectory.resolvingSymlinksInPath().path + "/"),
+            file.path.hasPrefix(theme.path + "/"),
             images.contains(file.pathExtension.lowercased()),
             FileManager.default.fileExists(atPath: file.path)
         else { return nil }

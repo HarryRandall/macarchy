@@ -12,6 +12,8 @@ final class ThemeCatalog {
     private(set) var current: String?
     private(set) var isApplying = false
     private(set) var lastError: String?
+    private(set) var revision = 0
+    private(set) var warnings: [String] = []
     private let backend: Integrations
     private let log: CommandLog
 
@@ -21,38 +23,32 @@ final class ThemeCatalog {
     }
 
     func reload() {
-        let root = Paths.themesDirectory
-        let fm = FileManager.default
-
-        let settings: SettingsDocument
-        do { settings = try SettingsStore().read() } catch {
-            log.failure("Settings unreadable", error.localizedDescription); return
+        do { try refresh() } catch {
+            lastError = error.localizedDescription
+            log.failure("Settings unreadable", error.localizedDescription)
         }
-        current = settings.currentTheme
-        let chosen = settings.wallpapers
+    }
 
-        let entries =
-            (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey]))
-            ?? []
-        themes =
-            entries
-            .filter { !$0.lastPathComponent.hasPrefix(".") }
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .compactMap { url -> InstalledTheme? in
-                let manifest: Theme
-                do { manifest = try Theme.read(from: url) } catch {
-                    log.note(
-                        "Invalid theme", "\(url.lastPathComponent): \(error.localizedDescription)")
-                    return nil
-                }
-                return InstalledTheme(
-                    name: url.lastPathComponent,
-                    directory: url,
-                    selectedBackground: chosen[url.lastPathComponent],
-                    manifest: manifest,
-                    terminal: TerminalPalette.load(from: url))
-            }
+    /// A throwing read lets a first page load report failure instead of stale defaults.
+    func refresh() throws {
+        let snapshot = try ThemeCollection().read()
+        current = snapshot.current
+        let next = snapshot.themes.map {
+            InstalledTheme(
+                name: $0.name, directory: $0.directory,
+                selectedBackground: snapshot.wallpapers[$0.name], manifest: $0.manifest,
+                terminal: $0.terminal)
+        }
+        if themes.map(\.manifest) != next.map(\.manifest)
+            || themes.map(\.selectedBackground) != next.map(\.selectedBackground)
+            || themes.map(\.terminal) != next.map(\.terminal)
+        {
+            revision += 1
+        }
+        themes = next
+        warnings = snapshot.warnings
+        for warning in snapshot.warnings { log.note("Invalid theme", warning) }
+        lastError = nil
 
         log.note("loaded themes", "\(themes.count) in \(Paths.display(Paths.themesDirectory))")
     }
@@ -63,21 +59,9 @@ final class ThemeCatalog {
         reload()
     }
 
-    @discardableResult
-    func importTheme(from source: URL) throws -> String {
-        let name = try ThemeLibrary().importTheme(from: source)
-        reload()
-        return name
-    }
-
-    func exportTheme(_ theme: InstalledTheme, to destination: URL) throws {
-        try ThemeLibrary().exportTheme(from: theme.directory, to: destination)
-    }
-
     /// Themes shipped inside the app bundle, used as the reset baseline.
     static func bundledDefault(named name: String) -> Theme? {
-        guard let resources = Paths.resources else { return nil }
-        return Theme.load(from: resources.appending(path: "themes/\(name)"))
+        ThemeCollection().bundledDefault(named: name)
     }
 
     func hasDefault(_ theme: InstalledTheme) -> Bool {
@@ -89,14 +73,6 @@ final class ThemeCatalog {
             let current = theme.manifest
         else { return false }
         return original != current
-    }
-
-    func resetToDefault(_ theme: InstalledTheme) throws {
-        guard let original = Self.bundledDefault(named: theme.name) else {
-            throw ThemeError.noDefault(theme.name)
-        }
-        try save(original, to: theme.directory)
-        log.note("reset \(theme.name)", "restored shipped default")
     }
 
     func apply(_ theme: InstalledTheme) async {

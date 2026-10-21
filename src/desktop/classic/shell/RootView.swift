@@ -144,7 +144,8 @@ struct RootView: View {
         case .layout:
             // Never selected here: `AppModel` sends it to the React window.
             ContentUnavailableView("Layout is in the new settings window", systemImage: "macwindow")
-        case .themes: ThemesPane()
+        case .themes:
+            ContentUnavailableView("Themes is in the new settings window", systemImage: "macwindow")
         case .advanced: AdvancedPane()
         case .borders: BordersPane()
         case .menuBar: MenuBarPane()

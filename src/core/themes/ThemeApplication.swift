@@ -59,9 +59,22 @@ public struct ThemeApplication: Sendable {
                 _ = try Theme.read(from: directory).wallpaperURL(in: directory, selected: path)
                 if try SettingsStore().read().currentTheme == name {
                     let result = await applyLocked(name: name, wallpaper: path)
-                    guard result.ok else { return result }
+                    guard result.ok else {
+                        return CommandResult(
+                            command: result.command, status: result.status,
+                            stdout: result.stdout,
+                            stderr:
+                                "Wallpaper application did not finish; some changes may already have applied. "
+                                + result.stderr)
+                    }
                 }
-                try SettingsStore().update { $0.wallpapers[name] = path }
+                do { try SettingsStore().update { $0.wallpapers[name] = path } } catch {
+                    return CommandResult(
+                        command: "wallpaper \(name)", status: 1,
+                        stderr:
+                            "The wallpaper choice could not be saved; desktop changes may already have applied. "
+                            + error.localizedDescription)
+                }
                 return CommandResult(command: "wallpaper \(name)", status: 0)
             }
         } catch {

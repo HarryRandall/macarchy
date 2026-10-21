@@ -12,6 +12,8 @@
  * closeSwitcher(), changeLayout({ windowGap: 20 }), setAccent("#ff9f0a"),
  * setServices(2).
  */
+import { createThemesMock } from "~/features/themes/themes-mock";
+
 import type {
   Background,
   BridgeEvent,
@@ -243,6 +245,7 @@ export function installMockHost() {
   };
 
   const handlers: Handlers = {
+    ...createThemesMock(() => switcher),
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;
