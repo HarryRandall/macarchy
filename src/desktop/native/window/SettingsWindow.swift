@@ -67,17 +67,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             url.path() == "/wallpaper"
                 ? model?.currentThemeWallpaper : AppScheme.themeImage(for: url)
         }
-        // One line per feature the settings window shows.
-        surface.router.registerShell(model: model, surface: surface)
-        surface.router.registerLayout(model: model)
-        surface.router.registerRules(model: model)
-        surface.router.registerAdvanced(model: model)
-        surface.router.registerBorders(model: model)
-        surface.router.registerHome(model: model)
-        surface.router.registerHealth(model: model)
-        surface.router.registerReport(model: model)
-        surface.router.registerThemes(model: model)
-        surface.router.registerShortcuts(model: model)
+        Self.registerFeatures(on: surface, model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -112,6 +102,21 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         self.surface = surface
         surface.load()
         return (window, surface)
+    }
+
+    /// One line per feature the settings window shows. The contract tests
+    /// build their router through this too, so they check what ships.
+    static func registerFeatures(on surface: WebSurface, model: AppModel) {
+        surface.router.registerShell(model: model, surface: surface)
+        surface.router.registerLayout(model: model)
+        surface.router.registerRules(model: model)
+        surface.router.registerAdvanced(model: model)
+        surface.router.registerBorders(model: model)
+        surface.router.registerHome(model: model)
+        surface.router.registerHealth(model: model)
+        surface.router.registerReport(model: model)
+        surface.router.registerThemes(model: model)
+        surface.router.registerShortcuts(model: model)
     }
 
     /// The window paints its own ground before the page has drawn, and while

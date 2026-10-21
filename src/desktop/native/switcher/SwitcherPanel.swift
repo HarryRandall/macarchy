@@ -163,7 +163,7 @@ final class ThemeSwitcher {
         if let panel, let surface { return (panel, surface) }
         let surface = WebSurface(surface: .switcher, transparent: true, keepsDrawingInactive: true)
         surface.scheme.resolveMedia = { url in AppScheme.themeImage(for: url) }
-        register(surface, model)
+        registerMethods(on: surface, model: model)
 
         let window = SwitcherWindow(
             contentRect: NSRect(origin: .zero, size: Self.size),
@@ -198,7 +198,9 @@ final class ThemeSwitcher {
         return (window, surface)
     }
 
-    private func register(_ surface: WebSurface, _ model: AppModel) {
+    /// Not private: the contract tests register the same methods to check
+    /// them against the shared fixtures.
+    func registerMethods(on surface: WebSurface, model: AppModel) {
         let router = surface.router
         router.register("switcher.getState") { [weak model] (_: Empty) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }

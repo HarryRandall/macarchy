@@ -99,6 +99,20 @@ Advanced uses named `advanced.getState`, `restartService`, `stopService`,
 read after shared service, snapshot or theme changes. The shell's service pill
 uses the same native daemon monitor.
 
+The contract is checked against shared fixtures.
+`src/desktop/ui/src/bridge/fixtures.ts` holds example cases for every method
+and event, typed against `BridgeMethods` and `BridgeEvent`, so `tsc` fails when
+one has no fixture or a fixture no longer fits. Across a type's cases, give
+every nullable field one null and one value, and use every union value.
+`fixtures.test.ts` checks that `tests/fixtures/bridge/methods.json` and
+`events.json` match them; after a contract change run
+`UPDATE_BRIDGE_FIXTURES=1 corepack pnpm vitest run src/bridge/fixtures.test.ts`
+in `src/desktop/ui` and commit the JSON. `BridgeContractFixtureTests` builds
+both surfaces' routers as the app does, requires their method names to equal
+the fixture keys, decodes every `params`, and requires every `result` and
+event to decode and re-encode to the same JSON, nulls included, so result
+types are `Codable`. A new event also needs a line in that test's event table.
+
 ## Development
 
 ```sh

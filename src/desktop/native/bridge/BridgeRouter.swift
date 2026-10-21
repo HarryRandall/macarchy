@@ -27,13 +27,18 @@ struct BridgeFailure: Error, Sendable {
 @MainActor
 final class BridgeRouter {
     private typealias Handler = @MainActor (Data) async throws -> Data
+    typealias Types = (params: any Decodable.Type, result: any Encodable.Type)
 
     private var handlers: [String: Handler] = [:]
     private let encoder = JSONEncoder()
+    /// The types each method decodes and encodes, so the contract tests can
+    /// hold them to the fixtures the TypeScript contract writes.
+    private(set) var contract: [String: Types] = [:]
 
     func register<Params: Decodable, Result: Encodable>(
         _ method: String, _ handler: @escaping @MainActor (Params) async throws -> Result
     ) {
+        contract[method] = (Params.self, Result.self)
         let encoder = encoder
         handlers[method] = { data in
             let params: Params

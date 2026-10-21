@@ -83,7 +83,7 @@ final class StateBroadcast {
             do {
                 settings()?.send(.advancedChanged(try await model.advancedState()))
             } catch {
-                settings()?.send(BridgeEvent("advanced.invalidated"))
+                settings()?.send(.advancedInvalidated)
             }
         }
     }
@@ -137,7 +137,7 @@ final class StateBroadcast {
             + (model.themes.current ?? "") + String(model.themes.themes.count)
         if maintenance != lastMaintenance {
             lastMaintenance = maintenance
-            settings()?.send(BridgeEvent("advanced.invalidated"))
+            settings()?.send(.advancedInvalidated)
         }
         // Setup creates the settings folder during the session.
         if watcher == nil { watchSettings() }

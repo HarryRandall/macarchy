@@ -10,8 +10,8 @@ struct ReportOpenParams: Decodable {
     var token: String
     var title: String
 }
-struct ReportState: Encodable {
+struct ReportState: Codable {
     var body: String
     var token: String
 }
-struct ReportOpened: Encodable { var copied: Bool }
+struct ReportOpened: Codable { var copied: Bool }
