@@ -25,7 +25,10 @@ extension BridgeRouter {
             }
         }
         register("rules.saveCustom") { (params: SaveRuleParams) in
-            try await Self.editRules(model) { try await model.windowRuleSettings.save(params.rule) }
+            try await Self.editRules(model) {
+                try await model.windowRuleSettings.save(
+                    params.rule, existing: params.existing ?? false)
+            }
         }
         register("rules.removeCustom") { (params: RemoveRuleParams) in
             try await Self.editRules(model) {

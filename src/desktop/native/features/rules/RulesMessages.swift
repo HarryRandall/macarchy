@@ -24,7 +24,10 @@ struct RulesState: Codable, Sendable {
 }
 
 struct RemoveFloatingParams: Codable, Sendable { let app: String }
-struct SaveRuleParams: Codable, Sendable { let rule: CustomWindowRule }
+struct SaveRuleParams: Codable, Sendable {
+    let rule: CustomWindowRule
+    let existing: Bool?
+}
 struct RemoveRuleParams: Codable, Sendable { let id: String }
 
 struct RulesUnavailable: Codable, Sendable { let message: String }

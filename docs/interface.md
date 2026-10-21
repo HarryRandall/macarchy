@@ -164,6 +164,10 @@ picker), `rules.removeFloating`, `rules.saveCustom` and `rules.removeCustom`.
 `rules.unavailable` reports unreadable external changes. React keeps open editor
 drafts separate from incoming state. Saving enables a custom rule; removing it
 asks first, then stops applying it. External rules remain read-only.
+Every edit starts from the list the page shows, so apps that float only
+through a live `float_persist_` yabai rule are adopted into the saved list
+rather than dropped. An editor opened on a saved rule sends `existing: true`,
+and saving it fails if the rule was removed elsewhere instead of recreating it.
 
 ## Borders
 

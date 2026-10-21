@@ -137,7 +137,8 @@ final class AppModel {
     func refreshLayout() async -> LayoutSnapshot? {
         do {
             let snapshot = try await yabaiLayout.read()
-            layout = snapshot
+            // An unchanged assignment would still notify `StateBroadcast`.
+            if layout != snapshot { layout = snapshot }
             return snapshot
         } catch {
             log.failure("read layout", error.localizedDescription)

@@ -16,23 +16,33 @@ final class ThemeCatalog {
     private(set) var warnings: [String] = []
     private let backend: Integrations
     private let log: CommandLog
+    private let read: @MainActor () throws -> ThemeCollection.Snapshot
 
-    init(backend: Integrations, log: CommandLog) {
+    init(
+        backend: Integrations, log: CommandLog,
+        read: @escaping @MainActor () throws -> ThemeCollection.Snapshot = {
+            try ThemeCollection().read()
+        }
+    ) {
         self.backend = backend
         self.log = log
+        self.read = read
     }
 
     func reload() {
         do { try refresh() } catch {
-            lastError = error.localizedDescription
+            let message = error.localizedDescription
+            if lastError != message { lastError = message }
             log.failure("Settings unreadable", error.localizedDescription)
         }
     }
 
     /// A throwing read lets a first page load report failure instead of stale defaults.
+    /// Pages read through here, and every assignment notifies `StateBroadcast` even when
+    /// the value is the same, so properties are set only when they change.
     func refresh() throws {
-        let snapshot = try ThemeCollection().read()
-        current = snapshot.current
+        let snapshot = try read()
+        if current != snapshot.current { current = snapshot.current }
         let next = snapshot.themes.map {
             InstalledTheme(
                 name: $0.name, directory: $0.directory,
@@ -45,10 +55,10 @@ final class ThemeCatalog {
         {
             revision += 1
         }
-        themes = next
-        warnings = snapshot.warnings
+        if themes != next { themes = next }
+        if warnings != snapshot.warnings { warnings = snapshot.warnings }
         for warning in snapshot.warnings { log.note("Invalid theme", warning) }
-        lastError = nil
+        if lastError != nil { lastError = nil }
 
         log.note("loaded themes", "\(themes.count) in \(Paths.display(Paths.themesDirectory))")
     }

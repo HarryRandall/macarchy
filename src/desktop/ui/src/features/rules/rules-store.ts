@@ -6,7 +6,7 @@ interface RulesHost {
   getState(): Promise<RulesState>;
   addApplication(): Promise<unknown>;
   removeFloating(app: string): Promise<unknown>;
-  saveCustom(rule: CustomWindowRule): Promise<unknown>;
+  saveCustom(rule: CustomWindowRule, existing: boolean): Promise<unknown>;
   removeCustom(id: string): Promise<unknown>;
   subscribe: Bridge["subscribe"];
 }
@@ -106,7 +106,8 @@ export function createRulesStore(host: RulesHost) {
     refresh,
     addApplication: () => mutate(() => host.addApplication()),
     removeFloating: (app: string) => mutate(() => host.removeFloating(app)),
-    saveCustom: (rule: CustomWindowRule) => mutate(() => host.saveCustom(rule)),
+    saveCustom: (rule: CustomWindowRule, existing = false) =>
+      mutate(() => host.saveCustom(rule, existing)),
     removeCustom: (id: string) => mutate(() => host.removeCustom(id)),
   };
 }

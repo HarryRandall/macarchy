@@ -10,7 +10,7 @@ export const rulesPage = definePage({
       getState: () => host.request("rules.getState"),
       addApplication: () => host.request("rules.addApplication"),
       removeFloating: (app) => host.request("rules.removeFloating", { app }),
-      saveCustom: (rule) => host.request("rules.saveCustom", { rule }),
+      saveCustom: (rule, existing) => host.request("rules.saveCustom", { rule, existing }),
       removeCustom: (id) => host.request("rules.removeCustom", { id }),
       subscribe: host.subscribe,
     }),

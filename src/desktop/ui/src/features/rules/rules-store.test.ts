@@ -17,7 +17,9 @@ function setup() {
   const getState = vi.fn<() => Promise<RulesState>>(async () => state);
   const addApplication = vi.fn<() => Promise<null>>(async () => null);
   const removeFloating = vi.fn<(app: string) => Promise<null>>(async () => null);
-  const saveCustom = vi.fn<(rule: CustomWindowRule) => Promise<null>>(async () => null);
+  const saveCustom = vi.fn<(rule: CustomWindowRule, existing: boolean) => Promise<null>>(
+    async () => null,
+  );
   const removeCustom = vi.fn<(id: string) => Promise<null>>(async () => null);
   const store = createRulesStore({
     getState,
@@ -149,6 +151,19 @@ describe("Rules store", () => {
     test.saveCustom.mockRejectedValueOnce(new Error("Rejected"));
     expect(await test.store.saveCustom({ id: "id", app: "Finder", title: "[" })).toBe(false);
     expect(test.store.getSnapshot()).toMatchObject({ state, error: "Rejected", busy: false });
+  });
+
+  it("marks edits of saved rules and shows when the rule was removed elsewhere", async () => {
+    const test = setup();
+    await test.store.load();
+    const rule = { id: "copy", app: "Finder", title: "^Copy$" };
+    expect(await test.store.saveCustom(rule)).toBe(true);
+    expect(test.saveCustom).toHaveBeenLastCalledWith(rule, false);
+    const removed = "This rule was removed elsewhere. Close the editor and try again.";
+    test.saveCustom.mockRejectedValueOnce(new Error(removed));
+    expect(await test.store.saveCustom(rule, true)).toBe(false);
+    expect(test.saveCustom).toHaveBeenLastCalledWith(rule, true);
+    expect(test.store.getSnapshot()).toMatchObject({ error: removed, busy: false });
   });
 
   it("does not mistake a failed refresh for a failed save", async () => {
