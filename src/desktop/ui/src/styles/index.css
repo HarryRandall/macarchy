@@ -1,29 +1,61 @@
 @import "tailwindcss";
 
 /*
- * Surface, type and motion tokens mirror the SwiftUI app (Color+Surface,
- * Typography, Motion). Components use the role names, never raw sizes.
- * Values switch on the system appearance unless the page forces one with
- * `data-theme` (the switcher panel is always dark). `data-appearance` forces
- * one on a subtree instead, for content drawn over artwork and for the
- * development gallery's side-by-side panels.
+ * Colour, type and motion tokens for the Studio design (see the mockup in
+ * components/gallery/options/studio). Components use the role names below,
+ * never raw values. Values switch on the system appearance unless the page
+ * forces one with `data-theme` on the root (the shell's appearance setting;
+ * the switcher panel is always dark). `data-appearance` forces one on a
+ * subtree instead, for content drawn over artwork and for the gallery.
  */
 :root,
 [data-appearance="light"] {
   color-scheme: light;
-  --surface-page: #f2f2f4;
+  /* Studio: zinc surfaces with a sparing indigo accent. */
+  --surface-page: #ffffff;
   --surface-card: #ffffff;
-  --surface-bar: #e9e9ec;
-  --surface-popover: #f6f6f8;
-  --line-hairline: rgb(0 0 0 / 0.12);
-  --fill-well: rgb(0 0 0 / 0.1);
-  --fill-hover: rgb(0 0 0 / 0.08);
-  --ink-primary: rgb(0 0 0 / 0.85);
-  --ink-secondary: rgb(0 0 0 / 0.5);
-  --ink-meta: rgb(0 0 0 / 0.6);
-  --status-success: #34c759;
-  --status-warning: #ff9500;
-  --status-danger: #ff3b30;
+  --surface-side: #fafafa;
+  --surface-bar: #ffffff;
+  --surface-popover: #ffffff;
+  --surface-muted: #f4f4f5;
+  --surface-canvas: #f4f4f5;
+  --line-hairline: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --fill-well: #f4f4f5;
+  --fill-hover: #f4f4f5;
+  --ink-primary: #09090b;
+  --ink-secondary: #52525b;
+  --ink-meta: #52525b;
+  --ink-tertiary: #a1a1aa;
+  --ui-accent: #6366f1;
+  --ui-accent-fg: #ffffff;
+  --ui-accent-soft: rgb(99 102 241 / 0.1);
+  --ui-accent-text: #4f46e5;
+  --status-success: #16a34a;
+  --status-success-soft: rgb(22 163 74 / 0.1);
+  --status-warning: #d97706;
+  --status-warning-soft: rgb(217 119 6 / 0.1);
+  --status-warning-row: rgb(217 119 6 / 0.06);
+  --status-danger: #dc2626;
+  --status-danger-soft: rgb(220 38 38 / 0.07);
+  --ink-strong: #18181b;
+  --ink-strong-fg: #fafafa;
+  --preview: #0f766e;
+  --preview-soft: rgb(20 184 166 / 0.11);
+  --preview-ring: rgb(13 148 136 / 0.16);
+  --tip-bg: #18181b;
+  --tip-fg: #fafafa;
+  --tip-border: #18181b;
+  --seg-track: #f4f4f5;
+  --seg-ring: rgb(9 9 11 / 0.04);
+  --seg-pill: #ffffff;
+  --seg-hover: rgb(255 255 255 / 0.55);
+  --elevation-card: 0 1px 2px rgb(9 9 11 / 0.05), 0 1px 1px rgb(9 9 11 / 0.03);
+  --elevation-pop: 0 16px 40px -12px rgb(9 9 11 / 0.28), 0 2px 6px -2px rgb(9 9 11 / 0.1);
+  --elevation-tip: 0 6px 16px -4px rgb(9 9 11 / 0.25), 0 1px 3px rgb(9 9 11 / 0.12);
+  --elevation-chart-tip: 0 4px 12px -4px rgb(9 9 11 / 0.18), 0 1px 2px rgb(9 9 11 / 0.06);
+  --elevation-seg-pill:
+    0 1px 2px rgb(9 9 11 / 0.08), 0 1px 1px rgb(9 9 11 / 0.04), 0 0 0 0.5px rgb(9 9 11 / 0.08);
   /* Apple's system colours, for tinting icons and tiles by subject. */
   --hue-blue: #007aff;
   --hue-purple: #af52de;
@@ -32,38 +64,69 @@
   --hue-orange: #ff9500;
   --hue-green: #34c759;
   --hue-red: #ff3b30;
-  --accent-stroke: var(--accent-stroke-light, var(--accent));
 }
 
 /*
- * The accent itself is set on the root only: the settings shell writes the
- * theme's accent there, and a subtree redeclaring it would hide that.
- * `--accent-fg` is ink on an accent fill; `--accent-stroke` is the accent as
- * a ring, focus outline or slider fill. The shell derives both from the
- * theme's accent (lib/accent) so a near-white or near-black accent stays
- * visible; these are fallbacks.
+ * The interface accent is Studio's indigo. The active theme's accent is
+ * written to `--theme-accent` on the root by the shell, for previews and
+ * swatches that show the theme itself; a subtree must not redeclare it.
  */
 :root {
-  --accent: #007aff;
-  --accent-fg: #ffffff;
+  --theme-accent: #6366f1;
+  /* Transitional names for code not yet moved to the roles above. */
+  --accent: var(--ui-accent);
+  --accent-fg: var(--ui-accent-fg);
+  --accent-stroke: var(--ui-accent);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --surface-page: #1c1c1e;
-    --surface-card: #2a2a2c;
-    --surface-bar: #242426;
-    --surface-popover: #303032;
-    --line-hairline: rgb(255 255 255 / 0.12);
-    --fill-well: rgb(255 255 255 / 0.1);
-    --fill-hover: rgb(255 255 255 / 0.08);
-    --ink-primary: rgb(255 255 255 / 0.85);
-    --ink-secondary: rgb(255 255 255 / 0.55);
-    --ink-meta: rgb(255 255 255 / 0.6);
-    --status-success: #30d158;
-    --status-warning: #ff9f0a;
-    --status-danger: #ff453a;
+    --surface-page: #09090b;
+    --surface-card: #09090b;
+    --surface-side: #0c0c0e;
+    --surface-bar: #09090b;
+    --surface-popover: #09090b;
+    --surface-muted: #18181b;
+    --surface-canvas: #111113;
+    --line-hairline: #232327;
+    --line-strong: #2f2f35;
+    --fill-well: #18181b;
+    --fill-hover: #18181b;
+    --ink-primary: #fafafa;
+    --ink-secondary: #a1a1aa;
+    --ink-meta: #a1a1aa;
+    --ink-tertiary: #71717a;
+    --ui-accent: #818cf8;
+    --ui-accent-fg: #0b0b14;
+    --ui-accent-soft: rgb(129 140 248 / 0.14);
+    --ui-accent-text: #a5b4fc;
+    --status-success: #4ade80;
+    --status-success-soft: rgb(74 222 128 / 0.12);
+    --status-warning: #fbbf24;
+    --status-warning-soft: rgb(251 191 36 / 0.12);
+    --status-warning-row: rgb(251 191 36 / 0.06);
+    --status-danger: #f87171;
+    --status-danger-soft: rgb(248 113 113 / 0.09);
+    --ink-strong: #fafafa;
+    --ink-strong-fg: #09090b;
+    --preview: #5eead4;
+    --preview-soft: rgb(45 212 191 / 0.12);
+    --preview-ring: rgb(45 212 191 / 0.16);
+    --tip-bg: #18181b;
+    --tip-fg: #fafafa;
+    --tip-border: #2f2f35;
+    --seg-track: #18181b;
+    --seg-ring: rgb(255 255 255 / 0.04);
+    --seg-pill: #2a2a2f;
+    --seg-hover: rgb(255 255 255 / 0.04);
+    --elevation-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elevation-pop: 0 18px 44px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+    --elevation-tip: 0 8px 20px -6px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.3);
+    --elevation-chart-tip: 0 6px 16px -6px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.3);
+    --elevation-seg-pill:
+      0 1px 2px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 0 0 0.5px rgb(255 255 255 / 0.06);
     --hue-blue: #0a84ff;
     --hue-purple: #bf5af2;
     --hue-pink: #ff375f;
@@ -71,27 +134,57 @@
     --hue-orange: #ff9f0a;
     --hue-green: #30d158;
     --hue-red: #ff453a;
-    --accent: #0a84ff;
-    --accent-stroke: var(--accent-stroke-dark, var(--accent));
   }
 }
 
 :root[data-theme="dark"],
 [data-appearance="dark"] {
   color-scheme: dark;
-  --surface-page: #1c1c1e;
-  --surface-card: #2a2a2c;
-  --surface-bar: #242426;
-  --surface-popover: #303032;
-  --line-hairline: rgb(255 255 255 / 0.12);
-  --fill-well: rgb(255 255 255 / 0.1);
-  --fill-hover: rgb(255 255 255 / 0.08);
-  --ink-primary: rgb(255 255 255 / 0.85);
-  --ink-secondary: rgb(255 255 255 / 0.55);
-  --ink-meta: rgb(255 255 255 / 0.6);
-  --status-success: #30d158;
-  --status-warning: #ff9f0a;
-  --status-danger: #ff453a;
+  --surface-page: #09090b;
+  --surface-card: #09090b;
+  --surface-side: #0c0c0e;
+  --surface-bar: #09090b;
+  --surface-popover: #09090b;
+  --surface-muted: #18181b;
+  --surface-canvas: #111113;
+  --line-hairline: #232327;
+  --line-strong: #2f2f35;
+  --fill-well: #18181b;
+  --fill-hover: #18181b;
+  --ink-primary: #fafafa;
+  --ink-secondary: #a1a1aa;
+  --ink-meta: #a1a1aa;
+  --ink-tertiary: #71717a;
+  --ui-accent: #818cf8;
+  --ui-accent-fg: #0b0b14;
+  --ui-accent-soft: rgb(129 140 248 / 0.14);
+  --ui-accent-text: #a5b4fc;
+  --status-success: #4ade80;
+  --status-success-soft: rgb(74 222 128 / 0.12);
+  --status-warning: #fbbf24;
+  --status-warning-soft: rgb(251 191 36 / 0.12);
+  --status-warning-row: rgb(251 191 36 / 0.06);
+  --status-danger: #f87171;
+  --status-danger-soft: rgb(248 113 113 / 0.09);
+  --ink-strong: #fafafa;
+  --ink-strong-fg: #09090b;
+  --preview: #5eead4;
+  --preview-soft: rgb(45 212 191 / 0.12);
+  --preview-ring: rgb(45 212 191 / 0.16);
+  --tip-bg: #18181b;
+  --tip-fg: #fafafa;
+  --tip-border: #2f2f35;
+  --seg-track: #18181b;
+  --seg-ring: rgb(255 255 255 / 0.04);
+  --seg-pill: #2a2a2f;
+  --seg-hover: rgb(255 255 255 / 0.04);
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elevation-pop: 0 18px 44px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --elevation-tip: 0 8px 20px -6px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.3);
+  --elevation-chart-tip: 0 6px 16px -6px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-seg-pill:
+    0 1px 2px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 0.5px rgb(255 255 255 / 0.06);
   --hue-blue: #0a84ff;
   --hue-purple: #bf5af2;
   --hue-pink: #ff375f;
@@ -99,33 +192,52 @@
   --hue-orange: #ff9f0a;
   --hue-green: #30d158;
   --hue-red: #ff453a;
-  --accent-stroke: var(--accent-stroke-dark, var(--accent));
-}
-
-:root[data-theme="dark"] {
-  --accent: #0a84ff;
 }
 
 @theme inline {
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: Inter, "SF Pro Text", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --color-page: var(--surface-page);
   --color-card: var(--surface-card);
+  --color-side: var(--surface-side);
   --color-bar: var(--surface-bar);
   --color-popover: var(--surface-popover);
+  --color-muted: var(--surface-muted);
+  --color-canvas: var(--surface-canvas);
   --color-hairline: var(--line-hairline);
+  --color-line-strong: var(--line-strong);
   --color-well: var(--fill-well);
   --color-hover: var(--fill-hover);
   --color-fg: var(--ink-primary);
   --color-fg-secondary: var(--ink-secondary);
   --color-fg-meta: var(--ink-meta);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
-  --color-accent-stroke: var(--accent-stroke);
+  --color-fg-tertiary: var(--ink-tertiary);
+  --color-strong: var(--ink-strong);
+  --color-strong-fg: var(--ink-strong-fg);
+  --color-accent: var(--ui-accent);
+  --color-accent-fg: var(--ui-accent-fg);
+  --color-accent-soft: var(--ui-accent-soft);
+  --color-accent-text: var(--ui-accent-text);
+  --color-accent-stroke: var(--ui-accent);
+  --color-theme-accent: var(--theme-accent);
   --color-success: var(--status-success);
+  --color-success-soft: var(--status-success-soft);
   --color-warning: var(--status-warning);
+  --color-warning-soft: var(--status-warning-soft);
+  --color-warning-row: var(--status-warning-row);
   --color-danger: var(--status-danger);
+  --color-danger-soft: var(--status-danger-soft);
+  --color-preview: var(--preview);
+  --color-preview-soft: var(--preview-soft);
+  --color-preview-ring: var(--preview-ring);
+  --color-tip: var(--tip-bg);
+  --color-tip-fg: var(--tip-fg);
+  --color-tip-border: var(--tip-border);
+  --color-seg-track: var(--seg-track);
+  --color-seg-ring: var(--seg-ring);
+  --color-seg-pill: var(--seg-pill);
+  --color-seg-hover: var(--seg-hover);
   --color-tint-blue: var(--hue-blue);
   --color-tint-purple: var(--hue-purple);
   --color-tint-pink: var(--hue-pink);
@@ -133,6 +245,12 @@
   --color-tint-orange: var(--hue-orange);
   --color-tint-green: var(--hue-green);
   --color-tint-red: var(--hue-red);
+
+  --shadow-card: var(--elevation-card);
+  --shadow-pop: var(--elevation-pop);
+  --shadow-tip: var(--elevation-tip);
+  --shadow-chart-tip: var(--elevation-chart-tip);
+  --shadow-seg-pill: var(--elevation-seg-pill);
 }
 
 @theme {
@@ -238,7 +356,7 @@
 
   /* Drawn inside the box, so a scrolling container's edge cannot clip it. */
   :focus-visible {
-    outline: 2px solid var(--accent-stroke);
+    outline: 2px solid var(--ui-accent);
     outline-offset: -2px;
   }
 
