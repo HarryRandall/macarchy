@@ -138,7 +138,7 @@ struct ThemeSwitcherView: View {
                     if let row { proxy.scrollTo(row) }
                 }
             }
-            .frame(width: 290)
+            .frame(width: 340)
             Divider().opacity(0.6)
             SwitcherPreview(theme: previewTheme, showsDetails: selection != .backgrounds)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
