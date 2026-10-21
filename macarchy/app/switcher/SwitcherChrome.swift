@@ -3,7 +3,14 @@ import Macarchy
 import SwiftUI
 
 /// The dark, slightly translucent ground Raycast-style windows sit on.
-struct SwitcherBackdrop: NSViewRepresentable {
+struct SwitcherBackdrop: View {
+    var body: some View {
+        SwitcherMaterial()
+            .overlay(Color.black.opacity(0.55))
+    }
+}
+
+private struct SwitcherMaterial: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .hudWindow
