@@ -60,7 +60,7 @@ describe("log store", () => {
   });
 
   it("folds changes during a read into one more read", async () => {
-    const { store, append, answer, methods } = harness();
+    const { store, append, answer, methods, reads } = harness();
     const loading = store.load();
     append(entry("c", 30));
     append(entry("d", 40));
@@ -73,7 +73,7 @@ describe("log store", () => {
   });
 
   it("forgets seen entries once cleared", async () => {
-    const { store, answer, methods } = harness();
+    const { store, answer, methods, reads } = harness();
     const loading = store.load();
     answer();
     await loading;
