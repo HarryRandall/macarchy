@@ -23,27 +23,24 @@ final class HomeFileWatch {
         }
     }
 
-    private func fingerprint() -> [String] {
+    /// The skhdrc entry is the file the core reads: possibly `~/.skhdrc`, or
+    /// the target of a symlink into a dotfiles repository.
+    func fingerprint() -> [String] {
         let fm = FileManager.default
-        let roots = [
-            Paths.themesDirectory, Paths.snapshotsDirectory,
-            Paths.home.appending(path: ".config/skhd")
-        ]
-        var result: [String] = []
-        for root in roots {
-            guard
-                let entries = fm.enumerator(
-                    at: root,
-                    includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey])
-            else { continue }
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
+        func entry(_ url: URL) -> String? {
+            guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return nil }
+            let modified = values.contentModificationDate?.timeIntervalSince1970 ?? 0
+            return "\(url.path):\(modified):\(values.fileSize ?? 0)"
+        }
+        let skhdrc = SkhdShortcuts().configURL
+        var result = [entry(skhdrc) ?? "\(skhdrc.path):missing"]
+        for root in [Paths.themesDirectory, Paths.snapshotsDirectory] {
+            guard let entries = fm.enumerator(at: root, includingPropertiesForKeys: keys) else {
+                continue
+            }
             for case let url as URL in entries {
-                guard
-                    let values = try? url.resourceValues(
-                        forKeys: [.contentModificationDateKey, .fileSizeKey])
-                else { continue }
-                result.append(
-                    "\(url.path):\(values.contentModificationDate?.timeIntervalSince1970 ?? 0):\(values.fileSize ?? 0)"
-                )
+                if let line = entry(url) { result.append(line) }
             }
         }
         return result.sorted()

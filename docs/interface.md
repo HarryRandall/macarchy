@@ -24,8 +24,9 @@ not yet migrated, are still SwiftUI.
 Advanced and first-run setup are React pages. Before settings exist, setup
 replaces the selected pane and previews `Setup.plan` before enabling Set up.
 Advanced can reopen setup. Setup results remain visible until Done, including
-service or theme failures after files were written. Both restore actions use
-the shared confirmation dialog.
+service or theme failures after files were written. Both restore actions and
+stopping a service use the shared confirmation dialog; restarting a service
+acts immediately.
 
 ## Loading
 

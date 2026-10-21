@@ -42,23 +42,25 @@ export function createShortcutsStore(host: PageHost) {
   };
   let validationVersion = 0;
   let stateVersion = 0;
+  // Fresh state answers a read error, but not a failed edit the person still needs to see.
+  let readError = false;
   const set = (patch: Partial<ShortcutsSnapshot>) => {
+    if ("error" in patch) readError = false;
     snapshot = { ...snapshot, ...patch };
     listeners.notify();
   };
+  function failRead(patch: Partial<ShortcutsSnapshot>) {
+    set(patch);
+    readError = true;
+  }
   function receive(state: ShortcutsState) {
     stateVersion++;
     const external = !!snapshot.draft && snapshot.draft.revision !== state.revision;
-    set({
-      state,
-      status: "ready",
-      external,
-      ...(snapshot.status === "failed" ? { error: null } : {}),
-    });
+    set({ state, status: "ready", external, ...(readError ? { error: null } : {}) });
   }
   host.subscribe("shortcuts.changed", (event) => receive(event.state));
   host.subscribe("shortcuts.unavailable", (event) =>
-    set({ error: event.state, external: !!snapshot.draft }),
+    failRead({ error: event.state, external: !!snapshot.draft }),
   );
   async function load() {
     if (snapshot.busy || snapshot.refreshing) return;
@@ -72,7 +74,7 @@ export function createShortcutsStore(host: PageHost) {
       }
     } catch (error) {
       if (version === stateVersion)
-        set({ error: errorMessage(error), status: snapshot.state ? "ready" : "failed" });
+        failRead({ error: errorMessage(error), status: snapshot.state ? "ready" : "failed" });
     } finally {
       set({ refreshing: false });
     }
