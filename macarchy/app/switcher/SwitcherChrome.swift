@@ -56,6 +56,8 @@ struct SwitcherRow<Icon: View, Title: View, Accessories: View>: View {
                 .truncationMode(.tail)
             Spacer(minLength: 6)
             HStack(spacing: 12) { accessories }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .font(.system(size: 14, weight: .medium))
         .padding(.horizontal, 8)
