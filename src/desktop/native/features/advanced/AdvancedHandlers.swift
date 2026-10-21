@@ -57,15 +57,22 @@ extension BridgeRouter {
         register("setup.getPlan") { (params: SetupParams) in
             model.setupState(existing: params.existing)
         }
+        // A partial run resolves rather than rejects, so the page can show the
+        // steps that already changed files next to the reason it stopped.
         register("setup.run") { (params: SetupParams) in
-            try await Self.maintenance(model, name: "set up Macarchy") {
-                let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
-                let report = try await model.setupSession.run(
-                    existing: params.existing == .keep ? .keep : .replace, app: app)
-                for command in report.commands { model.log.record(command) }
-                await model.loadEverything()
-                return SetupReport(report)
+            let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
+            let report = await model.setupSession.run(
+                existing: params.existing == .keep ? .keep : .replace, app: app)
+            for command in report.commands { model.log.record(command) }
+            if let failure = report.failure {
+                model.log.failure("set up Macarchy", failure)
+            } else {
+                model.log.note("set up Macarchy", "Completed")
             }
+            await model.loadEverything()
+            StateBroadcast.shared.settingsWritten()
+            StateBroadcast.shared.advancedChanged()
+            return SetupReport(report)
         }
         register("setup.openAccessibility") { (_: Empty) in
             if let url = URL(
@@ -99,6 +106,7 @@ extension SetupReport {
     init(_ report: SetupSession.Report) {
         lines = report.lines
         failures = report.commands.filter { !$0.ok }.map(\.summary)
+        failure = report.failure
     }
 }
 

@@ -1,6 +1,9 @@
+import { RefreshCw } from "lucide-react";
+import { useEffect } from "react";
+
 import { PageHeader } from "~/components/layout/page-header";
 import { SettingRow } from "~/components/layout/setting-row";
-import { CardContent, SettingsSection } from "~/components/layout/settings-section";
+import { CardContent, SectionAction, SettingsSection } from "~/components/layout/settings-section";
 import { ActionBar } from "~/components/ui/action-bar";
 import { Button } from "~/components/ui/button";
 import { CodeBlock } from "~/components/ui/code-block";
@@ -15,6 +18,7 @@ import type { ReportStore } from "./report-store";
 export function ReportPage({ store }: { store: ReportStore }) {
   const snapshot = useStore(store);
   const disabled = snapshot.busy || snapshot.preparing || !snapshot.preview || !!snapshot.error;
+  useEffect(() => store.opened(), [store]);
   return (
     <>
       <PageHeader
@@ -59,6 +63,17 @@ export function ReportPage({ store }: { store: ReportStore }) {
       <SettingsSection
         title="What will be sent"
         help="Versions and check results only. No logs, files or window titles."
+        action={
+          <SectionAction
+            icon={<RefreshCw aria-hidden />}
+            aria-label="Refresh diagnostics"
+            tooltip="Run the checks again, such as after fixing something"
+            disabled={snapshot.preparing || snapshot.busy}
+            onClick={() => void store.load()}
+          >
+            Refresh
+          </SectionAction>
+        }
       >
         <CardContent>
           {snapshot.preparing ? (

@@ -36,7 +36,11 @@ describe("Setup store", () => {
     expect(request.mock.calls).toHaveLength(2);
     resolve(plan);
     await Promise.resolve();
-    request.mockResolvedValueOnce({ lines: ["Installed"], failures: ["Service unavailable"] });
+    request.mockResolvedValueOnce({
+      lines: ["Installed"],
+      failures: ["Service unavailable"],
+      failure: null,
+    });
     await store.run();
     expect(request.mock.calls.at(-1)).toEqual(["setup.run", { existing: "replace" }]);
     expect(store.getSnapshot().report?.failures).toEqual(["Service unavailable"]);
@@ -64,8 +68,26 @@ describe("Setup store", () => {
       report: null,
       existing: "keep",
     });
-    request.mockResolvedValueOnce({ lines: ["Done"], failures: [] });
+    request.mockResolvedValueOnce({ lines: ["Done"], failures: [], failure: null });
     await store.run();
     expect(store.getSnapshot().report?.lines).toEqual(["Done"]);
+  });
+  it("a partial setup keeps the completed lines visible with the reason it stopped", async () => {
+    const { store, request } = harness();
+    await store.load();
+    request.mockResolvedValueOnce({
+      lines: ["Moved 1 yabai settings into Macarchy", "Installed default shortcuts"],
+      failures: [],
+      failure: "Setup did not finish; some files may already have changed. Bar not written",
+    });
+    await store.run();
+    expect(store.getSnapshot()).toMatchObject({
+      busy: false,
+      error: "Setup did not finish; some files may already have changed. Bar not written",
+      report: {
+        lines: ["Moved 1 yabai settings into Macarchy", "Installed default shortcuts"],
+        failure: "Setup did not finish; some files may already have changed. Bar not written",
+      },
+    });
   });
 });

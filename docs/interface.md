@@ -24,7 +24,9 @@ not yet migrated, are still SwiftUI.
 Advanced and first-run setup are React pages. Before settings exist, setup
 replaces the selected pane and previews `Setup.plan` before enabling Set up.
 Advanced can reopen setup. Setup results remain visible until Done, including
-service or theme failures after files were written. Both restore actions and
+service or theme failures after files were written. When setup stops partway,
+`setup.run` still resolves, with the steps completed so far and the reason in
+`failure` (an explicit null when it finished). Both restore actions and
 stopping a service use the shared confirmation dialog; restarting a service
 acts immediately.
 
@@ -192,7 +194,9 @@ shortcut and snapshot changes made outside the app. Slow health reads are
 serialised and keep the previous findings visible while checking again.
 
 `DiagnosticSnapshot` gathers the same Doctor checks and Diagnostics environment
-as the classic pages did. Report keeps these facts for the page session and
+as the classic pages did. Report collects these facts when the page opens or
+the person presses Refresh (`report.prepare` with `refresh: true`), sharing a
+collection already running; draft edits reuse the last collection. It
 prepares a redacted preview for each description. Native report actions accept
 the preview's token, so copying and opening share precisely the displayed body;
 a stale token is refused. `ProblemReport` prepares the issue URL and the long

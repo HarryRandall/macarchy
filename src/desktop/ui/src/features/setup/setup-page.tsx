@@ -127,23 +127,27 @@ export function SetupPage({
               <Notice.Description>{report.failures.join("\n")}</Notice.Description>
             </Notice.Root>
           ) : null}
-          <SettingsSection title="Almost there">
-            <SettingRow
-              title="Allow yabai and skhd"
-              detail="macOS asks for Accessibility access the first time each runs. Turn both on, then restart them from Advanced."
-            >
-              <Button onClick={() => void store.openAccessibility()}>Open Accessibility</Button>
-            </SettingRow>
-            <SettingRow
-              title="Separate Spaces"
-              detail={"Keep “Displays have separate Spaces” on in Desktop & Dock."}
-            />
-          </SettingsSection>
-          <SettingsSection title="What setup did">
-            {report.lines.map((line, index) => (
-              <SettingRow key={index} title={line} />
-            ))}
-          </SettingsSection>
+          {!report.failure ? (
+            <SettingsSection title="Almost there">
+              <SettingRow
+                title="Allow yabai and skhd"
+                detail="macOS asks for Accessibility access the first time each runs. Turn both on, then restart them from Advanced."
+              >
+                <Button onClick={() => void store.openAccessibility()}>Open Accessibility</Button>
+              </SettingRow>
+              <SettingRow
+                title="Separate Spaces"
+                detail={"Keep “Displays have separate Spaces” on in Desktop & Dock."}
+              />
+            </SettingsSection>
+          ) : null}
+          {report.lines.length || !report.failure ? (
+            <SettingsSection title="What setup did">
+              {report.lines.map((line, index) => (
+                <SettingRow key={index} title={line} />
+              ))}
+            </SettingsSection>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button onClick={health}>Check setup health</Button>
             <Button variant="primary" onClick={close}>

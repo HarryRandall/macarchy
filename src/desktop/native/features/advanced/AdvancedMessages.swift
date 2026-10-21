@@ -62,9 +62,22 @@ struct SetupState: Codable, Sendable {
     var hasExisting: Bool
     var canClose: Bool
 }
-struct SetupReport: Codable, Sendable {
+struct SetupReport: Encodable, Sendable {
     var lines: [String]
     var failures: [String]
+    /// Why setup stopped early. `lines` still lists what it changed first.
+    var failure: String?
+}
+
+extension SetupReport {
+    private enum CodingKeys: String, CodingKey { case lines, failures, failure }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(lines, forKey: .lines)
+        try container.encode(failures, forKey: .failures)
+        try container.encode(failure, forKey: .failure)
+    }
 }
 
 extension BridgeEvent {

@@ -6,7 +6,8 @@ extension BridgeRouter {
         let session = ReportSession()
         register("report.prepare") { [weak model] (params: ReportPrepareParams) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            let prepared = await session.prepare(params.description, integrations: model.backend)
+            let prepared = await session.prepare(
+                params.description, refresh: params.refresh, integrations: model.backend)
             model.log.note("prepare report", "Redacted diagnostic report prepared")
             return prepared
         }
@@ -50,15 +51,32 @@ extension BridgeRouter {
 
 /// Keep the collected facts and the exact preview together. No logs or draft
 /// text are stored on disk, and a stale preview cannot be submitted.
+///
+/// Draft edits reuse the last collection, so typing does not rerun the checks.
+/// A refresh, sent when the page opens or the person asks, collects again once
+/// the previous collection has finished, so a report made after a fix
+/// describes the fixed state. Requests during a collection share it.
 @MainActor
 private final class ReportSession {
     private var collection: Task<DiagnosticSnapshot, Never>?
+    private var collecting = false
     private var latest: ReportState?
 
-    func prepare(_ description: String, integrations: Integrations) async -> ReportState {
-        let collection =
-            collection ?? Task { await DiagnosticSnapshot.read(integrations: integrations) }
-        self.collection = collection
+    func prepare(
+        _ description: String, refresh: Bool, integrations: Integrations
+    ) async -> ReportState {
+        let collection: Task<DiagnosticSnapshot, Never>
+        if let current = self.collection, collecting || !refresh {
+            collection = current
+        } else {
+            collecting = true
+            collection = Task {
+                let snapshot = await DiagnosticSnapshot.read(integrations: integrations)
+                self.collecting = false
+                return snapshot
+            }
+            self.collection = collection
+        }
         let snapshot = await collection.value
         let state = ReportState(
             body: snapshot.report(description: description), token: UUID().uuidString)
