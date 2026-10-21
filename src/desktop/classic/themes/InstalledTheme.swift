@@ -21,7 +21,8 @@ struct InstalledTheme: Identifiable, Sendable {
 
     var selectedBackground: String?
     var manifest: Theme?
-    var palette: GhosttyPalette?
+    var terminal: TerminalPalette?
+    var palette: GhosttyPalette? { terminal.map(GhosttyPalette.init) }
 
     var manifestURL: URL { directory.appending(path: Theme.fileName) }
 

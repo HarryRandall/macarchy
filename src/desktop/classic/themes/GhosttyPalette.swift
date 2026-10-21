@@ -1,11 +1,8 @@
 import Foundation
+import Macarchy
 import SwiftUI
 
-/// The terminal half of a theme, read from its ghostty.conf.
-///
-/// Every theme ships one with a background, a foreground and all 16 ANSI
-/// slots, which is enough to render a faithful terminal preview rather than an
-/// approximation built from the border colour.
+/// `TerminalPalette` as SwiftUI colours, for the previews that draw a terminal.
 struct GhosttyPalette: Sendable {
     var background: Color = .black
     var foreground: Color = .white
@@ -27,40 +24,10 @@ struct GhosttyPalette: Sendable {
     var cyan: Color { ansi(6) }
     var brightBlack: Color { ansi(8) }
 
-    static func load(from directory: URL) -> GhosttyPalette? {
-        let url = directory.appending(path: "ghostty.conf")
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-
-        var palette = GhosttyPalette()
-        var slots: [Int: Color] = [:]
-
-        for raw in text.split(separator: "\n") {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty, !line.hasPrefix("#"),
-                let eq = line.firstIndex(of: "=")
-            else { continue }
-            let key = line[line.startIndex..<eq].trimmingCharacters(in: .whitespaces)
-            let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-
-            switch key {
-            case "background": palette.background = Color(macarchyHex: value) ?? palette.background
-            case "foreground": palette.foreground = Color(macarchyHex: value) ?? palette.foreground
-            case "cursor-color": palette.cursor = Color(macarchyHex: value) ?? palette.cursor
-            case "palette":
-                // "palette = 4=#e68e0d" — the slot index is on the value side.
-                let parts = value.split(separator: "=", maxSplits: 1)
-                guard parts.count == 2,
-                    let index = Int(parts[0].trimmingCharacters(in: .whitespaces)),
-                    let color = Color(
-                        macarchyHex: String(parts[1]).trimmingCharacters(in: .whitespaces))
-                else { continue }
-                slots[index] = color
-            default: break
-            }
-        }
-
-        guard !slots.isEmpty else { return palette }
-        palette.ansi = (0...15).map { slots[$0] ?? palette.foreground }
-        return palette
+    init(_ palette: TerminalPalette) {
+        background = Color(macarchyHex: palette.background) ?? .black
+        foreground = Color(macarchyHex: palette.foreground) ?? .white
+        cursor = Color(macarchyHex: palette.cursor) ?? .white
+        ansi = palette.ansi.map { Color(macarchyHex: $0) ?? foreground }
     }
 }

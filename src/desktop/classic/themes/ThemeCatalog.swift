@@ -51,7 +51,7 @@ final class ThemeCatalog {
                     directory: url,
                     selectedBackground: chosen[url.lastPathComponent],
                     manifest: manifest,
-                    palette: GhosttyPalette.load(from: url))
+                    terminal: TerminalPalette.load(from: url))
             }
 
         log.note("loaded themes", "\(themes.count) in \(Paths.display(Paths.themesDirectory))")
