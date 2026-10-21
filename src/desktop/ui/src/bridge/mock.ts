@@ -6,28 +6,33 @@
  *   ?fail=layout         layout.apply rejects
  *   ?fail=layout-state   layout.getState rejects
  *   ?fail=switcher       applying a theme or background fails and reopens the switcher
+ *   ?fail=restart        Restart All leaves skhd stopped
  *   ?source=saved        yabai is "not running"; layout is read-only
  *   ?setup               settings have never been written
  *
  * `window.macarchyMock` drives events from the console: openSwitcher(),
  * closeSwitcher(), changeLayout({ windowGap: 20 }), setAccent("#ff9f0a"),
- * setServices(2).
+ * setAppearance("dark"), setServices(2), log("yabai -m space --balance").
  */
 import { createThemesMock } from "~/features/themes/themes-mock";
 import { shortcutsMock } from "~/features/shortcuts/shortcuts-mock";
 
+import { createLogMock } from "./log-mock";
 import type {
   AdvancedState,
+  AppearanceMode,
   Background,
   BordersState,
   BridgeEvent,
   BridgeMethod,
   LayoutState,
   LayoutValues,
+  LogEntry,
   ParamsOf,
   Reply,
   RulesState,
   ResultOf,
+  ServiceId,
   ShellState,
   SwitcherFailure,
   SwitcherState,
@@ -205,13 +210,65 @@ export function installMockHost() {
   const failures = new Set((query.get("fail") ?? "").split(",").filter(Boolean));
   const saved = query.get("source") === "saved";
 
+  const services: ShellState["serviceList"] = [
+    { id: "yabai", name: "yabai", state: "running" },
+    { id: "borders", name: "borders", state: "running" },
+    { id: "sketchybar", name: "SketchyBar", state: "stopped" },
+    { id: "skhd", name: "skhd", state: "running" },
+  ];
+
+  function serviceState(): Pick<ShellState, "services" | "serviceList"> {
+    return {
+      services: {
+        running: services.filter((service) => service.state === "running").length,
+        total: services.length,
+      },
+      serviceList: services.map((service) => ({ ...service })),
+    };
+  }
+
   let shell: ShellState = {
     selectedPane: "layout",
     sidebarVisible: true,
     setupRequired: query.has("setup"),
-    appearance: { accent: "#61afef" },
-    services: { running: 3, total: 4 },
+    appearance: { accent: "#61afef", mode: "system" },
+    version: "0.9.2",
+    ...serviceState(),
   };
+
+  function publishShell(patch: Partial<ShellState>) {
+    shell = { ...shell, ...patch };
+    deliver({ type: "shell.changed", state: shell });
+  }
+
+  const log = createLogMock(
+    () => Math.floor(Date.now() / 1000),
+    () => deliver({ type: "shell.logChanged" }),
+  );
+
+  function record(command: string, ok = true, category: LogEntry["category"] = "System") {
+    log.append({
+      command,
+      detail: ok ? "" : "Standard error:\nThe mock host was asked to fail.",
+      ok,
+      status: ok ? 0 : 1,
+      category,
+    });
+  }
+
+  const serviceCategories: Record<ServiceId, LogEntry["category"]> = {
+    yabai: "Layout",
+    borders: "Borders",
+    sketchybar: "Menu Bar",
+    skhd: "Shortcuts",
+  };
+
+  function setService(id: ServiceId, state: "running" | "stopped") {
+    services.find((service) => service.id === id)!.state = state;
+    publishShell(serviceState());
+    const action = state === "running" ? "kickstart -k" : "bootout";
+    record(`launchctl ${action} ${id}`, true, serviceCategories[id]);
+  }
 
   let daemon: LayoutValues = {
     layout: "bsp",
@@ -269,11 +326,7 @@ export function installMockHost() {
     [M in BridgeMethod]: (params: ParamsOf<M>) => ResultOf<M> | Promise<ResultOf<M>>;
   };
 
-  const advanced: AdvancedState = {
-    services: ["yabai", "borders", "sketchybar", "skhd"].map((id) => ({
-      id: id as AdvancedState["services"][number]["id"],
-      state: "running",
-    })),
+  const advanced: Omit<AdvancedState, "services"> = {
     snapshots: [],
     theme: "awakening",
     installedThemes: themes.length,
@@ -320,13 +373,16 @@ export function installMockHost() {
       rules.customRules = rules.customRules.filter((rule) => rule.id !== id);
       return null;
     },
-    "advanced.getState": () => advanced,
+    "advanced.getState": () => ({
+      ...advanced,
+      services: services.map(({ id, state }) => ({ id, state })),
+    }),
     "advanced.restartService": ({ daemon: serviceId }) => {
-      advanced.services.find((service) => service.id === serviceId)!.state = "running";
+      setService(serviceId, "running");
       return null;
     },
     "advanced.stopService": ({ daemon: serviceId }) => {
-      advanced.services.find((service) => service.id === serviceId)!.state = "stopped";
+      setService(serviceId, "stopped");
       return null;
     },
     "advanced.rebuild": () => ({ outcome: "Rebuilt" }),
@@ -382,8 +438,41 @@ export function installMockHost() {
       return null;
     },
     "shell.getState": () => shell,
-    "shell.setPreferences": (params) => {
+    "shell.setPreferences": ({ appearance, ...params }) => {
       shell = { ...shell, ...params };
+      if (appearance) {
+        console.info(`[mock] window appearance ${appearance}`);
+        shell = { ...shell, appearance: { ...shell.appearance, mode: appearance } };
+      }
+      return null;
+    },
+    "shell.getLog": () => ({ entries: log.entries() }),
+    "shell.clearLog": () => {
+      log.clear();
+      return null;
+    },
+    "shell.restartAll": () => {
+      const failing = failures.has("restart") ? "skhd" : null;
+      for (const service of services) {
+        const ok = service.id !== failing;
+        service.state = ok ? "running" : "stopped";
+        record(`launchctl kickstart -k ${service.id}`, ok, serviceCategories[service.id]);
+      }
+      publishShell(serviceState());
+      console.info("[mock] restart all services");
+      return {
+        outcome: failing
+          ? "Restarted 3 of 4 services; skhd did not restart."
+          : "Restarted all 4 services.",
+      };
+    },
+    "shell.revealSettings": () => {
+      console.info("[mock] reveal ~/.config/macarchy in Finder");
+      record("reveal settings");
+      return null;
+    },
+    "shell.quit": () => {
+      console.info("[mock] quit; a browser tab keeps running");
       return null;
     },
     "shell.openClassic": (params) => {
@@ -460,9 +549,11 @@ export function installMockHost() {
       shell = {
         ...shell,
         appearance: {
+          ...shell.appearance,
           accent: themes.find((entry) => entry.name === name)?.ring ?? "#0a84ff",
         },
       };
+      record(`theme ${name}`, true, "Themes");
       closeSwitcher();
       setTimeout(() => deliver({ type: "themes.changed", state: switcher }), 200);
       return null;
@@ -531,12 +622,19 @@ export function installMockHost() {
         deliver({ type: "layout.changed", state: layoutState() });
       },
       setAccent(accent: string) {
-        shell = { ...shell, appearance: { accent } };
-        deliver({ type: "shell.changed", state: shell });
+        publishShell({ appearance: { ...shell.appearance, accent } });
+      },
+      setAppearance(mode: AppearanceMode) {
+        publishShell({ appearance: { ...shell.appearance, mode } });
       },
       setServices(running: number) {
-        shell = { ...shell, services: { ...shell.services, running } };
-        deliver({ type: "shell.changed", state: shell });
+        services.forEach((service, index) => {
+          service.state = index < running ? "running" : "stopped";
+        });
+        publishShell(serviceState());
+      },
+      log(command: string, ok = true) {
+        record(command, ok);
       },
     },
   });

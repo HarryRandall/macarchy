@@ -42,6 +42,30 @@ final class DaemonMonitor {
         return result
     }
 
+    typealias Restart = (daemon: Daemon, result: CommandResult)
+
+    /// Restarts every service in turn.
+    @discardableResult
+    func restartAll() async -> [Restart] {
+        var results: [Restart] = []
+        for daemon in Daemon.allCases {
+            let result = await restart(daemon)
+            results.append((daemon, result))
+        }
+        return results
+    }
+
+    /// One sentence for the page, naming any service that did not come back.
+    static func outcome(of results: [Restart]) -> String {
+        let failed = results.filter { !$0.result.ok }.map(\.daemon.displayName)
+        let total = results.count
+        if failed.isEmpty { return "Restarted all \(total) services." }
+        if failed.count == total { return "None of the \(total) services restarted." }
+        var names = failed.dropLast().joined(separator: ", ")
+        names += (names.isEmpty ? "" : " and ") + (failed.last ?? "")
+        return "Restarted \(total - failed.count) of \(total) services; \(names) did not restart."
+    }
+
     @discardableResult
     func stop(_ daemon: Daemon) async -> CommandResult {
         let result = await services.stop(daemon)

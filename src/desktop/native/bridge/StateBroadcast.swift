@@ -23,6 +23,7 @@ final class StateBroadcast {
     private var lastMaintenance = ""
     private var watcher: DispatchSourceFileSystemObject?
     private let shortcutsBroadcast = ShortcutsBroadcast()
+    private let logBroadcast = LogBroadcast()
     private var lastSettings: Data?
     private let homeFiles = HomeFileWatch()
     private var reloadGeneration = 0
@@ -47,6 +48,7 @@ final class StateBroadcast {
         watchSettings()
         homeFiles.start { [weak self] in self?.publishOverview() }
         shortcutsBroadcast.start { [weak self] event in self?.settings()?.send(event) }
+        logBroadcast.start(model.log) { [weak self] in self?.settings()?.send(.shellLogChanged) }
     }
 
     func shortcutsWritten(_ state: ShortcutsState) {

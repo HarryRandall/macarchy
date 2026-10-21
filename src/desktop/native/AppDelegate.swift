@@ -92,11 +92,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SettingsWindow.shared.show()
     }
 
-    /// Opens the SwiftUI window for the panes that have not moved to React,
+    /// Opens the SwiftUI window for the editors that have not moved to React,
     /// optionally at a pane and with its search or console showing.
     static func showClassicWindow(pane: Pane?, show: OpenClassicParams.Show?) {
         guard let model else { return }
-        if let pane, !Pane.migrated.contains(pane) { model.selection = pane }
+        if let pane, pane.opensInClassic { model.selection = pane }
         ClassicWindow.shared.show(model)
         switch show {
         case .search: model.modal.present(inContent: true) { CommandPalette() }

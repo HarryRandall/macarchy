@@ -144,14 +144,9 @@ extension AppModel {
             case .isolated: addition = "unavailable"
             }
             return AdvancedState(
-                services: Daemon.allCases.map {
-                    let state: String
-                    switch daemons.states[$0] ?? .unknown {
-                    case .running: state = "running"
-                    case .stopped: state = "stopped"
-                    case .unknown: state = "unknown"
-                    }
-                    return .init(id: $0.rawValue, state: state)
+                services: Daemon.allCases.map { daemon in
+                    let state = ShellState.Service.State(daemons.states[daemon])
+                    return .init(id: daemon.rawValue, state: state.rawValue)
                 },
                 snapshots: snapshots.snapshots.map {
                     .init(

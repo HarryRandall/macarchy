@@ -1,6 +1,7 @@
 /** The settings window shell part of the bridge contract; see `../protocol.ts`. */
 
 import type { PaneId, Rect } from "../protocol";
+import type { ServiceId } from "./advanced";
 
 export interface ShellState {
   /** The React page the sidebar last selected. The classic window keeps its own. */
@@ -10,22 +11,51 @@ export interface ShellState {
   setupRequired: boolean;
   appearance: Appearance;
   services: { running: number; total: number };
+  /** The app's version, such as "0.9.2". */
+  version: string;
+  /** Each desktop service and whether it is running. */
+  serviceList: { id: ServiceId; name: string; state: "running" | "stopped" | "unknown" }[];
 }
+
+export type AppearanceMode = "system" | "light" | "dark";
 
 export interface Appearance {
   /** `#rrggbb`: the active theme's accent, or the system accent. */
   accent: string;
+  /** The settings window's light or dark choice; the host applies it to the window too. */
+  mode: AppearanceMode;
+}
+
+export interface LogEntry {
+  id: string;
+  command: string;
+  detail: string;
+  ok: boolean;
+  /** Seconds since the Unix epoch. */
+  at: number;
+  /** The command's exit status, or null for activity that ran no command. */
+  status: number | null;
+  category:
+    | "Menu Bar"
+    | "Borders"
+    | "Themes"
+    | "Shortcuts"
+    | "Window Rules"
+    | "Layout"
+    | "Backups"
+    | "System";
 }
 
 export interface ShellMethods {
   "shell.getState": { params: Record<string, never>; result: ShellState };
   "shell.setPreferences": {
-    params: { selectedPane?: PaneId; sidebarVisible?: boolean };
+    params: { selectedPane?: PaneId; sidebarVisible?: boolean; appearance?: AppearanceMode };
     result: null;
   };
   /**
-   * Opens the SwiftUI window at a pane that has not moved to React yet,
-   * optionally with its search palette or console showing.
+   * Opens the SwiftUI window, optionally with its search palette or console
+   * showing. Only the Menu Bar component editor still lives there, so any
+   * other pane leaves the window where it was.
    */
   "shell.openClassic": {
     params: { pane?: PaneId; show?: "search" | "console" };
@@ -36,6 +66,18 @@ export interface ShellMethods {
    * the bar outside those rects drag the window; double-clicks zoom it.
    */
   "shell.setTitlebar": { params: { height: number; controls: Rect[] }; result: null };
+  /** The session's activity, oldest first. */
+  "shell.getLog": { params: Record<string, never>; result: { entries: LogEntry[] } };
+  "shell.clearLog": { params: Record<string, never>; result: null };
+  /** Restarts every service in turn, as the status menu does. */
+  "shell.restartAll": { params: Record<string, never>; result: { outcome: string } };
+  /** Shows the settings folder in Finder. */
+  "shell.revealSettings": { params: Record<string, never>; result: null };
+  /** Ends the app, menu bar item included. The reply may never arrive. */
+  "shell.quit": { params: Record<string, never>; result: null };
 }
 
-export type ShellEvent = { type: "shell.changed"; state: ShellState };
+export type ShellEvent =
+  | { type: "shell.changed"; state: ShellState }
+  /** The log changed; read it again with `shell.getLog`. */
+  | { type: "shell.logChanged" };

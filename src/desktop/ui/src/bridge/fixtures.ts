@@ -18,6 +18,7 @@ import type {
   HealthState,
   HomeState,
   LayoutState,
+  LogEntry,
   ParamsOf,
   ResultOf,
   RulesState,
@@ -52,17 +53,106 @@ const shell: ShellState = {
   selectedPane: "home",
   sidebarVisible: true,
   setupRequired: false,
-  appearance: { accent: "#61afef" },
+  appearance: { accent: "#61afef", mode: "system" },
   services: { running: 4, total: 4 },
+  version: "0.9.2",
+  serviceList: [
+    { id: "yabai", name: "yabai", state: "running" },
+    { id: "borders", name: "borders", state: "running" },
+    { id: "sketchybar", name: "SketchyBar", state: "running" },
+    { id: "skhd", name: "skhd", state: "running" },
+  ],
 };
 
 const shellBeforeSetup: ShellState = {
   selectedPane: "layout",
   sidebarVisible: false,
   setupRequired: true,
-  appearance: { accent: "#0a84ff" },
+  appearance: { accent: "#0a84ff", mode: "dark" },
   services: { running: 0, total: 4 },
+  version: "development build",
+  serviceList: [
+    { id: "yabai", name: "yabai", state: "stopped" },
+    { id: "borders", name: "borders", state: "stopped" },
+    { id: "sketchybar", name: "SketchyBar", state: "unknown" },
+    { id: "skhd", name: "skhd", state: "stopped" },
+  ],
 };
+
+const log: LogEntry[] = [
+  {
+    id: "3B2F1A0E-5C4D-4E6F-8A9B-0C1D2E3F4A5B",
+    command: "/opt/homebrew/bin/sketchybar --reload",
+    detail: "",
+    ok: true,
+    at: 1792570500,
+    status: 0,
+    category: "Menu Bar",
+  },
+  {
+    id: "4C3A2B1F-6D5E-4F7A-9B0C-1D2E3F4A5B6C",
+    command: "borders appearance",
+    detail: "",
+    ok: true,
+    at: 1792570502,
+    status: 0,
+    category: "Borders",
+  },
+  {
+    id: "5D4B3C2A-7E6F-4A8B-8C1D-2E3F4A5B6C7D",
+    command: "theme lumon",
+    detail: "Standard error:\nThe wallpaper could not be set.",
+    ok: false,
+    at: 1792570504,
+    status: 1,
+    category: "Themes",
+  },
+  {
+    id: "6E5C4D3B-8F7A-4B9C-9D2E-3F4A5B6C7D8E",
+    command: "open skhdrc",
+    detail: "~/.config/skhd/skhdrc",
+    ok: true,
+    at: 1792570506,
+    status: null,
+    category: "Shortcuts",
+  },
+  {
+    id: "7F6D5E4C-9A8B-4C0D-8E3F-4A5B6C7D8E9F",
+    command: "window rules",
+    detail: "",
+    ok: true,
+    at: 1792570508,
+    status: 0,
+    category: "Window Rules",
+  },
+  {
+    id: "8A7E6F5D-0B9C-4D1E-9F4A-5B6C7D8E9F0A",
+    command: "read layout",
+    detail: "yabai-msg: failed to connect",
+    ok: false,
+    at: 1792570510,
+    status: null,
+    category: "Layout",
+  },
+  {
+    id: "9B8F7A6E-1C0D-4E2F-8A5B-6C7D8E9F0A1B",
+    command: "restore backup",
+    detail: "Completed",
+    ok: true,
+    at: 1792570512,
+    status: null,
+    category: "Backups",
+  },
+  {
+    id: "0C9A8B7F-2D1E-4F3A-9B6C-7D8E9F0A1B2C",
+    command: "health check",
+    detail: "18 checks completed",
+    ok: true,
+    at: 1792570514,
+    status: null,
+    category: "System",
+  },
+];
 
 const layoutFromDaemon: LayoutState = {
   values: {
@@ -504,6 +594,9 @@ export const methodFixtures: MethodFixtures = {
     { params: { selectedPane: "health" }, result: null },
     { params: { selectedPane: "advanced" }, result: null },
     { params: { selectedPane: "report", sidebarVisible: false }, result: null },
+    { params: { selectedPane: "menuBar", appearance: "light" }, result: null },
+    { params: { appearance: "dark" }, result: null },
+    { params: { appearance: "system" }, result: null },
     { params: {}, result: null },
   ],
   "shell.openClassic": [
@@ -524,6 +617,17 @@ export const methodFixtures: MethodFixtures = {
       result: null,
     },
   ],
+  "shell.getLog": [
+    { params: {}, result: { entries: log } },
+    { params: {}, result: { entries: [] } },
+  ],
+  "shell.clearLog": [{ params: {}, result: null }],
+  "shell.restartAll": [
+    { params: {}, result: { outcome: "Restarted all 4 services." } },
+    { params: {}, result: { outcome: "Restarted 3 of 4 services; skhd did not restart." } },
+  ],
+  "shell.revealSettings": [{ params: {}, result: null }],
+  "shell.quit": [{ params: {}, result: null }],
 
   "layout.getState": [
     { params: {}, result: layoutFromDaemon },
@@ -745,7 +849,17 @@ export const methodFixtures: MethodFixtures = {
 };
 
 export const eventFixtures: EventFixtures = {
-  "shell.changed": [{ type: "shell.changed", state: { ...shell, selectedPane: "themes" } }],
+  "shell.changed": [
+    {
+      type: "shell.changed",
+      state: {
+        ...shell,
+        selectedPane: "themes",
+        appearance: { accent: "#61afef", mode: "light" },
+      },
+    },
+  ],
+  "shell.logChanged": [{ type: "shell.logChanged" }],
   "layout.changed": [
     {
       type: "layout.changed",

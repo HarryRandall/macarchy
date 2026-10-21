@@ -30,9 +30,7 @@ struct StatusMenu: View {
             .keyboardShortcut(",", modifiers: .command)
 
         Button("Restart All Daemons") {
-            Task {
-                for daemon in Daemon.allCases { await model.daemons.restart(daemon) }
-            }
+            Task { await model.daemons.restartAll() }
         }
 
         Divider()
