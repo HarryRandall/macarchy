@@ -1,7 +1,7 @@
 import Foundation
 import Macarchy
 
-struct HomeState: Encodable, Sendable {
+struct HomeState: Codable, Sendable {
     var theme: String?
     var themeCount: Int
     var shortcutsCount: Int

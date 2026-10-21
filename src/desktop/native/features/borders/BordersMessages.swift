@@ -2,7 +2,7 @@ import Foundation
 import Macarchy
 
 // Mirrors bridge/contract/borders.ts.
-struct BordersState: Encodable, Sendable {
+struct BordersState: Codable, Sendable {
     var appearance: BorderAppearance
     var applicationIcons: [String: String]
     var theme: String?

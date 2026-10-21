@@ -36,7 +36,7 @@ struct ThemeSummary: Codable, Sendable, Equatable {
 
 /// What `switcher.willOpen` carries: fresh state and, when the panel reopens
 /// because an action failed, what failed and why.
-struct SwitcherOpening: Encodable, Sendable, Equatable {
+struct SwitcherOpening: Codable, Sendable, Equatable {
     var state: SwitcherState
     var error: SwitcherFailure?
 }
@@ -72,6 +72,14 @@ extension SwitcherState {
 /// Flattened, so the page reads `{ themes, current, error }`.
 extension SwitcherOpening {
     private enum CodingKeys: String, CodingKey { case themes, current, error }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        state = SwitcherState(
+            themes: try container.decode([ThemeSummary].self, forKey: .themes),
+            current: try container.decodeIfPresent(String.self, forKey: .current))
+        error = try container.decodeIfPresent(SwitcherFailure.self, forKey: .error)
+    }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)

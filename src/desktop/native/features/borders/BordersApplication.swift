@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import Macarchy
 
-struct BordersApplication: Encodable, Sendable {
+struct BordersApplication: Codable, Sendable {
     var name: String
     var icon: String?
 

@@ -2,7 +2,7 @@ import Foundation
 import Macarchy
 
 // Mirrors `bridge/contract/themes.ts`. Optional values are explicit nulls.
-struct ThemesState: Encodable, Sendable {
+struct ThemesState: Codable, Sendable {
     var themes: [ThemeDetail]
     var current: String?
     var colourschemes: [String]
@@ -18,7 +18,7 @@ struct ThemesState: Encodable, Sendable {
     }
 }
 
-struct ThemeDetail: Encodable, Sendable {
+struct ThemeDetail: Codable, Sendable {
     var summary: ThemeSummary
     var values: ThemeEditorValues
     var modified: Bool
@@ -40,14 +40,14 @@ struct ThemeDetail: Encodable, Sendable {
     }
 }
 
-struct ThemeTerminal: Encodable, Sendable {
+struct ThemeTerminal: Codable, Sendable {
     var background: String
     var foreground: String
     var cursor: String
     var ansi: [String]
 }
 
-struct ThemeEditorValues: Encodable, Sendable {
+struct ThemeEditorValues: Codable, Sendable {
     var dark: Bool
     var borderActive: String?
     var borderInactive: String?

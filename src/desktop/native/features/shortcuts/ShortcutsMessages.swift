@@ -1,11 +1,11 @@
 import Macarchy
 
 // Mirrors `bridge/contract/shortcuts.ts`.
-struct ShortcutsState: Encodable, Sendable {
+struct ShortcutsState: Codable, Sendable {
     var revision: String
     var bindings: [Binding]
 
-    struct Binding: Encodable, Sendable {
+    struct Binding: Codable, Sendable {
         var id: Int
         var modifiers: [String]
         var key: String
@@ -15,7 +15,7 @@ struct ShortcutsState: Encodable, Sendable {
         var passthrough: Bool
         var appOverrides: [Override]
 
-        struct Override: Encodable, Sendable {
+        struct Override: Codable, Sendable {
             var app: String
             var command: String
         }
@@ -64,12 +64,12 @@ struct ShortcutValidateParams: Decodable {
     var id: Int
     var chord: ShortcutChord
 }
-struct ShortcutValidation: Encodable {
+struct ShortcutValidation: Codable {
     var spec: String
     var caps: [String]
     var conflicts: [Int]
 }
-struct ShortcutMutation: Encodable {
+struct ShortcutMutation: Codable {
     var state: ShortcutsState
     var warning: String
 }

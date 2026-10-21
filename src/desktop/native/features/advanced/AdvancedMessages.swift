@@ -62,7 +62,7 @@ struct SetupState: Codable, Sendable {
     var hasExisting: Bool
     var canClose: Bool
 }
-struct SetupReport: Encodable, Sendable {
+struct SetupReport: Codable, Sendable {
     var lines: [String]
     var failures: [String]
     /// Why setup stopped early. `lines` still lists what it changed first.
@@ -84,4 +84,7 @@ extension BridgeEvent {
     static func advancedChanged(_ state: AdvancedState) -> BridgeEvent {
         BridgeEvent("advanced.changed", state: state)
     }
+
+    /// Tells the page to read its state again.
+    static var advancedInvalidated: BridgeEvent { BridgeEvent("advanced.invalidated") }
 }

@@ -1,8 +1,8 @@
 import Foundation
 import Macarchy
 
-struct HealthState: Encodable, Sendable {
-    struct Check: Encodable, Sendable {
+struct HealthState: Codable, Sendable {
+    struct Check: Codable, Sendable {
         var id: String
         var group: String
         var title: String
@@ -23,7 +23,7 @@ struct HealthState: Encodable, Sendable {
         }
     }
 
-    struct Machine: Encodable, Sendable {
+    struct Machine: Codable, Sendable {
         var model: String
         var architecture: String
         var macOS: String
