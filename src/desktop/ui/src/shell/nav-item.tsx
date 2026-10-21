@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { useId } from "react";
 
 import type { PaneId } from "~/bridge/protocol";
 import { PreviewTag } from "~/components/ui/preview-tag";
@@ -32,9 +33,15 @@ export function NavItem({
   const warn = (issues ?? 0) > 0;
   const preview = previewPanes.has(id);
   const classic = !reactPanes.has(id);
-  const name = [title, preview ? "preview" : null, warn ? `${issues} to fix` : null]
+  // The name is always the page's title, so it stays the same expanded or
+  // collapsed; the preview label and the issue count are its description.
+  const detailId = useId();
+  const detail = [preview ? "Preview" : null, warn ? `${issues} to fix` : null]
     .filter(Boolean)
     .join(", ");
+  const describedBy = [detail ? detailId : null, classic ? classicHintId : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <li>
       <Tooltip
@@ -49,8 +56,8 @@ export function NavItem({
           data-pane-row
           onClick={() => onSelect(id)}
           aria-current={active ? "page" : undefined}
-          aria-label={collapsed ? name : undefined}
-          aria-describedby={classic ? classicHintId : undefined}
+          aria-label={title}
+          aria-describedby={describedBy || undefined}
           className={cn(
             "group relative flex h-[30px] items-center gap-2.5 overflow-hidden rounded-[8px] px-[12.5px] text-[13px] tracking-[-0.01em] whitespace-nowrap transition-[background-color,color,width] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
             collapsed ? "w-10" : "w-full",
@@ -95,12 +102,16 @@ export function NavItem({
             {warn ? (
               <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-warning-soft px-1 text-[10px] font-semibold tabular-nums text-warning">
                 {issues}
-                <span className="sr-only"> to fix</span>
               </span>
             ) : null}
           </span>
         </button>
       </Tooltip>
+      {detail ? (
+        <span id={detailId} className="sr-only">
+          {detail}
+        </span>
+      ) : null}
     </li>
   );
 }

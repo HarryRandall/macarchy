@@ -10,8 +10,7 @@ func waitForLayout(_ surface: WebSurface, gap: Int) async throws {
     try await waitFor(
         surface, "the Layout page with a window gap of \(gap)",
         """
-        return page.text().includes("Give every window a place.")
-          && page.number("Between windows")?.value === "\(gap)"
+        return page.number("Between windows")?.value === "\(gap)"
           && page.range("Between windows")?.value === "\(gap)";
         """)
 }

@@ -97,10 +97,10 @@ extension WebInterfaceTests {
 
             try await shootSettings("settings-layout-sidebar-rail") { surface in
                 try await run(
-                    surface, #"document.querySelector('[aria-label="Collapse sidebar"]').click();"#)
+                    surface, #"document.querySelector('[aria-label="Hide sidebar"]').click();"#)
                 try await waitFor(
                     surface, "the sidebar collapsed",
-                    #"return !!document.querySelector('[aria-label="Expand sidebar"]');"#)
+                    #"return !!document.querySelector('[aria-label="Show sidebar"]');"#)
             }
 
             for theme in ["lumon", "awakening"] {

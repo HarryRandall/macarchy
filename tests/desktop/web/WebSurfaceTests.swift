@@ -79,7 +79,7 @@ extension WebInterfaceTests {
                 broadcast.start(harness.model)
 
                 let accent =
-                    #"return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()"#
+                    #"return getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim()"#
                 try await waitForLayout(settings, gap: 8)
                 try await waitFor(settings, "the Lumon accent", "\(accent) === \"#f2fcff\";")
                 try await waitFor(

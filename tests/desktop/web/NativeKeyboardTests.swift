@@ -60,9 +60,9 @@ extension WebInterfaceTests {
                         """))
                 #expect(scrolled.isEmpty, "scrolled outside the page: \(scrolled)")
 
-                // The toggle sits in the window's top-left corner, above the
-                // sidebar, so it is the first stop.
-                #expect(labels.first == "Collapse sidebar", "\(labels)")
+                // The skip link comes first, then the toggle in the window's
+                // top-left corner, above the sidebar.
+                #expect(labels.prefix(2) == ["Skip to page content", "Hide sidebar"], "\(labels)")
 
                 // Plain Tab visits a subset of the same stops, in the same order.
                 let plain = try await tabCycle(.tab, in: window, surface).map(\.label)
