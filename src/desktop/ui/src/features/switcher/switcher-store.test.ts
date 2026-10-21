@@ -97,6 +97,46 @@ describe("switcher.didClose", () => {
   });
 });
 
+describe("switcher.willOpen after a failed action", () => {
+  const failure = { title: "Could not apply Lumon", reason: "yabai is not running." };
+
+  async function open(
+    { send, paint }: ReturnType<typeof setup>,
+    error: typeof failure | null,
+  ): Promise<void> {
+    const opened = send({ type: "switcher.willOpen", state: { ...data, error } });
+    paint();
+    await opened;
+  }
+
+  it("shows the failure apart from the themes and keeps it as themes change", async () => {
+    const page = setup();
+    await open(page, failure);
+    expect(page.store.getSnapshot().model?.ui.failure).toEqual(failure);
+    expect(page.store.getSnapshot().model?.data).toEqual(data);
+
+    page.send({ type: "themes.changed", state: { ...data, current: "lumon" } });
+    expect(page.store.getSnapshot().model?.ui.failure).toEqual(failure);
+    expect(page.store.getSnapshot().model?.data.current).toBe("lumon");
+
+    page.store.dispatch({ type: "dismissFailure" });
+    expect(page.store.getSnapshot().model?.ui.failure).toBeNull();
+  });
+
+  it("is gone after closing and on the next open", async () => {
+    const page = setup();
+    await open(page, failure);
+    const closed = page.send({ type: "switcher.didClose" });
+    expect(page.store.getSnapshot().model?.ui.failure).toBeNull();
+    page.paint();
+    await closed;
+
+    await open(page, failure);
+    await open(page, null);
+    expect(page.store.getSnapshot().model?.ui.failure).toBeNull();
+  });
+});
+
 describe("null fields from the host", () => {
   it("opens with nothing applied and themes without colours or a preview", async () => {
     const { store, send, paint } = setup();

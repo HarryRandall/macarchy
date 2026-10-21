@@ -55,6 +55,8 @@ const data: SwitcherState = {
   ],
 };
 
+const failure = { title: "Could not apply Lumon", reason: "yabai is not running." };
+
 function run(model: SwitcherModel, ...actions: SwitcherAction[]) {
   return actions.reduce(switcherReducer, model);
 }
@@ -135,7 +137,7 @@ describe("selection", () => {
 
   it("resets everything when the panel opens", () => {
     let model = run(
-      initialModel(data),
+      initialModel(data, failure),
       { type: "search", search: "x" },
       { type: "toggleActions" },
       { type: "openBackgrounds", theme: "carbonfox" },
@@ -148,7 +150,30 @@ describe("selection", () => {
       tile: null,
       actionsOpen: false,
       action: 0,
+      failure: null,
     });
+  });
+});
+
+describe("a failed action", () => {
+  it("opens with the failure and keeps it while the list is used and themes change", () => {
+    let model = run(initialModel(data), { type: "reset", data, failure });
+    expect(model.ui.failure).toEqual(failure);
+    model = run(
+      model,
+      { type: "search", search: "lu" },
+      { type: "step", delta: 1 },
+      { type: "openBackgrounds", theme: "lumon" },
+      { type: "showThemes" },
+      { type: "data", data: { ...data, current: "lumon" } },
+    );
+    expect(model.ui.failure).toEqual(failure);
+  });
+
+  it("is cleared by dismissing it, and dismissing nothing changes nothing", () => {
+    const model = run(initialModel(data, failure), { type: "dismissFailure" });
+    expect(model.ui.failure).toBeNull();
+    expect(run(model, { type: "dismissFailure" })).toBe(model);
   });
 });
 

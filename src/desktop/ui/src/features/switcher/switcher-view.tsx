@@ -1,6 +1,7 @@
 import { LayoutGrid, Moon, Sun } from "lucide-react";
 import { type KeyboardEvent, useLayoutEffect, useRef } from "react";
 
+import { Notice } from "~/components/ui/notice";
 import { useStore } from "~/lib/store";
 
 import { BackgroundGrid, tileId } from "./background-grid";
@@ -177,6 +178,17 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
       ref={rootRef}
       className="relative flex h-full flex-col overflow-hidden rounded-card bg-black/55 text-fg after:pointer-events-none after:absolute after:inset-0 after:rounded-card after:border after:border-white/10"
     >
+      {ui.failure ? (
+        <Notice.Root variant="error" className="m-2 mb-0">
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <Notice.Title>{ui.failure.title}</Notice.Title>
+              <Notice.Description>{ui.failure.reason}</Notice.Description>
+            </div>
+            <Notice.Dismiss onClick={() => store.dispatch({ type: "dismissFailure" })} />
+          </div>
+        </Notice.Root>
+      ) : null}
       <SearchBar
         inputRef={inputRef}
         role="combobox"

@@ -45,18 +45,22 @@ struct SettingsTests {
         let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }
         let store = SettingsStore(url: root.appending(path: "settings.json"))
         let queue = SettingsApply()
-        let first = Task {
-            await queue.apply(values: ["YABAI_WINDOW_GAP": "9"], store: store) {
-                try? await Task.sleep(for: .milliseconds(100))
-                return CommandResult(command: "first", status: 0)
-            }
+        let (started, start) = AsyncStream<Void>.makeStream()
+        let (released, release) = AsyncStream<Void>.makeStream()
+        // The first edit's command signals once it is running, then holds
+        // until the second edit has joined the queue behind it.
+        let first = await queue.enqueue(values: ["YABAI_WINDOW_GAP": "9"], store: store) {
+            start.finish()
+            for await _ in released {}
+            return CommandResult(command: "first", status: 0)
         }
-        try await Task.sleep(for: .milliseconds(20))
-        let second = await queue.apply(values: ["YABAI_WINDOW_GAP": "10"], store: store) {
+        for await _ in started {}
+        let second = await queue.enqueue(values: ["YABAI_WINDOW_GAP": "10"], store: store) {
             CommandResult(command: "second", status: 0)
         }
+        release.finish()
         _ = await first.value
-        #expect(second.ok)
+        #expect(await second.value.ok)
         #expect(try store.load()["YABAI_WINDOW_GAP"] == "10")
     }
     @Test func concurrentWritersPreserveUnrelatedKeys() async throws {

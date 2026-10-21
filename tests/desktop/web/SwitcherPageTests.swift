@@ -31,6 +31,77 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("a failed action reopens the switcher with what failed and why")
+        func failedActionReopens() async throws {
+            try await withHarness { harness in
+                try harness.addBackground(theme: "lumon", name: "1-office.png", red: 0.1)
+                harness.model.themes.reload()
+                let recorder = ThemeRecorder()
+                recorder.failure = "yabai-msg: failed to connect"
+                // Kept: the page's handlers hold the switcher weakly.
+                let (switcher, surface) = try harness.switcherPage(recorder: recorder)
+                defer { withExtendedLifetime(switcher) {} }
+                try await waitFor(surface, "the theme list", "return page.rows().length === 9;")
+                let initialNotice = try await notice(surface)
+                #expect(initialNotice == nil)
+
+                // Opened as the hotkey would, which is what selects a row.
+                await surface.deliver(.switcherWillOpen(harness.model.switcherState()))
+                try await run(surface, #"page.setValue(page.search(), "carbon");"#)
+                try await waitFor(
+                    surface, "only Carbonfox selected",
+                    #"return page.rows().length === 1 && page.selectedRow()?.textContent.startsWith("Carbonfox");"#
+                )
+                try await run(surface, #"page.key(page.search(), "Enter");"#)
+                try await waitFor(
+                    surface, "the failure above a fresh list",
+                    """
+                    const notice = document.querySelector("[data-slot=notice][role=alert]");
+                    return !!notice && page.search().value === "" && page.rows().length === 9;
+                    """)
+                #expect(recorder.applied == ["carbonfox"])
+                #expect(recorder.presentations == 1)
+                let applyNotice = try await notice(surface)
+                #expect(applyNotice?.contains("Could not apply Carbonfox") == true)
+                #expect(applyNotice?.contains("yabai-msg: failed to connect") == true)
+
+                try await run(
+                    surface,
+                    #"document.querySelector('[data-slot=notice] button[aria-label="Dismiss"]').click();"#
+                )
+                try await waitFor(
+                    surface, "the failure dismissed",
+                    "return !document.querySelector('[data-slot=notice]');")
+
+                try await run(surface, #"page.key(page.search(), "b", { metaKey: true });"#)
+                try await waitFor(
+                    surface, "the Lumon backgrounds",
+                    #"return document.querySelectorAll('[role=listbox][aria-label="Backgrounds in Lumon"] [role=option]').length === 1;"#
+                )
+                try await run(surface, #"page.key(page.search(), "Enter");"#)
+                try await waitFor(
+                    surface, "the background failure",
+                    "return !!document.querySelector('[data-slot=notice][role=alert]');")
+                #expect(recorder.backgrounds.first?.path == "backgrounds/1-office.png")
+                #expect(recorder.presentations == 2)
+                let backgroundNotice = try await notice(surface)
+                #expect(backgroundNotice?.contains("Could not use the Office background") == true)
+
+                await surface.deliver(.switcherWillOpen(harness.model.switcherState()))
+                try await waitFor(
+                    surface, "the next opening without the failure",
+                    "return !document.querySelector('[data-slot=notice]');")
+                #expect(await harness.desktop.writes.isEmpty)
+            }
+        }
+
+        /// The notice's text, or nil when there is none.
+        private func notice(_ surface: WebSurface) async throws -> String? {
+            let text = try await run(
+                surface, "return document.querySelector('[data-slot=notice]')?.innerText;")
+            return text as? String
+        }
+
         // The steps of `switcher()`, in order; each starts where the last ended.
 
         private func listsAndNavigates(_ harness: Harness, _ surface: WebSurface) async throws {

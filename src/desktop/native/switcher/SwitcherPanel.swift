@@ -20,13 +20,19 @@ final class ThemeSwitcher {
     private var model: AppModel?
     private var hotKey: HotKey?
     private var opening = false
-    private var closing = false
+    private var closing: Task<Void, Never>?
     private var closeWhenOpened = false
+    /// Why the last action failed, until an opening shows it.
+    private var failure: SwitcherFailure?
     private let log = Logger(subsystem: "io.github.harryrandall.macarchy", category: "switcher")
 
     /// What applying a theme or background does. Tests replace it, because the
     /// real one sets the wallpaper and appearance for the whole session.
     var actions = ThemeActions.live
+
+    /// Orders the panel in. Tests replace it, so a reopened page can be
+    /// checked without a window appearing on screen.
+    var orderIn: @MainActor (NSWindow) -> Void = { $0.makeKeyAndOrderFront(nil) }
 
     /// Whether ⌘⌃Space was free to register; the system's Emoji & Symbols
     /// shortcut uses the same keys unless it is turned off.
@@ -85,7 +91,15 @@ final class ThemeSwitcher {
     /// in windows that are off screen, so the render has to happen in a
     /// window that is ordered in, just not yet visible.
     func show() async {
-        guard let model, !opening, !isVisible else { return }
+        await closing?.value
+        guard let model, !opening else { return }
+        if isVisible {
+            // Opened again while an action ran: show its failure in place.
+            if let error = takeFailure() {
+                await surface?.deliver(.switcherWillOpen(model.switcherState(), error: error))
+            }
+            return
+        }
         opening = true
         closeWhenOpened = false
         let started = ContinuousClock.now
@@ -94,27 +108,55 @@ final class ThemeSwitcher {
         await surface.waitUntilReady(timeout: .seconds(1))
         position(window)
         window.alphaValue = 0
-        window.makeKeyAndOrderFront(nil)
+        orderIn(window)
         window.makeFirstResponder(surface.webView)
-        await surface.deliver(.switcherWillOpen(model.switcherState()))
+        await surface.deliver(.switcherWillOpen(model.switcherState(), error: takeFailure()))
         window.alphaValue = 1
         opening = false
         log.notice("switcher shown in \(started.duration(to: .now), privacy: .public)")
-        if closeWhenOpened { close() }
+        if closeWhenOpened {
+            close()
+        } else if failure != nil {
+            // Another action failed while this opening was still drawing.
+            await show()
+        }
     }
 
     func close() {
-        guard let panel, panel.isVisible, !closing else { return }
-        closing = true
+        guard let panel, panel.isVisible, closing == nil else { return }
         // Reset the page while it can still draw, so the next opening never
         // starts from the previous one's frame.
         panel.alphaValue = 0
-        Task {
+        closing = Task {
             await surface?.deliver(.switcherDidClose, timeout: .milliseconds(150))
             panel.orderOut(nil)
             panel.alphaValue = 1
-            closing = false
+            closing = nil
         }
+    }
+
+    private func takeFailure() -> SwitcherFailure? {
+        defer { failure = nil }
+        return failure
+    }
+
+    /// Closes the panel, then runs a desktop-changing action. The panel goes
+    /// first: the action redraws the desktop, and the panel should not sit
+    /// over it while that happens. A failure reopens it with the reason on top.
+    private func perform(
+        _ title: String, _ model: AppModel, _ action: @MainActor () async -> CommandResult
+    ) async throws {
+        close()
+        let result = await action()
+        model.log.record(result)
+        model.themes.reload()
+        guard !result.ok else { return }
+        let summary = result.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reason =
+            summary.isEmpty ? "\(result.command) exited with status \(result.status)." : summary
+        failure = SwitcherFailure(title: title, reason: reason)
+        await show()
+        throw BridgeFailure(.operationFailed, reason)
     }
 
     private func prepare(_ model: AppModel) -> (SwitcherWindow, WebSurface) {
@@ -176,32 +218,32 @@ final class ThemeSwitcher {
             SettingsWindow.shared.show()
             return Null()
         }
-        // The panel goes first: applying redraws the desktop, and the panel
-        // should not sit over it while that happens.
         router.register("switcher.applyTheme") { [weak self, weak model] (params: ThemeParams) in
-            guard let model, model.themes.themes.contains(where: { $0.name == params.theme }) else {
+            guard let self, let model else {
+                throw BridgeFailure(.unavailable, "The app is closing.")
+            }
+            guard let theme = model.themes.themes.first(where: { $0.name == params.theme }) else {
                 throw BridgeFailure(.invalidParams, "There is no theme named \(params.theme).")
             }
-            self?.close()
-            let apply = self?.actions.apply ?? ThemeActions.live.apply
-            Task {
-                model.log.record(await apply(model, params.theme))
-                model.themes.reload()
+            let apply = actions.apply
+            try await perform("Could not apply \(theme.title)", model) {
+                await apply(model, params.theme)
             }
             return Null()
         }
         router.register("switcher.useBackground") {
             [weak self, weak model] (params: BackgroundParams) in
-            guard let model,
-                let theme = model.themes.themes.first(where: { $0.name == params.theme }),
-                SwitcherBackground.all(in: theme).contains(where: { $0.relativePath == params.path }
-                )
+            guard let self, let model else {
+                throw BridgeFailure(.unavailable, "The app is closing.")
+            }
+            guard let theme = model.themes.themes.first(where: { $0.name == params.theme }),
+                let background = SwitcherBackground.all(in: theme).first(where: {
+                    $0.relativePath == params.path
+                })
             else { throw BridgeFailure(.invalidParams, "That background is not in this theme.") }
-            self?.close()
-            let choose = self?.actions.useBackground ?? ThemeActions.live.useBackground
-            Task {
-                model.log.record(await choose(model, params.theme, params.path))
-                model.themes.reload()
+            let choose = actions.useBackground
+            try await perform("Could not use the \(background.name) background", model) {
+                await choose(model, params.theme, params.path)
             }
             return Null()
         }
