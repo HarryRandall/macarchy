@@ -235,21 +235,26 @@ export function BordersSettings({
         control={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {draft.excludedApps.map((app) => (
-              <Chip key={app}>
-                <AppIcon src={state.applicationIcons[app]} size={14} />
-                <span className="max-w-40 truncate">{app}</span>
-                <IconButton
-                  label={`Stop excluding ${app}`}
-                  size="sm"
-                  tone="danger"
-                  disabled={off}
-                  className="-mr-1.5 size-4"
-                  onClick={() =>
-                    onEdit({ excludedApps: draft.excludedApps.filter((name) => name !== app) })
-                  }
-                >
-                  <X aria-hidden />
-                </IconButton>
+              <Chip
+                key={app}
+                className="max-w-48"
+                icon={<AppIcon src={state.applicationIcons[app]} size={14} />}
+                action={
+                  <IconButton
+                    label={`Stop excluding ${app}`}
+                    size="sm"
+                    tone="danger"
+                    disabled={off}
+                    className="size-4"
+                    onClick={() =>
+                      onEdit({ excludedApps: draft.excludedApps.filter((name) => name !== app) })
+                    }
+                  >
+                    <X aria-hidden />
+                  </IconButton>
+                }
+              >
+                {app}
               </Chip>
             ))}
             <Button size="sm" variant="ghost" disabled={off} onClick={onPickApplication}>

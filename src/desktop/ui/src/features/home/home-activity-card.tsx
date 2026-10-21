@@ -3,6 +3,7 @@ import type { LogEntry } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
 import { Card, SectionLabel } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
+import { focusRing } from "~/components/ui/focus-ring";
 import { KbdGroup } from "~/components/ui/kbd";
 import { cn } from "~/lib/cn";
 import { recentActivity } from "./home-activity";
@@ -12,22 +13,32 @@ export function HomeActivity({
   entries,
   error,
   now,
+  onLogs,
 }: {
   /** Null until the log has been read. */
   entries: readonly LogEntry[] | null;
   error: string | null;
   /** Seconds since the Unix epoch. */
   now: number;
+  onLogs: () => void;
 }) {
   const items = entries ? recentActivity(entries, now) : [];
   return (
     <>
       <SectionLabel
         action={
-          <span className="flex items-center gap-1.5 text-meta text-fg-tertiary">
+          <button
+            type="button"
+            aria-keyshortcuts="Shift+Meta+L"
+            onClick={onLogs}
+            className={cn(
+              "-mx-1 flex items-center gap-1.5 rounded-small px-1 text-meta text-fg-tertiary transition-colors hover:text-fg",
+              focusRing,
+            )}
+          >
             All activity in Logs
-            <KbdGroup keys={["⇧", "⌘", "L"]} label="Shift Command L" variant="hint" />
-          </span>
+            <KbdGroup keys={["⇧", "⌘", "L"]} variant="hint" className="pointer-events-none" />
+          </button>
         }
       >
         Recent activity

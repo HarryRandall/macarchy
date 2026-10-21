@@ -23,6 +23,11 @@ export function headline(problems: number, checking: boolean) {
   return `${problems} ${problems === 1 ? "thing needs" : "things need"} attention`;
 }
 
+/** "12 checks, last run at 10:42". */
+export function runSummary(count: number, checkedAt: string) {
+  return `${count} ${count === 1 ? "check" : "checks"}, last run at ${checkedAt}`;
+}
+
 /** "yabai, skhd, jq and 2 more". */
 export function listNames(names: readonly string[], shown = 3) {
   if (names.length <= shown) return names.join(", ");

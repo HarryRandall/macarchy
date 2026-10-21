@@ -104,7 +104,12 @@ export function HomePage({
             onOpen={(pane) => context.navigate(pane)}
           />
 
-          <HomeActivity entries={log.state} error={log.error} now={now} />
+          <HomeActivity
+            entries={log.state}
+            error={log.error}
+            now={now}
+            onLogs={() => context.openLogs()}
+          />
 
           <HomeInsights
             today={today}

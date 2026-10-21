@@ -6,7 +6,7 @@ import { Card } from "~/components/ui/card";
 import { PreviewTag } from "~/components/ui/preview-tag";
 import { Stat, StatStrip } from "~/components/ui/stat";
 
-import { type Check, headline } from "./check-list";
+import { type Check, headline, runSummary } from "./check-list";
 import type { Days } from "./check-rows";
 import { historyDays, passRate } from "./health-mock";
 import { StatusIcon } from "./status-icon";
@@ -46,7 +46,7 @@ export function HealthSummaryCard({
             <span role="status">{headline(problems, refreshing)}</span>
           </h2>
           <p className="mt-0.5 text-detail text-fg-secondary">
-            {checks.length} checks, last run at {checkedAt}
+            {runSummary(checks.length, checkedAt)}
           </p>
         </div>
         <Button size="sm" variant="primary" busy={refreshing} onClick={onRun}>
@@ -69,7 +69,7 @@ export function HealthSummaryCard({
         ))}
         <Stat
           label={
-            <span className="flex items-center gap-1.5">
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               Pass rate, 14 days
               <PreviewTag />
             </span>

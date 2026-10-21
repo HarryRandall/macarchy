@@ -23,6 +23,8 @@ function StatStrip({ className, ...props }: ComponentProps<"dl">) {
 /**
  * One figure: a small label over the value, with an optional unit and a
  * quieter detail under it. `size="sm"` is the services popover's density.
+ * A label too long for a narrow strip wraps rather than clipping, and the
+ * label takes the slack so every value in the strip stays on one line.
  */
 function Stat({
   label,
@@ -43,11 +45,15 @@ function Stat({
   return (
     <div
       data-slot="stat"
-      className={cn("min-w-0", size === "sm" ? "px-2.5 py-2" : "px-4 py-3", className)}
+      className={cn(
+        "flex min-w-0 flex-col",
+        size === "sm" ? "px-2.5 py-2" : "px-4 py-3",
+        className,
+      )}
     >
       <dt
         className={cn(
-          "truncate",
+          "flex-1 break-words",
           size === "sm" ? "text-caption text-fg-tertiary" : "text-meta text-fg-secondary",
         )}
       >

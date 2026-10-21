@@ -8,7 +8,7 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { errorMessage, request } from "~/bridge/client";
 import type { AppearanceMode, LogEntry, PaneId, Rect, ShellState } from "~/bridge/protocol";
@@ -31,6 +31,7 @@ import { groups, overview, panes, reactPanes, type Route, routeTitle } from "./p
 import { ServiceStatus } from "./service-status";
 import type { ShellSnapshot, ShellStore } from "./shell-store";
 import { shortcutFor } from "./shortcuts";
+import type { Signal } from "./signal";
 import { Sidebar } from "./sidebar";
 import { ToastHost } from "./toast-host";
 import { createToasts } from "./toasts";
@@ -96,6 +97,7 @@ export function SettingsShell({
   onBack,
   onForward,
   go,
+  logsRequest,
   health,
   changelog,
   children,
@@ -110,6 +112,8 @@ export function SettingsShell({
   onBack: () => void;
   onForward: () => void;
   go: (route: Route) => void;
+  /** Pages ask for the logs panel through their context. */
+  logsRequest: Signal;
   health: { issues: number | null; model: string | null };
   changelog: { fresh: boolean; dismissed: boolean; onDismiss: () => void };
   children: ReactNode;
@@ -160,6 +164,13 @@ export function SettingsShell({
   };
 
   const toggleLogs = () => (logsOpen ? closeLogs() : openLogs());
+
+  // Latest handlers, so a page's request opens the panel as it stands now.
+  const logsHandler = useRef(openLogs);
+  useLayoutEffect(() => {
+    logsHandler.current = openLogs;
+  });
+  useEffect(() => logsRequest.listen(() => logsHandler.current()), [logsRequest]);
 
   const toggleSidebar = () => shell.setSidebarVisible(collapsed);
 

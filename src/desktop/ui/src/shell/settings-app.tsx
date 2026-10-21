@@ -20,6 +20,7 @@ import type { PageContext, PageStore } from "./page";
 import { pages } from "./pages";
 import { reactPaneFor, reactPanes, type Route } from "./panes";
 import { SettingsShell } from "./settings-shell";
+import { createSignal } from "./signal";
 import type { ShellStore } from "./shell-store";
 
 let announced = false;
@@ -117,12 +118,15 @@ export function SettingsApp({
       ensureLoaded(pane, store);
   }, [pane, store, setup, shellSnapshot.state?.setupRequired]);
 
+  // The panel's state belongs to the shell, which listens for this.
+  const [logsRequest] = useState(createSignal);
   const context = useMemo<PageContext>(
     () => ({
       navigate: (target) => go(target),
       openClassic: (params) => shell.openClassic(params),
+      openLogs: () => logsRequest.emit(),
     }),
-    [go, shell],
+    [go, shell, logsRequest],
   );
 
   // Before paint, so the first frame already carries the theme's accent.
@@ -184,6 +188,7 @@ export function SettingsApp({
         onBack={() => showPane(goBack(history))}
         onForward={() => showPane(goForward(history))}
         go={go}
+        logsRequest={logsRequest}
         health={health}
         changelog={{
           fresh: hasUnseenRelease(seen),

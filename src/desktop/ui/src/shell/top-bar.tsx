@@ -1,14 +1,16 @@
 import { ChevronLeft, ChevronRight, PanelLeft, ScrollText, Search, X } from "lucide-react";
-import type { ReactNode, RefObject } from "react";
+import { type ReactNode, type RefObject, useCallback, useLayoutEffect, useState } from "react";
 
 import type { PageSearch } from "~/components/layout/page-chrome";
 import { IconButton } from "~/components/ui/icon-button";
 import { PreviewTag } from "~/components/ui/preview-tag";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
+import { observeResize } from "~/lib/observe-resize";
 
 import { previewPanes, type Route, routeGroup, routeTitle } from "./panes";
 import { RAIL_WIDTH, SIDEBAR_WIDTH } from "./sidebar";
+import { type TopBarFit, topBarFit } from "./top-bar-fit";
 import { TITLEBAR_HEIGHT, titlebarControl } from "./use-titlebar-report";
 
 /** Room for the close, minimise and zoom buttons macOS draws over the corner. */
@@ -63,8 +65,50 @@ export function TopBar({
   logsButton: RefObject<HTMLButtonElement | null>;
   onLogs: () => void;
 }) {
-  const group = routeGroup(route);
+  const [header, setHeader] = useState<HTMLElement | null>(null);
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [fit, setFit] = useState<TopBarFit>(() => topBarFit(Number.POSITIVE_INFINITY, 0));
+  // Opened from the search icon when the bar is too narrow for the field.
+  const [searchOpen, setSearchOpen] = useState(false);
+  // Each page starts with the bar's search closed.
+  const [searchRoute, setSearchRoute] = useState(route);
+  if (searchRoute !== route) {
+    setSearchRoute(route);
+    setSearchOpen(false);
+  }
+  const actionsRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      setSlot(element);
+      setActionsSlot(element);
+    },
+    [setActionsSlot],
+  );
+
+  useLayoutEffect(() => {
+    if (!header || !slot) return;
+    const measure = () => {
+      const next = topBarFit(header.clientWidth, slot.offsetWidth);
+      setFit((current) =>
+        current.group === next.group &&
+        current.searchField === next.searchField &&
+        current.logsLabel === next.logsLabel &&
+        current.padding === next.padding
+          ? current
+          : next,
+      );
+    };
+    measure();
+    const stopHeader = observeResize(header, measure);
+    const stopSlot = observeResize(slot, measure);
+    return () => {
+      stopHeader();
+      stopSlot();
+    };
+  }, [header, slot]);
+
+  const group = fit.group ? routeGroup(route) : null;
   const preview = route !== "changelog" && previewPanes.has(route);
+  const fieldShown = fit.searchField || (search !== null && (searchOpen || search.value !== ""));
   return (
     <div
       data-titlebar-region
@@ -121,18 +165,32 @@ export function TopBar({
         </div>
       </div>
 
-      <header className="min-w-0 flex-1 border-b border-hairline bg-page">
+      <header ref={setHeader} className="min-w-0 flex-1 border-b border-hairline bg-page">
         <div
-          className="mx-auto grid h-full max-w-[900px] grid-cols-[minmax(72px,1fr)_minmax(120px,280px)_minmax(max-content,1fr)] items-center gap-4 px-8 transition-[padding] duration-200 ease-out"
-          style={
-            collapsed
+          className={cn(
+            "mx-auto grid h-full max-w-[900px] items-center transition-[padding] duration-200 ease-out",
+            fit.searchField
+              ? "grid-cols-[minmax(72px,1fr)_minmax(120px,280px)_minmax(max-content,1fr)] gap-4"
+              : fieldShown
+                ? "grid-cols-[minmax(0,1fr)_max-content] gap-2"
+                : "grid-cols-[minmax(0,1fr)_max-content_max-content] gap-2",
+          )}
+          style={{
+            paddingInline: fit.padding,
+            ...(collapsed
               ? {
-                  paddingLeft: `max(32px, calc(${COLLAPSED_CORNER - RAIL_WIDTH + 12}px - max(0px, (100% - 900px) / 2)))`,
+                  paddingLeft: `max(${fit.padding}px, calc(${COLLAPSED_CORNER - RAIL_WIDTH + 12}px - max(0px, (100% - 900px) / 2)))`,
                 }
-              : undefined
-          }
+              : null),
+          }}
         >
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+          <nav
+            aria-label="Breadcrumb"
+            className={cn(
+              "min-w-0 items-center gap-1.5 text-[13px]",
+              fieldShown && !fit.searchField ? "hidden" : "flex",
+            )}
+          >
             {group ? (
               <>
                 <span className="truncate text-fg-tertiary">{group}</span>
@@ -142,10 +200,21 @@ export function TopBar({
             <span aria-current="page" className="truncate font-medium text-fg">
               {routeTitle(route)}
             </span>
-            {preview ? <PreviewTag size="md" /> : null}
+            {preview && fit.group ? <PreviewTag size="md" /> : null}
           </nav>
 
-          {search ? (
+          {!fieldShown ? (
+            <IconButton
+              {...titlebarControl}
+              label={search ? search.placeholder : "Search settings"}
+              keys="⌘K"
+              size="md"
+              aria-keyshortcuts="Meta+K"
+              onClick={search ? () => setSearchOpen(true) : onPalette}
+            >
+              <Search aria-hidden size={15} strokeWidth={1.75} />
+            </IconButton>
+          ) : search ? (
             <label
               {...titlebarControl}
               className={cn(
@@ -156,14 +225,24 @@ export function TopBar({
               <Search aria-hidden size={14} className="shrink-0" />
               <input
                 type="text"
+                // A field opened from the narrow bar's icon is there to type in.
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- it appears only because the search icon was pressed.
+                autoFocus={!fit.searchField}
+                onBlur={() => {
+                  if (!search.value) setSearchOpen(false);
+                }}
                 value={search.value}
                 aria-label={search.placeholder}
                 placeholder={search.placeholder}
                 onChange={(event) => search.onChange(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Escape" && search.value) {
+                  if (event.key !== "Escape") return;
+                  if (search.value) {
                     event.stopPropagation();
                     search.onChange("");
+                  } else if (!fit.searchField) {
+                    event.stopPropagation();
+                    setSearchOpen(false);
                   }
                 }}
                 className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-fg-tertiary"
@@ -213,7 +292,7 @@ export function TopBar({
           <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
             {services}
             <div
-              ref={setActionsSlot}
+              ref={actionsRef}
               {...titlebarControl}
               className="flex items-center gap-1.5 empty:hidden"
             />
@@ -226,14 +305,15 @@ export function TopBar({
                 aria-keyshortcuts="Shift+Meta+L"
                 onClick={onLogs}
                 className={cn(
-                  "relative flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
+                  "relative flex h-8 items-center gap-1.5 rounded-[7px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
+                  fit.logsLabel ? "px-2.5" : "px-2",
                   logsOpen
                     ? "bg-muted text-fg ring-1 ring-hairline"
                     : "text-fg-secondary hover:bg-hover hover:text-fg",
                 )}
               >
                 <ScrollText aria-hidden size={14} strokeWidth={1.75} />
-                Logs
+                <span className={fit.logsLabel ? undefined : "sr-only"}>Logs</span>
                 {logFailures > 0 ? (
                   <span className="size-1.5 rounded-full bg-danger">
                     <span className="sr-only">

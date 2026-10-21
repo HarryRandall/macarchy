@@ -24,6 +24,8 @@ export interface PageContext {
   /** Shows another pane: a React page here, anything else in the classic window. */
   navigate(pane: PaneId): void;
   openClassic(params: BridgeMethods["shell.openClassic"]["params"]): void;
+  /** Opens the window's logs panel, as ⇧⌘L does. */
+  openLogs(): void;
 }
 
 /**

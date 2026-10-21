@@ -9,6 +9,7 @@ import { cn } from "~/lib/cn";
 function Chip({
   colour,
   icon,
+  action,
   className,
   children,
   ...props
@@ -17,6 +18,8 @@ function Chip({
   colour?: string;
   /** A glyph before the text; mark it `aria-hidden`. */
   icon?: ReactNode;
+  /** A small button after the text, such as remove, kept clear of it. */
+  action?: ReactNode;
 }) {
   return (
     <span
@@ -32,6 +35,7 @@ function Chip({
       ) : null}
       {icon}
       <span className="min-w-0 truncate">{children}</span>
+      {action ? <span className="-mr-1 flex shrink-0">{action}</span> : null}
     </span>
   );
 }

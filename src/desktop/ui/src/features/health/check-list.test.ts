@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { type Check, headline, listNames, othersTitle, partitionChecks } from "./check-list";
+import {
+  type Check,
+  headline,
+  listNames,
+  othersTitle,
+  partitionChecks,
+  runSummary,
+} from "./check-list";
 
 const check = (title: string, status: Check["status"]): Check => ({
   id: `Dependencies/${title}`,
@@ -33,5 +40,7 @@ describe("check list", () => {
     expect(headline(3, true)).toBe("Running checks");
     expect(listNames(["a", "b"])).toBe("a, b");
     expect(listNames(["a", "b", "c", "d", "e"])).toBe("a, b, c and 2 more");
+    expect(runSummary(1, "10:42")).toBe("1 check, last run at 10:42");
+    expect(runSummary(12, "10:42")).toBe("12 checks, last run at 10:42");
   });
 });
