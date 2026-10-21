@@ -90,6 +90,18 @@ extension WebInterfaceTests {
                     arguments.first == "print" ? .failure("Stopped") : .success()
                 }
                 try await run(surface, #"page.select("Stop window arrangement").click();"#)
+                try await waitFor(
+                    surface, "confirm stop",
+                    #"return document.querySelector('[role=alertdialog]')?.textContent.includes("Stopping yabai turns off");"#
+                )
+                let stoppedEarly = await harness.desktop.calls(to: "launchctl").contains {
+                    $0.contains("SIGTERM")
+                }
+                #expect(!stoppedEarly)
+                try await run(
+                    surface,
+                    #"[...document.querySelectorAll('[role=alertdialog] button')].find(b => b.textContent === "Stop yabai").click();"#
+                )
                 try await waitUntil("fake SIGTERM") {
                     await harness.desktop.calls(to: "launchctl").contains { $0.contains("SIGTERM") }
                 }

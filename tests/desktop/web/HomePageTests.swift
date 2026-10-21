@@ -40,6 +40,30 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("the file watch follows ~/.skhdrc and a symlinked skhdrc's target")
+        func shortcutFileWatch() async throws {
+            try await withHarness { harness in
+                let fm = FileManager.default
+                let watch = HomeFileWatch()
+                try harness.write("ctrl - a : echo a\n", to: ".skhdrc")
+                let dotfile = watch.fingerprint()
+                try harness.write("ctrl - a : echo a\nctrl - b : echo b\n", to: ".skhdrc")
+                #expect(watch.fingerprint() != dotfile)
+
+                try harness.write("ctrl - c : echo c\n", to: "dotfiles/skhdrc")
+                let unlinked = watch.fingerprint()
+                let link = harness.home.appending(path: ".config/skhd/skhdrc")
+                try fm.createDirectory(
+                    at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try fm.createSymbolicLink(
+                    at: link, withDestinationURL: harness.home.appending(path: "dotfiles/skhdrc"))
+                let linked = watch.fingerprint()
+                #expect(linked != unlinked)
+                try harness.write("ctrl - c : echo c\nctrl - d : echo d\n", to: "dotfiles/skhdrc")
+                #expect(watch.fingerprint() != linked)
+            }
+        }
+
         @Test("invalid saved settings show a retryable error")
         func readFailure() async throws {
             try await withHarness { harness in

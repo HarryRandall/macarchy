@@ -54,6 +54,11 @@ function fixture() {
     emit(state: ShortcutsState) {
       host.macarchyBridge!.receive(JSON.stringify({ type: "shortcuts.changed", state }));
     },
+    unavailable(message: string) {
+      host.macarchyBridge!.receive(
+        JSON.stringify({ type: "shortcuts.unavailable", state: message }),
+      );
+    },
   };
 }
 function deferred<T>() {
@@ -242,6 +247,24 @@ describe("shortcuts store", () => {
     send.mockRejectedValueOnce(new Error("Snapshot failed"));
     await expect(store.reset("two")).rejects.toThrow("Snapshot failed");
     expect(send).toHaveBeenLastCalledWith("shortcuts.reset", { revision: "two" });
+  });
+  it("clears a transient read error on fresh state but keeps a failed edit", async () => {
+    const { store, initial, send, emit, unavailable } = fixture();
+    await store.load();
+    unavailable("Your shortcuts could not be read: permission denied");
+    expect(store.getSnapshot()).toMatchObject({
+      status: "ready",
+      error: "Your shortcuts could not be read: permission denied",
+    });
+    emit({ ...initial, revision: "recovered" });
+    expect(store.getSnapshot()).toMatchObject({ error: null, state: { revision: "recovered" } });
+
+    store.edit(initial.bindings[0]!);
+    await store.record({ modifiers: ["cmd"], key: "k" });
+    send.mockRejectedValueOnce(new Error("Disk full"));
+    expect(await store.save()).toBe(false);
+    emit({ ...initial, revision: "recovered" });
+    expect(store.getSnapshot().error).toBe("Disk full");
   });
   it("does not let an old refresh overwrite an external event", async () => {
     const { store, initial, send, emit } = fixture();

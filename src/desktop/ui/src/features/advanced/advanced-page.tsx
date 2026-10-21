@@ -15,13 +15,26 @@ import { useStore } from "~/lib/store";
 import type { AdvancedStore } from "./advanced-store";
 import { BackupTrend } from "./backup-trend";
 
-const services: Record<ServiceId, { title: string; detail: string }> = {
-  yabai: { title: "Window arrangement", detail: "Keeps your windows arranged across the desktop." },
-  borders: { title: "Window outlines", detail: "Highlights the window you are working in." },
-  sketchybar: { title: "Menu bar", detail: "Shows your custom menu bar and its widgets." },
+const services: Record<ServiceId, { title: string; detail: string; stops: string }> = {
+  yabai: {
+    title: "Window arrangement",
+    detail: "Keeps your windows arranged across the desktop.",
+    stops: "automatic window arrangement and your window rules",
+  },
+  borders: {
+    title: "Window outlines",
+    detail: "Highlights the window you are working in.",
+    stops: "the outline around the active window",
+  },
+  sketchybar: {
+    title: "Menu bar",
+    detail: "Shows your custom menu bar and its widgets.",
+    stops: "your custom menu bar and its widgets",
+  },
   skhd: {
     title: "Keyboard shortcuts",
     detail: "Responds to the keyboard shortcuts in your setup.",
+    stops: "your keyboard shortcuts",
   },
 };
 const files: { id: GeneratedFileId; title: string }[] = [
@@ -48,6 +61,9 @@ function action(promise: Promise<unknown>) {
 export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openSetup(): void }) {
   const snapshot = useStore(store);
   const [showAll, setShowAll] = useState(false);
+  // The target outlives the open flag so the dialog keeps its wording while it closes.
+  const [stopTarget, setStopTarget] = useState<ServiceId>("yabai");
+  const [stopOpen, setStopOpen] = useState(false);
   const { state, busy } = snapshot;
 
   return (
@@ -179,7 +195,10 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
                     <IconButton
                       label={`Stop ${services[service.id].title.toLowerCase()}`}
                       disabled={busy || service.state !== "running"}
-                      onClick={() => action(store.stop(service.id))}
+                      onClick={() => {
+                        setStopTarget(service.id);
+                        setStopOpen(true);
+                      }}
                     >
                       <StopCircle aria-hidden />
                     </IconButton>
@@ -188,6 +207,16 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
               </SettingRow>
             ))}
           </SettingsSection>
+          <ConfirmDialog
+            open={stopOpen}
+            onOpenChange={setStopOpen}
+            title={`Stop ${services[stopTarget].title.toLowerCase()}?`}
+            description={`Stopping ${stopTarget} turns off ${services[stopTarget].stops} until you restart it here.`}
+            confirmLabel={`Stop ${stopTarget}`}
+            busyLabel="Stopping…"
+            tone="danger"
+            onConfirm={() => store.stop(stopTarget)}
+          />
           <SettingsSection
             title="Saved setup"
             help="Rebuild files from saved preferences. Custom edits are backed up before replacement."
