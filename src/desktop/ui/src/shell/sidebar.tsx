@@ -1,17 +1,19 @@
-import { ArrowUpRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { type KeyboardEvent, useId } from "react";
 
-import type { PaneId } from "~/bridge/protocol";
+import type { AppearanceMode, PaneId } from "~/bridge/protocol";
 import { Tooltip } from "~/components/ui/tooltip";
-import { Badge } from "~/components/ui/badge";
+import { WhatsNewCard } from "~/features/changelog/whats-new-card";
 import { cn } from "~/lib/cn";
 
-import { BrandMark } from "./brand-mark";
-import { groups, overview, panes, previewPanes, reactPanes } from "./panes";
-import { TITLEBAR_HEIGHT } from "./use-titlebar-report";
+import type { ShellAction } from "./actions";
+import { BrandMenu } from "./brand-menu";
+import { NavItem } from "./nav-item";
+import { groups, overview, type Route } from "./panes";
 
-export const SIDEBAR_WIDTH = 210;
-export const RAIL_WIDTH = 56;
+export const SIDEBAR_WIDTH = 232;
+/** Rail items centre on x = 28: an 8px inset either side of 40px buttons, plus the border. */
+export const RAIL_WIDTH = 57;
 
 /**
  * Arrow keys walk the rows the way a system sidebar does. They move focus
@@ -35,166 +37,162 @@ function walk(event: KeyboardEvent<HTMLElement>) {
 }
 
 export function Sidebar({
-  visible,
-  selected,
+  collapsed,
+  route,
+  issues,
   onSelect,
+  version,
+  model,
+  fresh,
+  cardDismissed,
+  mode,
+  menuOpen,
+  onMenuOpenChange,
+  onMode,
+  onAction,
+  onChangelog,
+  onDismissCard,
 }: {
-  visible: boolean;
-  selected: PaneId;
+  collapsed: boolean;
+  route: Route;
+  /** Setup health's checks to fix, once it has run. */
+  issues: number | null;
   onSelect: (pane: PaneId) => void;
+  version: string;
+  model: string | null;
+  /** A release the person has not opened the changelog for. */
+  fresh: boolean;
+  cardDismissed: boolean;
+  mode: AppearanceMode;
+  menuOpen: boolean;
+  onMenuOpenChange: (open: boolean) => void;
+  onMode: (mode: AppearanceMode) => void;
+  onAction: (action: ShellAction) => void;
+  onChangelog: () => void;
+  onDismissCard: () => void;
 }) {
   const classicHintId = useId();
+  const row = (id: PaneId) => (
+    <NavItem
+      key={id}
+      id={id}
+      active={route === id}
+      collapsed={collapsed}
+      issues={id === "health" ? issues : null}
+      classicHintId={classicHintId}
+      onSelect={onSelect}
+    />
+  );
+
   return (
     <aside
-      aria-label="Sections"
-      className="relative flex h-full shrink-0 flex-col overflow-hidden bg-bar transition-[width] duration-snappy"
-      style={{ width: visible ? SIDEBAR_WIDTH : RAIL_WIDTH }}
+      aria-label="Sidebar"
+      className="relative z-20 flex shrink-0 flex-col border-r border-hairline bg-side transition-[width] duration-200 ease-out"
+      style={{ width: collapsed ? RAIL_WIDTH : SIDEBAR_WIDTH }}
     >
-      {/* Collapsed, the window buttons sit across where this line would run. */}
-      <div
-        aria-hidden
-        className="absolute right-0 bottom-0 w-px bg-hairline transition-[top] duration-snappy"
-        style={{ top: visible ? 0 : TITLEBAR_HEIGHT }}
-      />
       <span id={classicHintId} className="sr-only">
         Opens in the classic window
       </span>
-
-      <div style={{ height: TITLEBAR_HEIGHT }} className="shrink-0" />
-
       <div
         className={cn(
-          "flex h-[34px] shrink-0 items-center gap-2 px-2",
-          visible ? "justify-start" : "justify-center",
+          "px-2 pb-2 transition-[padding] duration-200 ease-out",
+          collapsed ? "pt-2.5" : "pt-0.5",
         )}
       >
-        <BrandMark className="h-6 w-[30px] shrink-0 text-accent-stroke" />
-        {visible ? (
-          <span className="truncate text-[14px] font-semibold text-fg">Macarchy</span>
-        ) : null}
+        <BrandMenu
+          collapsed={collapsed}
+          subtitle={model}
+          fresh={fresh}
+          mode={mode}
+          open={menuOpen}
+          onOpenChange={onMenuOpenChange}
+          onMode={onMode}
+          onAction={onAction}
+        />
       </div>
 
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the handler only moves focus between the buttons inside. */}
       <nav
-        aria-label="Settings sections"
+        aria-label="Settings"
         onKeyDown={walk}
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pt-3 pb-2 [scrollbar-width:none]"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-1 [scrollbar-width:none]"
       >
-        <ul className="flex flex-col gap-0.5">
-          {overview.map((id) => (
-            <PaneRow
-              key={id}
-              id={id}
-              visible={visible}
-              selected={selected === id}
-              classicHintId={classicHintId}
-              onSelect={onSelect}
-            />
-          ))}
-        </ul>
+        <ul className="flex flex-col gap-0.5">{overview.map(row)}</ul>
         {groups.map((group) => (
-          <section key={group.title} aria-label={group.title} className="flex flex-col gap-1">
-            <div aria-hidden className="relative h-3.5 px-3">
+          <section key={group.title} aria-label={group.title} className="mt-1">
+            <div aria-hidden className="relative h-7">
               <span
                 className={cn(
-                  "absolute inset-x-3 text-eyebrow whitespace-nowrap text-fg-secondary uppercase transition-opacity duration-snappy",
-                  visible ? "opacity-100" : "opacity-0",
+                  "absolute bottom-1 left-[12.5px] text-[11px] font-medium tracking-[0.01em] whitespace-nowrap text-fg-tertiary transition-opacity duration-150",
+                  collapsed ? "opacity-0" : "opacity-100",
                 )}
               >
                 {group.title}
               </span>
               <span
                 className={cn(
-                  "absolute inset-x-3 top-1/2 h-px bg-hairline transition-opacity duration-snappy",
-                  visible ? "opacity-0" : "opacity-100",
+                  "absolute top-[10px] left-[10px] h-px w-5 bg-line-strong transition-opacity duration-150",
+                  collapsed ? "opacity-100" : "opacity-0",
                 )}
               />
             </div>
-            <ul className="flex flex-col gap-0.5">
-              {group.panes.map((id) => (
-                <PaneRow
-                  key={id}
-                  id={id}
-                  visible={visible}
-                  selected={selected === id}
-                  classicHintId={classicHintId}
-                  onSelect={onSelect}
-                />
-              ))}
-            </ul>
+            <ul className="flex flex-col gap-0.5">{group.panes.map(row)}</ul>
           </section>
         ))}
       </nav>
-    </aside>
-  );
-}
 
-function PaneRow({
-  id,
-  visible,
-  selected,
-  classicHintId,
-  onSelect,
-}: {
-  id: PaneId;
-  visible: boolean;
-  selected: boolean;
-  classicHintId: string;
-  onSelect: (pane: PaneId) => void;
-}) {
-  const pane = panes[id];
-  const Icon = pane.icon;
-  const classic = !reactPanes.has(id);
-  const preview = previewPanes.has(id);
-  return (
-    <li>
-      <Tooltip content={pane.title} side="right" disabled={visible || selected} describe={false}>
-        <button
-          type="button"
-          data-pane-row
-          aria-label={preview ? `${pane.title}, preview` : pane.title}
-          aria-current={selected ? "page" : undefined}
-          aria-describedby={classic ? classicHintId : undefined}
-          onClick={() => onSelect(id)}
-          className={cn(
-            "group flex h-[30px] w-full items-center gap-2 rounded-control px-2 transition-[background-color,opacity] active:opacity-75",
-            visible ? "justify-start" : "justify-center",
-            selected ? "bg-accent-stroke/20" : "hover:bg-hover",
-          )}
+      <WhatsNewCard
+        visible={!collapsed && !cardDismissed}
+        fresh={fresh}
+        onOpen={onChangelog}
+        onDismiss={onDismissCard}
+      />
+
+      <div className="border-t border-hairline px-2 py-3">
+        <Tooltip
+          content={fresh ? `What's new in ${version}` : `Version ${version}, up to date`}
+          side="right"
+          disabled={!collapsed}
+          describe={false}
         >
-          <Icon
-            aria-hidden
-            strokeWidth={2}
+          <button
+            type="button"
+            onClick={onChangelog}
+            aria-label={collapsed ? `Version ${version}, open the changelog` : undefined}
             className={cn(
-              "size-[15px] w-5 shrink-0",
-              selected ? "text-accent-stroke" : "text-fg-secondary",
+              "flex h-[18px] items-center gap-2 overflow-hidden rounded-[5px] pl-[17px] text-left text-[12px] whitespace-nowrap text-fg-secondary transition-[width,color] duration-200 ease-out hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
+              collapsed ? "w-10" : "w-full",
             )}
-          />
-          {visible ? (
-            <>
-              <span
+          >
+            <span className="relative size-1.5 shrink-0 rounded-full bg-success">
+              <Sparkles
+                aria-hidden
+                size={9}
+                strokeWidth={2.25}
                 className={cn(
-                  "min-w-0 flex-1 truncate text-left text-row-title",
-                  selected ? "font-semibold text-fg" : "text-fg-secondary",
+                  "absolute -top-[7px] -right-2 text-accent transition-opacity duration-150",
+                  fresh && collapsed ? "opacity-100" : "opacity-0",
                 )}
-              >
-                {pane.title}
-              </span>
-              {preview ? (
-                <Badge aria-hidden tone="warning">
-                  Preview
-                </Badge>
+              />
+            </span>
+            <span
+              aria-hidden={collapsed}
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-2 transition-opacity duration-150",
+                collapsed ? "opacity-0" : "opacity-100",
+              )}
+            >
+              {/* Mock: "up to date" until the app can check for releases. */}
+              <span className="flex-1 truncate tabular-nums">Version {version}, up to date</span>
+              {fresh && cardDismissed ? (
+                <span className="mr-2 size-1.5 shrink-0 rounded-full bg-accent">
+                  <span className="sr-only">, what's new</span>
+                </span>
               ) : null}
-              {classic ? (
-                <ArrowUpRight
-                  aria-hidden
-                  className="size-3 shrink-0 text-fg-secondary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                />
-              ) : null}
-            </>
-          ) : null}
-        </button>
-      </Tooltip>
-    </li>
+            </span>
+          </button>
+        </Tooltip>
+      </div>
+    </aside>
   );
 }

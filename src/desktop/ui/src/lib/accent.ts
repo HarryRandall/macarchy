@@ -104,3 +104,13 @@ export function accentVariables(accent: string): Record<string, string> {
     "--accent-stroke-dark": toHex(strokeOn(rgb, darkSurfaces)),
   };
 }
+
+/**
+ * The value for `--theme-accent`, the active theme's own colour for previews
+ * and swatches; the interface keeps its own accent. A hex accent becomes
+ * `#rrggbb`; anything else is passed on trimmed, for CSS to read or ignore.
+ */
+export function themeAccent(accent: string): string {
+  const rgb = parseHex(accent);
+  return rgb ? toHex(rgb) : accent.trim();
+}

@@ -7,6 +7,7 @@ import {
   parseHex,
   relativeLuminance,
   strokeOn,
+  themeAccent,
 } from "./accent";
 
 const hex = (value: string) => {
@@ -89,5 +90,16 @@ describe("accentVariables", () => {
 
   it("sets only the accent when it cannot be read", () => {
     expect(accentVariables("teal")).toEqual({ "--accent": "teal" });
+  });
+});
+
+describe("themeAccent", () => {
+  it("normalises a hex accent", () => {
+    expect(themeAccent(" #0A84FF ")).toBe("#0a84ff");
+    expect(themeAccent("#fa0")).toBe("#ffaa00");
+  });
+
+  it("passes anything else through, trimmed", () => {
+    expect(themeAccent(" teal ")).toBe("teal");
   });
 });

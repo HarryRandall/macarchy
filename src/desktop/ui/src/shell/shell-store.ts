@@ -1,16 +1,38 @@
 import { errorMessage } from "~/bridge/client";
-import type { BridgeEvent, BridgeMethods, PaneId, ShellState } from "~/bridge/protocol";
+import type {
+  AppearanceMode,
+  BridgeEvent,
+  BridgeMethods,
+  PaneId,
+  ServiceId,
+  ShellState,
+} from "~/bridge/protocol";
 import { createListeners } from "~/lib/store";
 
 import { reactPanes } from "./panes";
+
+export type ServiceAction = "restart" | "start" | "stop";
 
 export interface ShellSnapshot {
   status: "loading" | "ready" | "failed";
   state: ShellState | null;
   error: string | null;
+  /** Services with a request in flight, shown as busy until it settles. */
+  pending: Partial<Record<ServiceId, ServiceAction>>;
+  restartingAll: boolean;
 }
 
-type Request = <M extends "shell.getState" | "shell.setPreferences" | "shell.openClassic">(
+type ShellMethod =
+  | "shell.getState"
+  | "shell.setPreferences"
+  | "shell.openClassic"
+  | "shell.restartAll"
+  | "shell.revealSettings"
+  | "shell.quit"
+  | "advanced.restartService"
+  | "advanced.stopService";
+
+type Request = <M extends ShellMethod>(
   method: M,
   params: BridgeMethods[M]["params"],
 ) => Promise<BridgeMethods[M]["result"]>;
@@ -23,7 +45,13 @@ export function createShellStore(deps: {
   ): () => void;
 }) {
   const listeners = createListeners();
-  let snapshot: ShellSnapshot = { status: "loading", state: null, error: null };
+  let snapshot: ShellSnapshot = {
+    status: "loading",
+    state: null,
+    error: null,
+    pending: {},
+    restartingAll: false,
+  };
 
   function set(patch: Partial<ShellSnapshot>) {
     snapshot = { ...snapshot, ...patch };
@@ -39,14 +67,33 @@ export function createShellStore(deps: {
     set({ error: errorMessage(error) });
   }
 
-  // A selection is saved by a request; an event the host sent before that
-  // request arrived still carries the old pane and must not undo the click.
+  // A preference is saved by a request; an event the host sent before that
+  // request arrived still carries the old value and must not undo the click.
   let pendingPane: PaneId | null = null;
+  let pendingMode: AppearanceMode | null = null;
+
+  function withPending(state: ShellState): ShellState {
+    let next = state;
+    if (pendingPane) next = { ...next, selectedPane: pendingPane };
+    if (pendingMode) next = { ...next, appearance: { ...next.appearance, mode: pendingMode } };
+    return next;
+  }
 
   deps.subscribe("shell.changed", (event) => {
-    const state = pendingPane ? { ...event.state, selectedPane: pendingPane } : event.state;
-    set({ status: "ready", state, error: null });
+    set({ status: "ready", state: withPending(event.state), error: null });
   });
+
+  /** Marks a service busy for the length of a request; failures reach the caller. */
+  async function serviceRequest(id: ServiceId, action: ServiceAction, run: () => Promise<null>) {
+    set({ pending: { ...snapshot.pending, [id]: action } });
+    try {
+      await run();
+    } finally {
+      const pending = { ...snapshot.pending };
+      delete pending[id];
+      set({ pending });
+    }
+  }
 
   return {
     subscribe: listeners.subscribe,
@@ -56,7 +103,7 @@ export function createShellStore(deps: {
       try {
         set({
           status: "ready",
-          state: await deps.request("shell.getState", {}),
+          state: withPending(await deps.request("shell.getState", {})),
           error: null,
         });
       } catch (error) {
@@ -85,12 +132,52 @@ export function createShellStore(deps: {
       }
     },
 
+    setAppearance(mode: AppearanceMode) {
+      if (snapshot.state) patchState({ appearance: { ...snapshot.state.appearance, mode } });
+      pendingMode = mode;
+      deps
+        .request("shell.setPreferences", { appearance: mode })
+        .catch(report)
+        .finally(() => {
+          if (pendingMode === mode) pendingMode = null;
+        });
+    },
+
     dismissError() {
       set({ error: null });
     },
 
     openClassic(params: BridgeMethods["shell.openClassic"]["params"]) {
       deps.request("shell.openClassic", params).catch(report);
+    },
+
+    /** Restarts a running service, or starts a stopped one. Rejects with the host's reason. */
+    restartService(id: ServiceId, action: "restart" | "start" = "restart") {
+      return serviceRequest(id, action, () =>
+        deps.request("advanced.restartService", { daemon: id }),
+      );
+    },
+
+    stopService(id: ServiceId) {
+      return serviceRequest(id, "stop", () => deps.request("advanced.stopService", { daemon: id }));
+    },
+
+    /** Resolves with the host's summary, such as which services came back. */
+    async restartAll(): Promise<string> {
+      set({ restartingAll: true });
+      try {
+        return (await deps.request("shell.restartAll", {})).outcome;
+      } finally {
+        set({ restartingAll: false });
+      }
+    },
+
+    revealSettings(): Promise<null> {
+      return deps.request("shell.revealSettings", {});
+    },
+
+    quit(): Promise<null> {
+      return deps.request("shell.quit", {});
     },
   };
 }
