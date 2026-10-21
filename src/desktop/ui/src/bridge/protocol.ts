@@ -41,6 +41,7 @@ import type { ThemesMethods } from "./contract/themes";
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
 import type { ReportMethods } from "./contract/report";
 import type { RulesEvent, RulesMethods } from "./contract/rules";
+import type { ShortcutsEvent, ShortcutsMethods } from "./contract/shortcuts";
 import type { ShellEvent, ShellMethods } from "./contract/shell";
 import type { SwitcherEvent, SwitcherMethods } from "./contract/switcher";
 
@@ -49,6 +50,7 @@ export type * from "./contract/borders";
 export type * from "./contract/health";
 export type * from "./contract/home";
 export type * from "./contract/themes";
+export type * from "./contract/shortcuts";
 export type * from "./contract/layout";
 export type * from "./contract/report";
 export type * from "./contract/rules";
@@ -72,7 +74,8 @@ export interface BridgeMethods
     HomeMethods,
     HealthMethods,
     ReportMethods,
-    ThemesMethods {}
+    ThemesMethods,
+    ShortcutsMethods {}
 
 export type BridgeMethod = keyof BridgeMethods;
 export type ParamsOf<M extends BridgeMethod> = BridgeMethods[M]["params"];
@@ -93,7 +96,8 @@ export type BridgeEvent =
   | AdvancedEvent
   | BordersEvent
   | HomeEvent
-  | HealthEvent;
+  | HealthEvent
+  | ShortcutsEvent;
 
 /**
  * Installed by the host at document start, before any page script runs, so

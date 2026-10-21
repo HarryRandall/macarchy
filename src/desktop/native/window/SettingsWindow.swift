@@ -77,6 +77,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerHealth(model: model)
         surface.router.registerReport(model: model)
         surface.router.registerThemes(model: model)
+        surface.router.registerShortcuts(model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),

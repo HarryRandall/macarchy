@@ -182,3 +182,22 @@ a stale token is refused. `ProblemReport` prepares the issue URL and the long
 report clipboard fallback. Clipboard, browser and Finder actions stay native
 and are replaced by recorders in tests. Preparing or refreshing never writes
 settings, reads logs or submits an issue.
+
+## Shortcuts
+
+The Shortcuts page reads the person's skhdrc through `SkhdShortcuts` in the
+core. Its named bridge operations are `shortcuts.getState`, `shortcuts.validate`,
+`shortcuts.rebind`, `shortcuts.disable`, `shortcuts.reset` and
+`shortcuts.openConfiguration`. Opening and refreshing never seed the file.
+Writes check the loaded revision, snapshot the original, preserve custom lines
+and restart skhd. A failed restart is reported separately from a successful save.
+Only an explicitly confirmed reset replaces commands with bundled defaults.
+
+The focused React recorder captures keydown events. Swift validates the chord
+and renders its skhd spelling and key caps. macOS may intercept system shortcuts
+before they reach WebKit. `shortcuts.changed` and `shortcuts.unavailable` events
+report external file changes; an open recording is retained and a stale edit
+must be reopened before saving. The broadcaster checks the selected skhdrc
+once a second, including symlinks and the `~/.skhdrc` fallback.
+
+Browser development supports `?fail=shortcuts` and `?fail=shortcuts-state`.

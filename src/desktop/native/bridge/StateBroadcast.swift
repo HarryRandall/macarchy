@@ -22,6 +22,7 @@ final class StateBroadcast {
     private var lastShell: ShellState?
     private var lastMaintenance = ""
     private var watcher: DispatchSourceFileSystemObject?
+    private let shortcutsBroadcast = ShortcutsBroadcast()
     private var lastSettings: Data?
     private let homeFiles = HomeFileWatch()
     private var pendingReload: Task<Void, Never>?
@@ -43,6 +44,12 @@ final class StateBroadcast {
         observe()
         watchSettings()
         homeFiles.start { [weak self] in self?.publishOverview() }
+        shortcutsBroadcast.start { [weak self] event in self?.settings()?.send(event) }
+    }
+
+    func shortcutsWritten(_ state: ShortcutsState) {
+        shortcutsBroadcast.written(state)
+        settings()?.send(.shortcutsChanged(state))
     }
 
     /// Records a save the app made itself, so the watcher does not treat it

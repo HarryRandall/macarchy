@@ -5,6 +5,7 @@ import { homePage } from "~/features/home/page";
 import { healthPage } from "~/features/health/page";
 import { reportPage } from "~/features/report/page";
 import { themesPage } from "~/features/themes/page";
+import { shortcutsPage } from "~/features/shortcuts/page";
 import { layoutPage } from "~/features/layout/page";
 
 import type { RegisteredPage } from "./page";
@@ -23,4 +24,5 @@ export const pages: RegisteredPage[] = [
   healthPage,
   reportPage,
   themesPage,
+  shortcutsPage,
 ];

@@ -13,6 +13,7 @@
  * setServices(2).
  */
 import { createThemesMock } from "~/features/themes/themes-mock";
+import { shortcutsMock } from "~/features/shortcuts/shortcuts-mock";
 
 import type {
   AdvancedState,
@@ -344,6 +345,7 @@ export function installMockHost() {
     },
     "borders.pickApplication": () => ({ name: "Example", icon: null }),
     ...createThemesMock(() => switcher),
+    ...shortcutsMock(deliver, failures),
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;

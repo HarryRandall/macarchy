@@ -169,7 +169,9 @@ final class Harness {
             .write(to: folder.appending(path: name))
     }
 
-    /// The settings window's page, loading but never shown.
+    /// The settings window's page on `pane`, loading but never shown. The
+    /// selection persists in the test process's defaults, so every page sets
+    /// it rather than inheriting the previous test's.
     func settingsPage(pane: Pane = .layout) throws -> (SettingsWindow, WebSurface) {
         InterfacePreferences.selectedPane = pane
         let window = SettingsWindow()
