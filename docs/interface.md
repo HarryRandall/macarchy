@@ -2,8 +2,8 @@
 
 The settings window and the theme switcher are React pages in native AppKit
 windows. Swift owns everything that touches the desktop or the disk; React owns
-presentation and interaction state. The menu bar item, and the settings pages
-not yet migrated, are still SwiftUI.
+presentation and interaction state. The menu bar item and the Menu Bar
+component editor are still SwiftUI.
 
 ## Pieces
 
@@ -11,15 +11,16 @@ not yet migrated, are still SwiftUI.
 |---|---|
 | `src/desktop/ui` | The React and TypeScript interface, built with Vite. Its own package: `package.json`, `pnpm-lock.yaml` and tool configs live here. |
 | `src/desktop/ui/src/bridge` | The bridge contract (`protocol.ts`), the client, and a mock host for browser development. |
-| `src/desktop/ui/src/components/ui` | Shared controls: buttons, switches, sliders, selects, segmented controls, tooltips, menus. |
-| `src/desktop/ui/src/components/layout` | Page header, settings sections and rows. |
-| `src/desktop/ui/src/shell` | The settings window's sidebar, top bar and page host. |
+| `src/desktop/ui/src/components/ui` | Shared controls: buttons, switches, sliders, selects, segmented controls, tabs, cards and rows, tooltips, menus. |
+| `src/desktop/ui/src/components/charts` | Sparklines, line and bar charts, service rings and status dots, with keyboard-readable values. |
+| `src/desktop/ui/src/components/layout` | Page chrome (top bar actions and page search), page header, settings sections and rows. |
+| `src/desktop/ui/src/shell` | The settings window's sidebar, top bar, service status and logs panels, command palette, changelog route and page host. |
 | `src/desktop/ui/src/features` | One folder per page or surface, with its previews and complex controls. |
 | `src/desktop/native/web` | `WebSurface` (a web view and its bridge), `HostWebView` (title bar dragging), `AppScheme` (serves the bundled interface and wallpaper thumbnails). |
 | `src/desktop/native/bridge` | The Swift mirror of the contract, the router, state snapshots and the broadcaster. |
 | `src/desktop/native/window` | The React settings window, the classic window's AppKit host, and the window buttons both use. |
 | `src/desktop/native/switcher` | The floating switcher panel and its global shortcut. |
-| `src/desktop/classic` | The SwiftUI window, for panes that have not moved yet. |
+| `src/desktop/classic` | The SwiftUI window, kept for the Menu Bar component editor. |
 
 Advanced and first-run setup are React pages. Before settings exist, setup
 replaces the selected pane and previews `Setup.plan` before enabling Set up.
@@ -92,6 +93,15 @@ status menu or the classic window shows up everywhere.
 `protocol.ts` and `BridgeMessages.swift` describe the same shapes and must be
 changed together.
 
+The shell reads `shell.getState`: the selected pane, sidebar and appearance
+preferences, the app's version and each service with its state.
+`shell.setPreferences` also stores the appearance (System, Light or Dark) and
+sets the window's `NSWindow.appearance`, so the native title bar matches; the
+page mirrors it with `data-theme` on the root. `shell.getLog` returns the
+command log that the logs panel shows, `shell.clearLog` empties it, and
+`shell.logChanged` invalidates it once per burst. `shell.restartAll`,
+`shell.revealSettings` and `shell.quit` back the brand menu.
+
 Advanced uses named `advanced.getState`, `restartService`, `stopService`,
 `rebuild`, `restoreSnapshot`, `repairAddition` and `restoreOriginals` requests.
 `setup.getPlan`, `setup.run` and `setup.openAccessibility` serve setup.
@@ -112,6 +122,22 @@ both surfaces' routers as the app does, requires their method names to equal
 the fixture keys, decodes every `params`, and requires every `result` and
 event to decode and re-encode to the same JSON, nulls included, so result
 types are `Codable`. A new event also needs a line in that test's event table.
+
+## Design
+
+The settings window follows the Studio design, whose working mockup lives in
+`src/desktop/ui/src/components/gallery/options/studio` (development only, not
+linted or bundled). `styles/index.css` holds its colour, type, radius and motion
+roles for light and dark; components use the role names, never raw values. The
+interface accent is Studio's indigo; the active theme's colour is
+`--theme-accent`, used only where a page previews the theme itself.
+
+Page actions go to the top bar through `PageHeader` or `TopBarActions`, and a
+page that filters its items calls `usePageSearch`, which turns the top bar's
+search field into that page's filter; ⌘K opens the command palette. Where a
+page draws something the app cannot provide yet, its data lives in a typed
+`<feature>-mock.ts` beside it and each use is marked with a `Mock:` comment, so
+it can be found and replaced.
 
 ## Development
 
@@ -167,6 +193,8 @@ folder renders each state of both pages there as PNGs for review.
 2. Add its requests and events to `protocol.ts` and `BridgeMessages.swift`,
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
+   A pane whose editor has not moved yet also goes in `Pane.classicEditors`,
+   so `shell.openClassic` can still show it in the classic window.
 4. Delete the SwiftUI pane and anything only it used.
 
 ## Rules
@@ -208,9 +236,9 @@ must be discarded before editing the new theme.
 ## Overview pages
 
 Home, Setup health and Report a problem are React pages. Home is the new
-window's default pane. The classic window restores an unmigrated selection,
-falling back to Workshop while it remains classic. Workshop and Plugins links
-on Home are labelled as previews.
+window's default pane. The classic window only shows the Menu Bar editor now,
+which the React Menu Bar page opens. Workshop and Plugins are labelled as
+previews wherever they appear.
 
 Home reads `DesktopOverview` in core, without using another page's React store.
 `home.changed` and `health.changed` invalidate read-only summaries after model
