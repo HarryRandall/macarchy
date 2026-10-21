@@ -141,6 +141,7 @@ extension AppModel {
             case .permitted: addition = "active"
             case .binaryMissing, .bundleMissing: addition = "missing"
             case .ruleMissing, .hashStale: addition = "repair"
+            case .isolated: addition = "unavailable"
             }
             return AdvancedState(
                 services: Daemon.allCases.map {

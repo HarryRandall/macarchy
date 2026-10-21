@@ -6,7 +6,8 @@ export interface AdvancedState {
   snapshots: { id: string; created: number; files: number; reason: string }[];
   theme: string;
   installedThemes: number;
-  addition: "active" | "missing" | "repair";
+  /** `unavailable` is a development run, which never offers a repair. */
+  addition: "active" | "missing" | "repair" | "unavailable";
   additionExplanation: string;
   wakeHelpers: boolean;
   backupsDirectory: string;

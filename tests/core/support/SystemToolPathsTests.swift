@@ -46,6 +46,50 @@ struct SystemToolPathsTests {
         }
     }
 
+    @Test("either variable on its own makes a run isolated")
+    func isolation() {
+        #expect(!Paths.isolated(in: [:]))
+        #expect(!Paths.isolated(in: ["PATH": "/usr/bin"]))
+        #expect(Paths.isolated(in: ["MACARCHY_HOME": "/tmp/home"]))
+        #expect(Paths.isolated(in: ["MACARCHY_SEARCH_PATH": "/tmp/bin"]))
+        #expect(Paths.isolated(in: ["MACARCHY_SEARCH_PATH": ""]))
+    }
+
+    @Test("a home without a search path never reaches the real tool")
+    func homeOnly() throws {
+        let home = try folder()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let environment = ["MACARCHY_HOME": home.path]
+        for tool in Self.tools {
+            let path = tool.resolve(environment)
+            #expect(path != tool.system)
+            #expect(path.hasPrefix(home.path + "/"))
+            #expect(!FileManager.default.fileExists(atPath: path))
+        }
+    }
+
+    @Test("an empty search path is isolated with no folders and does not crash")
+    func emptySearchPath() throws {
+        let home = try folder()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let environment = [
+            "MACARCHY_HOME": home.path, "MACARCHY_SEARCH_PATH": "", "PATH": "/bin:/usr/bin"
+        ]
+        #expect(Paths.searchDirectories(in: environment).isEmpty)
+        for tool in Self.tools {
+            let path = tool.resolve(environment)
+            #expect(path != tool.system)
+            #expect(!FileManager.default.fileExists(atPath: path))
+        }
+        let yabai = Paths.executable("yabai", in: environment)
+        #expect(yabai.hasPrefix(home.path + "/"))
+        #expect(!FileManager.default.fileExists(atPath: yabai))
+        // PATH is ignored once the search path is overridden, even when empty.
+        let shell = Paths.executable("sh", in: environment)
+        #expect(shell != "/bin/sh")
+        #expect(!FileManager.default.fileExists(atPath: shell))
+    }
+
     @Test("a fake on the search path is used, wherever it sits on it")
     func fakeOnSearchPath() throws {
         let first = try folder()

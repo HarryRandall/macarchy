@@ -27,6 +27,9 @@ public enum ScriptingAddition {
         case ruleMissing
         /// The usual one: yabai was upgraded and the pinned hash went stale.
         case hashStale(pinned: String, actual: String)
+        /// A development run, whose yabai is a fake that the real sudoers
+        /// rule must never be pinned to.
+        case isolated
 
         public var isPermitted: Bool { self == .permitted }
 
@@ -46,16 +49,22 @@ public enum ScriptingAddition {
             case .hashStale:
                 "yabai was updated, so the scripting addition lost permission "
                     + "to load. Everything Macarchy needs keeps working."
+            case .isolated:
+                ScriptingAddition.isolatedReason
             }
         }
     }
+
+    static let isolatedReason = "Development runs never change the real sudoers rule."
 
     /// Reads the state of the rule. No side effects, no privileges.
     public static func status(
         binary: String = Paths.yabai,
         sudoers: String = sudoersPath,
-        bundle: String = bundlePath
+        bundle: String = bundlePath,
+        isolated: Bool = Paths.isolated
     ) -> Status {
+        guard !isolated else { return .isolated }
         guard let actual = digest(ofFileAt: binary) else { return .binaryMissing }
         guard FileManager.default.fileExists(atPath: bundle) else { return .bundleMissing }
         guard let rules = try? String(contentsOfFile: sudoers, encoding: .utf8),
@@ -127,6 +136,7 @@ public enum ScriptingAddition {
     public static func repair(
         user: String = NSUserName(),
         binary: String = Paths.yabai,
+        isolated: Bool = Paths.isolated,
         execute: @Sendable (String, [String]) async -> CommandResult = {
             // The prompt waits on a person, so it outlives the usual budget.
             await CommandRunner.run($0, $1, timeout: 300)
@@ -135,6 +145,9 @@ public enum ScriptingAddition {
         let failed = { (message: String) in
             CommandResult(command: "repair scripting addition", status: 1, stderr: message)
         }
+        // The sudoers file and the addition are system-wide whatever the home,
+        // and the fake yabai's path would pass every check below.
+        guard !isolated else { return failed(isolatedReason) }
         guard let digest = digest(ofFileAt: binary) else {
             return failed("No window manager is installed at \(binary).")
         }

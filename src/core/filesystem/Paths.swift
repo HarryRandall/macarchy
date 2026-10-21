@@ -6,10 +6,20 @@ import Foundation
 /// writes outside it are the startup files the daemons read from fixed places,
 /// and Ghostty's include line, all of which setup backs up first.
 public enum Paths {
-    public static var home: URL {
-        URL(
-            fileURLWithPath: ProcessInfo.processInfo.environment["MACARCHY_HOME"]
-                ?? NSHomeDirectory())
+    public static var home: URL { home(in: ProcessInfo.processInfo.environment) }
+
+    static func home(in environment: [String: String]) -> URL {
+        URL(fileURLWithPath: environment["MACARCHY_HOME"] ?? NSHomeDirectory())
+    }
+
+    /// A development run or test, which must never reach the real login
+    /// session, global defaults, sudoers or LaunchAgents. Either variable is
+    /// enough, so a run that sets only one is still kept away from them. Read
+    /// on every use, because the web view tests set both after launch.
+    public static var isolated: Bool { isolated(in: ProcessInfo.processInfo.environment) }
+
+    static func isolated(in environment: [String: String]) -> Bool {
+        environment["MACARCHY_HOME"] != nil || environment["MACARCHY_SEARCH_PATH"] != nil
     }
 
     public static var appRoot: URL { home.appending(path: ".config/macarchy") }
@@ -71,9 +81,14 @@ public enum Paths {
 
     /// Homebrew prefixes for Apple Silicon and Intel, in that order.
     /// `MACARCHY_SEARCH_PATH` replaces them, so tests can supply fakes and
-    /// never reach the real daemons.
+    /// never reach the real daemons. An empty value is still an override,
+    /// with no directories at all.
     static var searchDirectories: [String] {
-        if let override = ProcessInfo.processInfo.environment["MACARCHY_SEARCH_PATH"] {
+        searchDirectories(in: ProcessInfo.processInfo.environment)
+    }
+
+    static func searchDirectories(in environment: [String: String]) -> [String] {
+        if let override = environment["MACARCHY_SEARCH_PATH"] {
             return override.split(separator: ":").map(String.init)
         }
         return ["/opt/homebrew/bin", "/usr/local/bin"]
@@ -86,19 +101,23 @@ public enum Paths {
     /// the Homebrew one without editing anything else. When nothing is found
     /// the Apple Silicon path is returned and checks report it as missing.
     public static func executable(_ name: String) -> String {
+        executable(name, in: ProcessInfo.processInfo.environment)
+    }
+
+    static func executable(_ name: String, in environment: [String: String]) -> String {
         let fm = FileManager.default
-        let directories = [binDirectory.path] + searchDirectories
-        for directory in directories {
+        let bin = home(in: environment).appending(path: ".config/macarchy/bin").path
+        let searched = searchDirectories(in: environment)
+        for directory in [bin] + searched {
             let candidate = directory + "/" + name
             if fm.isExecutableFile(atPath: candidate) { return candidate }
         }
-        let environment = ProcessInfo.processInfo.environment
         let path = environment["MACARCHY_SEARCH_PATH"] == nil ? environment["PATH"] ?? "" : ""
         for directory in path.split(separator: ":") {
             let candidate = String(directory) + "/" + name
             if fm.isExecutableFile(atPath: candidate) { return candidate }
         }
-        return searchDirectories[0] + "/" + name
+        return missing(name, searched: searched, environment: environment)
     }
 
     static func launchctl(in environment: [String: String]) -> String {
@@ -110,19 +129,30 @@ public enum Paths {
     }
 
     /// launchctl and defaults act on the login session and the global domain
-    /// whatever `MACARCHY_HOME` says, so with `MACARCHY_SEARCH_PATH` set only
-    /// a fake there is used. Without one the path names a file that does not
-    /// exist, so the command fails instead of reaching the real tool.
+    /// whatever `MACARCHY_HOME` says, so an isolated run only uses a fake on
+    /// `MACARCHY_SEARCH_PATH`. Without one the path names a file that does
+    /// not exist, so the command fails instead of reaching the real tool.
     private static func systemTool(
         _ name: String, at system: String, in environment: [String: String]
     ) -> String {
-        guard let override = environment["MACARCHY_SEARCH_PATH"] else { return system }
-        let directories = override.split(separator: ":").map(String.init)
+        guard isolated(in: environment) else { return system }
+        let directories =
+            environment["MACARCHY_SEARCH_PATH"]?.split(separator: ":").map(String.init) ?? []
         for directory in directories {
             let candidate = directory + "/" + name
             if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
         }
-        return (directories.first ?? "") + "/" + name
+        return missing(name, searched: directories, environment: environment)
+    }
+
+    /// Where a tool that was not found is reported to be. The first searched
+    /// folder was already checked; with none, a folder inside the app's own
+    /// bin that nothing creates, so the path cannot name a real file.
+    private static func missing(
+        _ name: String, searched: [String], environment: [String: String]
+    ) -> String {
+        if let first = searched.first { return first + "/" + name }
+        return home(in: environment).appending(path: ".config/macarchy/bin/.missing/\(name)").path
     }
 
     /// Where apps are installed. `MACARCHY_APPLICATIONS` replaces the list in tests.

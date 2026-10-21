@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         true
         #else
-        ProcessInfo.processInfo.environment["MACARCHY_HOME"] != nil
+        Paths.isolated
         #endif
     }
 

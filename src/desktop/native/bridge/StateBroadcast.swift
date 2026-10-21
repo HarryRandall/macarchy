@@ -25,7 +25,7 @@ final class StateBroadcast {
     private let shortcutsBroadcast = ShortcutsBroadcast()
     private var lastSettings: Data?
     private let homeFiles = HomeFileWatch()
-    private var pendingReload: Task<Void, Never>?
+    private var reloadGeneration = 0
     private var overviewHolds = 0
     private var overviewDue = false
 
@@ -188,11 +188,18 @@ final class StateBroadcast {
 
     /// Several writes land together (a snapshot, then the settings), so wait
     /// for them to settle and act only if the settings themselves changed.
+    ///
+    /// A later event only replaces a reload still waiting. One already reading
+    /// runs to the end: cancelling it would kill its yabai commands, which read
+    /// as yabai not responding and briefly reach the page.
     private func settingsFolderChanged() {
-        pendingReload?.cancel()
-        pendingReload = Task { [weak self] in
+        reloadGeneration += 1
+        let generation = reloadGeneration
+        Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
-            guard !Task.isCancelled, let self, let model = self.model else { return }
+            guard let self, generation == self.reloadGeneration, let model = self.model else {
+                return
+            }
             let data = try? Data(contentsOf: model.settingsStore.url)
             guard data != self.lastSettings else { return }
             self.lastSettings = data
