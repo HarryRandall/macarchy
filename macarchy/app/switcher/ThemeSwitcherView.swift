@@ -25,7 +25,12 @@ struct ThemeSwitcherView: View {
     @FocusState private var searchFocused: Bool
 
     private var themes: [InstalledTheme] {
-        let all = model.themes.themes.sorted { $0.name < $1.name }
+        let preferred = ["awakening", "lumon"]
+        let all = model.themes.themes.sorted {
+            let left = preferred.firstIndex(of: $0.name) ?? preferred.count
+            let right = preferred.firstIndex(of: $1.name) ?? preferred.count
+            return (left, $0.name) < (right, $1.name)
+        }
         guard !search.isEmpty else { return all }
         return all.filter { $0.title.localizedCaseInsensitiveContains(search) }
     }
