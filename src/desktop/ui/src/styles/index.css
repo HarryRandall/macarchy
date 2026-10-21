@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+/*
+ * Surface, type and motion tokens mirror the SwiftUI app (Color+Surface,
+ * Typography, Motion). Components use the role names, never raw sizes.
+ * Values switch on the system appearance unless the page forces one with
+ * `data-theme` (the switcher panel is always dark). `data-appearance` forces
+ * one on a subtree instead, for content drawn over artwork and for the
+ * development gallery's side-by-side panels.
+ */
+:root,
+[data-appearance="light"] {
+  color-scheme: light;
+  --surface-page: #f2f2f4;
+  --surface-card: #ffffff;
+  --surface-bar: #e9e9ec;
+  --surface-popover: #f6f6f8;
+  --line-hairline: rgb(0 0 0 / 0.12);
+  --fill-well: rgb(0 0 0 / 0.1);
+  --fill-hover: rgb(0 0 0 / 0.08);
+  --ink-primary: rgb(0 0 0 / 0.85);
+  --ink-secondary: rgb(0 0 0 / 0.5);
+  --ink-meta: rgb(0 0 0 / 0.6);
+  --status-success: #34c759;
+  --status-warning: #ff9500;
+  --status-danger: #ff3b30;
+  /* Apple's system colours, for tinting icons and tiles by subject. */
+  --hue-blue: #007aff;
+  --hue-purple: #af52de;
+  --hue-pink: #ff2d55;
+  --hue-teal: #30b0c7;
+  --hue-orange: #ff9500;
+  --hue-green: #34c759;
+  --hue-red: #ff3b30;
+  --accent-stroke: var(--accent-stroke-light, var(--accent));
+}
+
+/*
+ * The accent itself is set on the root only: the settings shell writes the
+ * theme's accent there, and a subtree redeclaring it would hide that.
+ * `--accent-fg` is ink on an accent fill; `--accent-stroke` is the accent as
+ * a ring, focus outline or slider fill. The shell derives both from the
+ * theme's accent (lib/accent) so a near-white or near-black accent stays
+ * visible; these are fallbacks.
+ */
+:root {
+  --accent: #007aff;
+  --accent-fg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-page: #1c1c1e;
+    --surface-card: #2a2a2c;
+    --surface-bar: #242426;
+    --surface-popover: #303032;
+    --line-hairline: rgb(255 255 255 / 0.12);
+    --fill-well: rgb(255 255 255 / 0.1);
+    --fill-hover: rgb(255 255 255 / 0.08);
+    --ink-primary: rgb(255 255 255 / 0.85);
+    --ink-secondary: rgb(255 255 255 / 0.55);
+    --ink-meta: rgb(255 255 255 / 0.6);
+    --status-success: #30d158;
+    --status-warning: #ff9f0a;
+    --status-danger: #ff453a;
+    --hue-blue: #0a84ff;
+    --hue-purple: #bf5af2;
+    --hue-pink: #ff375f;
+    --hue-teal: #40c8e0;
+    --hue-orange: #ff9f0a;
+    --hue-green: #30d158;
+    --hue-red: #ff453a;
+    --accent: #0a84ff;
+    --accent-stroke: var(--accent-stroke-dark, var(--accent));
+  }
+}
+
+:root[data-theme="dark"],
+[data-appearance="dark"] {
+  color-scheme: dark;
+  --surface-page: #1c1c1e;
+  --surface-card: #2a2a2c;
+  --surface-bar: #242426;
+  --surface-popover: #303032;
+  --line-hairline: rgb(255 255 255 / 0.12);
+  --fill-well: rgb(255 255 255 / 0.1);
+  --fill-hover: rgb(255 255 255 / 0.08);
+  --ink-primary: rgb(255 255 255 / 0.85);
+  --ink-secondary: rgb(255 255 255 / 0.55);
+  --ink-meta: rgb(255 255 255 / 0.6);
+  --status-success: #30d158;
+  --status-warning: #ff9f0a;
+  --status-danger: #ff453a;
+  --hue-blue: #0a84ff;
+  --hue-purple: #bf5af2;
+  --hue-pink: #ff375f;
+  --hue-teal: #40c8e0;
+  --hue-orange: #ff9f0a;
+  --hue-green: #30d158;
+  --hue-red: #ff453a;
+  --accent-stroke: var(--accent-stroke-dark, var(--accent));
+}
+
+:root[data-theme="dark"] {
+  --accent: #0a84ff;
+}
+
+@theme inline {
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-page: var(--surface-page);
+  --color-card: var(--surface-card);
+  --color-bar: var(--surface-bar);
+  --color-popover: var(--surface-popover);
+  --color-hairline: var(--line-hairline);
+  --color-well: var(--fill-well);
+  --color-hover: var(--fill-hover);
+  --color-fg: var(--ink-primary);
+  --color-fg-secondary: var(--ink-secondary);
+  --color-fg-meta: var(--ink-meta);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-stroke: var(--accent-stroke);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-danger: var(--status-danger);
+  --color-tint-blue: var(--hue-blue);
+  --color-tint-purple: var(--hue-purple);
+  --color-tint-pink: var(--hue-pink);
+  --color-tint-teal: var(--hue-teal);
+  --color-tint-orange: var(--hue-orange);
+  --color-tint-green: var(--hue-green);
+  --color-tint-red: var(--hue-red);
+}
+
+@theme {
+  /* Apple's macOS scale, by role. Nothing goes below the 10 pt floor. */
+  --text-page-title: 26px;
+  --text-page-title--line-height: 32px;
+  --text-page-title--font-weight: 600;
+  --text-hero-title: 22px;
+  --text-hero-title--line-height: 28px;
+  --text-hero-title--font-weight: 600;
+  --text-section-title: 15px;
+  --text-section-title--line-height: 20px;
+  --text-section-title--font-weight: 600;
+  --text-card-title: 13px;
+  --text-card-title--line-height: 16px;
+  --text-card-title--font-weight: 600;
+  --text-row-title: 13px;
+  --text-row-title--line-height: 16px;
+  --text-row-detail: 11px;
+  --text-row-detail--line-height: 14px;
+  --text-meta: 11px;
+  --text-meta--line-height: 14px;
+  --text-eyebrow: 10px;
+  --text-eyebrow--line-height: 14px;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 0.8px;
+  --text-badge: 10px;
+  --text-badge--line-height: 12px;
+  --text-badge--font-weight: 500;
+  --text-mono-detail: 11px;
+  --text-mono-detail--line-height: 14px;
+
+  --radius-small: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+
+  /* Spring approximations of Motion.snappy and Motion.smooth. */
+  --ease-snappy: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.85, 0.3, 1);
+  --ease-hover: ease-out;
+  --default-transition-duration: 140ms;
+  --default-transition-timing-function: ease-out;
+}
+
+@utility duration-snappy {
+  transition-duration: 320ms;
+  transition-timing-function: var(--ease-snappy);
+}
+
+@utility duration-smooth {
+  transition-duration: 420ms;
+  transition-timing-function: var(--ease-smooth);
+}
+
+/* The transparency tell behind a colour with alpha. */
+@utility bg-checkerboard {
+  background-color: #ffffff;
+  background-image: conic-gradient(
+    rgb(128 128 128 / 0.5) 25%,
+    transparent 0 50%,
+    rgb(128 128 128 / 0.5) 0 75%,
+    transparent 0
+  );
+  background-size: 10px 10px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+    /* WKWebView rubber-bands the whole page; a native window does not. */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    overflow: hidden;
+    cursor: default;
+    /* Chrome text is not selectable in a native window. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  button {
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-stroke);
+    outline-offset: 1px;
+  }
+
+  /* Inherited ink resolves where it is declared, so a forced subtree restates it. */
+  [data-appearance] {
+    color: var(--ink-primary);
+  }
+
+  /* The switcher panel's backdrop is native; the page must not paint over it. */
+  html[data-surface="switcher"],
+  html[data-surface="switcher"] body {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
