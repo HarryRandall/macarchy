@@ -26,6 +26,8 @@ export interface SetupState {
 export interface SetupReport {
   lines: string[];
   failures: string[];
+  /** Why setup stopped early. `lines` still lists what it changed first. */
+  failure: string | null;
 }
 export interface AdvancedMethods {
   "advanced.getState": { params: Record<string, never>; result: AdvancedState };

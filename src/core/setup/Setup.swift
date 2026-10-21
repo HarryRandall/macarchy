@@ -134,15 +134,25 @@ public enum Setup {
 
     /// Performs the plan under the desktop lock, so two setups cannot
     /// interleave and back up each other's output as an original.
+    /// A failing step throws `Interrupted` with the lines of the steps before it.
     public static func run(existing: Existing, app: URL?) async throws -> [String] {
         try await OperationLock.run { try runLocked(existing: existing, app: app) }
     }
 
+    static func runLocked(existing: Existing, app: URL?) throws -> [String] {
+        var report: [String] = []
+        do {
+            try perform(existing: existing, app: app, report: &report)
+        } catch {
+            throw Interrupted(lines: report, reason: error.localizedDescription)
+        }
+        return report
+    }
+
     // The steps read top to bottom in the order they must happen.
     // swiftlint:disable:next function_body_length
-    static func runLocked(existing: Existing, app: URL?) throws -> [String] {
+    private static func perform(existing: Existing, app: URL?, report: inout [String]) throws {
         let fm = FileManager.default
-        var report: [String] = []
         for directory in [
             Paths.appRoot, Paths.themesDirectory, Paths.generatedDirectory, Paths.backupsDirectory
         ] {
@@ -215,7 +225,6 @@ public enum Setup {
                 report.append("Added the theme include to Ghostty")
             }
         }
-        return report
     }
 
     /// Restores every original from backups and removes what setup created.
@@ -342,5 +351,15 @@ extension Setup {
             }
         }
         return results
+    }
+}
+
+extension Setup {
+    /// Setup stopped partway. Files changed before the failure stay changed,
+    /// so the lines describing them must reach the person with the reason.
+    public struct Interrupted: LocalizedError, Sendable {
+        public let lines: [String]
+        public let reason: String
+        public var errorDescription: String? { reason }
     }
 }

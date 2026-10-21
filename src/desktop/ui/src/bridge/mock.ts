@@ -332,7 +332,11 @@ export function installMockHost() {
     "advanced.rebuild": () => ({ outcome: "Rebuilt" }),
     "advanced.restoreSnapshot": () => null,
     "advanced.repairAddition": () => null,
-    "advanced.restoreOriginals": () => ({ lines: ["Restored original files"], failures: [] }),
+    "advanced.restoreOriginals": () => ({
+      lines: ["Restored original files"],
+      failures: [],
+      failure: null,
+    }),
     "setup.getPlan": () => ({
       tools: [],
       changes: [
@@ -346,9 +350,17 @@ export function installMockHost() {
       canClose: !shell.setupRequired,
     }),
     "setup.run": () => {
+      if (failures.has("setup")) {
+        return {
+          lines: ["Installed themes", "Installed default shortcuts"],
+          failures: [],
+          failure:
+            "Setup did not finish; some files may already have changed. The menu bar file could not be written.",
+        };
+      }
       shell = { ...shell, setupRequired: false };
       deliver({ type: "shell.changed", state: shell });
-      return { lines: ["Installed themes", "Prepared startup files"], failures: [] };
+      return { lines: ["Installed themes", "Prepared startup files"], failures: [], failure: null };
     },
     "setup.openAccessibility": () => null,
     "borders.getState": () => {

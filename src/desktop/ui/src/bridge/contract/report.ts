@@ -4,7 +4,11 @@ export interface ReportState {
   token: string;
 }
 export interface ReportMethods {
-  "report.prepare": { params: { description: string }; result: ReportState };
+  /**
+   * `refresh` collects diagnostics again unless a collection is running;
+   * otherwise the last collection is reused, so draft edits stay cheap.
+   */
+  "report.prepare": { params: { description: string; refresh: boolean }; result: ReportState };
   "report.copy": { params: { token: string }; result: null };
   "report.openIssue": { params: { token: string; title: string }; result: { copied: boolean } };
   "report.openIssues": { params: Record<string, never>; result: null };

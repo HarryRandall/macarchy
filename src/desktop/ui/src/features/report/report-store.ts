@@ -26,6 +26,11 @@ export function createReportStore(host: PageHost) {
   };
   let revision = 0;
   let active: Promise<void> | null = null;
+  let shown = false;
+  // Whether the next request, and the one in flight, collect diagnostics again.
+  // Draft edits reuse the last collection so typing does not rerun the checks.
+  let refresh = false;
+  let collecting = false;
   function set(patch: Partial<typeof snapshot>) {
     snapshot = { ...snapshot, ...patch };
     listeners.notify();
@@ -34,23 +39,37 @@ export function createReportStore(host: PageHost) {
     let sent: number;
     do {
       sent = revision;
+      collecting = refresh;
+      refresh = false;
       try {
-        const preview = await host.request("report.prepare", { description: snapshot.description });
+        const preview = await host.request("report.prepare", {
+          description: snapshot.description,
+          refresh: collecting,
+        });
         if (sent === revision) set({ preview, status: "ready", error: null });
       } catch (error) {
         if (sent === revision)
           set({ status: snapshot.preview ? "ready" : "failed", error: errorMessage(error) });
+      } finally {
+        collecting = false;
       }
     } while (sent !== revision);
     set({ preparing: false });
   }
-  function load() {
+  function start() {
     if (active) return active;
     set({ preparing: true, notice: null });
     active = prepare().finally(() => {
       active = null;
     });
     return active;
+  }
+  /** Collects diagnostics again, sharing a collection that is already running. */
+  function load() {
+    if (active && collecting) return active;
+    refresh = true;
+    revision += 1;
+    return start();
   }
   async function action(perform: () => Promise<string | null>) {
     if (snapshot.busy || snapshot.preparing) return;
@@ -67,13 +86,21 @@ export function createReportStore(host: PageHost) {
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
     load,
+    /**
+     * The shell loads a page only the first time it is shown, so coming back
+     * to the page collects again: the person may have fixed something since.
+     */
+    opened() {
+      if (shown) void load();
+      shown = true;
+    },
     setTitle(title: string) {
       set({ title });
     },
     setDescription(description: string) {
       revision += 1;
       set({ description });
-      void load();
+      void start();
     },
     copy() {
       const preview = snapshot.preview;

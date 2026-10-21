@@ -73,7 +73,8 @@ extension WebInterfaceTests {
                             opened.append($0); return true
                         }, reveal: {}))
                 let reply = try await overviewReply(
-                    router, "report.prepare", ["description": harness.home.path])
+                    router, "report.prepare",
+                    ["description": harness.home.path, "refresh": true])
                 let value = try #require(reply["value"] as? [String: Any])
                 let token = try #require(value["token"] as? String)
                 let body = try #require(value["body"] as? String)
@@ -87,7 +88,8 @@ extension WebInterfaceTests {
                 #expect(
                     URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
                         .first { $0.name == "body" }?.value == body)
-                _ = try await overviewReply(router, "report.prepare", ["description": "New draft"])
+                _ = try await overviewReply(
+                    router, "report.prepare", ["description": "New draft", "refresh": false])
                 let stale = try await overviewReply(router, "report.copy", ["token": token])
                 #expect(stale["ok"] as? Bool == false)
                 #expect(copies.count == 1)
@@ -116,7 +118,7 @@ extension WebInterfaceTests {
                         }, reveal: {}))
                 let reply = try await overviewReply(
                     router, "report.prepare",
-                    ["description": String(repeating: "test\n", count: 3000)])
+                    ["description": String(repeating: "test\n", count: 3000), "refresh": true])
                 let value = try #require(reply["value"] as? [String: Any])
                 let token = try #require(value["token"] as? String)
                 let result = try await overviewReply(

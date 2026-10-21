@@ -46,7 +46,7 @@ export function createSetupStore(host: PageHost) {
       set({ busy: true, error: null });
       try {
         const report = await host.request("setup.run", { existing: snapshot.existing });
-        set({ report });
+        set({ report, error: report.failure });
       } catch (error) {
         set({ error: errorMessage(error) });
       } finally {

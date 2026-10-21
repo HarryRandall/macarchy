@@ -13,7 +13,7 @@ it("opening reads only, title edits persist and actions use the exact native pre
   const deps = host();
   const store = createReportStore(deps as PageHost);
   await store.load();
-  expect(deps.request.mock.calls).toEqual([["report.prepare", { description: "" }]]);
+  expect(deps.request.mock.calls).toEqual([["report.prepare", { description: "", refresh: true }]]);
   store.setTitle("Bar disappears");
   await store.copy();
   expect(deps.request).toHaveBeenLastCalledWith("report.copy", { token: "one" });
@@ -44,12 +44,53 @@ it("serialises draft previews, protects edits during collection and disables sta
   deps.request.mockResolvedValueOnce({ token: "two", body: "Latest redacted facts" });
   finish({ token: "one", body: "Old facts" });
   await loading;
-  expect(deps.request).toHaveBeenLastCalledWith("report.prepare", { description: "latest" });
+  expect(deps.request).toHaveBeenLastCalledWith("report.prepare", {
+    description: "latest",
+    refresh: false,
+  });
   expect(store.getSnapshot()).toMatchObject({
     title: "Keep this title",
     description: "latest",
     preview: { token: "two" },
   });
+});
+
+it("typing reuses diagnostics while refreshing and reopening collect them again", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  const settled = () => vi.waitFor(() => expect(store.getSnapshot().preparing).toBe(false));
+  store.opened();
+  await store.load();
+  store.setDescription("typed");
+  await settled();
+  deps.request.mockResolvedValueOnce({ token: "two", body: "Fixed facts" });
+  await store.load();
+  expect(store.getSnapshot().preview).toEqual({ token: "two", body: "Fixed facts" });
+  store.opened();
+  await settled();
+  expect(deps.request.mock.calls.map((call) => call[1])).toEqual([
+    { description: "", refresh: true },
+    { description: "typed", refresh: false },
+    { description: "typed", refresh: true },
+    { description: "typed", refresh: true },
+  ]);
+});
+
+it("a refresh while a collection is running shares it instead of asking again", async () => {
+  const deps = host();
+  let finish!: (value: unknown) => void;
+  deps.request.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const store = createReportStore(deps as PageHost);
+  const first = store.load();
+  const second = store.load();
+  expect(second).toBe(first);
+  finish({ token: "one", body: "Facts" });
+  await first;
+  expect(deps.request).toHaveBeenCalledTimes(1);
 });
 
 it("shows preparation and action failures without claiming a copy or open succeeded", async () => {

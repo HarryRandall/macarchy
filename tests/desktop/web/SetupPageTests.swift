@@ -58,6 +58,36 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("a partial setup shows the completed lines and the error together until Done")
+        func partialFailure() async throws {
+            defer { InterfacePreferences.selectedPane = .layout }
+            try await withHarness(tools: []) { harness in
+                try await withSetupResources(harness) {
+                    try FileManager.default.removeItem(at: harness.store.url)
+                    try FileManager.default.createDirectory(
+                        at: StartupConfiguration.sketchybarrc.url,
+                        withIntermediateDirectories: true)
+                    let (_, surface) = try harness.settingsPage()
+                    try await waitFor(
+                        surface, "setup plan", #"return page.text().includes("What will change");"#)
+                    try await run(
+                        surface,
+                        #"[...document.querySelectorAll('button')].find(b => b.textContent === "Set up Macarchy").click();"#
+                    )
+                    try await waitFor(
+                        surface, "partial results",
+                        """
+                        const text = page.text();
+                        return text.includes("Setup could not finish")
+                          && text.includes("some files may already have changed")
+                          && text.includes("What setup did")
+                          && text.includes("Installed default shortcuts")
+                          && [...document.querySelectorAll('button')].some(b => b.textContent === "Done");
+                        """)
+                }
+            }
+        }
+
         @Test(
             "first run shows a read-only plan in React, then keep mine runs safely and retains results"
         )
@@ -135,7 +165,7 @@ extension WebInterfaceTests {
                 try await withSetupResources(harness) {
                     let original = "echo original\n"
                     try harness.write(original, to: ".config/yabai/yabairc")
-                    _ = try await harness.model.setupSession.run(existing: .replace, app: nil)
+                    _ = await harness.model.setupSession.run(existing: .replace, app: nil)
                     let (_, surface) = try harness.settingsPage(pane: .advanced)
                     try await waitFor(
                         surface, "restore originals",
