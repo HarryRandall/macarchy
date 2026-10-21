@@ -1,19 +1,7 @@
 .DS_Store
-**/.DS_Store
-
-# Machine-local secrets and generated config.
-.env.local
-*.bak
-
-# Runtime-generated files under installed dotfiles.
-btop/themes/macarchy.theme
-raycast-*/node_modules/
-raycast-*/.raycast/
-raycast-*/dist/
-themes/.backgrounds.json
-themes/.current
-sketchybar/theme.sh
-sketchybar/.state/
-macarchy/generated/
-yabai/.sketchybar_hidden
-yabai/float_state.json
+.build/
+.swiftpm/
+build/
+*.app
+*.xcuserstate
+xcuserdata/
