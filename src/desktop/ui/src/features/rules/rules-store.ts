@@ -58,7 +58,8 @@ export function createRulesStore(host: RulesHost) {
   }
 
   async function mutate(operation: () => Promise<unknown>) {
-    if (snapshot.busy) return false;
+    // Rules apply through yabai before saving, so nothing can change while it is unavailable.
+    if (snapshot.busy || snapshot.state?.unavailableReason) return false;
     ++version;
     mutationError = false;
     update({ busy: true, error: null, refreshing: false });

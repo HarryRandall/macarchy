@@ -112,7 +112,9 @@ public struct ThemeCollection: Sendable {
         guard let original = bundledDefault(named: name) else {
             throw ConfigurationError("No shipped default for \(name)")
         }
-        try library.save(original, to: directory(named: name))
+        try library.save(
+            original, to: directory(named: name),
+            reason: "reset theme \(name) to its shipped version")
     }
 
     private func edit(_ name: String, change: (inout Theme) -> Void) throws {

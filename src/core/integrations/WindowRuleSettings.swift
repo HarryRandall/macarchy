@@ -10,6 +10,9 @@ public struct WindowRuleSnapshot: Sendable, Equatable {
     public let floatingApps: [String]
     public let customRules: [CustomWindowRule]
     public let externalRules: [External]
+    /// Why yabai's live rules could not be read. Only saved rules are shown, and edits
+    /// cannot apply until yabai responds, because they apply through it before saving.
+    public let unavailableReason: String?
 }
 
 /// Shared rule operations for settings interfaces. Edits read the latest settings inside the lock.
@@ -23,10 +26,15 @@ public struct WindowRuleSettings: Sendable {
         self.integrations = integrations
     }
 
+    /// Never writes. Throws only when the saved settings or yabai's reply cannot be read.
     public func read() async throws -> WindowRuleSnapshot {
         let saved = try store.read()
         let response = await integrations.yabaiRules()
-        guard response.ok else { throw ConfigurationError(response.summary) }
+        guard response.ok else {
+            return WindowRuleSnapshot(
+                floatingApps: saved.floatingApps, customRules: saved.windowRules ?? [],
+                externalRules: [], unavailableReason: Self.reason(for: response))
+        }
         struct LiveRule: Decodable {
             let label: String?
             let app: String?
@@ -53,7 +61,7 @@ public struct WindowRuleSettings: Sendable {
         }
         return WindowRuleSnapshot(
             floatingApps: floatingApps, customRules: saved.windowRules ?? [],
-            externalRules: external)
+            externalRules: external, unavailableReason: nil)
     }
 
     public func save(_ rule: CustomWindowRule) async throws {
@@ -87,6 +95,16 @@ public struct WindowRuleSettings: Sendable {
             if floating { apps.append(name) }
             return apps
         }
+    }
+
+    private static func reason(for failure: CommandResult) -> String {
+        let editing = "Editing is off because rules apply through yabai."
+        guard FileManager.default.isExecutableFile(atPath: Paths.yabai) else {
+            return "yabai isn't installed, so these are your saved rules. \(editing)"
+        }
+        let detail = failure.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = "yabai isn't responding, so these are your saved rules. \(editing)"
+        return detail.isEmpty ? base : "\(base) \(detail)"
     }
 
     private static func unanchor(_ pattern: String) -> String {

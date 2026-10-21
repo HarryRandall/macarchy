@@ -4,12 +4,16 @@ public struct ThemeLibrary: Sendable {
     public let root: URL
     public init(root: URL = Paths.themesDirectory) { self.root = root }
 
-    public func save(_ theme: Theme, to directory: URL) throws {
+    /// Snapshots the current manifest before replacing it; an unchanged theme is not written.
+    public func save(_ theme: Theme, to directory: URL, reason: String = "edit theme") throws {
         try theme.validate()
         if Theme.load(from: directory) == theme { return }
-        try SnapshotStore(root: root.deletingLastPathComponent().appending(path: "snapshots"))
-            .capture([directory.appending(path: Theme.fileName)], reason: "edit theme")
+        try snapshots.capture([directory.appending(path: Theme.fileName)], reason: reason)
         try theme.write(to: directory)
+    }
+
+    public var snapshots: SnapshotStore {
+        SnapshotStore(root: root.deletingLastPathComponent().appending(path: "snapshots"))
     }
 
     public func importTheme(from source: URL) throws -> String {

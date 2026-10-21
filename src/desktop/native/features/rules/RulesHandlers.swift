@@ -65,7 +65,8 @@ extension AppModel {
             icons: Dictionary(
                 uniqueKeysWithValues: names.compactMap { name in
                     RulesPresentation.icon(name).map { (name, $0) }
-                }))
+                }),
+            unavailableReason: snapshot.unavailableReason)
     }
 }
 

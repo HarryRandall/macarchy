@@ -25,8 +25,11 @@ export function createThemesStore(host: PageHost) {
   let revision = 0;
   let waiting = 0;
   let readVersion = 0;
+  let received: ThemesState | null = null;
   const pending = new Map<string, Partial<ThemeValues>>();
   const versions = new Map<string, number>();
+  /** Colours being dragged: shown on the page, not yet saved. */
+  const previews = new Map<string, Partial<ThemeValues>>();
 
   function set(patch: Partial<Snapshot>) {
     snapshot = { ...snapshot, ...patch };
@@ -34,16 +37,39 @@ export function createThemesStore(host: PageHost) {
   }
 
   function receive(state: ThemesState) {
+    received = state;
     set({
       status: "ready",
       state: {
         ...state,
         themes: state.themes.map((theme) => ({
           ...theme,
-          values: { ...theme.values, ...pending.get(theme.summary.name) },
+          values: {
+            ...theme.values,
+            ...pending.get(theme.summary.name),
+            ...previews.get(theme.summary.name),
+          },
         })),
       },
     });
+  }
+
+  function preview(theme: string, field: ThemeColour, value: string) {
+    previews.set(theme, { ...previews.get(theme), [field]: value });
+    if (received) receive(received);
+  }
+
+  /** Saves a colour once it settles, skipping a value that is already saved or queued. */
+  async function commit(theme: string, field: ThemeColour, value: string) {
+    const patch = previews.get(theme);
+    if (patch) delete patch[field];
+    const saved = received?.themes.find((item) => item.summary.name === theme)?.values;
+    const current = { ...saved, ...pending.get(theme) }[field];
+    if (current === value) {
+      if (received) receive(received);
+      return;
+    }
+    await edit(theme, field, value);
   }
 
   async function load() {
@@ -88,7 +114,7 @@ export function createThemesStore(host: PageHost) {
     const version = (versions.get(key) ?? 0) + 1;
     versions.set(key, version);
     pending.set(theme, { ...pending.get(theme), [field]: value });
-    if (snapshot.state) receive(snapshot.state);
+    if (received) receive(received);
     return run(async () => {
       try {
         if (field === "dark")
@@ -121,10 +147,16 @@ export function createThemesStore(host: PageHost) {
     getSnapshot: () => snapshot,
     load,
     edit,
+    preview,
+    commit,
     apply: (theme: string) => run(() => host.request("themes.apply", { theme }), true),
     choose: (theme: string, path: string) =>
       run(() => host.request("themes.chooseWallpaper", { theme, path }), true),
-    reset: (theme: string) => run(() => host.request("themes.reset", { theme })),
+    /** Rejects with the failure, so a confirmation can stay open and show it. */
+    async reset(theme: string) {
+      await run(() => host.request("themes.reset", { theme }));
+      if (snapshot.error) throw new Error(snapshot.error);
+    },
     importFolder: () => run(() => host.request("themes.importFolder")),
     exportFolder: (theme: string) => run(() => host.request("themes.exportFolder", { theme })),
     reveal: (theme: string) => run(() => host.request("themes.reveal", { theme })),

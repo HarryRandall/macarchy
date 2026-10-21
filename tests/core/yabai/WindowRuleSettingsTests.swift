@@ -29,6 +29,42 @@ struct WindowRuleSettingsTests {
         #expect(snapshot.externalRules.first?.title == "^General$")
         #expect(try Data(contentsOf: store.url) == before)
         #expect(await fake.calls == [["-m", "rule", "--list"]])
+        #expect(snapshot.unavailableReason == nil)
+    }
+
+    @Test("a stopped yabai still shows saved rules, with a reason and no external rules")
+    func unavailableDaemon() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let rule = CustomWindowRule(app: "Finder", title: "^Copy$")
+        try store.update {
+            $0.floatingApps = ["Messages"]; $0.windowRules = [rule]
+        }
+        let before = try Data(contentsOf: store.url)
+        let fake = RulesSettingsFake(listFailure: "could not connect to yabai")
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        let snapshot = try await settings.read()
+        #expect(snapshot.floatingApps == ["Messages"])
+        #expect(snapshot.customRules == [rule])
+        #expect(snapshot.externalRules.isEmpty)
+        #expect(snapshot.unavailableReason?.contains("saved rules") == true)
+        #expect(try Data(contentsOf: store.url) == before)
+        #expect(await fake.calls == [["-m", "rule", "--list"]])
+    }
+
+    @Test("a stopped yabai with no saved settings shows empty saved rules, not a failure")
+    func unavailableDaemonWithoutSettings() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fake = RulesSettingsFake(listFailure: "")
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        let snapshot = try await settings.read()
+        #expect(snapshot.floatingApps.isEmpty)
+        #expect(snapshot.customRules.isEmpty)
+        #expect(snapshot.unavailableReason?.isEmpty == false)
+        #expect(!FileManager.default.fileExists(atPath: store.url.path))
     }
 
     @Test("unreadable settings and unreadable daemon output never become empty state")
@@ -166,11 +202,18 @@ private actor RulesSettingsFake {
          {"index":2,"label":"external","app":"^System Settings$","title":"^General$"}]
         """
     let rejected: String?
-    init(rejected: String? = nil) { self.rejected = rejected }
+    let listFailure: String?
+    init(rejected: String? = nil, listFailure: String? = nil) {
+        self.rejected = rejected
+        self.listFailure = listFailure
+    }
     func setList(_ value: String) { list = value }
     func run(_ path: String, _ arguments: [String]) async -> CommandResult {
         calls.append(arguments)
         if arguments.contains("--list") {
+            if let listFailure {
+                return CommandResult(command: "fake rules", status: 1, stderr: listFailure)
+            }
             return CommandResult(command: "fake rules", status: 0, stdout: list)
         }
         if let rejected, arguments.contains(rejected) {

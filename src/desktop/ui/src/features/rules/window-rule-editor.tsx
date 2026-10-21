@@ -29,7 +29,8 @@ export function WindowRuleEditor({
   const [app, setApp] = useState(rule.app);
   const [title, setTitle] = useState(rule.title);
   const [error, setError] = useState<string | null>(null);
-  const { busy } = useStore(store);
+  const { busy, state } = useStore(store);
+  const unavailable = state?.unavailableReason ?? null;
   const preset = (presetApp: string, presetTitle: string) => {
     setApp(presetApp);
     setTitle(presetTitle);
@@ -55,7 +56,7 @@ export function WindowRuleEditor({
           className="contents"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!busy && app.trim()) void save();
+            if (!busy && !unavailable && app.trim()) void save();
           }}
         >
           <Dialog.Header closable={!busy}>
@@ -107,6 +108,11 @@ export function WindowRuleEditor({
               </Menu>
               <HelpTooltip text="Presets fill the fields. Adjust them and Save to enable the rule." />
             </div>
+            {unavailable ? (
+              <Notice.Root variant="warning">
+                <Notice.Description>{unavailable}</Notice.Description>
+              </Notice.Root>
+            ) : null}
             {error ? (
               <Notice.Root variant="error">
                 <Notice.Description>{error}</Notice.Description>
@@ -117,7 +123,7 @@ export function WindowRuleEditor({
             <Button disabled={busy} onClick={close}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!app.trim() || busy}>
+            <Button type="submit" variant="primary" disabled={!app.trim() || busy || !!unavailable}>
               {busy ? "Saving…" : "Save"}
             </Button>
           </Dialog.Footer>

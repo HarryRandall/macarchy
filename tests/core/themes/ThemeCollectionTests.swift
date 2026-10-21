@@ -79,6 +79,28 @@ struct ThemeCollectionTests {
         #expect(try Theme.read(from: directory) == original)
     }
 
+    @Test("reset snapshots the edited manifest before replacing it")
+    func resetIsSnapshotted() throws {
+        let fixture = try fixture()
+        let root = fixture.root
+        let collection = fixture.collection
+        defer { try? FileManager.default.removeItem(at: root) }
+        try collection.setColour(theme: "sample", colour: .borderActive, value: "#abcdef")
+        let directory = try collection.directory(named: "sample")
+        let manifest = directory.appending(path: Theme.fileName)
+        let edited = try Data(contentsOf: manifest)
+        let snapshots = SnapshotStore(root: root.appending(path: "snapshots"))
+        let before = snapshots.list().count
+        try collection.reset(theme: "sample")
+        #expect(snapshots.list().count == before + 1)
+        let snapshot = try #require(
+            snapshots.list().first { snapshots.reason(for: $0).contains("reset theme sample") })
+        #expect(snapshots.originalPaths(of: snapshot) == [manifest.path])
+        #expect(
+            try Data(contentsOf: snapshot.url.appending(path: "0-\(Theme.fileName)")) == edited)
+        #expect(try Theme.read(from: directory) == collection.bundledDefault(named: "sample"))
+    }
+
     @Test(
         "invalid values, arbitrary theme paths and a missing default leave the manifest unchanged")
     func rejectsInvalidEdits() throws {

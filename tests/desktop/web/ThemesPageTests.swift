@@ -138,6 +138,11 @@ extension WebInterfaceTests {
                     surface,
                     "[...document.querySelectorAll('[role=menuitem]')].find(o => o.textContent.includes('Reset to shipped version')).click();"
                 )
+                try await waitFor(
+                    surface, "the reset confirmation",
+                    "return page.text().includes('Reset lumon to its shipped version?');")
+                #expect(try Theme.read(from: directory) == edited)
+                try await themeButton(surface, "Reset theme")
                 try await waitUntil("shipped default restored") {
                     (try? Theme.read(from: directory))
                         == ThemeCatalog.bundledDefault(named: "lumon")

@@ -9,6 +9,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ChoiceCard } from "~/components/ui/choice-card";
 import { ColourWell } from "~/components/ui/colour-well";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Dialog } from "~/components/ui/dialog";
 import { EmptyState } from "~/components/ui/empty-state";
 import { HeroCard } from "~/components/ui/hero-card";
@@ -251,7 +252,10 @@ export function ThemesPage({ store }: { store: ThemesStore }) {
                         label={label}
                         format={field === "firefoxAccent" ? "rgb" : "argb"}
                         value={theme.values[field]}
-                        onValueChange={(value) => void store.edit(theme.summary.name, field, value)}
+                        onValueChange={(value) => store.preview(theme.summary.name, field, value)}
+                        onValueCommit={(value) =>
+                          void store.commit(theme.summary.name, field, value)
+                        }
                       />
                     </SettingRow>
                   ))}
@@ -302,24 +306,37 @@ function ThemeMenu({
   busy: boolean;
 }) {
   const name = theme.summary.name;
+  const [resetting, setResetting] = useState(false);
   return (
-    <Menu>
-      <MenuTrigger render={<IconButton label="More actions" />}>
-        <MoreHorizontal aria-hidden />
-      </MenuTrigger>
-      <MenuPopup>
-        {theme.modified && theme.hasDefault ? (
-          <MenuItem disabled={busy} onClick={() => void store.reset(name)}>
-            Reset to shipped version
+    <>
+      <Menu>
+        <MenuTrigger render={<IconButton label="More actions" />}>
+          <MoreHorizontal aria-hidden />
+        </MenuTrigger>
+        <MenuPopup>
+          {theme.modified && theme.hasDefault ? (
+            <MenuItem disabled={busy} onClick={() => setResetting(true)}>
+              Reset to shipped version…
+            </MenuItem>
+          ) : null}
+          <MenuItem disabled={busy} onClick={() => void store.exportFolder(name)}>
+            Export as a folder…
           </MenuItem>
-        ) : null}
-        <MenuItem disabled={busy} onClick={() => void store.exportFolder(name)}>
-          Export as a folder…
-        </MenuItem>
-        <MenuItem disabled={busy} onClick={() => void store.reveal(name)}>
-          Show in Finder
-        </MenuItem>
-      </MenuPopup>
-    </Menu>
+          <MenuItem disabled={busy} onClick={() => void store.reveal(name)}>
+            Show in Finder
+          </MenuItem>
+        </MenuPopup>
+      </Menu>
+      <ConfirmDialog
+        open={resetting}
+        onOpenChange={setResetting}
+        title={`Reset ${name} to its shipped version?`}
+        description="Your edits to this theme's dark mode, colours and Neovim colourscheme are replaced. The current theme.json is kept in a backup you can restore from Advanced."
+        confirmLabel="Reset theme"
+        busyLabel="Resetting…"
+        tone="danger"
+        onConfirm={() => store.reset(name)}
+      />
+    </>
   );
 }

@@ -9,6 +9,11 @@ export interface RulesState {
   customRules: CustomWindowRule[];
   externalRules: { app: string; title: string }[];
   icons: Record<string, string>;
+  /**
+   * A sentence saying why yabai's live rules could not be read. When set, only
+   * saved rules are shown, `externalRules` is empty and edits cannot apply.
+   */
+  unavailableReason: string | null;
 }
 
 export interface RulesMethods {
