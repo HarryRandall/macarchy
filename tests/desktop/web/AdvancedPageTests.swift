@@ -75,7 +75,7 @@ extension WebInterfaceTests {
                 defer { withExtendedLifetime(broadcast) {} }
                 try await waitFor(
                     surface, "Advanced",
-                    #"return !!page.select("Restart window arrangement") && page.select("Open desktop services")?.textContent.includes("4/4");"#
+                    #"return !!page.select("Restart window arrangement") && document.querySelector('[aria-label^="Services:"]')?.getAttribute("aria-label") === "Services: 4 of 4 running";"#
                 )
                 try await run(surface, #"page.select("Restart window arrangement").click();"#)
                 try await waitUntil("fake kickstart") {
@@ -107,7 +107,7 @@ extension WebInterfaceTests {
                 }
                 try await waitFor(
                     surface, "stopped state",
-                    #"return page.select("Open desktop services")?.textContent.includes("0/4") && page.select("Stop window arrangement").disabled;"#
+                    #"return document.querySelector('[aria-label^="Services:"]')?.getAttribute("aria-label") === "Services: 0 of 4 running" && page.select("Stop window arrangement").disabled;"#
                 )
                 #expect(harness.model.shellState().services.running == 0)
                 #expect(harness.settingsData == before)

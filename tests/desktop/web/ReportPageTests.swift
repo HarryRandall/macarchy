@@ -54,6 +54,10 @@ extension WebInterfaceTests {
                 let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
                 #expect(query?.first { $0.name == "title" }?.value == "Bar disappears")
                 #expect(query?.first { $0.name == "body" }?.value == preview)
+                try await waitFor(
+                    surface, "opened view",
+                    "return page.text().includes('Opened in your browser');")
+                try await clickReportButton(surface, "Back to report")
                 surface.send(.healthChanged)
                 try await waitFor(
                     surface, "draft preserved",
@@ -149,16 +153,25 @@ extension WebInterfaceTests {
             try await withHarness(tools: []) { harness in
                 let before = harness.settingsData
                 let (_, surface) = try harness.settingsPage(pane: .report)
+                var attempts = 0
                 surface.router.registerReport(
                     model: harness.model,
                     actions: DiagnosticActions(
-                        copy: { _ in false }, open: { _ in false }, reveal: {}))
+                        copy: { _ in
+                            attempts += 1; return false
+                        }, open: { _ in false }, reveal: {}))
                 try await reportReady(surface)
                 try await clickReportButton(surface, "Copy report")
                 try await waitFor(
                     surface, "copy failure",
                     "return document.querySelector('[role=alert]')?.innerText.includes('could not be copied');"
                 )
+                try await waitFor(
+                    surface, "copy offered again",
+                    "return [...document.querySelectorAll('button')].find(b => b.innerText === 'Copy report')?.disabled === false;"
+                )
+                try await clickReportButton(surface, "Copy report")
+                try await waitUntil("second copy attempt") { attempts == 2 }
                 #expect(harness.settingsData == before)
             }
         }

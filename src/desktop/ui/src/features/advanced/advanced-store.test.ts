@@ -127,6 +127,38 @@ describe("Advanced store", () => {
       "advanced.getState",
     ]);
   });
+  it("rebuilds every file, keeps going past a failure and names each one that failed", async () => {
+    const { store, request } = harness();
+    await store.load();
+    request.mockImplementation(async (method, params) => {
+      if (method === "advanced.getState") return state;
+      const file = (params as { file: string }).file;
+      if (file === "sketchybarrc") throw new Error("Permission denied");
+      return { outcome: file === "yabairc" ? "Rebuilt" : "Up to date" };
+    });
+    await expect(store.rebuildAll(["yabairc", "sketchybarrc", "bordersrc"])).rejects.toThrow(
+      "Rebuilt 2 of 3 files. sketchybarrc: Permission denied",
+    );
+    expect(store.getSnapshot()).toMatchObject({
+      busy: false,
+      outcomes: { yabairc: "Rebuilt", bordersrc: "Up to date" },
+      error: "Rebuilt 2 of 3 files. sketchybarrc: Permission denied",
+    });
+    expect(store.getSnapshot().outcomes.sketchybarrc).toBeUndefined();
+  });
+  it("reveals the settings folder without reading again and reports a refusal", async () => {
+    const { store, request } = harness();
+    await store.load();
+    request.mockResolvedValueOnce(null);
+    await store.reveal();
+    expect(request.mock.calls.map(([method]) => method)).toEqual([
+      "advanced.getState",
+      "shell.revealSettings",
+    ]);
+    request.mockRejectedValueOnce(new Error("Finder unavailable"));
+    await store.reveal();
+    expect(store.getSnapshot().error).toBe("Finder unavailable");
+  });
   it("does not let stale reads replace an external event", async () => {
     const { store, request, handlers } = harness();
     let resolve!: (value: AdvancedState) => void;

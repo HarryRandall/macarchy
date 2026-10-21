@@ -1,13 +1,21 @@
-import { PageHeader } from "~/components/layout/page-header";
-import { CardContent, SettingsSection } from "~/components/layout/settings-section";
-import { SettingRow } from "~/components/layout/setting-row";
+import { CircleCheck } from "lucide-react";
+
+import { TopBarActions } from "~/components/layout/page-chrome";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardHeader, CardRows, Row } from "~/components/ui/card";
 import { CopyButton } from "~/components/ui/copy-button";
 import { Notice } from "~/components/ui/notice";
 import { RadioGroup } from "~/components/ui/radio-group";
-import { Tooltip } from "~/components/ui/tooltip";
+import { Spinner } from "~/components/ui/spinner";
+import { Step, Steps } from "~/features/report/report-step";
 import { useStore } from "~/lib/store";
+import { BrandMark } from "~/shell/brand-mark";
+
 import type { SetupStore } from "./setup-store";
+
+const accessibilityNote =
+  "macOS asks for Accessibility access the first time each runs. Turn both on, then restart them from Advanced.";
 
 export function SetupPage({
   store,
@@ -27,11 +35,24 @@ export function SetupPage({
     " jq";
   return (
     <>
-      <PageHeader
-        title="Set up Macarchy"
-        subtitle="A themed, tiling desktop in a few steps."
-        actions={state?.canClose && !busy ? <Button onClick={close}>Close</Button> : null}
-      />
+      {state?.canClose && !busy ? (
+        <TopBarActions>
+          <Button variant="ghost" size="sm" onClick={close}>
+            Close
+          </Button>
+        </TopBarActions>
+      ) : null}
+      <header className="flex items-center gap-4 pt-2 pb-1">
+        <span className="grid size-12 shrink-0 place-items-center rounded-panel bg-strong text-strong-fg shadow-card">
+          <BrandMark className="w-7" />
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-hero-title text-fg">Set up Macarchy</h1>
+          <p className="mt-0.5 text-body text-fg-secondary">
+            A themed, tiling desktop in a few steps.
+          </p>
+        </div>
+      </header>
       {snapshot.error ? (
         <Notice.Root variant="error">
           <Notice.Title>Setup could not finish</Notice.Title>
@@ -45,77 +66,112 @@ export function SetupPage({
           ) : null}
         </Notice.Root>
       ) : null}
+      {!state && snapshot.planning ? (
+        <p role="status" className="flex items-center gap-2 text-detail text-fg-secondary">
+          <Spinner size="sm" />
+          Reading your setup…
+        </p>
+      ) : null}
       {state && !report ? (
         <>
-          <SettingsSection
-            title="1. Install the tools"
-            help="Macarchy configures these. It does not replace them."
-          >
-            {state.tools.map((tool) => (
-              <SettingRow
-                key={tool.id}
-                title={tool.name}
-                detail={tool.installed ? "Installed" : tool.role}
+          <Card className="px-6 py-5">
+            <Steps>
+              <Step
+                number={1}
+                title="Install the tools"
+                hint="Macarchy configures these. It does not replace them."
+                done={missing.length === 0}
               >
-                {!tool.installed ? (
-                  <CopyButton
-                    text={tool.installCommand}
-                    label="Copy command"
-                    tooltip={tool.installCommand}
+                <div className="overflow-hidden rounded-tile border border-hairline">
+                  {state.tools.map((tool) => (
+                    <Row
+                      key={tool.id}
+                      title={tool.name}
+                      description={tool.role}
+                      className="px-3.5 py-3"
+                      control={
+                        tool.installed ? (
+                          <Badge tone="ok">Installed</Badge>
+                        ) : (
+                          <CopyButton
+                            size="sm"
+                            text={tool.installCommand}
+                            label="Copy command"
+                            tooltip={tool.installCommand}
+                          />
+                        )
+                      }
+                    />
+                  ))}
+                  {missing.length ? (
+                    <Row
+                      title="Install everything"
+                      description="Paste into Terminal. Needs Homebrew from brew.sh."
+                      className="bg-side px-3.5 py-3"
+                      control={
+                        <CopyButton
+                          size="sm"
+                          text={command}
+                          label="Copy command"
+                          tooltip={command}
+                        />
+                      }
+                    />
+                  ) : null}
+                </div>
+              </Step>
+              {state.hasExisting ? (
+                <Step
+                  number={2}
+                  title="Your existing setup"
+                  hint="Either way, every original is backed up before anything changes."
+                  done
+                >
+                  <RadioGroup
+                    label="Existing configuration"
+                    value={snapshot.existing}
+                    disabled={busy || snapshot.planning}
+                    options={[
+                      { value: "keep", label: "Keep mine and add Macarchy" },
+                      { value: "replace", label: "Start fresh with Macarchy's defaults" },
+                    ]}
+                    onValueChange={(value) => store.choose(value)}
                   />
-                ) : null}
-              </SettingRow>
-            ))}
-            {missing.length ? (
-              <SettingRow
-                title="Install everything"
-                detail="Paste into Terminal. Needs Homebrew from brew.sh."
-              >
-                <CopyButton text={command} label="Copy command" tooltip={command} />
-              </SettingRow>
-            ) : null}
-          </SettingsSection>
-          {state.hasExisting ? (
-            <SettingsSection
-              title="2. Your existing setup"
-              help="Either way, every original is backed up before anything changes."
+                </Step>
+              ) : null}
+              <Step number={state.hasExisting ? 3 : 2} title="What will change" last>
+                <ul className="overflow-hidden rounded-tile border border-hairline">
+                  {state.changes.map((change) => (
+                    <li
+                      key={change.path}
+                      className="flex flex-col gap-0.5 border-hairline px-3.5 py-2.5 not-first:border-t"
+                    >
+                      <span className="truncate font-mono text-mono text-fg">{change.path}</span>
+                      <span className="text-small text-fg-secondary">{change.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Step>
+            </Steps>
+          </Card>
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+            <p className="mr-auto min-w-0 text-small text-fg-tertiary">
+              {missing.length
+                ? "You can set up now and install the missing tools later."
+                : "Writes the files above and starts the services."}
+            </p>
+            <p role="status" className="sr-only">
+              {busy ? "Setting up…" : ""}
+            </p>
+            <Button
+              variant="primary"
+              size="lg"
+              busy={busy}
+              disabled={snapshot.planning}
+              onClick={() => void store.run()}
             >
-              <CardContent>
-                <RadioGroup
-                  label="Existing configuration"
-                  value={snapshot.existing}
-                  disabled={busy || snapshot.planning}
-                  options={[
-                    { value: "keep", label: "Keep mine and add Macarchy" },
-                    { value: "replace", label: "Start fresh with Macarchy's defaults" },
-                  ]}
-                  onValueChange={(value) => store.choose(value)}
-                />
-              </CardContent>
-            </SettingsSection>
-          ) : null}
-          <SettingsSection title={`${state.hasExisting ? 3 : 2}. What will change`}>
-            {state.changes.map((change) => (
-              <SettingRow key={change.path} title={change.path} detail={change.detail} />
-            ))}
-          </SettingsSection>
-          <div className="flex justify-end">
-            <Tooltip
-              content={
-                missing.length
-                  ? "You can set up now and install the missing tools later"
-                  : "Write the files above and start the services"
-              }
-            >
-              <Button
-                variant="primary"
-                disabled={busy || snapshot.planning}
-                aria-busy={busy}
-                onClick={() => void store.run()}
-              >
-                {busy ? "Setting up…" : "Set up Macarchy"}
-              </Button>
-            </Tooltip>
+              Set up Macarchy
+            </Button>
           </div>
         </>
       ) : null}
@@ -124,29 +180,43 @@ export function SetupPage({
           {report.failures.length ? (
             <Notice.Root variant="warning">
               <Notice.Title>Setup needs attention</Notice.Title>
-              <Notice.Description>{report.failures.join("\n")}</Notice.Description>
+              <Notice.Description className="whitespace-pre-line">
+                {report.failures.join("\n")}
+              </Notice.Description>
             </Notice.Root>
           ) : null}
           {!report.failure ? (
-            <SettingsSection title="Almost there">
-              <SettingRow
-                title="Allow yabai and skhd"
-                detail="macOS asks for Accessibility access the first time each runs. Turn both on, then restart them from Advanced."
-              >
-                <Button onClick={() => void store.openAccessibility()}>Open Accessibility</Button>
-              </SettingRow>
-              <SettingRow
-                title="Separate Spaces"
-                detail={"Keep “Displays have separate Spaces” on in Desktop & Dock."}
-              />
-            </SettingsSection>
+            <Card>
+              <CardHeader title="Almost there" />
+              <CardRows>
+                <Row
+                  title="Allow yabai and skhd"
+                  description={accessibilityNote}
+                  control={
+                    <Button onClick={() => void store.openAccessibility()}>
+                      Open Accessibility
+                    </Button>
+                  }
+                />
+                <Row
+                  title="Separate Spaces"
+                  description="Keep “Displays have separate Spaces” on in Desktop & Dock."
+                />
+              </CardRows>
+            </Card>
           ) : null}
           {report.lines.length || !report.failure ? (
-            <SettingsSection title="What setup did">
-              {report.lines.map((line, index) => (
-                <SettingRow key={index} title={line} />
-              ))}
-            </SettingsSection>
+            <Card>
+              <CardHeader title="What setup did" />
+              <ul className="border-t border-hairline px-5 py-3">
+                {report.lines.map((line, index) => (
+                  <li key={index} className="flex items-start gap-2.5 py-1 text-body text-fg">
+                    <CircleCheck aria-hidden className="mt-0.5 size-3.5 shrink-0 text-success" />
+                    <span className="min-w-0 select-text">{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           ) : null}
           <div className="flex justify-end gap-2">
             <Button onClick={health}>Check setup health</Button>

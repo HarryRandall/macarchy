@@ -110,3 +110,41 @@ it("shows preparation and action failures without claiming a copy or open succee
     busy: false,
   });
 });
+
+it("copy and open can be tried again straight after they fail, but not on a stale preview", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  await store.load();
+  store.setTitle("Bar disappears");
+  deps.request.mockRejectedValueOnce(new Error("Clipboard unavailable"));
+  await expect(store.copy()).resolves.toBe(false);
+  deps.request.mockResolvedValueOnce(null);
+  await expect(store.copy()).resolves.toBe(true);
+  expect(store.getSnapshot()).toMatchObject({ error: null, notice: "Copied" });
+  deps.request.mockRejectedValueOnce(new Error("No browser"));
+  await expect(store.open()).resolves.toBe(false);
+  deps.request.mockResolvedValueOnce({ copied: false });
+  await expect(store.open()).resolves.toBe(true);
+  deps.request.mockRejectedValueOnce(new Error("Collection unavailable"));
+  await store.load();
+  const calls = deps.request.mock.calls.length;
+  await expect(store.copy()).resolves.toBe(false);
+  await expect(store.open()).resolves.toBe(false);
+  expect(deps.request).toHaveBeenCalledTimes(calls);
+});
+
+it("clearing the draft keeps the diagnostics and prepares a preview without the old text", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  await store.load();
+  store.setTitle("Bar disappears");
+  store.setDescription("It went away");
+  await vi.waitFor(() => expect(store.getSnapshot().preparing).toBe(false));
+  store.clear();
+  await vi.waitFor(() => expect(store.getSnapshot().preparing).toBe(false));
+  expect(store.getSnapshot()).toMatchObject({ title: "", description: "" });
+  expect(deps.request).toHaveBeenLastCalledWith("report.prepare", {
+    description: "",
+    refresh: false,
+  });
+});

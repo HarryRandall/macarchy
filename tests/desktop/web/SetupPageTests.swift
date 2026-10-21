@@ -172,7 +172,7 @@ extension WebInterfaceTests {
                         #"return page.text().includes("Restore original files");"#)
                     try await run(
                         surface,
-                        #"[...document.querySelectorAll('[data-slot=setting-row]')].find(e => e.textContent.includes('Restore original files')).querySelector('button').click();"#
+                        #"[...document.querySelectorAll('[data-slot=row]')].find(e => e.textContent.includes('Restore original files')).querySelector('button').click();"#
                     )
                     try await waitFor(
                         surface, "confirmation", #"return page.text().includes("Really restore?");"#

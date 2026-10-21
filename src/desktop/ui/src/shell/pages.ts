@@ -7,6 +7,7 @@ import { reportPage } from "~/features/report/page";
 import { themesPage } from "~/features/themes/page";
 import { shortcutsPage } from "~/features/shortcuts/page";
 import { layoutPage } from "~/features/layout/page";
+import { pluginsPage } from "~/features/plugins/page";
 import { menuBarPage } from "~/features/menu-bar/page";
 import { workshopPage } from "~/features/workshop/page";
 
@@ -27,6 +28,7 @@ export const pages: RegisteredPage[] = [
   reportPage,
   themesPage,
   shortcutsPage,
+  pluginsPage,
   menuBarPage,
   workshopPage,
 ];

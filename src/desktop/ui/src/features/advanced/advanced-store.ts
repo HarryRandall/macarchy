@@ -69,6 +69,23 @@ export function createAdvancedStore(host: PageHost) {
         const result = await host.request("advanced.rebuild", { file });
         set({ outcomes: { ...snapshot.outcomes, [file]: result.outcome } });
       }),
+    /** Rebuilds each file in turn; one failing does not stop the rest, and all failures are reported. */
+    rebuildAll: (files: readonly GeneratedFileId[]) =>
+      perform(async () => {
+        const failed: string[] = [];
+        for (const file of files) {
+          try {
+            const result = await host.request("advanced.rebuild", { file });
+            set({ outcomes: { ...snapshot.outcomes, [file]: result.outcome } });
+          } catch (error) {
+            failed.push(`${file}: ${errorMessage(error)}`);
+          }
+        }
+        if (failed.length) {
+          const rebuilt = files.length - failed.length;
+          throw new Error(`Rebuilt ${rebuilt} of ${files.length} files. ${failed.join(". ")}`);
+        }
+      }),
     restoreSnapshot: (id: string) =>
       perform(() => host.request("advanced.restoreSnapshot", { id })),
     repair: () => perform(() => host.request("advanced.repairAddition")),
@@ -76,6 +93,18 @@ export function createAdvancedStore(host: PageHost) {
       perform(async () => {
         set({ report: await host.request("advanced.restoreOriginals") });
       }),
+    dismissReport() {
+      set({ report: null });
+    },
+    /** Shows the settings folder in Finder. Changes nothing, so the state is not read again. */
+    async reveal() {
+      set({ error: null });
+      try {
+        await host.request("shell.revealSettings");
+      } catch (error) {
+        set({ error: errorMessage(error) });
+      }
+    },
   };
 }
 export type AdvancedStore = ReturnType<typeof createAdvancedStore>;

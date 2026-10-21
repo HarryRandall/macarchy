@@ -13,6 +13,12 @@ export function createReportStore(host: PageHost) {
     preparing: boolean;
     busy: boolean;
     error: string | null;
+    /**
+     * The last preparation failed, so the preview may not match the draft.
+     * Copy and Open wait for a good one; a failed copy or open does not set
+     * this, so both can be tried again at once.
+     */
+    stale: boolean;
     notice: string | null;
   } = {
     status: "loading",
@@ -22,6 +28,7 @@ export function createReportStore(host: PageHost) {
     preparing: false,
     busy: false,
     error: null,
+    stale: false,
     notice: null,
   };
   let revision = 0;
@@ -46,10 +53,14 @@ export function createReportStore(host: PageHost) {
           description: snapshot.description,
           refresh: collecting,
         });
-        if (sent === revision) set({ preview, status: "ready", error: null });
+        if (sent === revision) set({ preview, status: "ready", error: null, stale: false });
       } catch (error) {
         if (sent === revision)
-          set({ status: snapshot.preview ? "ready" : "failed", error: errorMessage(error) });
+          set({
+            status: snapshot.preview ? "ready" : "failed",
+            error: errorMessage(error),
+            stale: true,
+          });
       } finally {
         collecting = false;
       }
@@ -71,13 +82,21 @@ export function createReportStore(host: PageHost) {
     revision += 1;
     return start();
   }
-  async function action(perform: () => Promise<string | null>) {
-    if (snapshot.busy || snapshot.preparing) return;
+  function setDescription(description: string) {
+    revision += 1;
+    set({ description });
+    void start();
+  }
+  /** Runs a native action, resolving to whether it went through. */
+  async function action(perform: () => Promise<string | null>): Promise<boolean> {
+    if (snapshot.busy || snapshot.preparing) return false;
     set({ busy: true, error: null, notice: null });
     try {
       set({ notice: await perform() });
+      return true;
     } catch (error) {
       set({ error: errorMessage(error) });
+      return false;
     } finally {
       set({ busy: false });
     }
@@ -97,14 +116,15 @@ export function createReportStore(host: PageHost) {
     setTitle(title: string) {
       set({ title });
     },
-    setDescription(description: string) {
-      revision += 1;
-      set({ description });
-      void start();
+    setDescription,
+    /** Clears the draft for another report, keeping the diagnostics already collected. */
+    clear() {
+      set({ title: "", notice: null });
+      if (snapshot.description) setDescription("");
     },
     copy() {
       const preview = snapshot.preview;
-      if (!preview || snapshot.error) return Promise.resolve();
+      if (!preview || snapshot.stale) return Promise.resolve(false);
       return action(async () => {
         await host.request("report.copy", { token: preview.token });
         return "Copied";
@@ -112,7 +132,7 @@ export function createReportStore(host: PageHost) {
     },
     open() {
       const preview = snapshot.preview;
-      if (!preview || !snapshot.title.trim() || snapshot.error) return Promise.resolve();
+      if (!preview || !snapshot.title.trim() || snapshot.stale) return Promise.resolve(false);
       const title = snapshot.title;
       return action(async () => {
         const result = await host.request("report.openIssue", { token: preview.token, title });
