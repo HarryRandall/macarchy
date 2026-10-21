@@ -125,6 +125,38 @@ struct WindowRuleSettingsTests {
         #expect(try await settings.read().floatingApps == ["Calculator", "Messages"])
     }
 
+    @Test("hand-made float_persist_ rules are external and survive an unrelated edit")
+    func handMadeFloating() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.update { $0.floatingApps = ["Calculator"] }
+        let fake = RulesSettingsFake()
+        await fake.setList(
+            """
+            [{"index":0,"label":"float_persist_Messages","app":"^Messages$","title":""},
+             {"index":1,"label":"float_persist_x","app":"^Safari$","title":"^Settings"},
+             {"index":2,"label":"float_persist_y","app":"^(Notes|Calculator)$","title":""},
+             {"index":3,"label":"float_persist_z","title":""}]
+            """)
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        let snapshot = try await settings.read()
+        #expect(snapshot.floatingApps == ["Calculator", "Messages"])
+        let external = snapshot.externalRules.sorted { $0.app < $1.app }
+        #expect(
+            external == [
+                .init(app: "", title: ""),
+                .init(app: "(Notes|Calculator)", title: ""),
+                .init(app: "Safari", title: "^Settings")
+            ])
+        try await settings.save(CustomWindowRule(app: "Finder"))
+        #expect(try store.read().floatingApps == ["Calculator", "Messages"])
+        let calls = await fake.calls
+        #expect(calls.filter { $0.contains("--remove") } == [["-m", "rule", "--remove", "0"]])
+        #expect(!calls.contains { $0.contains("label=float_persist_Safari") })
+        #expect(!calls.contains { $0.contains("label=float_persist_(Notes|Calculator)") })
+    }
+
     @Test("removing a floating app that exists only as a live rule removes it everywhere")
     func removesLiveFloating() async throws {
         let (root, store) = try temporary()
@@ -163,6 +195,39 @@ struct WindowRuleSettingsTests {
         #expect(try store.read().windowRules?.map(\.title) == ["^Main$"])
     }
 
+}
+
+private actor RulesSettingsFake {
+    var calls: [[String]] = []
+    var list = """
+        [{"index":0,"label":"float_persist_Messages","app":"^Messages$"},
+         {"index":1,"label":"macarchy_custom_example","app":"^Finder$"},
+         {"index":2,"label":"external","app":"^System Settings$","title":"^General$"}]
+        """
+    let rejected: String?
+    let listFailure: String?
+    init(rejected: String? = nil, listFailure: String? = nil) {
+        self.rejected = rejected
+        self.listFailure = listFailure
+    }
+    func setList(_ value: String) { list = value }
+    func run(_ path: String, _ arguments: [String]) async -> CommandResult {
+        calls.append(arguments)
+        if arguments.contains("--list") {
+            if let listFailure {
+                return CommandResult(command: "fake rules", status: 1, stderr: listFailure)
+            }
+            return CommandResult(command: "fake rules", status: 0, stdout: list)
+        }
+        if let rejected, arguments.contains(rejected) {
+            return CommandResult(command: "fake rules", status: 1, stderr: "Rule rejected")
+        }
+        return CommandResult(command: "fake rules", status: 0)
+    }
+}
+
+// Validation, rollback and concurrency.
+extension WindowRuleSettingsTests {
     @Test("validation rejects edits before calling the desktop")
     func validation() async throws {
         let (root, store) = try temporary()
@@ -248,34 +313,5 @@ struct WindowRuleSettingsTests {
             #expect(error.localizedDescription.contains("Restoring the previous rules also failed"))
         }
         #expect(try Data(contentsOf: store.url) == before)
-    }
-}
-
-private actor RulesSettingsFake {
-    var calls: [[String]] = []
-    var list = """
-        [{"index":0,"label":"float_persist_Messages","app":"^Messages$"},
-         {"index":1,"label":"macarchy_custom_example","app":"^Finder$"},
-         {"index":2,"label":"external","app":"^System Settings$","title":"^General$"}]
-        """
-    let rejected: String?
-    let listFailure: String?
-    init(rejected: String? = nil, listFailure: String? = nil) {
-        self.rejected = rejected
-        self.listFailure = listFailure
-    }
-    func setList(_ value: String) { list = value }
-    func run(_ path: String, _ arguments: [String]) async -> CommandResult {
-        calls.append(arguments)
-        if arguments.contains("--list") {
-            if let listFailure {
-                return CommandResult(command: "fake rules", status: 1, stderr: listFailure)
-            }
-            return CommandResult(command: "fake rules", status: 0, stdout: list)
-        }
-        if let rejected, arguments.contains(rejected) {
-            return CommandResult(command: "fake rules", status: 1, stderr: "Rule rejected")
-        }
-        return CommandResult(command: "fake rules", status: 0)
     }
 }

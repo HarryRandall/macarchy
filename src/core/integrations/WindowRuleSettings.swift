@@ -37,10 +37,13 @@ public struct WindowRuleSettings: Sendable {
         }
         let live = try WindowRules.liveRules(response)
         let floatingApps = WindowRules.floatingApps(saved: saved.floatingApps, live: live)
+        // A `float_persist_` rule Macarchy could not have written stays read-only
+        // here, as `apply` leaves it alone.
         let external = live.compactMap { rule -> WindowRuleSnapshot.External? in
             let label = rule.label ?? ""
             let name = WindowRules.unanchor(rule.app ?? "")
-            guard !label.hasPrefix("float_persist_"), !label.hasPrefix("macarchy_custom_"),
+            guard WindowRules.ownedFloatingApp(rule) == nil,
+                !label.hasPrefix("macarchy_custom_"),
                 !(label.isEmpty && saved.floatingApps.contains(name))
             else { return nil }
             return WindowRuleSnapshot.External(app: name, title: rule.title ?? "")

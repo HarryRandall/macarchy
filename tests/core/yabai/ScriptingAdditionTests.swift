@@ -107,7 +107,7 @@ struct ScriptingAdditionTests {
         let digest: String
         private let rulesPath: String
         private let bundlePath: String
-        private let binaryPath: String
+        let binaryPath: String
 
         init(rulePins: String? = nil, writeRule: Bool = true, installBundle: Bool = true) throws {
             root = FileManager.default.temporaryDirectory.appending(path: "sa-\(UUID())")
@@ -132,9 +132,57 @@ struct ScriptingAdditionTests {
             }
         }
 
-        func status() -> ScriptingAddition.Status {
-            ScriptingAddition.status(binary: binaryPath, sudoers: rulesPath, bundle: bundlePath)
+        /// Isolation is passed in, because the web view suites set
+        /// `MACARCHY_HOME` for the whole test process.
+        func status(isolated: Bool = false) -> ScriptingAddition.Status {
+            ScriptingAddition.status(
+                binary: binaryPath, sudoers: rulesPath, bundle: bundlePath, isolated: isolated)
         }
+    }
+
+    @Test("an isolated run reports the addition as unavailable, even with no rule")
+    func isolatedStatus() throws {
+        let fixture = try Fixture(writeRule: false)
+        let status = fixture.status(isolated: true)
+        #expect(status == .isolated)
+        #expect(!status.isPermitted)
+        #expect(status.explanation == "Development runs never change the real sudoers rule.")
+    }
+
+    /// The fake yabai's temporary path passes every other check, so without
+    /// this the real sudoers rule would be pinned to it.
+    @Test("an isolated run refuses to repair without running osascript")
+    func isolatedRepair() async throws {
+        let fixture = try Fixture(writeRule: false)
+        let calls = Calls()
+        let result = await ScriptingAddition.repair(
+            user: "alex", binary: fixture.binaryPath, isolated: true
+        ) { path, _ in
+            await calls.record(path)
+            return CommandResult(command: path, status: 0)
+        }
+        #expect(!result.ok)
+        #expect(result.stderr == "Development runs never change the real sudoers rule.")
+        #expect(await calls.paths.isEmpty)
+    }
+
+    @Test("a repair outside an isolated run reaches osascript")
+    func repairRuns() async throws {
+        let fixture = try Fixture(writeRule: false)
+        let calls = Calls()
+        let result = await ScriptingAddition.repair(
+            user: "alex", binary: fixture.binaryPath, isolated: false
+        ) { path, _ in
+            await calls.record(path)
+            return CommandResult(command: path, status: 0)
+        }
+        #expect(result.ok)
+        #expect(await calls.paths == ["/usr/bin/osascript"])
+    }
+
+    private actor Calls {
+        var paths: [String] = []
+        func record(_ path: String) { paths.append(path) }
     }
 
     @Test("the repair refuses a binary path that could escape its quoting")

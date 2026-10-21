@@ -87,11 +87,15 @@ final class ThemeCatalog {
 
     func apply(_ theme: InstalledTheme) async {
         isApplying = true
-        lastError = nil
+        if lastError != nil { lastError = nil }
         defer { isApplying = false }
         let result = await backend.applyTheme(named: theme.name)
         log.record(result)
-        if result.ok { reload() } else { lastError = result.summary }
+        if result.ok {
+            reload()
+        } else if lastError != result.summary {
+            lastError = result.summary
+        }
     }
 
 }

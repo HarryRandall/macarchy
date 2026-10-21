@@ -20,10 +20,12 @@ final class DaemonMonitor {
 
     /// Page reads call this, and an unchanged assignment would still notify `StateBroadcast`.
     func refresh() async {
-        for daemon in Daemon.allCases {
-            let state = await backend.state(of: daemon)
-            if states[daemon] != state { states[daemon] = state }
-        }
+        for daemon in Daemon.allCases { await update(daemon) }
+    }
+
+    private func update(_ daemon: Daemon) async {
+        let state = await backend.state(of: daemon)
+        if states[daemon] != state { states[daemon] = state }
     }
 
     private var services: DesktopServices {
@@ -36,7 +38,7 @@ final class DaemonMonitor {
     func restart(_ daemon: Daemon) async -> CommandResult {
         let result = await services.restart(daemon)
         log.record(result)
-        states[daemon] = await backend.state(of: daemon)
+        await update(daemon)
         return result
     }
 
@@ -44,7 +46,7 @@ final class DaemonMonitor {
     func stop(_ daemon: Daemon) async -> CommandResult {
         let result = await services.stop(daemon)
         log.record(result)
-        states[daemon] = await backend.state(of: daemon)
+        await update(daemon)
         return result
     }
 }

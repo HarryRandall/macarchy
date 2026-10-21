@@ -177,8 +177,25 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("an isolated run shows the scripting addition as unavailable with no repair")
+        func additionUnavailable() async throws {
+            defer { InterfacePreferences.selectedPane = .layout }
+            try await withHarness { harness in
+                let surface = try advancedPage(harness)
+                try await waitFor(
+                    surface, "unavailable addition",
+                    #"return page.text().includes("Unavailable") && page.text().includes("Development runs never change the real sudoers rule.");"#
+                )
+                let repair = try await run(
+                    surface,
+                    #"return [...document.querySelectorAll('button')].some(b => b.textContent === "Repair");"#
+                )
+                #expect(repair as? Bool == false)
+            }
+        }
+
         @Test(
-            "a failed service operation and cancelled repair are visible without changing preferences"
+            "a failed service operation and a refused repair are visible without changing preferences"
         )
         func failures() async throws {
             defer { InterfacePreferences.selectedPane = .layout }
@@ -199,7 +216,6 @@ extension WebInterfaceTests {
                 var state = try await harness.model.advancedState()
                 state.addition = "repair"
                 surface.send(.advancedChanged(state))
-                await harness.desktop.answer("osascript") { _ in .failure("User cancelled (-128)") }
                 try await waitFor(
                     surface, "repair",
                     #"return [...document.querySelectorAll('button')].some(b => b.textContent === "Repair");"#
@@ -209,10 +225,11 @@ extension WebInterfaceTests {
                     #"[...document.querySelectorAll('button')].find(b => b.textContent === "Repair").click();"#
                 )
                 try await waitFor(
-                    surface, "cancelled repair",
-                    #"return page.text().includes("Repair cancelled.");"#)
+                    surface, "refused repair",
+                    #"return page.text().includes("Development runs never change the real sudoers rule.");"#
+                )
                 #expect(harness.settingsData == before)
-                #expect(await harness.desktop.calls(to: "osascript").count == 1)
+                #expect(await harness.desktop.calls(to: "osascript").isEmpty)
             }
         }
     }

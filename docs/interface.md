@@ -127,16 +127,17 @@ Debug builds also read these, and release builds ignore them:
 `tools/run.sh` builds a debug copy and opens it beside the installed app with
 the last two, a fresh temporary home and fake yabai, skhd, SketchyBar, borders,
 launchctl and defaults. Macarchy's files stay in that home and its commands
-reach the fakes. With `MACARCHY_SEARCH_PATH` set, launchctl and defaults are
-only taken from it, so service restarts and stops are recorded in
-`launchctl.log` in the temporary home and the Borders corner radius is kept in
-a file there, not the global setting. With `MACARCHY_HOME` set, the selected
-pane and sidebar are kept in the `io.github.harryrandall.macarchy.development`
-preferences suite and windows open centred without saving their frames, so the
-installed copy's preferences are untouched. Debug builds, and any run with
-`MACARCHY_HOME` set, never repoint the app link. Each run stops only the copy
-the previous run started. Debug builds open their switcher on the distributed
-notification `io.github.harryrandall.macarchy.debug.switcher`.
+reach the fakes. Setting either `MACARCHY_HOME` or `MACARCHY_SEARCH_PATH`, even
+to an empty value, makes a run isolated (`Paths.isolated`). An isolated run
+takes launchctl and defaults only from the search path, so service restarts and
+stops are recorded in `launchctl.log` in the temporary home and the Borders
+corner radius is kept in a file there, not the global setting. It never repairs
+the real sudoers rule for the scripting addition, keeps the selected pane and
+sidebar in the `io.github.harryrandall.macarchy.development` preferences suite,
+opens windows centred without saving their frames or restoring them, and never
+repoints the app link. Debug builds never repoint it either. Each run stops only
+the copy the previous run started. Debug builds open their switcher on the
+distributed notification `io.github.harryrandall.macarchy.debug.switcher`.
 
 `corepack pnpm run check` runs type checking, oxlint, Prettier and Vitest.
 The web view tests in `tests/desktop/web` load the built `dist` through the
@@ -171,8 +172,10 @@ picker), `rules.removeFloating`, `rules.saveCustom` and `rules.removeCustom`.
 drafts separate from incoming state. Saving enables a custom rule; removing it
 asks first, then stops applying it. External rules remain read-only.
 Every edit starts from the list the page shows, so apps that float only
-through a live `float_persist_` yabai rule are adopted into the saved list
-rather than dropped. An editor opened on a saved rule sends `existing: true`,
+through a live `float_persist_` rule written the way Macarchy writes them
+(`app=^<escaped name>$`, no title) are adopted into the saved list rather than
+dropped. Other `float_persist_` rules show as external and are never removed.
+Toggling the focused window rolls back like any other edit. An editor opened on a saved rule sends `existing: true`,
 and saving it fails if the rule was removed elsewhere instead of recreating it.
 
 ## Borders

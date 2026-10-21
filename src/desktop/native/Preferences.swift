@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Macarchy
 
 /// Where the windows keep their own state, such as the selected pane and the
 /// sidebar. A development run shares the installed copy's bundle identifier,
@@ -8,7 +9,7 @@ import Foundation
 enum Preferences {
     static let developmentSuite = "io.github.harryrandall.macarchy.development"
 
-    static var isolated: Bool { ProcessInfo.processInfo.environment["MACARCHY_HOME"] != nil }
+    static var isolated: Bool { Paths.isolated }
 
     /// Read on every use rather than once, because the web view tests set
     /// `MACARCHY_HOME` after launch.
@@ -22,9 +23,12 @@ enum Preferences {
 
     /// Frame autosave always writes to the standard domain, so an isolated
     /// window does not restore or save a frame and opens centred instead.
+    /// Window restoration writes the installed app's saved state too, so it
+    /// is off for isolated windows as well.
     @MainActor
     static func restoreFrame(of window: NSWindow, autosaveName: NSWindow.FrameAutosaveName) {
         guard !isolated else {
+            window.isRestorable = false
             window.center()
             return
         }

@@ -298,7 +298,9 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
                       ? "Active"
                       : state.addition === "repair"
                         ? "Needs repair"
-                        : "Not installed"
+                        : state.addition === "unavailable"
+                          ? "Unavailable"
+                          : "Not installed"
                   }
                 />
                 {state.addition === "repair" ? (
