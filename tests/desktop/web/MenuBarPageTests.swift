@@ -59,7 +59,8 @@ extension WebInterfaceTests {
                 )
 
                 try await run(
-                    surface, #"document.querySelector('button[aria-label="Remove Battery"]').click();"#)
+                    surface,
+                    #"document.querySelector('button[aria-label="Remove Battery"]').click();"#)
                 try await waitFor(
                     surface, "Battery removed",
                     #"return !document.querySelector('button[aria-label="Move Battery"]');"#)

@@ -151,7 +151,8 @@ extension WebInterfaceTests {
                 )
                 try await waitFor(
                     surface, "the reset confirmation",
-                    "return page.text().toLowerCase().includes('reset lumon to its shipped version?');")
+                    "return page.text().toLowerCase().includes('reset lumon to its shipped version?');"
+                )
                 #expect(try Theme.read(from: directory) == edited)
                 try await themeButton(surface, "Reset theme")
                 try await waitUntil("shipped default restored") {
@@ -175,7 +176,8 @@ extension WebInterfaceTests {
                 let surface = try themesPage(harness, actions: actions)
                 try await waitForThemes(surface)
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();")
+                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();"
+                )
                 try await waitUntil("recorded apply") { recorder.applied == ["awakening"] }
                 try await run(
                     surface, "document.querySelector('[aria-label^=\"View lumon\" i]').click();")
@@ -248,11 +250,13 @@ extension WebInterfaceTests {
                 let surface = try themesPage(harness, actions: actions)
                 try await waitForThemes(surface)
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();")
+                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();"
+                )
                 try await waitForCurrent(surface, "awakening")
                 #expect(try harness.store.read().currentTheme == "awakening")
                 try await run(
-                    surface, "document.querySelector('[aria-label^=\"View awakening\" i]').click();")
+                    surface, "document.querySelector('[aria-label^=\"View awakening\" i]').click();"
+                )
                 try await chooseWallpaper(surface, "backgrounds/choice.png")
                 try await waitUntil("saved wallpaper") {
                     (try? harness.store.read().wallpapers["awakening"]) == "backgrounds/choice.png"

@@ -74,7 +74,8 @@ extension WebInterfaceTests {
 
                 try await run(
                     surface,
-                    #"document.querySelector('button[aria-label="Try it on, Tokyo Night"]').click();"#)
+                    #"document.querySelector('button[aria-label="Try it on, Tokyo Night"]').click();"#
+                )
                 try await waitFor(
                     surface, "the trying banner",
                     """
@@ -110,13 +111,15 @@ extension WebInterfaceTests {
                 try await waitFor(
                     surface, "the Nord card",
                     #"return !!document.querySelector('button[aria-label="Open Nord"]');"#)
-                try await run(surface, #"document.querySelector('button[aria-label="Open Nord"]').click();"#)
+                try await run(
+                    surface, #"document.querySelector('button[aria-label="Open Nord"]').click();"#)
                 try await waitFor(
                     surface, "the Nord dialog",
                     #"return document.querySelector("[role=dialog]")?.innerText.includes("1 of 3") === true;"#
                 )
 
-                try await run(surface, #"page.key(document.querySelector("[role=dialog]"), "ArrowRight");"#)
+                try await run(
+                    surface, #"page.key(document.querySelector("[role=dialog]"), "ArrowRight");"#)
                 try await waitFor(
                     surface, "the second picture",
                     #"return document.querySelector("[role=dialog]")?.innerText.includes("2 of 3") === true;"#
@@ -133,7 +136,8 @@ extension WebInterfaceTests {
                     #"return document.querySelector("[role=dialog]")?.innerText.includes("3 of 3") === true;"#
                 )
 
-                try await run(surface, #"page.key(document.querySelector("[role=dialog]"), "Escape");"#)
+                try await run(
+                    surface, #"page.key(document.querySelector("[role=dialog]"), "Escape");"#)
                 // An offscreen window may never finish the exit transition, so a
                 // closing dialog counts as closed.
                 try await waitFor(

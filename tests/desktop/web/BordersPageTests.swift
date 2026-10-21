@@ -150,7 +150,8 @@ extension WebInterfaceTests {
                 try harness.store.write(["BORDER_WIDTH": "12"])
                 surface.send(.bordersChanged(try await harness.model.bordersState()))
                 try await waitFor(
-                    surface, "external width", #"return page.select("Border width").value === "12";"#)
+                    surface, "external width",
+                    #"return page.select("Border width").value === "12";"#)
                 try await run(surface, #"page.setValue(page.select("Border width"), 10);"#)
                 try harness.store.update { $0.currentTheme = "blackgold" }
                 harness.model.themes.reload()
@@ -166,7 +167,8 @@ extension WebInterfaceTests {
                 #expect(try harness.store.read().flatValues["BORDER_WIDTH"] == "12")
                 try await bordersButton(surface, "Discard")
                 try await waitFor(
-                    surface, "latest theme loaded", #"return page.select("Border width").value === "12";"#)
+                    surface, "latest theme loaded",
+                    #"return page.select("Border width").value === "12";"#)
                 #expect(await borderCommands(harness).isEmpty)
             }
         }

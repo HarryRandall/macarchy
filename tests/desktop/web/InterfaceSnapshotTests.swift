@@ -91,7 +91,8 @@ extension WebInterfaceTests {
                 try await run(surface, stackSegment + #"stack.click();"#)
                 try await waitFor(
                     surface, "Stack chosen",
-                    stackSegment + #"return stack.getAttribute("aria-pressed") === "true" && page.disabled(page.toggle("Auto balance"));"#
+                    stackSegment
+                        + #"return stack.getAttribute("aria-pressed") === "true" && page.disabled(page.toggle("Auto balance"));"#
                 )
             }
 
