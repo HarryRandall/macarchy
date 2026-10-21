@@ -1,195 +1,67 @@
-<p align="center"><img src="macarchy/resources/logo.svg" width="180" alt="Macarchy logo"></p>
+<p align="center">
+  <img src="macarchy/resources/logo.svg" width="112" alt="Macarchy logo">
+</p>
+<h1 align="center">Macarchy</h1>
+<p align="center"><strong>Your Mac. Your desktop.</strong><br>A themed, tiling desktop for macOS, managed in one native app.</p>
 
-# Macarchy
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-26%2B-18181b?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 26 or later">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--3.0-4A90DB?style=flat-square" alt="GPL-3.0 licence"></a>
+  <a href="https://github.com/HarryRandall/macarchy/stargazers"><img src="https://img.shields.io/github/stars/HarryRandall/macarchy?style=flat-square&amp;color=4A90DB" alt="GitHub stars"></a>
+</p>
+<p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="https://github.com/HarryRandall/macarchy/issues">Report a problem</a>
+</p>
 
-A themed, tiling desktop for macOS in one app.
+<p align="center">
+  <img src="docs/media/theme-switcher.gif" width="960" alt="Macarchy changing desktop colours and wallpaper">
+  <br><sub>Theme switching across the desktop, shown with custom wallpapers.</sub>
+</p>
 
-Macarchy sets up and manages [yabai](https://github.com/asmvik/yabai) (tiling),
-[skhd](https://github.com/asmvik/skhd) (shortcuts),
-[SketchyBar](https://github.com/FelixKratz/SketchyBar) (menu bar) and
-[JankyBorders](https://github.com/FelixKratz/JankyBorders) (window borders), and
-switches themes across them, Ghostty and your wallpaper at once. You change
-things in a native settings window instead of editing dotfiles.
+## Make it yours
 
-> **Status: early preview.** It works on the author's Macs and is being opened up
-> for others. Expect rough edges, and please [report problems](#reporting-problems).
+- **One theme, across your desktop.** Match your menu bar, window borders,
+  Ghostty and wallpaper. Eight palettes included, with support for your own.
+- **Windows where you want them.** Tiling, spacing, app rules and shortcuts
+  from a native settings window.
+- **A bar you can edit.** Arrange items, adjust spacing and preview changes.
+- **Your setup stays yours.** Keep existing dotfiles or start fresh. Setup
+  backs them up so you can restore them later.
 
-## Requirements
+Built around [yabai](https://github.com/asmvik/yabai),
+[skhd](https://github.com/asmvik/skhd),
+[SketchyBar](https://github.com/FelixKratz/SketchyBar) and
+[JankyBorders](https://github.com/FelixKratz/JankyBorders).
 
-- macOS 26 or later on Apple Silicon
-- [Homebrew](https://brew.sh)
-- System Integrity Protection can stay **on**. See [SIP](#do-i-need-to-disable-sip).
+## Get started
 
-## Install
+**Early preview · Apple Silicon · macOS 26+ · SIP stays on**
 
-1. Install the tools Macarchy configures:
+[Build and install from source →](CONTRIBUTING.md#build-and-install)
+Requires Xcode 27 and Homebrew. Prebuilt releases are not available yet.
 
-   ```sh
-   curl -fsSL https://raw.githubusercontent.com/HarryRandall/macarchy/main/Brewfile | brew bundle --file=-
-   ```
+Open Macarchy to set up your desktop, then use **⌘⌃Space** to switch themes.
+Add your own wallpapers to complete the look; wallpapers are not bundled.
 
-   Or one at a time: `brew install asmvik/formulae/yabai asmvik/formulae/skhd
-   FelixKratz/formulae/sketchybar FelixKratz/formulae/borders jq`.
+For setup, shortcuts and configuration, see the
+[configuration reference](CONTRIBUTING.md#configuration-reference).
+To undo setup, use **Advanced → Restore original files** before deleting the app.
 
-2. Download `Macarchy.zip` from the
-   [latest release](https://github.com/HarryRandall/macarchy/releases), unzip it
-   and move **Macarchy.app** to Applications.
+<details>
+<summary>Star history</summary>
 
-3. Open it. Preview builds are not notarised yet, so macOS will refuse the first
-   time. Open **System Settings → Privacy & Security**, scroll down and choose
-   **Open Anyway**. Check the download against the SHA-256 on the release page
-   first if you like.
+<a href="https://www.star-history.com/#HarryRandall/macarchy&amp;Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=HarryRandall/macarchy&amp;type=date&amp;theme=dark">
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=HarryRandall/macarchy&amp;type=date">
+    <img src="https://api.star-history.com/svg?repos=HarryRandall/macarchy&amp;type=date" width="800" alt="Macarchy's GitHub star history">
+  </picture>
+</a>
 
-4. Follow the setup screen. It shows every file it will change before it changes
-   anything, and backs up each one.
+</details>
 
-5. When macOS asks, allow **yabai** and **skhd** in
-   **Privacy & Security → Accessibility**, then restart them from **Advanced**.
+---
 
-### If you already have dotfiles
-
-Setup asks what to do with existing yabai, skhd and SketchyBar configs:
-
-- **Keep mine and add Macarchy.** Your shortcuts and bar stay as they are. Plain
-  top-level `yabai -m config` lines move into Macarchy's Layout page; every other
-  line, including anything inside loops and conditionals, is kept word for word.
-  If you keep your own bar, Macarchy triggers a `macarchy_theme_changed`
-  SketchyBar event on theme changes and writes the colours to
-  `~/.config/macarchy/generated/bar-colours.sh` for your items to use.
-- **Start fresh.** Macarchy's defaults replace them.
-
-Either way the originals are copied to `~/.config/macarchy/backups` first.
-**Advanced → Restore original files** puts them all back.
-
-### If you use Ghostty
-
-Your Ghostty config is never rewritten. Setup adds one line:
-
-```
-config-file = ?/Users/you/.config/macarchy/generated/ghostty.conf
-```
-
-It goes at the end of the last config file Ghostty loads, so theme colours win
-and everything else is yours. No Ghostty? That step is skipped.
-
-## What it changes
-
-Everything Macarchy owns lives in **`~/.config/macarchy`**: settings, themes,
-backups and files rendered from the active theme. Outside it, it only writes the
-startup files each tool reads from a fixed place:
-
-| File | Contents |
-|---|---|
-| `~/.config/yabai/yabairc` | Hands over to Macarchy, plus a region for your own commands |
-| `~/.config/sketchybar/sketchybarrc` | Same |
-| `~/.config/borders/bordersrc` | Same |
-| `~/.config/skhd/skhdrc` | Your shortcuts (or `~/.skhdrc` if that is what you use). Seeded with defaults on a fresh setup |
-| `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
-
-Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
-silently lost.
-
-## Default shortcuts
-
-Most use **Control + Option** (⌃⌥) so they stay clear of macOS shortcuts. Change
-any of them on the Shortcuts page.
-
-| Shortcut | Action |
-|---|---|
-| ⌃⌥ Return | Open a terminal |
-| ⌃⌥ Arrows | Focus window |
-| ⌃⌥⇧ Arrows | Swap window |
-| ⌃⌥ 1–9 | Switch desktop |
-| ⌃⌥⇧ 1–9 | Move window to desktop and follow |
-| ⌃⌥ T | Float or tile the window, remembered per app |
-| ⌃⌥ F | Fill the screen |
-| ⌃⌥ S / R | Flip split / rotate and rebalance |
-| ⌃⌥ = / - | Grow / shrink |
-| ⌃⌥ . / , | Next / previous theme |
-| ⌃⌥ B | Show or hide the menu bar |
-
-## Do I need to disable SIP?
-
-No. Everything Macarchy does works with System Integrity Protection on, using
-yabai 7.1.25 or newer: tiling, rules, focusing and swapping windows, switching
-desktops and moving windows between them.
-
-yabai's optional *scripting addition* adds extras Macarchy does not rely on,
-such as swapping whole desktops, window opacity and sticky windows. It requires
-partly disabling SIP; follow
-[yabai's guide](https://github.com/asmvik/yabai/wiki/Disabling-System-Integrity-Protection)
-only if you want those. Setup health shows its status either way.
-
-## Command line
-
-The app includes a `macarchy` command, used by the startup files:
-
-```sh
-~/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy doctor
-```
-
-`setup`, `uninstall`, `doctor`, `apply`, `theme <name|next|prev>`,
-`wallpaper <theme> <path>`, `rules [toggle]`, `bar toggle` and `restore`.
-Run it with no arguments for details.
-
-## Themes
-
-Eight themes ship with the app. A theme is a folder with a `theme.json` and a
-Ghostty palette, optionally with wallpapers; Themes → Import adds your own.
-Bundled themes do not include wallpapers; add your own images to a theme's
-folder and pick them on the Themes page.
-
-### Neovim
-
-Macarchy writes the theme's colourscheme name to
-`~/.config/macarchy/generated/nvim-colorscheme` and signals running Neovim
-instances. To follow it, add this to your config:
-
-```lua
-local function macarchy_colourscheme()
-  local file = io.open(vim.fn.expand("~/.config/macarchy/generated/nvim-colorscheme"))
-  if not file then return end
-  local name = file:read("*l")
-  file:close()
-  if name and name:match("^[%w_.-]+$") then pcall(vim.cmd.colorscheme, name) end
-end
-macarchy_colourscheme()
-vim.api.nvim_create_autocmd("VimResized", { callback = macarchy_colourscheme })
-```
-
-### Custom builds
-
-A file in `~/.config/macarchy/bin` replaces the Homebrew copy of the same tool,
-for example a patched `borders`.
-
-## Uninstall
-
-1. **Advanced → Restore original files** (or `macarchy uninstall`) puts back
-   every file setup replaced and removes the ones it created.
-2. Delete Macarchy.app, and `~/.config/macarchy` if you do not want your
-   settings and themes.
-
-## Reporting problems
-
-**Report a problem** in the app prepares an issue with your Mac model, versions
-and check results. Your name, username, computer name and home folder are
-removed, and you see the whole report before anything is sent. Or
-[open an issue](https://github.com/HarryRandall/macarchy/issues) directly.
-
-## Building from source
-
-Requires Xcode 27.
-
-```sh
-swift build && swift test && ./tools/lint.sh
-./tools/build.sh release        # .build/artifacts/Macarchy.app, not installed
-./tools/install.sh              # copy to /Applications and run setup
-```
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
-[docs/architecture.md](docs/architecture.md) for how the pieces fit.
-
-## Licence
-
-Macarchy is free software under the [GNU General Public License v3.0](LICENSE).
-Bundled third-party work is listed in [CREDITS.md](CREDITS.md).
+[GPL-3.0](LICENSE) · [Credits](CREDITS.md) · Inspired by [Omarchy](https://github.com/basecamp/omarchy)
