@@ -38,7 +38,7 @@ export function WindowRuleEditor({
   };
 
   async function save() {
-    if (await store.saveCustom({ id: rule.id, app, title })) close();
+    if (await store.saveCustom({ id: rule.id, app, title }, editing)) close();
     else setError(store.getSnapshot().error);
   }
 

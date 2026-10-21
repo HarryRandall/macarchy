@@ -18,9 +18,11 @@ final class DaemonMonitor {
 
     var runningCount: Int { states.values.filter(\.isRunning).count }
 
+    /// Page reads call this, and an unchanged assignment would still notify `StateBroadcast`.
     func refresh() async {
         for daemon in Daemon.allCases {
-            states[daemon] = await backend.state(of: daemon)
+            let state = await backend.state(of: daemon)
+            if states[daemon] != state { states[daemon] = state }
         }
     }
 

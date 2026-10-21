@@ -51,13 +51,57 @@ extension WindowRules {
         try await commit(integrations: integrations) { _ in apps }
     }
 
+    struct LiveRule: Decodable {
+        let label: String?
+        let app: String?
+        let title: String?
+    }
+
+    static func liveRules(_ response: CommandResult) throws -> [LiveRule] {
+        do {
+            return try JSONDecoder().decode([LiveRule].self, from: Data(response.stdout.utf8))
+        } catch {
+            throw ConfigurationError("The window manager returned an unreadable rules list.")
+        }
+    }
+
+    /// The saved floating apps plus any that float only through a live `float_persist_`
+    /// rule, added by an older version, by hand or by the classic window. Reads show this
+    /// list and edits start from it, so an unrelated edit adopts those apps instead of
+    /// removing their rules.
+    static func floatingApps(saved: [String], live: [LiveRule]) -> [String] {
+        var apps = saved
+        for rule in live where rule.label?.hasPrefix("float_persist_") == true {
+            let name = unanchor(rule.app ?? "")
+            if !name.isEmpty, !apps.contains(name) { apps.append(name) }
+        }
+        return apps
+    }
+
+    static func unanchor(_ pattern: String) -> String {
+        var name = pattern
+        if name.hasPrefix("^") { name.removeFirst() }
+        if name.hasSuffix("$") { name.removeLast() }
+        return name.replacingOccurrences(of: "\\", with: "")
+    }
+
+    private static func floatingApps(
+        saved: [String], integrations: Integrations
+    ) async throws -> [String] {
+        let response = await integrations.yabaiRules()
+        guard response.ok else { throw ConfigurationError(response.summary) }
+        return floatingApps(saved: saved, live: try liveRules(response))
+    }
+
     public static func commit(
         store: SettingsStore = SettingsStore(), integrations: Integrations = Integrations(),
         edit: @escaping @Sendable ([String]) -> [String]
     ) async throws {
         try await OperationLock.run(root: store.url.deletingLastPathComponent()) {
             let previous = try store.read()
-            let apps = edit(previous.floatingApps).sorted()
+            let current = try await floatingApps(
+                saved: previous.floatingApps, integrations: integrations)
+            let apps = edit(current).sorted()
             var candidate = previous
             candidate.floatingApps = apps
             try candidate.validate()
@@ -68,7 +112,7 @@ extension WindowRules {
             } catch {
                 do {
                     try await apply(
-                        previous.floatingApps, customRules: previous.windowRules ?? [],
+                        current, customRules: previous.windowRules ?? [],
                         integrations: integrations)
                 } catch let rollback {
                     throw ConfigurationError(
@@ -92,22 +136,28 @@ extension WindowRules {
     public static func commitCustom(
         store: SettingsStore = SettingsStore(),
         integrations: Integrations = Integrations(),
-        edit: @escaping @Sendable ([CustomWindowRule]) -> [CustomWindowRule]
+        edit: @escaping @Sendable ([CustomWindowRule]) throws -> [CustomWindowRule]
     ) async throws {
         try await OperationLock.run(root: store.url.deletingLastPathComponent()) {
             let previous = try store.read()
-            let rules = edit(previous.windowRules ?? [])
+            let rules = try edit(previous.windowRules ?? [])
+            let apps = try await floatingApps(
+                saved: previous.floatingApps, integrations: integrations
+            ).sorted()
             var candidate = previous
+            candidate.floatingApps = apps
             candidate.windowRules = rules
             try candidate.validate()
             do {
-                try await apply(
-                    previous.floatingApps, customRules: rules, integrations: integrations)
-                try store.update { $0.windowRules = rules }
+                try await apply(apps, customRules: rules, integrations: integrations)
+                try store.update {
+                    $0.floatingApps = apps
+                    $0.windowRules = rules
+                }
             } catch {
                 do {
                     try await apply(
-                        previous.floatingApps, customRules: previous.windowRules ?? [],
+                        apps, customRules: previous.windowRules ?? [],
                         integrations: integrations)
                 } catch let rollback {
                     throw ConfigurationError(
@@ -139,7 +189,8 @@ extension WindowRules {
         try await OperationLock.run {
             let store = SettingsStore()
             let settings = try store.read()
-            var apps = settings.floatingApps
+            var apps = try await floatingApps(
+                saved: settings.floatingApps, integrations: integrations)
             let result = await integrations.execute(
                 Paths.yabai, ["-m", "query", "--windows", "--window"])
             guard result.ok else { throw ConfigurationError(result.summary) }

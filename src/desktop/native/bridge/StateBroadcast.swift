@@ -26,6 +26,8 @@ final class StateBroadcast {
     private var lastSettings: Data?
     private let homeFiles = HomeFileWatch()
     private var pendingReload: Task<Void, Never>?
+    private var overviewHolds = 0
+    private var overviewDue = false
 
     init(
         settings: @escaping @MainActor () -> WebSurface?,
@@ -146,7 +148,13 @@ final class StateBroadcast {
         }
     }
 
+    /// Health reruns slow checks on every event, so while an outside change reloads
+    /// several models, each of which notifies `observe`, the event is sent once at the end.
     private func publishOverview() {
+        guard overviewHolds == 0 else {
+            overviewDue = true
+            return
+        }
         settings()?.send(.homeChanged)
         settings()?.send(.healthChanged)
     }
@@ -188,13 +196,24 @@ final class StateBroadcast {
             let data = try? Data(contentsOf: model.settingsStore.url)
             guard data != self.lastSettings else { return }
             self.lastSettings = data
+            self.overviewHolds += 1
+            self.overviewDue = true
             self.advancedChanged()
-            self.publishOverview()
             model.themes.reload()
             await self.publishRules(model)
             await self.publishBorders()
             if let snapshot = await model.refreshLayout() {
                 self.settings()?.send(.layoutChanged(model.layoutState(snapshot)))
+            }
+            // Observers of the models reloaded above are queued behind this task, so
+            // release the hold after them.
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.overviewHolds -= 1
+                if self.overviewHolds == 0, self.overviewDue {
+                    self.overviewDue = false
+                    self.publishOverview()
+                }
             }
         }
     }

@@ -106,6 +106,63 @@ struct WindowRuleSettingsTests {
         #expect(await fake.calls.contains(rule.arguments))
     }
 
+    @Test("an unrelated edit adopts apps that float only through a live rule")
+    func adoptsLiveFloating() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.update { $0.floatingApps = ["Calculator"] }
+        let fake = RulesSettingsFake()
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        #expect(try await settings.read().floatingApps == ["Calculator", "Messages"])
+        let rule = CustomWindowRule(app: "Finder", title: "^Copy$")
+        try await settings.save(rule)
+        #expect(try store.read().floatingApps == ["Calculator", "Messages"])
+        #expect(try store.read().windowRules == [rule])
+        let calls = await fake.calls
+        #expect(calls.contains { $0.contains("label=float_persist_Messages") })
+        #expect(calls.contains { $0.contains("label=float_persist_Calculator") })
+        #expect(try await settings.read().floatingApps == ["Calculator", "Messages"])
+    }
+
+    @Test("removing a floating app that exists only as a live rule removes it everywhere")
+    func removesLiveFloating() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.update { $0.currentTheme = "midnight" }
+        let fake = RulesSettingsFake()
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        try await settings.setFloating(app: "Messages", floating: false)
+        #expect(try store.read().floatingApps.isEmpty)
+        let calls = await fake.calls
+        #expect(calls.contains(["-m", "rule", "--remove", "0"]))
+        #expect(!calls.contains { $0.contains("label=float_persist_Messages") })
+    }
+
+    @Test("saving an edited rule that was removed elsewhere fails without recreating it")
+    func removedElsewhere() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let kept = CustomWindowRule(app: "Calculator")
+        try store.update { $0.windowRules = [kept] }
+        let before = try Data(contentsOf: store.url)
+        let fake = RulesSettingsFake()
+        let settings = WindowRuleSettings(
+            store: store, integrations: Integrations(execute: fake.run))
+        do {
+            try await settings.save(CustomWindowRule(app: "Finder"), existing: true)
+            Issue.record("Expected failure")
+        } catch let error as ConfigurationError {
+            #expect(error.localizedDescription.contains("removed elsewhere"))
+        }
+        #expect(try Data(contentsOf: store.url) == before)
+        #expect(await fake.calls.isEmpty)
+        try await settings.save(
+            CustomWindowRule(id: kept.id, app: "Calculator", title: "^Main$"), existing: true)
+        #expect(try store.read().windowRules?.map(\.title) == ["^Main$"])
+    }
+
     @Test("validation rejects edits before calling the desktop")
     func validation() async throws {
         let (root, store) = try temporary()

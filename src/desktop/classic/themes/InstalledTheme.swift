@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import Macarchy
 
-struct InstalledTheme: Identifiable, Sendable {
+struct InstalledTheme: Identifiable, Sendable, Equatable {
     let name: String
     let directory: URL
     var values: [String: String] { manifest?.flatValues() ?? [:] }

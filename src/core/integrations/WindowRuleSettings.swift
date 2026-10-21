@@ -35,25 +35,11 @@ public struct WindowRuleSettings: Sendable {
                 floatingApps: saved.floatingApps, customRules: saved.windowRules ?? [],
                 externalRules: [], unavailableReason: Self.reason(for: response))
         }
-        struct LiveRule: Decodable {
-            let label: String?
-            let app: String?
-            let title: String?
-        }
-        let live: [LiveRule]
-        do {
-            live = try JSONDecoder().decode([LiveRule].self, from: Data(response.stdout.utf8))
-        } catch {
-            throw ConfigurationError("The window manager returned an unreadable rules list.")
-        }
-        var floatingApps = saved.floatingApps
-        for rule in live where rule.label?.hasPrefix("float_persist_") == true {
-            let name = Self.unanchor(rule.app ?? "")
-            if !floatingApps.contains(name) { floatingApps.append(name) }
-        }
+        let live = try WindowRules.liveRules(response)
+        let floatingApps = WindowRules.floatingApps(saved: saved.floatingApps, live: live)
         let external = live.compactMap { rule -> WindowRuleSnapshot.External? in
             let label = rule.label ?? ""
-            let name = Self.unanchor(rule.app ?? "")
+            let name = WindowRules.unanchor(rule.app ?? "")
             guard !label.hasPrefix("float_persist_"), !label.hasPrefix("macarchy_custom_"),
                 !(label.isEmpty && saved.floatingApps.contains(name))
             else { return nil }
@@ -64,13 +50,18 @@ public struct WindowRuleSettings: Sendable {
             externalRules: external, unavailableReason: nil)
     }
 
-    public func save(_ rule: CustomWindowRule) async throws {
+    /// `existing` is true when the editor opened a saved rule. If that rule has since been
+    /// removed elsewhere, saving fails rather than quietly bringing it back.
+    public func save(_ rule: CustomWindowRule, existing: Bool = false) async throws {
         let rule = CustomWindowRule(id: rule.id, app: rule.app, title: rule.title)
         try rule.validate()
         try await WindowRules.commitCustom(store: store, integrations: integrations) { saved in
             var saved = saved
             if let index = saved.firstIndex(where: { $0.id == rule.id }) {
                 saved[index] = rule
+            } else if existing {
+                throw ConfigurationError(
+                    "This rule was removed elsewhere. Close the editor and try again.")
             } else {
                 saved.append(rule)
             }
@@ -105,12 +96,5 @@ public struct WindowRuleSettings: Sendable {
         let detail = failure.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
         let base = "yabai isn't responding, so these are your saved rules. \(editing)"
         return detail.isEmpty ? base : "\(base) \(detail)"
-    }
-
-    private static func unanchor(_ pattern: String) -> String {
-        var name = pattern
-        if name.hasPrefix("^") { name.removeFirst() }
-        if name.hasSuffix("$") { name.removeLast() }
-        return name.replacingOccurrences(of: "\\", with: "")
     }
 }

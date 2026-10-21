@@ -307,7 +307,12 @@ export function installMockHost() {
       rules.floatingApps = rules.floatingApps.filter((name) => name !== app);
       return null;
     },
-    "rules.saveCustom": ({ rule }) => {
+    "rules.saveCustom": ({ rule, existing }) => {
+      if (existing && !rules.customRules.some((entry) => entry.id === rule.id))
+        throw new MockFailure(
+          "operation_failed",
+          "This rule was removed elsewhere. Close the editor and try again.",
+        );
       rules.customRules = [...rules.customRules.filter((entry) => entry.id !== rule.id), rule];
       return null;
     },

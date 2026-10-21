@@ -162,6 +162,31 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test(
+            "saving an open editor for a rule removed elsewhere explains and does not recreate it")
+        func removedElsewhere() async throws {
+            try await withHarness { harness in
+                let rule = CustomWindowRule(app: "Finder", title: "^Copy$")
+                try harness.store.update { $0.windowRules = [rule] }
+                let surface = try await rulesPage(harness)
+                try await rulesWait(surface, "return !!rules.button('Edit rule for Finder');")
+                try await rulesRun(surface, "rules.button('Edit rule for Finder').click();")
+                try await rulesWait(surface, "return !!rules.field('Window title');")
+                try harness.store.update { $0.windowRules = [] }
+                let before = harness.settingsData
+                try await rulesRun(surface, "page.setValue(rules.field('Window title'), '^Move$');")
+                try await rulesRun(surface, "rules.button('Save').click();")
+                try await rulesWait(
+                    surface, "return page.text().includes('This rule was removed elsewhere.');")
+                #expect(harness.settingsData == before)
+                #expect(try harness.store.read().windowRules?.isEmpty == true)
+                #expect(
+                    !(await harness.desktop.calls(to: "yabai")).contains {
+                        $0.contains("title=^Move$")
+                    })
+            }
+        }
+
         @Test("a stopped yabai shows saved rules without editing, and Try again reads live state")
         func retryLoad() async throws {
             try await withHarness { harness in

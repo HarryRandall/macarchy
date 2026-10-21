@@ -21,7 +21,11 @@ export interface RulesMethods {
   /** Native application picker. Cancelling changes nothing. */
   "rules.addApplication": { params: Record<string, never>; result: null };
   "rules.removeFloating": { params: { app: string }; result: null };
-  "rules.saveCustom": { params: { rule: CustomWindowRule }; result: null };
+  /**
+   * `existing` is true when the editor opened a saved rule. Saving fails if that
+   * rule was removed elsewhere, rather than adding it back.
+   */
+  "rules.saveCustom": { params: { rule: CustomWindowRule; existing: boolean }; result: null };
   "rules.removeCustom": { params: { id: string }; result: null };
 }
 
