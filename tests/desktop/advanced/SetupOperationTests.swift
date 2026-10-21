@@ -56,6 +56,45 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("without applying to the desktop only the file steps run, with a full run's lines")
+        func filesOnly() async throws {
+            let themes = ThemeCalls()
+            var filesOnly: [String] = []
+            try await withHarness(tools: ["yabai"]) { harness in
+                try await withSetupResources(harness) {
+                    try harness.write(
+                        "yabai -m config window_gap 17\n", to: ".config/yabai/yabairc")
+                    let session = SetupSession(
+                        integrations: harness.model.backend,
+                        applyTheme: { await themes.record($0) })
+                    let report = await session.run(
+                        existing: .keep, app: nil, applyToDesktop: false)
+                    #expect(report.failure == nil)
+                    #expect(report.commands.isEmpty)
+                    #expect(await harness.desktop.calls.isEmpty)
+                    #expect(await themes.names.isEmpty)
+                    #expect(try harness.store.read().flatValues["YABAI_WINDOW_GAP"] == "17")
+                    filesOnly = report.lines
+                }
+            }
+            try await withHarness(tools: ["yabai"]) { harness in
+                try await withSetupResources(harness) {
+                    try harness.write(
+                        "yabai -m config window_gap 17\n", to: ".config/yabai/yabairc")
+                    let session = SetupSession(
+                        integrations: harness.model.backend,
+                        applyTheme: { await themes.record($0) })
+                    let full = await session.run(existing: .keep, app: nil)
+                    #expect(full.failure == nil)
+                    #expect(await harness.desktop.calls(to: "yabai").contains(["--start-service"]))
+                    #expect(await themes.names.count == 1)
+                    #expect(!filesOnly.isEmpty)
+                    #expect(Array(full.lines.prefix(filesOnly.count)) == filesOnly)
+                    #expect(full.lines.count == filesOnly.count + full.commands.count)
+                }
+            }
+        }
+
         @Test("a step failing after earlier steps returns their lines with the failure")
         func partialFailureKeepsReport() async throws {
             try await withHarness(tools: ["yabai"]) { harness in
@@ -148,5 +187,15 @@ extension WebInterfaceTests {
                 #expect(harness.settingsData == before)
             }
         }
+    }
+}
+
+/// The themes a setup session asked to apply, in place of the desktop.
+private actor ThemeCalls {
+    private(set) var names: [String] = []
+
+    func record(_ name: String) -> CommandResult {
+        names.append(name)
+        return CommandResult(command: "record theme \(name)", status: 0, stdout: "Theme recorded")
     }
 }

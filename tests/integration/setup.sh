@@ -17,8 +17,15 @@ cp -R "$REPO/resources/themes" "$REPO/resources/integrations/sketchybar" \
 export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$RESOURCES"
 export MACARCHY_SEARCH_PATH="$HOME_DIR/fake-bin" MACARCHY_APPLICATIONS="$HOME_DIR/Applications"
 mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/skhd"
-for tool in yabai skhd sketchybar borders; do
-  printf '#!/bin/sh\nexit 0\n' > "$MACARCHY_SEARCH_PATH/$tool"
+# Each fake records its calls. brew is there because uninstall restarts the
+# services, and SketchyBar and borders start through Homebrew. There is no
+# fake launchctl, so launchd jobs resolve to a missing file and are never reached.
+CALLS="$HOME_DIR/calls.log"
+for tool in yabai skhd sketchybar borders brew; do
+  cat > "$MACARCHY_SEARCH_PATH/$tool" <<SH
+#!/bin/sh
+printf '%s\n' "$tool \$*" >>'$CALLS'
+SH
   chmod +x "$MACARCHY_SEARCH_PATH/$tool"
 done
 
@@ -87,8 +94,11 @@ done
 cp "$HOME_DIR/.config/yabai/yabairc" "$HOME_DIR/before"
 "$CLI" setup --keep --no-apply >/dev/null
 cmp -s "$HOME_DIR/before" "$HOME_DIR/.config/yabai/yabairc" || fail "second setup changed yabairc"
+grep -Eqs -- '--start-service|services start' "$CALLS" && fail "--no-apply started a service"
 
 "$CLI" uninstall >/dev/null
+grep -qx 'yabai --start-service' "$CALLS" || fail "uninstall did not start yabai"
+grep -qx 'brew services start sketchybar' "$CALLS" || fail "uninstall did not start SketchyBar"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$ORIGINAL_YABAI" ] || fail "yabairc not restored"
 [ "$(cat "$HOME_DIR/.config/skhd/skhdrc")" = 'cmd - h : echo mine' ] || fail "skhdrc not restored"
 grep -q 'add item after right' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "sketchybarrc not restored"

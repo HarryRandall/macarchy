@@ -24,15 +24,21 @@ public struct SetupSession: Sendable {
 
     /// Does not throw, so a run that stops partway still reports the backups,
     /// files and services it had already changed alongside the reason.
-    public func run(existing: Setup.Existing, app: URL?) async -> Report {
+    /// Without `applyToDesktop` only the files change: no service is started
+    /// and no theme is applied, so a scripted setup can leave the desktop alone.
+    public func run(
+        existing: Setup.Existing, app: URL?, applyToDesktop: Bool = true
+    ) async -> Report {
         var lines: [String] = []
         var commands: [CommandResult] = []
         var failure: String?
         do {
             lines = try await Setup.run(existing: existing, app: app)
-            commands = await Setup.startServices(integrations: integrations)
-            if let theme = try SettingsStore().read().currentTheme {
-                commands.append(await applyTheme(theme))
+            if applyToDesktop {
+                commands = await Setup.startServices(integrations: integrations)
+                if let theme = try SettingsStore().read().currentTheme {
+                    commands.append(await applyTheme(theme))
+                }
             }
         } catch {
             if let interrupted = error as? Setup.Interrupted { lines = interrupted.lines }

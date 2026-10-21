@@ -11,10 +11,14 @@ let usage = """
     Usage: macarchy <command>
 
       setup [--keep|--replace] [--no-apply]
-                                  Set up this Mac. --keep layers onto your existing
-                                  configs (default); --replace starts from defaults.
+                                  Set up this Mac, start the services and apply the
+                                  theme. --keep layers onto your existing configs
+                                  (default); --replace starts from defaults.
+                                  --no-apply only writes the files: no services are
+                                  started and no theme is applied.
       services                    Start or restart yabai, skhd, SketchyBar and borders.
-      uninstall                   Restore the files setup replaced.
+      uninstall                   Restore the files setup replaced and restart the
+                                  services.
       doctor                      Check dependencies, services and configuration.
       apply                       Reapply every saved setting to the desktop.
       theme <name>|next|prev      Switch theme.
@@ -33,11 +37,20 @@ do {
         let existing: Setup.Existing = args.contains("--replace") ? .replace : .keep
         // The CLI lives inside the app bundle, so its bundle is the app to link.
         let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
-        for line in try await Setup.run(existing: existing, app: app) { print(line) }
-        if !args.contains("--no-apply"), let theme = try SettingsStore().read().currentTheme {
-            try require(await ThemeApplication().apply(name: theme))
+        let applyToDesktop = !args.contains("--no-apply")
+        let report = await SetupSession().run(
+            existing: existing, app: app, applyToDesktop: applyToDesktop)
+        // Failed commands are already among the lines, worded as the app shows them.
+        for line in report.lines where !line.isEmpty { print(line) }
+        if let failure = report.failure { throw ConfigurationError(failure) }
+        if report.commands.contains(where: { !$0.ok }) {
+            throw ConfigurationError(
+                "The files are set up, but not everything started. Check with: macarchy doctor")
         }
-        print("Done. Restart the services from the app, or run: macarchy doctor")
+        print(
+            applyToDesktop
+                ? "Done. Check everything with: macarchy doctor"
+                : "Files are set up. Start the services with: macarchy services")
     case "services":
         var failed = false
         for result in await Setup.startServices() {
@@ -48,7 +61,9 @@ do {
         }
         if failed { exit(1) }
     case "uninstall":
-        for line in try await Setup.uninstall() { print(line) }
+        let report = try await SetupSession().restoreOriginals()
+        for line in report.lines where !line.isEmpty { print(line) }
+        if report.commands.contains(where: { !$0.ok }) { exit(1) }
     case "doctor": try require(await Doctor.check())
     case "apply": try await DesktopConfiguration.apply()
     case "startup":
