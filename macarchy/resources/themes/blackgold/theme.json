@@ -1,0 +1,14 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "gruvbox"
+  },
+  "colors": {
+    "borderActive": "0xffbfa75d",
+    "borderInactive": "0x00000000",
+    "firefoxAccent": "#bfa75d"
+  },
+  "dark": true,
+  "name": "blackgold",
+  "schema": 1
+}

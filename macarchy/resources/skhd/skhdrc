@@ -1,0 +1,62 @@
+# Macarchy default shortcuts. This file is yours: edit it here or on the
+# Shortcuts page. Most use Control + Option so they leave macOS shortcuts alone.
+
+# Open a terminal
+ctrl + alt - return : open -na Ghostty 2>/dev/null || open -na Terminal
+
+# Focus windows
+ctrl + alt - left : yabai -m window --focus west
+ctrl + alt - down : yabai -m window --focus south
+ctrl + alt - up : yabai -m window --focus north
+ctrl + alt - right : yabai -m window --focus east
+
+# Swap windows
+ctrl + alt + shift - left : yabai -m window --swap west
+ctrl + alt + shift - down : yabai -m window --swap south
+ctrl + alt + shift - up : yabai -m window --swap north
+ctrl + alt + shift - right : yabai -m window --swap east
+
+# Switch to desktop
+ctrl + alt - 1 : yabai -m space --focus 1
+ctrl + alt - 2 : yabai -m space --focus 2
+ctrl + alt - 3 : yabai -m space --focus 3
+ctrl + alt - 4 : yabai -m space --focus 4
+ctrl + alt - 5 : yabai -m space --focus 5
+ctrl + alt - 6 : yabai -m space --focus 6
+ctrl + alt - 7 : yabai -m space --focus 7
+ctrl + alt - 8 : yabai -m space --focus 8
+ctrl + alt - 9 : yabai -m space --focus 9
+
+# Move window to desktop and follow
+ctrl + alt + shift - 1 : yabai -m window --space 1 && yabai -m space --focus 1
+ctrl + alt + shift - 2 : yabai -m window --space 2 && yabai -m space --focus 2
+ctrl + alt + shift - 3 : yabai -m window --space 3 && yabai -m space --focus 3
+ctrl + alt + shift - 4 : yabai -m window --space 4 && yabai -m space --focus 4
+ctrl + alt + shift - 5 : yabai -m window --space 5 && yabai -m space --focus 5
+ctrl + alt + shift - 6 : yabai -m window --space 6 && yabai -m space --focus 6
+ctrl + alt + shift - 7 : yabai -m window --space 7 && yabai -m space --focus 7
+ctrl + alt + shift - 8 : yabai -m window --space 8 && yabai -m space --focus 8
+ctrl + alt + shift - 9 : yabai -m window --space 9 && yabai -m space --focus 9
+
+# Float or tile the window, remembered per app
+ctrl + alt - t : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" rules toggle
+
+# Fill the screen with the window
+ctrl + alt - f : yabai -m window --toggle zoom-fullscreen
+
+# Flip the split direction
+ctrl + alt - s : yabai -m window --toggle split
+
+# Rotate and rebalance the layout
+ctrl + alt - r : yabai -m space --rotate 90 && yabai -m space --balance
+
+# Grow and shrink the window
+ctrl + alt - 0x18 : yabai -m window --ratio rel:0.05
+ctrl + alt - 0x1B : yabai -m window --ratio rel:-0.05
+
+# Next and previous theme
+ctrl + alt - 0x2F : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next
+ctrl + alt - 0x2B : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme prev
+
+# Show or hide the menu bar
+ctrl + alt - b : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" bar toggle

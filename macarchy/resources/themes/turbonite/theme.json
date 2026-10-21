@@ -1,0 +1,16 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "gruvbox"
+  },
+  "colors": {
+    "borderActive": "0xffed9a1d",
+    "borderInactive": "0x00000000",
+    "firefoxAccent": "#ed9a1d",
+    "sketchybarBar": "0x00000000",
+    "sketchybarText": "0xffeae9e3"
+  },
+  "dark": true,
+  "name": "turbonite",
+  "schema": 1
+}
