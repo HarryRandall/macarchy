@@ -53,6 +53,29 @@ fail in CI. Tests must use temporary
 homes (`MACARCHY_HOME`), fake tools (`MACARCHY_SEARCH_PATH`) and must never alter
 the running desktop. Use Xcode 27's `swift-format`; CI installs SwiftLint through Homebrew.
 
+Beyond the upstream rules, the interface lint loads a local plugin,
+`src/desktop/ui/lint/macarchy.js`, adapted from rules T3 Code uses:
+
+- Every lint or type suppression gives a reason (`require-suppression-reason`);
+  `@ts-ignore` is banned.
+- No native `title` tooltips; use `Tooltip` (`no-native-title-tooltip`).
+- A scroll area that centres content reserves its gutter
+  (`require-centered-scroll-gutter`).
+- `:has()` in an arbitrary variant is anchored to a selector (`no-unscoped-has`).
+- `ResizeObserver` goes through `observeResize` (`no-raw-resize-observer`).
+- No dividers, unlinked TODOs, test narration, commented-out code or comments
+  that repeat the name below (`no-low-value-comments`).
+- In tests: no timeouts or unexplained skips, no wall clock, no real-time waits
+  without fake timers, no polling loops, no tests declared in loops and no DOM
+  emulators. DOM behaviour is tested in WKWebView from Swift.
+- Features and the shell never import `*Variants` recipes from
+  `components/ui`; styling stays with the primitives.
+
+SwiftLint adds `no_fixed_sleep_in_tests` (a fixed sleep needs a disable comment
+with a reason, outside the polling helpers) and `no_process_name_kill`.
+`tools/lint.sh` also fails if anything in `tools` or `tests/integration` stops
+or signals processes by name.
+
 ## Structure and naming
 
 Directories use lowercase names with hyphens between words. Swift filenames

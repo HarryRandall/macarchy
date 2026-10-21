@@ -56,6 +56,7 @@ func save(_ surface: WebSurface, _ name: String, backing: NSColor? = nil) async 
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     // Let layout, fonts and image decoding settle; animation frames may not
     // run in a window that is not on screen.
+    // swiftlint:disable:next no_fixed_sleep_in_tests - a picture for review, not an assertion; WebKit has no settled event to await.
     try await Task.sleep(for: .milliseconds(400))
 
     let configuration = WKSnapshotConfiguration()

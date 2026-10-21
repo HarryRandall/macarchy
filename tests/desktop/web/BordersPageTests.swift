@@ -50,6 +50,7 @@ extension WebInterfaceTests {
                 try await waitFor(
                     surface, "saved width", #"return page.range("Width").value === "9";"#)
                 surface.send(.bordersChanged(try await harness.model.bordersState()))
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves a refresh never writes; an absence has no signal to await.
                 try await Task.sleep(for: .milliseconds(300))
                 #expect(harness.settingsData == before)
                 #expect(await harness.desktop.calls(to: "borders").isEmpty)
@@ -124,6 +125,7 @@ extension WebInterfaceTests {
                 try await waitUntil("live edit saved") {
                     (try? harness.store.read().flatValues["BORDER_WIDTH"]) == "11"
                 }
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves the drag coalesced to one call; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(300))
                 #expect(await harness.desktop.calls(to: "borders").count == 1)
                 let saved = harness.settingsData

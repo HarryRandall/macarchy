@@ -70,3 +70,32 @@ identifier_name:
 
 nesting:
   type_level: 2
+
+custom_rules:
+  # A fixed sleep either slows a test down or races the thing it waits for.
+  # Await a real signal, or poll through `waitFor` and `waitUntil`, whose
+  # files are the only ones excluded here.
+  no_fixed_sleep_in_tests:
+    name: "No fixed sleep in tests"
+    regex: '\b(?:Task\.sleep|u?sleep)\s*\('
+    included:
+      - '(^|/)tests/'
+    excluded:
+      - '(^|/)tests/desktop/web/WebTestSupport\+Page\.swift$'
+      - '(^|/)tests/desktop/web/WebTestSupport\+Focus\.swift$'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: "Await a real signal or use the polling helpers instead of a fixed sleep."
+    severity: error
+  # Matching processes by name can reach the person's real desktop. Signal a
+  # recorded pid instead.
+  no_process_name_kill:
+    name: "No process kill by name"
+    regex: '\b(?:pkill|killall)\b|kill\s+-9\s+\$\(pgrep'
+    included:
+      - '(^|/)src/'
+      - '(^|/)tests/'
+    message: "Do not stop or signal processes by name; use a recorded pid."
+    severity: error

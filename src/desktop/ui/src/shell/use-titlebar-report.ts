@@ -57,7 +57,7 @@ export function useTitlebarReport(
       if (!frame) frame = requestAnimationFrame(send);
     };
 
-    // Not observeResize: this reports native hit regions, not React state, so nothing to flush.
+    // oxlint-disable-next-line macarchy/no-raw-resize-observer -- this reports native hit regions, not React state, so there is nothing to flush.
     const observer = new ResizeObserver(schedule);
     observer.observe(root);
     for (const element of root.querySelectorAll(
