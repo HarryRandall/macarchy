@@ -1,45 +1,25 @@
 name: CI
 
 on:
-  pull_request:
   push:
-
-permissions:
-  contents: read
+    branches: [main]
+  pull_request:
 
 jobs:
-  check:
-    name: Repository checks (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-15
-
+  test:
+    # Needs a runner with the Xcode 27 toolchain (macOS 26 SDK or later).
+    runs-on: macos-26
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: raycast-theme/package-lock.json
-
-      - name: Install validation tools
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends jq zsh
-
-      - name: Ensure jq is available
-        if: runner.os == 'macOS'
-        run: command -v jq >/dev/null || brew install jq
-
-      - name: Run repository checks
-        run: ./scripts/check.sh
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Lint
+        run: ./tools/lint.sh
+      - name: Setup integration test
+        run: macarchy/tests/integration/setup.sh

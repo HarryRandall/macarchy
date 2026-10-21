@@ -1,0 +1,16 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "tokyonight-night"
+  },
+  "colors": {
+    "borderActive": "0xff78a9ff",
+    "borderInactive": "0x00000000",
+    "firefoxAccent": "#78a9ff",
+    "sketchybarBar": "0x00000000",
+    "sketchybarText": "0xfff2f4f8"
+  },
+  "dark": true,
+  "name": "carbonfox",
+  "schema": 1
+}

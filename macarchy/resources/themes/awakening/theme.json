@@ -1,0 +1,16 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "gruvbox"
+  },
+  "colors": {
+    "borderActive": "0xffffff00",
+    "borderInactive": "0x00000000",
+    "firefoxAccent": "#ffff00",
+    "sketchybarBar": "0x00000000",
+    "sketchybarText": "0xffdacbe6"
+  },
+  "dark": true,
+  "name": "awakening",
+  "schema": 1
+}
