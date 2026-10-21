@@ -7,7 +7,11 @@ import Foundation
 /// partial setup still themes everything it has.
 public struct ThemeApplication: Sendable {
     public let integrations: Integrations
-    public init(integrations: Integrations = Integrations()) { self.integrations = integrations }
+    public let effects: DesktopEffects
+    public init(integrations: Integrations = Integrations(), effects: DesktopEffects = .current) {
+        self.integrations = integrations
+        self.effects = effects
+    }
 
     public func apply(name: String) async -> CommandResult {
         do {
@@ -127,11 +131,11 @@ public struct ThemeApplication: Sendable {
             } else {
                 skipped.append("menu bar")
             }
-            if let failure = await updateAppearance(theme) { return failure }
-            if let wallpaper {
-                _ = try await MainActor.run { try Wallpaper.set(wallpaper) }
+            if let failure = await effects.setAppearance(theme.dark, integrations) {
+                return failure
             }
-            await refreshApplications()
+            if let wallpaper { try await effects.setWallpaper(wallpaper) }
+            await effects.refreshApplications(integrations)
             try SettingsStore().update { $0.currentTheme = name }
             let note = skipped.isEmpty ? "" : " (not running: \(skipped.joined(separator: ", ")))"
             return CommandResult(

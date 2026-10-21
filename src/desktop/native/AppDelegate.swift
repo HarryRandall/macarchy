@@ -47,12 +47,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// setup there is no link, and opening the app changes nothing.
     private func repairAppLink() {
         let bundle = Bundle.main.bundleURL
-        guard bundle.pathExtension == "app",
+        guard !Self.isDevelopmentRun, bundle.pathExtension == "app",
             let current = try? FileManager.default.destinationOfSymbolicLink(
                 atPath: Paths.appLink.path),
             current != bundle.resolvingSymlinksInPath().path
         else { return }
         try? Setup.link(bundle)
+    }
+
+    /// Debug builds and runs with their own home never repoint the app link,
+    /// so only an installed copy becomes the one startup files run.
+    private static var isDevelopmentRun: Bool {
+        #if DEBUG
+        true
+        #else
+        ProcessInfo.processInfo.environment["MACARCHY_HOME"] != nil
+        #endif
     }
 
     /// Relaunching from Finder or Spotlight while hidden reopens the window.

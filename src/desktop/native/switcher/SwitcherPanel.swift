@@ -239,21 +239,7 @@ struct ThemeActions {
     var useBackground: @MainActor (AppModel, String, String) async -> CommandResult
 
     static var live: ThemeActions {
-        #if DEBUG
-        // Lets a development build with an isolated home exercise the switcher
-        // without changing the real wallpaper and appearance.
-        if ProcessInfo.processInfo.environment["MACARCHY_DEBUG_DRY_THEMES"] == "1" {
-            return ThemeActions(
-                apply: { _, name in
-                    CommandResult(command: "theme \(name)", status: 0, stdout: "dry run")
-                },
-                useBackground: { _, name, path in
-                    CommandResult(
-                        command: "wallpaper \(name) \(path)", status: 0, stdout: "dry run")
-                })
-        }
-        #endif
-        return ThemeActions(
+        ThemeActions(
             apply: { model, name in
                 await ThemeApplication(integrations: model.backend).apply(name: name)
             },
