@@ -131,7 +131,7 @@ extension WebInterfaceTests {
                 let typing = Task { await prepare("Typed", refresh: false) }
                 let replies = [await opening.value, await typing.value]
                 #expect(await versionCalls(harness) == 2 * perCollection)
-                #expect(replies.allSatisfy { $0.contains("skhd-v0.4.0") })
+                #expect(replies.allSatisfy { $0.contains("skhd-v0.4.0") }, "\(replies.map { $0.prefix(1500) })")
                 await harness.desktop.answer("skhd", ["--version"], with: .success("skhd-v0.5.0"))
                 let typed = await prepare("Typed again", refresh: false)
                 #expect(typed.contains("skhd-v0.4.0"))

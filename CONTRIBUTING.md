@@ -239,6 +239,8 @@ The app includes a `macarchy` command, used by the startup files:
 `setup`, `uninstall`, `doctor`, `apply`, `theme <name|next|prev>`,
 `wallpaper <theme> <path>`, `rules [toggle]`, `bar toggle` and `restore`.
 Run it with no arguments for details.
+`setup` does what the app's setup does: it writes the files, starts the
+services and applies the theme. `setup --no-apply` only writes the files.
 
 ### Themes
 
@@ -273,7 +275,8 @@ for example a patched `borders`.
 ### Uninstall
 
 1. **Advanced → Restore original files** (or `macarchy uninstall`) puts back
-   every file setup replaced and removes the ones it created.
+   every file setup replaced, removes the ones it created and restarts the
+   services.
 2. Delete Macarchy.app, and `~/.config/macarchy` if you do not want your
    settings and themes.
 
