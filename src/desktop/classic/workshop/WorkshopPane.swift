@@ -31,6 +31,9 @@ struct WorkshopPane: View {
 
     var body: some View {
         SettingsPage("Workshop", subtitle: "Find a new perspective for your desktop.") {
+            // Nothing here can be downloaded yet; say so before anything else.
+            StatusChip(tone: .warning, label: "Preview")
+                .hoverHelp("These designs are concepts. Downloads are not available yet.")
             SearchField(prompt: "Search designs", text: $search, width: 200)
             // A pill bound straight to the state. As two icon buttons inside
             // a decorated capsule, the capsule's stroke overlay sat above them

@@ -3,10 +3,11 @@ import { type KeyboardEvent, useId } from "react";
 
 import type { PaneId } from "~/bridge/protocol";
 import { Tooltip } from "~/components/ui/tooltip";
+import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/cn";
 
 import { BrandMark } from "./brand-mark";
-import { groups, overview, panes, reactPanes } from "./panes";
+import { groups, overview, panes, previewPanes, reactPanes } from "./panes";
 import { TITLEBAR_HEIGHT } from "./use-titlebar-report";
 
 export const SIDEBAR_WIDTH = 210;
@@ -144,13 +145,14 @@ function PaneRow({
   const pane = panes[id];
   const Icon = pane.icon;
   const classic = !reactPanes.has(id);
+  const preview = previewPanes.has(id);
   return (
     <li>
       <Tooltip content={pane.title} side="right" disabled={visible || selected} describe={false}>
         <button
           type="button"
           data-pane-row
-          aria-label={pane.title}
+          aria-label={preview ? `${pane.title}, preview` : pane.title}
           aria-current={selected ? "page" : undefined}
           aria-describedby={classic ? classicHintId : undefined}
           onClick={() => onSelect(id)}
@@ -178,6 +180,11 @@ function PaneRow({
               >
                 {pane.title}
               </span>
+              {preview ? (
+                <Badge aria-hidden tone="warning">
+                  Preview
+                </Badge>
+              ) : null}
               {classic ? (
                 <ArrowUpRight
                   aria-hidden

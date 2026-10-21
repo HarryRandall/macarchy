@@ -23,6 +23,8 @@ struct PluginsPane: View {
 
     var body: some View {
         SettingsPage("Plugins", subtitle: "Coming soon. Extras for the tools you already use.") {
+            StatusChip(tone: .warning, label: "Preview")
+                .hoverHelp("These add-ons are proposals. Installation is not available yet.")
             SearchField(prompt: "Search add-ons", text: $search, width: 190)
         } content: {
             filters

@@ -42,6 +42,9 @@ export const panes: Record<PaneId, PaneInfo> = {
 
 export const overview: PaneId[] = ["home", "workshop", "plugins"];
 
+/** Concepts with nothing to download or install yet, labelled wherever they appear. */
+export const previewPanes = new Set<PaneId>(["workshop", "plugins"]);
+
 /** Grouped by what you are changing, not by which daemon owns it. */
 export const groups: { title: string; panes: PaneId[] }[] = [
   { title: "Appearance", panes: ["themes", "borders", "menuBar"] },
