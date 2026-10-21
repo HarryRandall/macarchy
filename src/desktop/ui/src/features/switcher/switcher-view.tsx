@@ -231,6 +231,7 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
       <Divider />
       <Footer
         primary={primaryTitle(model)}
+        mode={ui.mode.kind}
         actionsOpen={ui.actionsOpen}
         onActions={() => store.dispatch({ type: "toggleActions" })}
       />

@@ -1,8 +1,11 @@
 import { ArrowLeft } from "lucide-react";
 import type { ComponentProps, ReactNode, Ref } from "react";
 
+import { Button } from "~/components/ui/button";
 import { KbdGroup } from "~/components/ui/kbd";
 import { cn } from "~/lib/cn";
+
+import type { Mode } from "./switcher-model";
 
 /** Buttons in the panel must not take focus from the search field. */
 export const keepSearchFocus = {
@@ -25,16 +28,16 @@ export function SearchBar({
 }: ComponentProps<"input"> & { inputRef: Ref<HTMLInputElement>; onBack: () => void }) {
   return (
     <div className="flex h-[54px] shrink-0 items-center gap-3 px-4">
-      <button
-        type="button"
+      <Button
+        variant="translucent"
+        size="icon-md"
         tabIndex={-1}
         aria-label="Back"
         onClick={onBack}
         {...keepSearchFocus}
-        className="flex size-[26px] shrink-0 items-center justify-center rounded-small bg-white/10 text-fg transition-colors hover:bg-white/15"
       >
-        <ArrowLeft aria-hidden className="size-[15px]" strokeWidth={2.5} />
-      </button>
+        <ArrowLeft aria-hidden strokeWidth={2.5} />
+      </Button>
       <input
         ref={inputRef}
         type="text"
@@ -51,32 +54,38 @@ export function SearchBar({
 
 export function Footer({
   primary,
+  mode,
   actionsOpen,
   onActions,
 }: {
   primary: string;
+  /** What the panel is choosing, which the footer names. */
+  mode: Mode["kind"];
   actionsOpen: boolean;
   onActions: () => void;
 }) {
   return (
     <div className="flex h-10 shrink-0 items-center gap-2.5 px-3 text-[13px]">
       <img src="./app-icon.png" alt="" draggable={false} className="size-5" />
-      <span className="text-fg-secondary">Switch Theme</span>
+      <span className="text-fg-secondary">
+        {mode === "backgrounds" ? "Switch Background" : "Switch Theme"}
+      </span>
       <span className="ml-auto font-semibold text-fg">{primary}</span>
       <KbdGroup keys={["↵"]} label="Return" />
       <span aria-hidden className="h-3.5 w-px bg-white/15" />
-      <button
-        type="button"
+      <Button
+        variant="bar"
+        size="inline"
         tabIndex={-1}
         aria-expanded={actionsOpen}
         aria-keyshortcuts="Meta+K"
         onClick={onActions}
         {...keepSearchFocus}
-        className="flex items-center gap-2 rounded-small text-fg-secondary transition-colors hover:text-fg"
+        className="gap-2"
       >
         Actions
         <KbdGroup keys={["⌘", "K"]} label="Command K" />
-      </button>
+      </Button>
     </div>
   );
 }

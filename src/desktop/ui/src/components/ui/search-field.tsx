@@ -35,7 +35,7 @@ function SearchField({
       data-slot="search-field"
       className={cn(
         "flex h-7 w-full min-w-0 items-center gap-2 rounded-full border border-hairline bg-well px-3",
-        "transition-[border-color,box-shadow] focus-within:border-accent-stroke focus-within:shadow-[0_0_0_1px_var(--accent-stroke)]",
+        "transition-[border-color,box-shadow] focus-within:border-accent-stroke focus-within:shadow-[inset_0_0_0_1px_var(--accent-stroke)]",
         "has-disabled:opacity-45",
         className,
       )}

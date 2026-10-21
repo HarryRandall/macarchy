@@ -55,15 +55,77 @@ describe("Advanced store", () => {
     await expect(store.restoreSnapshot("backup")).rejects.toThrow("Restore refused");
     expect(store.getSnapshot()).toMatchObject({ state, busy: false, error: "Restore refused" });
   });
-  it("uses named actions and reads fresh state after success", async () => {
+  it("uses named actions and shows the state read after each one", async () => {
     const { store, request } = harness();
+    let desktop: AdvancedState = {
+      ...state,
+      services: [
+        { id: "yabai", state: "stopped" },
+        { id: "skhd", state: "running" },
+      ],
+      addition: "repair",
+    };
+    request.mockImplementation(async (method, params) => {
+      const daemon = (params as { daemon?: string } | undefined)?.daemon;
+      if (method === "advanced.restartService" && daemon === "yabai") {
+        desktop = {
+          ...desktop,
+          services: [
+            { id: "yabai", state: "running" },
+            { id: "skhd", state: "running" },
+          ],
+        };
+      } else if (method === "advanced.stopService" && daemon === "skhd") {
+        desktop = {
+          ...desktop,
+          services: [
+            { id: "yabai", state: "running" },
+            { id: "skhd", state: "stopped" },
+          ],
+        };
+      } else if (method === "advanced.repairAddition") {
+        desktop = { ...desktop, addition: "active" };
+      } else if (method !== "advanced.getState") {
+        throw new Error(`Unexpected ${String(method)}`);
+      }
+      return method === "advanced.getState" ? desktop : null;
+    });
     await store.load();
+    expect(store.getSnapshot().state?.services).toEqual([
+      { id: "yabai", state: "stopped" },
+      { id: "skhd", state: "running" },
+    ]);
+
     await store.restart("yabai");
+    expect(store.getSnapshot()).toMatchObject({
+      busy: false,
+      error: null,
+      state: {
+        services: [
+          { id: "yabai", state: "running" },
+          { id: "skhd", state: "running" },
+        ],
+        addition: "repair",
+      },
+    });
+
     await store.stop("skhd");
+    expect(store.getSnapshot().state?.services).toEqual([
+      { id: "yabai", state: "running" },
+      { id: "skhd", state: "stopped" },
+    ]);
+
     await store.repair();
-    expect(request.mock.calls).toContainEqual(["advanced.restartService", { daemon: "yabai" }]);
-    expect(request.mock.calls).toContainEqual(["advanced.stopService", { daemon: "skhd" }]);
-    expect(request.mock.calls).toContainEqual(["advanced.repairAddition"]);
+    expect(store.getSnapshot().state?.addition).toBe("active");
+    expect(request.mock.calls.map(([method]) => method)).toEqual([
+      "advanced.getState",
+      "advanced.restartService",
+      "advanced.getState",
+      "advanced.stopService",
+      "advanced.getState",
+      "advanced.repairAddition",
+      "advanced.getState",
+    ]);
   });
   it("does not let stale reads replace an external event", async () => {
     const { store, request, handlers } = harness();

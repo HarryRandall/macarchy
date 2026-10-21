@@ -236,9 +236,10 @@
     cursor: default;
   }
 
+  /* Drawn inside the box, so a scrolling container's edge cannot clip it. */
   :focus-visible {
     outline: 2px solid var(--accent-stroke);
-    outline-offset: 1px;
+    outline-offset: -2px;
   }
 
   /* Inherited ink resolves where it is declared, so a forced subtree restates it. */

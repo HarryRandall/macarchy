@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BordersState } from "~/bridge/contract/borders";
+import type { BorderAppearance, BordersState } from "~/bridge/contract/borders";
 import type { PageHost } from "~/shell/page";
 import type { BridgeEvent } from "~/bridge/protocol";
 import { createBordersStore } from "./borders-store";
@@ -68,8 +68,22 @@ describe("Borders draft editor", () => {
     store.setLive(true);
     expect(store.getSnapshot().live).toBe(false);
     await store.apply();
-    expect(apply).toHaveBeenCalledWith({ theme: "lumon", appearance: store.getSnapshot().draft });
-    expect(store.getSnapshot().applied).toEqual(store.getSnapshot().draft);
+    const edited: BorderAppearance = {
+      width: 6,
+      visible: true,
+      radius: 0.3,
+      excludedApps: [],
+      activeColour: "0xffabcdef",
+      inactiveColour: null,
+    };
+    expect(apply).toHaveBeenCalledExactlyOnceWith({ theme: "lumon", appearance: edited });
+    expect(store.getSnapshot()).toMatchObject({
+      draft: edited,
+      applied: edited,
+      state: { appearance: edited },
+      applying: false,
+      error: null,
+    });
   });
   it("coalesces a live drag into the latest complete appearance", async () => {
     const { store, apply } = setup();

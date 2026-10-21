@@ -56,7 +56,7 @@ function RadioGroup<V extends string>({
               aria-describedby={option.description ? descriptionId : undefined}
               className={cn(
                 "mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-hairline bg-well shadow-[inset_0_1px_1px_rgb(0_0_0/0.08)]",
-                "transition-colors data-checked:border-transparent data-checked:bg-accent data-checked:shadow-[inset_0_0_0_1px_var(--accent-stroke)] data-disabled:opacity-45",
+                "transition-colors data-checked:border-transparent data-checked:bg-accent data-checked:shadow-[inset_0_0_0_1px_var(--accent-stroke)] data-checked:focus-visible:outline-accent-fg data-disabled:opacity-45",
               )}
             >
               <Radio.Indicator className="size-1.5 rounded-full bg-accent-fg" />

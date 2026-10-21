@@ -78,6 +78,22 @@ function Dismiss({ label = "Dismiss", ...props }: ComponentProps<"button"> & { l
   );
 }
 
-const Notice = { Root, Title, Description, Actions, Dismiss };
+/** A title and description with a dismiss button at their trailing edge. */
+function Header({
+  onDismiss,
+  dismissLabel,
+  className,
+  children,
+  ...props
+}: ComponentProps<"div"> & { onDismiss: () => void; dismissLabel?: string }) {
+  return (
+    <div data-slot="notice-header" className={cn("flex items-start gap-2", className)} {...props}>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">{children}</div>
+      <Dismiss label={dismissLabel} onClick={onDismiss} />
+    </div>
+  );
+}
+
+const Notice = { Root, Header, Title, Description, Actions, Dismiss };
 
 export { Notice };

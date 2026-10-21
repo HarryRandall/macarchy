@@ -32,38 +32,38 @@ export function TopBar({
     >
       <div className="flex flex-1 justify-center px-[120px]">
         <Tooltip content="Search themes, settings and actions">
-          <button
-            type="button"
+          <Button
             {...titlebarControl}
+            variant="field"
             aria-label="Search"
             aria-keyshortcuts="Meta+K"
             onClick={onSearch}
-            className="flex h-7 w-full max-w-80 items-center gap-2 rounded-full border border-hairline bg-well px-3 text-fg-secondary transition-colors hover:bg-hover"
+            className="w-full max-w-80 gap-2"
           >
             <Search aria-hidden className="size-3" strokeWidth={2.25} />
-            <span className="text-row-title">Search</span>
+            <span>Search</span>
             <Kbd className="ml-auto">⌘K</Kbd>
-          </button>
+          </Button>
         </Tooltip>
       </div>
 
       <div className="absolute inset-y-0 right-3 flex items-center gap-0.5">
-        <Tooltip content={summary} describe={false}>
-          <button
-            type="button"
+        <Tooltip content={summary}>
+          <Button
             {...titlebarControl}
-            aria-label={summary}
+            variant="pill"
+            size="sm"
+            aria-label="Open desktop services"
             onClick={onServices}
-            className="flex h-6 items-center gap-1.5 rounded-full bg-well px-2 transition-colors hover:bg-hover"
           >
             <span
               aria-hidden
               className={cn("size-[7px] rounded-full", allRunning ? "bg-success" : "bg-warning")}
             />
-            <span className="text-meta text-fg-secondary tabular-nums">
+            <span className="tabular-nums">
               {services.running}/{services.total}
             </span>
-          </button>
+          </Button>
         </Tooltip>
         <Tooltip content="Show the console" describe={false}>
           <Button

@@ -16,6 +16,8 @@ function Switch({
         // Matches the accent unless it is too close to the surface, when it
         // outlines the track so the on state still reads.
         "data-checked:shadow-[inset_0_0_0_1px_var(--accent-stroke)]",
+        // The focus ring is drawn inside, where an accent ring would vanish on the fill.
+        "data-checked:focus-visible:outline-accent-fg",
         size === "sm" ? "h-4 w-[26px] [--thumb:12px]" : "h-[18px] w-8 [--thumb:14px]",
         className,
       )}

@@ -2,6 +2,7 @@ import "~/styles/index.css";
 
 import {
   AppWindow,
+  ArrowLeft,
   ArrowUpRight,
   Clock,
   Command,
@@ -14,6 +15,7 @@ import {
   Pencil,
   Plus,
   RotateCw,
+  Search,
   Square,
 } from "lucide-react";
 import { type ReactNode, StrictMode, useLayoutEffect, useState } from "react";
@@ -213,6 +215,26 @@ function Buttons() {
           <LayoutGrid aria-hidden />
         </Button>
         <Button disabled>Disabled</Button>
+      </Row>
+      <Row>
+        <Button variant="field" className="w-56 gap-2">
+          <Search aria-hidden className="size-3" strokeWidth={2.25} />
+          <span>Search</span>
+          <Kbd className="ml-auto">⌘K</Kbd>
+        </Button>
+        <Button variant="pill" size="sm">
+          3/4
+        </Button>
+        <Button variant="quiet" size="xs">
+          <RotateCw aria-hidden />
+          Reset
+        </Button>
+        <Button variant="bar" size="inline">
+          Actions
+        </Button>
+        <Button variant="translucent" size="icon-md" aria-label="Back">
+          <ArrowLeft aria-hidden strokeWidth={2.5} />
+        </Button>
       </Row>
       <Row>
         <Button size="sm">Small</Button>
