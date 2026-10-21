@@ -37,6 +37,7 @@ import type { AdvancedEvent, AdvancedMethods } from "./contract/advanced";
 import type { BordersEvent, BordersMethods } from "./contract/borders";
 import type { HealthEvent, HealthMethods } from "./contract/health";
 import type { HomeEvent, HomeMethods } from "./contract/home";
+import type { ThemesMethods } from "./contract/themes";
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
 import type { ReportMethods } from "./contract/report";
 import type { RulesEvent, RulesMethods } from "./contract/rules";
@@ -47,6 +48,7 @@ export type * from "./contract/advanced";
 export type * from "./contract/borders";
 export type * from "./contract/health";
 export type * from "./contract/home";
+export type * from "./contract/themes";
 export type * from "./contract/layout";
 export type * from "./contract/report";
 export type * from "./contract/rules";
@@ -69,7 +71,8 @@ export interface BridgeMethods
     BordersMethods,
     HomeMethods,
     HealthMethods,
-    ReportMethods {}
+    ReportMethods,
+    ThemesMethods {}
 
 export type BridgeMethod = keyof BridgeMethods;
 export type ParamsOf<M extends BridgeMethod> = BridgeMethods[M]["params"];

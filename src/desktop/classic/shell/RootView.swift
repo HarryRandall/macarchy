@@ -134,22 +134,12 @@ struct RootView: View {
     @ViewBuilder
     private var detail: some View {
         switch model.selection {
-        case .home, .health, .report:
-            ContentUnavailableView(
-                "Open this page in the new settings window", systemImage: "macwindow")
         case .workshop: WorkshopPane()
         case .plugins: PluginsPane()
-        case .layout, .rules:
-            // Never selected here: `AppModel` sends it to the React window.
+        case .home, .health, .report, .layout, .rules, .themes, .advanced, .borders:
+            // Never selected here: `AppModel` sends migrated panes to the React window.
             ContentUnavailableView(
                 "This page is in the new settings window", systemImage: "macwindow")
-        case .themes: ThemesPane()
-        case .advanced:
-            ContentUnavailableView(
-                "Advanced is in the new settings window", systemImage: "macwindow")
-        case .borders:
-            ContentUnavailableView(
-                "Borders is in the new settings window", systemImage: "macwindow")
         case .menuBar: MenuBarPane()
         case .shortcuts: ShortcutsPane()
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")

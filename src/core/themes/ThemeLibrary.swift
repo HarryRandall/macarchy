@@ -36,6 +36,7 @@ public struct ThemeLibrary: Sendable {
 
     private func copyData(from source: URL, to destination: URL) throws {
         let fm = FileManager.default
+        let source = source.resolvingSymlinksInPath()
         guard
             let entries = fm.enumerator(
                 at: source, includingPropertiesForKeys: [.isSymbolicLinkKey, .isRegularFileKey])
@@ -49,7 +50,9 @@ public struct ThemeLibrary: Sendable {
                 throw ConfigurationError("Theme packages cannot contain symbolic links")
             }
             guard values.isRegularFile == true else { continue }
-            let relative = String(file.path.dropFirst(source.path.count + 1))
+            let relative = file.resolvingSymlinksInPath().pathComponents.dropFirst(
+                source.pathComponents.count
+            ).joined(separator: "/")
             if file.lastPathComponent == "theme.env" { continue }
             guard
                 ["json", "conf", "png", "jpg", "jpeg", "heic", "webp"].contains(

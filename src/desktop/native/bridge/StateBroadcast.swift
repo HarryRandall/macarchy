@@ -18,6 +18,7 @@ final class StateBroadcast {
     private let switcher: @MainActor () -> WebSurface?
     private var model: AppModel?
     private var lastThemes: SwitcherState?
+    private var lastThemeRevision = -1
     private var lastShell: ShellState?
     private var lastMaintenance = ""
     private var watcher: DispatchSourceFileSystemObject?
@@ -37,6 +38,7 @@ final class StateBroadcast {
         self.model = model
         lastSettings = try? Data(contentsOf: model.settingsStore.url)
         lastThemes = model.switcherState()
+        lastThemeRevision = model.themes.revision
         lastShell = model.shellState()
         observe()
         watchSettings()
@@ -85,6 +87,7 @@ final class StateBroadcast {
         withObservationTracking {
             _ = model.themes.themes
             _ = model.themes.current
+            _ = model.themes.revision
             _ = model.daemons.states
             _ = model.layout
             _ = model.shortcuts.bindings
@@ -110,7 +113,8 @@ final class StateBroadcast {
         guard let model else { return }
         publishOverview()
         let themes = model.switcherState()
-        if themes != lastThemes {
+        if themes != lastThemes || model.themes.revision != lastThemeRevision {
+            lastThemeRevision = model.themes.revision
             lastThemes = themes
             for surface in surfaces { surface.send(.themesChanged(themes)) }
             // The Layout preview shows the theme's wallpaper.

@@ -12,6 +12,8 @@
  * closeSwitcher(), changeLayout({ windowGap: 20 }), setAccent("#ff9f0a"),
  * setServices(2).
  */
+import { createThemesMock } from "~/features/themes/themes-mock";
+
 import type {
   AdvancedState,
   Background,
@@ -341,7 +343,7 @@ export function installMockHost() {
       return null;
     },
     "borders.pickApplication": () => ({ name: "Example", icon: null }),
-
+    ...createThemesMock(() => switcher),
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;
