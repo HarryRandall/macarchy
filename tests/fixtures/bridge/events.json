@@ -146,17 +146,46 @@
     {
       "state": {
         "appearance": {
-          "accent": "#61afef"
+          "accent": "#61afef",
+          "mode": "light"
         },
         "selectedPane": "themes",
+        "serviceList": [
+          {
+            "id": "yabai",
+            "name": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "name": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar",
+            "state": "running"
+          },
+          {
+            "id": "skhd",
+            "name": "skhd",
+            "state": "running"
+          }
+        ],
         "services": {
           "running": 4,
           "total": 4
         },
         "setupRequired": false,
-        "sidebarVisible": true
+        "sidebarVisible": true,
+        "version": "0.9.2"
       },
       "type": "shell.changed"
+    }
+  ],
+  "shell.logChanged": [
+    {
+      "type": "shell.logChanged"
     }
   ],
   "shortcuts.changed": [

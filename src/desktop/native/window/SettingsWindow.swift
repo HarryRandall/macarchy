@@ -81,6 +81,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         window.tabbingMode = .disallowed
         window.contentMinSize = Self.minimumSize
         window.backgroundColor = Self.paneBackground
+        // The page's light or dark choice must reach the title bar and the
+        // ground painted before the page draws, not only the page.
+        window.appearance = InterfacePreferences.appearance.nsAppearance
         window.delegate = self
 
         let content = NSView(frame: NSRect(origin: .zero, size: Self.defaultSize))
@@ -127,8 +130,6 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             ? NSColor(srgbRed: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255, alpha: 1)
             : NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF4 / 255, alpha: 1)
     }
-
-    // MARK: - Window
 
     /// Coming forward is when something else may have changed the desktop:
     /// a daemon restarted, the CLI ran, the classic window edited a setting.

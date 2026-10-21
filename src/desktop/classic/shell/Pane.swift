@@ -42,8 +42,16 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
 
     /// Panes the React settings window shows. Choosing one here opens it there.
     static let migrated: Set<Pane> = [
-        .layout, .rules, .advanced, .borders, .home, .health, .report, .themes, .shortcuts
+        .home, .workshop, .plugins, .themes, .borders, .menuBar, .layout, .rules, .shortcuts,
+        .advanced, .health, .report
     ]
+
+    /// Migrated panes whose editor has not been ported: React shows the page
+    /// and sends its editing here, so this window must still open them.
+    static let classicEditors: Set<Pane> = [.menuBar]
+
+    /// Whether this window shows the pane itself rather than sending it to React.
+    var opensInClassic: Bool { !Pane.migrated.contains(self) || Pane.classicEditors.contains(self) }
 
     /// The ungrouped panes at the top of the sidebar.
     static let overview: [Pane] = [.home, .workshop, .plugins]

@@ -32,7 +32,7 @@ final class AppModel {
         didSet {
             // A pane that has moved to the React window opens there instead,
             // and this window stays where it was.
-            if let pane = selection, Pane.migrated.contains(pane) {
+            if let pane = selection, !pane.opensInClassic {
                 selection = oldValue
                 openMigrated?(pane)
                 return
@@ -49,8 +49,8 @@ final class AppModel {
 
     private static var restoredSelection: Pane {
         let saved = Pane(rawValue: Preferences.store.string(forKey: "selectedPane") ?? "home")
-        if let saved, !Pane.migrated.contains(saved) { return saved }
-        return Pane.navigationOrder.first { !Pane.migrated.contains($0) } ?? .home
+        if let saved, saved.opensInClassic { return saved }
+        return Pane.navigationOrder.first(where: \.opensInClassic) ?? .menuBar
     }
 
     /// Where the arrows in the window's bar go. Panes are visited rather than

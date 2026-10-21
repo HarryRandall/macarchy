@@ -26,6 +26,14 @@ struct AdvancedState: Codable, Sendable {
 struct ServiceParams: Codable, Sendable {
     enum ServiceID: String, Codable, Sendable {
         case yabai, borders, sketchybar, skhd
+        init(_ daemon: Daemon) {
+            switch daemon {
+            case .yabai: self = .yabai
+            case .borders: self = .borders
+            case .sketchybar: self = .sketchybar
+            case .skhd: self = .skhd
+            }
+        }
         var daemon: Daemon {
             switch self {
             case .yabai: .yabai
