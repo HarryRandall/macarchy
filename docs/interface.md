@@ -123,14 +123,18 @@ Debug builds also read these, and release builds ignore them:
 | `MACARCHY_DEBUG_NO_SHORTCUT=1` | Skip ⌘⌃Space and `macarchy switcher`, which an installed copy would also answer. |
 
 `tools/run.sh` builds a debug copy and opens it beside the installed app with
-the last two, a fresh temporary home and fake yabai, skhd, SketchyBar and
-borders. Macarchy's files stay in that home and its daemon commands reach the
-fakes. Debug builds, and any run with `MACARCHY_HOME` set, never repoint the
-app link. Each run stops only the copy the previous run started. Not isolated:
-service restarts and stops reach the real launchd jobs, the Borders corner
-radius changes the global setting, and the selected pane and sidebar share the
-installed copy's preferences. Debug builds open their switcher on the
-distributed notification `io.github.harryrandall.macarchy.debug.switcher`.
+the last two, a fresh temporary home and fake yabai, skhd, SketchyBar, borders,
+launchctl and defaults. Macarchy's files stay in that home and its commands
+reach the fakes. With `MACARCHY_SEARCH_PATH` set, launchctl and defaults are
+only taken from it, so service restarts and stops are recorded in
+`launchctl.log` in the temporary home and the Borders corner radius is kept in
+a file there, not the global setting. With `MACARCHY_HOME` set, the selected
+pane and sidebar are kept in the `io.github.harryrandall.macarchy.development`
+preferences suite and windows open centred without saving their frames, so the
+installed copy's preferences are untouched. Debug builds, and any run with
+`MACARCHY_HOME` set, never repoint the app link. Each run stops only the copy
+the previous run started. Debug builds open their switcher on the distributed
+notification `io.github.harryrandall.macarchy.debug.switcher`.
 
 `corepack pnpm run check` runs type checking, oxlint, Prettier and Vitest.
 The web view tests in `tests/desktop/web` load the built `dist` through the

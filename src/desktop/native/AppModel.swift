@@ -37,7 +37,7 @@ final class AppModel {
                 openMigrated?(pane)
                 return
             }
-            UserDefaults.standard.set(selection?.rawValue, forKey: "selectedPane")
+            Preferences.store.set(selection?.rawValue, forKey: "selectedPane")
             guard !navigating, oldValue != selection else { return }
             if let oldValue { back.append(oldValue) }
             forward.removeAll()
@@ -48,7 +48,7 @@ final class AppModel {
     var openMigrated: ((Pane) -> Void)?
 
     private static var restoredSelection: Pane {
-        let saved = Pane(rawValue: UserDefaults.standard.string(forKey: "selectedPane") ?? "home")
+        let saved = Pane(rawValue: Preferences.store.string(forKey: "selectedPane") ?? "home")
         if let saved, !Pane.migrated.contains(saved) { return saved }
         return Pane.navigationOrder.first { !Pane.migrated.contains($0) } ?? .home
     }

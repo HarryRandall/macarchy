@@ -106,8 +106,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         content.addSubview(lights)
         window.contentView = content
 
-        if !window.setFrameUsingName("MacarchySettings") { window.center() }
-        window.setFrameAutosaveName("MacarchySettings")
+        Preferences.restoreFrame(of: window, autosaveName: "MacarchySettings")
 
         self.window = window
         self.surface = surface
