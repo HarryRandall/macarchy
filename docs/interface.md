@@ -112,3 +112,13 @@ folder renders each state of both pages there as PNGs for review.
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
 4. Delete the SwiftUI pane and anything only it used.
+
+## Borders
+
+Borders uses named requests: borders.getState, borders.apply and
+borders.pickApplication. BorderSettings in the core reads preferences, the
+global macOS corner override and active theme colours. BorderEdit applies the
+complete appearance before saving it. The page keeps manual drafts separate
+and coalesces live edits over 180 ms. borders.changed and themes.changed keep
+it current without replacing an unsaved draft. A draft for a previous theme
+must be discarded before editing the new theme.

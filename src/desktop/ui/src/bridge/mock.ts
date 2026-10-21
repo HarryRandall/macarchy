@@ -14,6 +14,7 @@
  */
 import type {
   Background,
+  BordersState,
   BridgeEvent,
   BridgeMethod,
   LayoutState,
@@ -242,7 +243,35 @@ export function installMockHost() {
     [M in BridgeMethod]: (params: ParamsOf<M>) => ResultOf<M> | Promise<ResultOf<M>>;
   };
 
+  let borders: BordersState = {
+    appearance: {
+      width: 6,
+      visible: true,
+      excludedApps: ["iPhone Mirroring"],
+      radius: null,
+      activeColour: "0xff45e8ff",
+      inactiveColour: null,
+    },
+    applicationIcons: {},
+    theme: "awakening",
+    defaults: null,
+    unavailableReason: saved ? "borders is not running." : null,
+    wallpaper: null,
+  };
   const handlers: Handlers = {
+    "borders.getState": () => {
+      if (failures.has("borders-state"))
+        throw new MockFailure("unavailable", "Could not read borders.");
+      return borders;
+    },
+    "borders.apply": ({ appearance, theme: themeName }) => {
+      if (saved || failures.has("borders"))
+        throw new MockFailure("operation_failed", "borders rejected the change.");
+      borders = { ...borders, appearance, theme: themeName };
+      return null;
+    },
+    "borders.pickApplication": () => ({ name: "Example", icon: null }),
+
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;

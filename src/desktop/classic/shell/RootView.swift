@@ -146,7 +146,9 @@ struct RootView: View {
             ContentUnavailableView("Layout is in the new settings window", systemImage: "macwindow")
         case .themes: ThemesPane()
         case .advanced: AdvancedPane()
-        case .borders: BordersPane()
+        case .borders:
+            ContentUnavailableView(
+                "Borders is in the new settings window", systemImage: "macwindow")
         case .menuBar: MenuBarPane()
         case .rules: RulesPane()
         case .shortcuts: ShortcutsPane()
