@@ -8,6 +8,15 @@ public actor SettingsApply {
         values: [String: String], store: SettingsStore = SettingsStore(),
         command: @escaping @Sendable () async -> CommandResult
     ) async -> CommandResult {
+        await enqueue(values: values, store: store, command: command).value
+    }
+
+    /// Joins the queue and returns the edit, so a caller can know it is
+    /// queued behind earlier edits before any of them finishes.
+    func enqueue(
+        values: [String: String], store: SettingsStore,
+        command: @escaping @Sendable () async -> CommandResult
+    ) -> Task<CommandResult, Never> {
         let previous = tail
         let task = Task {
             _ = await previous?.value
@@ -30,6 +39,6 @@ public actor SettingsApply {
             }
         }
         tail = task
-        return await task.value
+        return task
     }
 }

@@ -62,7 +62,11 @@ shell method.
 Handlers are thin. Layout calls `YabaiLayout` in `src/core`, which reads the
 running daemon and applies edits through `SettingsApply`, the same serialised,
 apply-then-save path every other setting uses. The switcher calls
-`ThemeApplication`, as the CLI and the status menu do.
+`ThemeApplication`, as the CLI and the status menu do. It closes the panel
+before applying a theme or background, so the panel never covers the desktop
+as it redraws, then awaits the outcome. A failure reopens the panel with what
+failed and why in `switcher.willOpen`, shown until dismissed or the next
+opening.
 
 Themes reads the shared native catalogue through `ThemeCollection` in `src/core`.
 Its named `themes.setDark`, `themes.setColour`, `themes.setColourscheme` and
@@ -103,7 +107,7 @@ component in each variant and state, in light and dark, with accent
 extremes; it is not part of the production build.
 
 In a browser, the page runs against the mock host in `bridge/mock.ts`. Add
-`?fail=layout`, `?fail=layout-state`, `?source=saved` or `?setup` to see
+`?fail=layout`, `?fail=layout-state`, `?fail=switcher`, `?source=saved` or `?setup` to see
 failure and notice states; `window.macarchyMock` opens the switcher and pushes
 changes.
 

@@ -179,10 +179,12 @@ final class Harness {
         return (window, try #require(window.preload()))
     }
 
-    /// The switcher's page, with theme actions going to `recorder`.
+    /// The switcher's page, with theme actions going to `recorder`. Opening
+    /// is counted there instead of ordering the panel on screen.
     func switcherPage(recorder: ThemeRecorder) throws -> (ThemeSwitcher, WebSurface) {
         let switcher = ThemeSwitcher()
         switcher.actions = recorder.actions
+        switcher.orderIn = { [weak recorder] _ in recorder?.presentations += 1 }
         switcher.attach(model, registerShortcut: false)
         return (switcher, try #require(switcher.surface))
     }

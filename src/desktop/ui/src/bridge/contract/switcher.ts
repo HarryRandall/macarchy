@@ -40,13 +40,28 @@ export interface SwitcherState {
   current: string | null;
 }
 
+export interface SwitcherFailure {
+  /** What failed, such as "Could not apply Lumon". */
+  title: string;
+  reason: string;
+}
+
+export interface SwitcherOpening extends SwitcherState {
+  /** Set when the panel reopens because an action failed. */
+  error: SwitcherFailure | null;
+}
+
 export interface SwitcherMethods {
   "switcher.getState": { params: Record<string, never>; result: SwitcherState };
   /** Reloads themes from disk. */
   "switcher.refresh": { params: Record<string, never>; result: SwitcherState };
-  /** Closes the panel, then applies. The outcome arrives as `themes.changed`. */
+  /**
+   * Closes the panel, then applies, resolving once applied. New state arrives
+   * as `themes.changed`. On failure it rejects and reopens the panel with the
+   * reason in `switcher.willOpen`.
+   */
   "switcher.applyTheme": { params: { theme: string }; result: null };
-  /** Closes the panel, then sets the wallpaper. */
+  /** Closes the panel, then sets the wallpaper, with failures as for applying. */
   "switcher.useBackground": { params: { theme: string; path: string }; result: null };
   "switcher.openSettings": { params: Record<string, never>; result: null };
   "switcher.close": { params: Record<string, never>; result: null };
@@ -59,6 +74,6 @@ export type SwitcherEvent =
    * the returned promise once it has rendered, so the panel never shows a
    * stale or empty frame.
    */
-  | { type: "switcher.willOpen"; state: SwitcherState }
+  | { type: "switcher.willOpen"; state: SwitcherOpening }
   /** The panel is closing. The page resets and resolves after painting, as above. */
   | { type: "switcher.didClose" };

@@ -111,17 +111,27 @@ final class ThemeRecorder {
     var applied: [String] = []
     var backgrounds: [(theme: String, path: String)] = []
     var closeRequests = 0
+    /// How many times the switcher ordered its panel in; it never really does.
+    var presentations = 0
+    /// When set, every recorded action fails with this on stderr.
+    var failure: String?
 
     var actions: ThemeActions {
         ThemeActions(
             apply: { [weak self] _, name in
                 self?.applied.append(name)
-                return CommandResult(command: "theme \(name)", status: 0)
+                return self?.result("theme \(name)") ?? CommandResult(command: "", status: 0)
             },
             useBackground: { [weak self] _, name, path in
                 self?.backgrounds.append((name, path))
-                return CommandResult(command: "wallpaper \(name) \(path)", status: 0)
+                return self?.result("wallpaper \(name) \(path)")
+                    ?? CommandResult(command: "", status: 0)
             })
+    }
+
+    private func result(_ command: String) -> CommandResult {
+        guard let failure else { return CommandResult(command: command, status: 0) }
+        return CommandResult(command: command, status: 1, stderr: failure)
     }
 
     /// Production `close()` does nothing while the panel is hidden, and

@@ -1,5 +1,5 @@
 import { errorMessage } from "~/bridge/client";
-import type { BridgeEvent, BridgeMethods, SwitcherState } from "~/bridge/protocol";
+import type { BridgeEvent, BridgeMethods, SwitcherFailure, SwitcherState } from "~/bridge/protocol";
 import { createListeners } from "~/lib/store";
 
 import {
@@ -65,12 +65,12 @@ export function createSwitcherStore({
     if (next !== snapshot.model) setModel(next, action.type === "reset", snapshot.error);
   }
 
-  function reset(data: SwitcherState) {
+  function reset(data: SwitcherState, failure: SwitcherFailure | null = null) {
     heardFromHost = true;
-    setModel(initialModel(data), true);
+    setModel(initialModel(data, failure), true);
   }
 
-  subscribe("switcher.willOpen", (event) => reset(event.state));
+  subscribe("switcher.willOpen", ({ state: { error, ...data } }) => reset(data, error));
   subscribe("switcher.didClose", () => {
     // Reset now, while hidden, so the next open never shows a stale frame.
     if (snapshot.model) reset(snapshot.model.data);

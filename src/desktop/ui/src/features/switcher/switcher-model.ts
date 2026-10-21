@@ -1,4 +1,4 @@
-import type { Background, SwitcherState, ThemeSummary } from "~/bridge/protocol";
+import type { Background, SwitcherFailure, SwitcherState, ThemeSummary } from "~/bridge/protocol";
 
 export type Row = { kind: "backgrounds" } | { kind: "theme"; name: string };
 export type Mode = { kind: "themes" } | { kind: "backgrounds"; theme: string };
@@ -15,6 +15,8 @@ export interface SwitcherUI {
   actionsOpen: boolean;
   /** Highlighted item in the actions menu. */
   action: number;
+  /** The action that reopened the panel by failing, until dismissed or the next open. */
+  failure: SwitcherFailure | null;
 }
 
 export interface SwitcherModel {
@@ -126,7 +128,10 @@ function initialSelection(data: SwitcherState): string | null {
   return keepOrFirst(current, rows);
 }
 
-export function initialModel(data: SwitcherState): SwitcherModel {
+export function initialModel(
+  data: SwitcherState,
+  failure: SwitcherFailure | null = null,
+): SwitcherModel {
   return {
     data,
     ui: {
@@ -136,6 +141,7 @@ export function initialModel(data: SwitcherState): SwitcherModel {
       tile: null,
       actionsOpen: false,
       action: 0,
+      failure,
     },
   };
 }
@@ -191,7 +197,7 @@ export function actionItems(model: SwitcherModel): ActionItem[] {
 }
 
 export type SwitcherAction =
-  | { type: "reset"; data: SwitcherState }
+  | { type: "reset"; data: SwitcherState; failure?: SwitcherFailure | null }
   | { type: "data"; data: SwitcherState }
   | { type: "search"; search: string }
   | { type: "select"; key: string }
@@ -204,7 +210,8 @@ export type SwitcherAction =
   | { type: "showThemes" }
   | { type: "toggleActions" }
   | { type: "closeActions" }
-  | { type: "highlightAction"; index: number };
+  | { type: "highlightAction"; index: number }
+  | { type: "dismissFailure" };
 
 const GRID_COLUMNS = 2;
 
@@ -216,7 +223,7 @@ export function switcherReducer(model: SwitcherModel, action: SwitcherAction): S
   const { ui } = model;
   switch (action.type) {
     case "reset":
-      return initialModel(action.data);
+      return initialModel(action.data, action.failure);
     case "data":
       return reconcile({ ...model, data: action.data });
     case "search":
@@ -269,6 +276,8 @@ export function switcherReducer(model: SwitcherModel, action: SwitcherAction): S
       return ui.actionsOpen ? { ...model, ui: { ...ui, actionsOpen: false } } : model;
     case "highlightAction":
       return { ...model, ui: { ...ui, action: action.index } };
+    case "dismissFailure":
+      return ui.failure ? { ...model, ui: { ...ui, failure: null } } : model;
   }
 }
 

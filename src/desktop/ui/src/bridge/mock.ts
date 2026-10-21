@@ -5,6 +5,7 @@
  * Query flags:
  *   ?fail=layout         layout.apply rejects
  *   ?fail=layout-state   layout.getState rejects
+ *   ?fail=switcher       applying a theme or background fails and reopens the switcher
  *   ?source=saved        yabai is "not running"; layout is read-only
  *   ?setup               settings have never been written
  *
@@ -28,6 +29,7 @@ import type {
   RulesState,
   ResultOf,
   ShellState,
+  SwitcherFailure,
   SwitcherState,
   TerminalColours,
   ThemeSummary,
@@ -244,11 +246,20 @@ export function installMockHost() {
   }
 
   let reopen: ReturnType<typeof setTimeout> | undefined;
-  function closeSwitcher() {
+  function closeSwitcher(error: SwitcherFailure | null = null) {
     deliver({ type: "switcher.didClose" });
     // A browser tab has no panel to hide, so reopen to keep working.
     clearTimeout(reopen);
-    reopen = setTimeout(() => deliver({ type: "switcher.willOpen", state: switcher }), 600);
+    reopen = setTimeout(
+      () => deliver({ type: "switcher.willOpen", state: { ...switcher, error } }),
+      600,
+    );
+  }
+
+  function failSwitcher(failureTitle: string): never {
+    const reason = "The mock host was asked to fail.";
+    closeSwitcher({ title: failureTitle, reason });
+    throw new MockFailure("operation_failed", reason);
   }
 
   type Handlers = {
@@ -424,6 +435,7 @@ export function installMockHost() {
     "switcher.getState": () => switcher,
     "switcher.refresh": () => switcher,
     "switcher.applyTheme": ({ theme: name }) => {
+      if (failures.has("switcher")) failSwitcher(`Could not apply ${title(name)}`);
       switcher = { ...switcher, current: name };
       shell = {
         ...shell,
@@ -436,6 +448,9 @@ export function installMockHost() {
       return null;
     },
     "switcher.useBackground": ({ theme: name, path }) => {
+      if (failures.has("switcher")) {
+        failSwitcher(`Could not use the ${backgroundName(path)} background`);
+      }
       switcher = {
         ...switcher,
         themes: switcher.themes.map((entry) =>
@@ -488,8 +503,9 @@ export function installMockHost() {
 
   Object.assign(window, {
     macarchyMock: {
-      openSwitcher: () => deliver({ type: "switcher.willOpen", state: switcher }),
-      closeSwitcher,
+      openSwitcher: () =>
+        deliver({ type: "switcher.willOpen", state: { ...switcher, error: null } }),
+      closeSwitcher: () => closeSwitcher(),
       changeLayout(changes: Partial<LayoutValues>) {
         daemon = { ...daemon, ...changes };
         deliver({ type: "layout.changed", state: layoutState() });

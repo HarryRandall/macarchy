@@ -34,6 +34,19 @@ struct ThemeSummary: Codable, Sendable, Equatable {
     }
 }
 
+/// What `switcher.willOpen` carries: fresh state and, when the panel reopens
+/// because an action failed, what failed and why.
+struct SwitcherOpening: Encodable, Sendable, Equatable {
+    var state: SwitcherState
+    var error: SwitcherFailure?
+}
+
+struct SwitcherFailure: Codable, Sendable, Equatable {
+    /// What failed, such as "Could not apply Lumon".
+    var title: String
+    var reason: String
+}
+
 struct ThemeParams: Codable, Sendable {
     var theme: String
 }
@@ -53,6 +66,18 @@ extension SwitcherState {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(themes, forKey: .themes)
         try container.encode(current, forKey: .current)
+    }
+}
+
+/// Flattened, so the page reads `{ themes, current, error }`.
+extension SwitcherOpening {
+    private enum CodingKeys: String, CodingKey { case themes, current, error }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(state.themes, forKey: .themes)
+        try container.encode(state.current, forKey: .current)
+        try container.encode(error, forKey: .error)
     }
 }
 
@@ -79,9 +104,12 @@ extension BridgeEvent {
         BridgeEvent("themes.changed", state: state)
     }
 
-    /// The page resets to this state and resolves once it has drawn it.
-    static func switcherWillOpen(_ state: SwitcherState) -> BridgeEvent {
-        BridgeEvent("switcher.willOpen", state: state)
+    /// The page resets to this state, shows `error` above it if there is one,
+    /// and resolves once it has drawn both.
+    static func switcherWillOpen(
+        _ state: SwitcherState, error: SwitcherFailure? = nil
+    ) -> BridgeEvent {
+        BridgeEvent("switcher.willOpen", state: SwitcherOpening(state: state, error: error))
     }
 
     static let switcherDidClose = BridgeEvent("switcher.didClose")
