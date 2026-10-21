@@ -8,6 +8,7 @@ import { SettingsSection } from "~/components/layout/settings-section";
 import { AppIcon } from "~/components/ui/app-icon";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { IconButton } from "~/components/ui/icon-button";
 import { ListRow } from "~/components/ui/list-row";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
@@ -22,8 +23,16 @@ import { finderTitles, WindowRuleEditor } from "./window-rule-editor";
 export function RulesPage({ store }: { store: RulesStore }) {
   const { status, state, busy, refreshing, error } = useStore(store);
   const [draft, setDraft] = useState<{ rule: CustomWindowRule; editing: boolean } | null>(null);
+  // The rule stays set while the dialog animates closed, so its wording does not change.
+  const [removing, setRemoving] = useState<CustomWindowRule | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const add = (app = "", title = "") =>
     setDraft({ rule: createRuleDraft(app, title), editing: false });
+  const locked = busy || !!state?.unavailableReason;
+  async function remove(rule: CustomWindowRule) {
+    if (!(await store.removeCustom(rule.id)))
+      throw new Error(store.getSnapshot().error ?? "Could not remove the rule.");
+  }
 
   return (
     <>
@@ -35,7 +44,7 @@ export function RulesPage({ store }: { store: RulesStore }) {
             <Tooltip content="Add an app to float all its windows, or a custom rule for specific window titles.">
               <span>
                 <Menu>
-                  <MenuTrigger render={<Button disabled={busy} />}>
+                  <MenuTrigger render={<Button disabled={locked} />}>
                     <Plus aria-hidden />
                     Add
                   </MenuTrigger>
@@ -62,6 +71,17 @@ export function RulesPage({ store }: { store: RulesStore }) {
             {status === "failed" ? "Could not read your rules" : "Window rules failed"}
           </Notice.Title>
           <Notice.Description>{error}</Notice.Description>
+          <Notice.Actions>
+            <Button disabled={busy || refreshing} onClick={() => void store.refresh()}>
+              Try again
+            </Button>
+          </Notice.Actions>
+        </Notice.Root>
+      ) : null}
+      {state?.unavailableReason ? (
+        <Notice.Root variant="warning">
+          <Notice.Title>Showing your saved rules</Notice.Title>
+          <Notice.Description>{state.unavailableReason}</Notice.Description>
           <Notice.Actions>
             <Button disabled={busy || refreshing} onClick={() => void store.refresh()}>
               Try again
@@ -96,7 +116,7 @@ export function RulesPage({ store }: { store: RulesStore }) {
                   actions={
                     <IconButton
                       label={`Stop floating ${app}`}
-                      disabled={busy}
+                      disabled={locked}
                       onClick={() => void store.removeFloating(app)}
                     >
                       <MinusCircle aria-hidden />
@@ -125,15 +145,18 @@ export function RulesPage({ store }: { store: RulesStore }) {
                   <>
                     <IconButton
                       label={`Edit rule for ${rule.app}`}
-                      disabled={busy}
+                      disabled={locked}
                       onClick={() => setDraft({ rule: { ...rule }, editing: true })}
                     >
                       <Pencil aria-hidden />
                     </IconButton>
                     <IconButton
                       label={`Remove rule for ${rule.app}`}
-                      disabled={busy}
-                      onClick={() => void store.removeCustom(rule.id)}
+                      disabled={locked}
+                      onClick={() => {
+                        setRemoving(rule);
+                        setConfirming(true);
+                      }}
                     >
                       <MinusCircle aria-hidden />
                     </IconButton>
@@ -170,6 +193,20 @@ export function RulesPage({ store }: { store: RulesStore }) {
           close={() => setDraft(null)}
         />
       ) : null}
+      <ConfirmDialog
+        open={confirming && removing !== null}
+        onOpenChange={setConfirming}
+        title={`Remove the rule for ${removing?.app ?? "this app"}?`}
+        description={
+          removing?.title
+            ? `Windows matching ${removing.title} go back to being tiled. Your current rules are kept in a backup you can restore from Advanced.`
+            : "Its windows go back to being tiled. Your current rules are kept in a backup you can restore from Advanced."
+        }
+        confirmLabel="Remove rule"
+        busyLabel="Removing…"
+        tone="danger"
+        onConfirm={() => remove(removing!)}
+      />
     </>
   );
 }

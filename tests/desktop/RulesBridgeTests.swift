@@ -28,6 +28,7 @@ struct RulesBridgeTests {
         let before = try Data(contentsOf: store.url)
         let state = await router.handle(["method": "rules.getState"])
         #expect(state.contains("\"externalRules\":[]"))
+        #expect(state.contains("\"unavailableReason\":null"))
         #expect(try Data(contentsOf: store.url) == before)
         #expect(
             await router.handle(["method": "rules.addApplication"]) == #"{"ok":true,"value":null}"#)
@@ -44,6 +45,29 @@ struct RulesBridgeTests {
         #expect(try store.read().windowRules?.isEmpty == true)
         #expect(try store.read().floatingApps.isEmpty)
         #expect(try store.read().currentTheme == "midnight")
+    }
+
+    @Test("a stopped yabai returns saved rules with a reason instead of failing the read")
+    func unavailableDaemon() async throws {
+        let (root, store) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try store.update { $0.floatingApps = ["Messages"] }
+        let before = try Data(contentsOf: store.url)
+        let model = AppModel(
+            backend: Integrations { _, _ in
+                CommandResult(command: "fake", status: 1, stderr: "could not connect")
+            }, settingsStore: store)
+        let router = BridgeRouter()
+        router.registerRules(model: model, chooseApplication: { nil })
+        let reply = await router.handle(["method": "rules.getState"])
+        let data = try #require(reply.data(using: .utf8))
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["ok"] as? Bool == true)
+        let value = try #require(object["value"] as? [String: Any])
+        #expect(value["floatingApps"] as? [String] == ["Messages"])
+        #expect((value["externalRules"] as? [Any])?.isEmpty == true)
+        #expect((value["unavailableReason"] as? String)?.contains("saved rules") == true)
+        #expect(try Data(contentsOf: store.url) == before)
     }
 
     @Test("cancelling the application picker never writes or applies")

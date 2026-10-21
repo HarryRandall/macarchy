@@ -42,7 +42,7 @@ private func rulesPage(_ harness: Harness, unavailable: Bool = false) async thro
     try await rulesWait(
         surface,
         unavailable
-            ? "return page.text().includes('Could not read your rules');"
+            ? "return page.text().includes('Showing your saved rules');"
             : "return page.text().includes('Floating apps');")
     return surface
 }
@@ -128,6 +128,10 @@ extension WebInterfaceTests {
                 #expect(try harness.store.read().windowRules?.first?.id == original.id)
                 try await rulesWait(surface, "return !rules.field('Application');")
                 try await rulesRun(surface, "rules.button('Remove rule for Finder').click();")
+                try await rulesWait(
+                    surface, "return page.text().includes('Remove the rule for Finder?');")
+                #expect(try harness.store.read().windowRules?.count == 1)
+                try await rulesRun(surface, "rules.button('Remove rule').click();")
                 try await waitUntil("rule removed") {
                     (try? harness.store.read().windowRules?.isEmpty) == true
                 }
@@ -158,22 +162,30 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("first-load errors offer Try again and retry reads real state")
+        @Test("a stopped yabai shows saved rules without editing, and Try again reads live state")
         func retryLoad() async throws {
             try await withHarness { harness in
-                let surface = try await rulesPage(harness, unavailable: true)
+                try harness.store.update { $0.floatingApps = ["Messages"] }
                 let before = harness.settingsData
+                let surface = try await rulesPage(harness, unavailable: true)
                 try await rulesWait(
                     surface,
-                    "return page.text().includes('Could not read your rules') && !!rules.button('Try again');"
-                )
+                    """
+                    return !!rules.button('Try again')
+                      && page.disabled(rules.button('Stop floating Messages'))
+                      && page.disabled(rules.button('Add'))
+                      && !page.text().includes('Could not read your rules');
+                    """)
                 await harness.desktop.answer(
                     "yabai", ["-m", "rule", "--list"], with: .success("[]"))
                 try await rulesRun(surface, "rules.button('Try again').click();")
                 try await rulesWait(
                     surface,
-                    "return page.text().includes('No floating apps yet') && !page.text().includes('Could not read your rules');"
-                )
+                    """
+                    return !page.text().includes('Showing your saved rules')
+                      && !page.disabled(rules.button('Stop floating Messages'))
+                      && !page.disabled(rules.button('Add'));
+                    """)
                 #expect(harness.settingsData == before)
             }
         }

@@ -121,6 +121,43 @@ describe("Themes store", () => {
       { theme: "lumon", colour: "borderActive", value: "#abcdef" },
     ]);
   });
+  it("previews a dragged colour locally and saves it once when the drag settles", async () => {
+    const { store, request, event } = setup();
+    await store.load();
+    const writes = () => request.mock.calls.filter((call) => call[0] === "themes.setColour");
+    for (const value of ["#111111", "#222222", "#333333"]) {
+      store.preview("lumon", "borderActive", value);
+    }
+    expect(writes()).toHaveLength(0);
+    expect(store.getSnapshot().state?.themes[0]?.values.borderActive).toBe("#333333");
+    request.mockResolvedValueOnce({ ...state, current: "another" });
+    event();
+    await vi.waitFor(() => expect(store.getSnapshot().state?.current).toBe("another"));
+    expect(store.getSnapshot().state?.themes[0]?.values.borderActive).toBe("#333333");
+
+    await store.commit("lumon", "borderActive", "#333333");
+    expect(writes().map((call) => call[1])).toEqual([
+      { theme: "lumon", colour: "borderActive", value: "#333333" },
+    ]);
+  });
+  it("commits nothing when a drag ends on the saved colour", async () => {
+    const { store, request } = setup();
+    await store.load();
+    store.preview("lumon", "borderActive", "#123456");
+    await store.commit("lumon", "borderActive", "#ffffff");
+    expect(request.mock.calls.map((call) => call[0])).toEqual(["themes.getState"]);
+    expect(store.getSnapshot().state?.themes[0]?.values.borderActive).toBe("#ffffff");
+  });
+  it("rejects a failed reset so its confirmation can show why", async () => {
+    const { store, request } = setup();
+    await store.load();
+    request.mockRejectedValueOnce(new Error("No shipped default for lumon"));
+    await expect(store.reset("lumon")).rejects.toThrow("No shipped default for lumon");
+    expect(store.getSnapshot()).toMatchObject({
+      busy: false,
+      error: "No shipped default for lumon",
+    });
+  });
   it("keeps failures visible, reconciles rejected edits and accepts external changes", async () => {
     const { store, request, event } = setup();
     await store.load();

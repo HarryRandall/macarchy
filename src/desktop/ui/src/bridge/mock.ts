@@ -230,6 +230,9 @@ export function installMockHost() {
     customRules: [],
     externalRules: [],
     icons: {},
+    unavailableReason: saved
+      ? "yabai isn't responding, so these are your saved rules. Editing is off because rules apply through yabai."
+      : null,
   };
 
   let switcher: SwitcherState = { themes, current: "awakening" };

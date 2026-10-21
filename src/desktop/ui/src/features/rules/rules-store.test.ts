@@ -10,6 +10,7 @@ const state: RulesState = {
   customRules: [],
   externalRules: [],
   icons: {},
+  unavailableReason: null,
 };
 function setup() {
   const bridge = createBridge({});
@@ -63,6 +64,38 @@ describe("Rules store", () => {
     });
     await test.store.refresh();
     expect(test.store.getSnapshot()).toMatchObject({ status: "ready", error: null });
+  });
+
+  it("shows saved rules without yabai and refuses edits until it recovers", async () => {
+    const test = setup();
+    const rule = { id: "copy", app: "Finder", title: "^Copy$" };
+    const unavailable: RulesState = {
+      ...state,
+      customRules: [rule],
+      unavailableReason: "yabai isn't responding, so these are your saved rules.",
+    };
+    test.getState.mockResolvedValueOnce(unavailable);
+    await test.store.load();
+    expect(test.store.getSnapshot()).toMatchObject({
+      status: "ready",
+      error: null,
+      state: { floatingApps: ["Messages"], customRules: [rule], externalRules: [] },
+    });
+    expect(test.store.getSnapshot().state?.unavailableReason).toContain("saved rules");
+
+    expect(await test.store.addApplication()).toBe(false);
+    expect(await test.store.removeFloating("Messages")).toBe(false);
+    expect(await test.store.saveCustom(rule)).toBe(false);
+    expect(await test.store.removeCustom("copy")).toBe(false);
+    expect(test.addApplication).not.toHaveBeenCalled();
+    expect(test.removeFloating).not.toHaveBeenCalled();
+    expect(test.saveCustom).not.toHaveBeenCalled();
+    expect(test.removeCustom).not.toHaveBeenCalled();
+    expect(test.store.getSnapshot()).toMatchObject({ busy: false, error: null });
+
+    test.event(state);
+    expect(await test.store.removeCustom("copy")).toBe(true);
+    expect(test.removeCustom).toHaveBeenCalledWith("copy");
   });
 
   it("routes each edit to its named operation and shows the saved result", async () => {

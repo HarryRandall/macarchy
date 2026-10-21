@@ -76,7 +76,9 @@ only when Apply or Reapply is chosen. `themes.apply` and
 `themes.importFolder` and `themes.exportFolder` open native panels through an
 injectable `ThemePanels`; filesystem destinations never cross the bridge.
 `themes.reveal` validates the installed theme before showing it in Finder.
-The page re-reads on `themes.changed`, preserving queued field edits.
+The page re-reads on `themes.changed`, preserving queued field edits. Colours
+preview locally while dragging and save once the change settles. Reset asks
+first, and every save snapshots the previous `theme.json`.
 
 Events flow the other way through `window.macarchyBridge.receive`. A
 document-start script queues any that arrive before the page's client starts.
@@ -151,14 +153,16 @@ The Rules page uses `WindowRuleSettings` in the core to read saved floating
 apps and custom rules alongside live external rules. Custom rules apply before
 saving through `WindowRules.commitCustom`; floating edits read the latest list
 inside the same desktop lock. Failed applies or saves replay the previous rules
-and report a failed replay explicitly. Opening and refreshing only read.
+and report a failed replay explicitly. Opening and refreshing only read. When
+yabai cannot be reached, the page shows the saved rules with the reason and
+turns editing off, because rules apply through yabai before they are saved.
 
 The bridge exposes `rules.getState`, `rules.addApplication` (the native application
 picker), `rules.removeFloating`, `rules.saveCustom` and `rules.removeCustom`.
 `rules.changed` publishes saved state after edits and external settings changes;
 `rules.unavailable` reports unreadable external changes. React keeps open editor
 drafts separate from incoming state. Saving enables a custom rule; removing it
-stops applying it. External rules remain read-only.
+asks first, then stops applying it. External rules remain read-only.
 
 ## Borders
 
