@@ -112,13 +112,18 @@ Debug builds also read these, and release builds ignore them:
 | Variable | Effect |
 |---|---|
 | `MACARCHY_UI_DEV_SERVER=http://localhost:5173` | Load the pages from the Vite server, for hot reload. |
-| `MACARCHY_DEBUG_DRY_THEMES=1` | Theme controls record theme and background choices instead of applying them, which would change the real wallpaper and appearance. |
+| `MACARCHY_DEBUG_DRY_THEMES=1` | Applying a theme, from any surface or the command, logs the wallpaper, appearance and Ghostty and Neovim refreshes instead of making them. Everything else applies as usual. |
 | `MACARCHY_DEBUG_NO_SHORTCUT=1` | Skip ⌘⌃Space and `macarchy switcher`, which an installed copy would also answer. |
 
-With `MACARCHY_HOME` and `MACARCHY_SEARCH_PATH` pointing at a temporary home
-and fake tools, a debug build runs beside the installed app without touching
-the desktop. Debug builds open their switcher on the distributed notification
-`io.github.harryrandall.macarchy.debug.switcher`.
+`tools/run.sh` builds a debug copy and opens it beside the installed app with
+the last two, a fresh temporary home and fake yabai, skhd, SketchyBar and
+borders. Macarchy's files stay in that home and its daemon commands reach the
+fakes. Debug builds, and any run with `MACARCHY_HOME` set, never repoint the
+app link. Each run stops only the copy the previous run started. Not isolated:
+service restarts and stops reach the real launchd jobs, the Borders corner
+radius changes the global setting, and the selected pane and sidebar share the
+installed copy's preferences. Debug builds open their switcher on the
+distributed notification `io.github.harryrandall.macarchy.debug.switcher`.
 
 `corepack pnpm run check` runs type checking, oxlint, Prettier and Vitest.
 The web view tests in `tests/desktop/web` load the built `dist` through the

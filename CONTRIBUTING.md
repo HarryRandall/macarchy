@@ -20,7 +20,10 @@ brew install swiftlint
 ```
 
 The build creates `.build/artifacts/Macarchy.app` and does not install it.
-To install, close Macarchy first and make sure no other session is editing or
+To try a change, `./tools/run.sh` opens a debug build beside the installed app
+in a temporary home with fake daemons and stops only the copy it started last.
+[The interface guide](docs/interface.md#development) lists what it does not
+isolate. To install, close Macarchy first and make sure no other session is editing or
 testing the active desktop:
 
 ```sh
