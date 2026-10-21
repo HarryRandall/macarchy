@@ -19,7 +19,6 @@ final class AppModel {
     let snapshots: SnapshotBrowser
     let menuBar: MenuBarModel
     let rc: RCGenerator
-    let rules: RulesModel
     let shortcuts: ShortcutsModel
     /// Dialogs are presented inside the window rather than as sheets, so the
     /// page behind one cannot be hovered or clicked while it is open.
@@ -104,7 +103,6 @@ final class AppModel {
         self.snapshots = SnapshotBrowser(log: log)
         self.menuBar = MenuBarModel(backend: backend, log: log)
         self.rc = RCGenerator(log: log)
-        self.rules = RulesModel(backend: backend, log: log)
         self.shortcuts = ShortcutsModel(log: log)
     }
 
