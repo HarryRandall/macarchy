@@ -18,6 +18,7 @@ extension ThemeApplication {
     /// file from a resize handler. Neither being open is fine.
     static func refreshApplications(integrations: Integrations) async {
         for (signal, process) in [("USR2", "ghostty"), ("USR2", "Ghostty"), ("WINCH", "nvim")] {
+            // swiftlint:disable:next no_process_name_kill - a reload signal by exact name, never a stop; tests only reach the Integrations fake.
             _ = await integrations.execute("/usr/bin/pkill", ["-" + signal, "-x", process])
         }
     }

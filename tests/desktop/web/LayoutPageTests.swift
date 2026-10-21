@@ -28,6 +28,7 @@ extension WebInterfaceTests {
 
                 let (_, surface) = try harness.settingsPage()
                 try await waitForLayout(surface, gap: 14)
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves opening never writes; an absence has no signal to await.
                 try await Task.sleep(for: .milliseconds(500))
 
                 #expect(await harness.desktop.writes.isEmpty)
@@ -38,6 +39,7 @@ extension WebInterfaceTests {
                 let snapshot = try await harness.model.yabaiLayout.read()
                 surface.send(.layoutChanged(harness.model.layoutState(snapshot)))
                 try await waitForLayout(surface, gap: 18)
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves a refresh never writes; an absence has no signal to await.
                 try await Task.sleep(for: .milliseconds(500))
 
                 #expect(await harness.desktop.writes.isEmpty)
@@ -64,6 +66,7 @@ extension WebInterfaceTests {
                     (try? harness.store.read().flatValues["YABAI_WINDOW_GAP"]) == "20"
                 }
                 // Let any straggling debounce fire before counting.
+                // swiftlint:disable:next no_fixed_sleep_in_tests - counts writes that may never come; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(300))
 
                 let gapWrites = await harness.desktop.writes.filter { $0[0] == "window_gap" }
@@ -102,6 +105,7 @@ extension WebInterfaceTests {
                 try await waitUntil("the top edge at 20") {
                     await harness.desktop.writes.contains(["top_padding", "20"])
                 }
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves the other edges are not written; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(300))
 
                 let atTwenty = await harness.desktop.writes.filter { $0[1] == "20" }.map { $0[0] }
@@ -194,6 +198,7 @@ extension WebInterfaceTests {
                     page.setValue(page.range("Between windows"), 4);
                     page.card("Tile").click();
                     """)
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves disabled controls never write; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(400))
 
                 #expect(await harness.desktop.writes.isEmpty)

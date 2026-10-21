@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "react", "unicorn", "oxc", "import", "jsx-a11y", "vitest"],
+  "jsPlugins": ["./lint/macarchy.js"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -23,7 +24,49 @@
         "allow": ["**/*.css"]
       }
     ],
-    "unicorn/require-post-message-target-origin": "off"
+    "unicorn/require-post-message-target-origin": "off",
+    "macarchy/require-suppression-reason": "error",
+    "macarchy/no-native-title-tooltip": "error",
+    "macarchy/require-centered-scroll-gutter": "error",
+    "macarchy/no-unscoped-has": "error",
+    "macarchy/no-raw-resize-observer": "error",
+    "macarchy/no-low-value-comments": "warn"
   },
+  "overrides": [
+    {
+      "files": ["src/**/*.test.ts", "lint/**/*.test.ts"],
+      "rules": {
+        "macarchy/no-test-timeout-or-unreasoned-skip": "error",
+        "macarchy/no-wall-clock-in-tests": "error",
+        "macarchy/no-real-time-wait-in-tests": "error",
+        "macarchy/no-polling-loop-in-tests": "warn",
+        "macarchy/no-test-in-loop": "error",
+        "macarchy/no-dom-test-environment": "error"
+      }
+    },
+    {
+      "files": ["src/features/**", "src/shell/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["~/components/ui/*", "**/components/ui/*"],
+                "importNamePattern": "Variants$",
+                "message": "Variant styles stay owned by the primitives in components/ui. Use the component and its props."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["lint/**"],
+      "rules": {
+        "macarchy/no-unscoped-has": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist/**", "node_modules/**"]
 }

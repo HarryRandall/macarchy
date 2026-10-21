@@ -89,6 +89,7 @@ extension WebInterfaceTests {
                 // As a held key repeats.
                 for _ in 0..<3 {
                     try press(.right, in: window)
+                    // swiftlint:disable:next no_fixed_sleep_in_tests - the spacing is the input: repeats inside the debounce window.
                     try await Task.sleep(for: .milliseconds(30))
                 }
                 try press(.left, in: window)
@@ -99,6 +100,7 @@ extension WebInterfaceTests {
                 try await waitUntil("settings.json to record the gap") {
                     (try? harness.store.read().flatValues["YABAI_WINDOW_GAP"]) == "10"
                 }
+                // swiftlint:disable:next no_fixed_sleep_in_tests - proves no second write follows; an absence has no signal, so outlast the debounce.
                 try await Task.sleep(for: .milliseconds(300))
 
                 #expect(await harness.desktop.writes == [["window_gap", "10"]])
