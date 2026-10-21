@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo } from "react";
 
-import { request } from "~/bridge/client";
+import { bridge, request } from "~/bridge/client";
 import { Button } from "~/components/ui/button";
 import { Notice } from "~/components/ui/notice";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import type { PaneId } from "~/bridge/protocol";
+import { SetupPage } from "~/features/setup/setup-page";
+import { setupPresentation } from "~/features/setup/setup-presentation";
 import { accentVariables } from "~/lib/accent";
 import { useStore } from "~/lib/store";
 
@@ -58,15 +60,21 @@ export function SettingsApp({
   stores: Map<PaneId, PageStore>;
 }) {
   const shellSnapshot = useStore(shell);
+  const setup = useStore(setupPresentation);
+  useEffect(() => {
+    if (shellSnapshot.state?.setupRequired)
+      setupPresentation.open({ request, subscribe: bridge.subscribe });
+  }, [shellSnapshot.state?.setupRequired]);
   const accent = shellSnapshot.state?.appearance.accent;
   const selected = shellSnapshot.state ? reactPaneFor(shellSnapshot.state.selectedPane) : null;
   const page = selected ? pages.find((candidate) => candidate.id === selected) : undefined;
-  const store = (selected && stores.get(selected)) || idle;
+  const store = setup ?? ((selected && stores.get(selected)) || idle);
   const pageSnapshot = useStore(store);
 
   useEffect(() => {
-    if (selected && store !== idle) ensureLoaded(selected, store);
-  }, [selected, store]);
+    if (!setup && !shellSnapshot.state?.setupRequired && selected && store !== idle)
+      ensureLoaded(selected, store);
+  }, [selected, store, setup, shellSnapshot.state?.setupRequired]);
 
   const context = useMemo<PageContext>(
     () => ({
@@ -84,7 +92,9 @@ export function SettingsApp({
   // The window is shown once the first page has something real to draw.
   const settled =
     shellSnapshot.status === "failed" ||
-    (shellSnapshot.status === "ready" && pageSnapshot.status !== "loading");
+    (shellSnapshot.status === "ready" &&
+      pageSnapshot.status !== "loading" &&
+      (!shellSnapshot.state?.setupRequired || setup !== null));
   useEffect(() => {
     if (settled) announceReady();
   }, [settled]);
@@ -108,7 +118,22 @@ export function SettingsApp({
   return (
     <TooltipProvider>
       <SettingsShell store={shell} state={shellSnapshot.state} error={shellSnapshot.error}>
-        {page ? page.render(store, context) : null}
+        {setup ? (
+          <SetupPage
+            store={setup}
+            close={() => {
+              setupPresentation.close();
+              void shell.load();
+            }}
+            health={() => {
+              setupPresentation.close();
+              void shell.load();
+              shell.selectPane("health");
+            }}
+          />
+        ) : page ? (
+          page.render(store, context)
+        ) : null}
       </SettingsShell>
     </TooltipProvider>
   );

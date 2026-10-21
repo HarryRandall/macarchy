@@ -52,6 +52,12 @@ up once, then adopts or replaces existing configuration, links the app,
 installs themes and adds Ghostty's include line. `Setup.uninstall` restores the
 backups and deletes files that did not exist before. Running setup again is
 idempotent and never reseeds a file the person has edited.
+`SetupSession` sequences setup, service startup and theme application, returning
+partial failures with the results. Its theme application is injectable so tests
+record desktop effects. `AdvancedConfiguration` resolves snapshot identifiers
+from the store and owns maintenance operations. `DesktopServices` shares Secure
+Input handling between the native status menu and React service controls; focus
+hand-off is injected by the native host.
 
 ## Integrations
 

@@ -13,6 +13,7 @@
  * setServices(2).
  */
 import type {
+  AdvancedState,
   Background,
   BridgeEvent,
   BridgeMethod,
@@ -242,7 +243,51 @@ export function installMockHost() {
     [M in BridgeMethod]: (params: ParamsOf<M>) => ResultOf<M> | Promise<ResultOf<M>>;
   };
 
+  const advanced: AdvancedState = {
+    services: ["yabai", "borders", "sketchybar", "skhd"].map((id) => ({
+      id: id as AdvancedState["services"][number]["id"],
+      state: "running",
+    })),
+    snapshots: [],
+    theme: "awakening",
+    installedThemes: themes.length,
+    addition: "missing",
+    additionExplanation: "The scripting addition is optional.",
+    wakeHelpers: true,
+    backupsDirectory: "~/.config/macarchy/backups",
+  };
   const handlers: Handlers = {
+    "advanced.getState": () => advanced,
+    "advanced.restartService": ({ daemon: serviceId }) => {
+      advanced.services.find((service) => service.id === serviceId)!.state = "running";
+      return null;
+    },
+    "advanced.stopService": ({ daemon: serviceId }) => {
+      advanced.services.find((service) => service.id === serviceId)!.state = "stopped";
+      return null;
+    },
+    "advanced.rebuild": () => ({ outcome: "Rebuilt" }),
+    "advanced.restoreSnapshot": () => null,
+    "advanced.repairAddition": () => null,
+    "advanced.restoreOriginals": () => ({ lines: ["Restored original files"], failures: [] }),
+    "setup.getPlan": () => ({
+      tools: [],
+      changes: [
+        {
+          path: "~/.config/yabai/yabairc",
+          action: "create",
+          detail: "Starts tiling with Macarchy's layout and rules",
+        },
+      ],
+      hasExisting: true,
+      canClose: !shell.setupRequired,
+    }),
+    "setup.run": () => {
+      shell = { ...shell, setupRequired: false };
+      deliver({ type: "shell.changed", state: shell });
+      return { lines: ["Installed themes", "Prepared startup files"], failures: [] };
+    },
+    "setup.openAccessibility": () => null,
     "app.ready": ({ surface }) => {
       console.info(`[mock] ${surface} ready`);
       return null;

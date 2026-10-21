@@ -19,6 +19,7 @@ final class StateBroadcast {
     private var model: AppModel?
     private var lastThemes: SwitcherState?
     private var lastShell: ShellState?
+    private var lastMaintenance = ""
     private var watcher: DispatchSourceFileSystemObject?
     private var lastSettings: Data?
     private var pendingReload: Task<Void, Never>?
@@ -47,6 +48,18 @@ final class StateBroadcast {
         lastSettings = try? Data(contentsOf: model.settingsStore.url)
     }
 
+    func advancedChanged() {
+        guard let model else { return }
+        settings()?.send(.shellChanged(model.shellState()))
+        Task {
+            do {
+                settings()?.send(.advancedChanged(try await model.advancedState()))
+            } catch {
+                settings()?.send(BridgeEvent("advanced.invalidated"))
+            }
+        }
+    }
+
     /// Pages that have loaded. One still loading fetches current state itself.
     private var surfaces: [WebSurface] { [settings(), switcher()].compactMap { $0 } }
 
@@ -56,6 +69,7 @@ final class StateBroadcast {
             _ = model.themes.themes
             _ = model.themes.current
             _ = model.daemons.states
+            _ = model.snapshots.snapshots
         } onChange: { [weak self] in
             // Runs before the change lands; read the new values afterwards.
             Task { @MainActor in
@@ -75,6 +89,14 @@ final class StateBroadcast {
             if let snapshot = model.layout {
                 settings()?.send(.layoutChanged(model.layoutState(snapshot)))
             }
+        }
+        let maintenance =
+            Daemon.allCases.map { String(describing: model.daemons.states[$0]) }.joined()
+            + model.snapshots.snapshots.map(\.id).joined()
+            + (model.themes.current ?? "") + String(model.themes.themes.count)
+        if maintenance != lastMaintenance {
+            lastMaintenance = maintenance
+            settings()?.send(BridgeEvent("advanced.invalidated"))
         }
         // Setup creates the settings folder during the session.
         if watcher == nil { watchSettings() }
@@ -122,6 +144,7 @@ final class StateBroadcast {
             let data = try? Data(contentsOf: model.settingsStore.url)
             guard data != self.lastSettings else { return }
             self.lastSettings = data
+            self.advancedChanged()
             model.themes.reload()
             if let snapshot = await model.refreshLayout() {
                 self.settings()?.send(.layoutChanged(model.layoutState(snapshot)))

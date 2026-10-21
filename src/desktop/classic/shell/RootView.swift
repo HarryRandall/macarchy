@@ -40,11 +40,7 @@ struct RootView: View {
                 ContentBar()
                 // On a narrow window the console takes the pane rather than
                 // squeezing a column in beside it.
-                if model.showingSetup {
-                    SetupView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
-                } else if model.consoleOpen, !hasRoomForPanel {
+                if model.consoleOpen, !hasRoomForPanel {
                     ConsolePanel(asPage: true)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
@@ -145,7 +141,9 @@ struct RootView: View {
             // Never selected here: `AppModel` sends it to the React window.
             ContentUnavailableView("Layout is in the new settings window", systemImage: "macwindow")
         case .themes: ThemesPane()
-        case .advanced: AdvancedPane()
+        case .advanced:
+            ContentUnavailableView(
+                "Advanced is in the new settings window", systemImage: "macwindow")
         case .borders: BordersPane()
         case .menuBar: MenuBarPane()
         case .rules: RulesPane()

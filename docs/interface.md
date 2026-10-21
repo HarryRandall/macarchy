@@ -19,7 +19,13 @@ not yet migrated, are still SwiftUI.
 | `src/desktop/native/bridge` | The Swift mirror of the contract, the router, state snapshots and the broadcaster. |
 | `src/desktop/native/window` | The React settings window, the classic window's AppKit host, and the window buttons both use. |
 | `src/desktop/native/switcher` | The floating switcher panel and its global shortcut. |
-| `src/desktop/classic` | The SwiftUI window, for panes that have not moved yet and for setup. |
+| `src/desktop/classic` | The SwiftUI window, for panes that have not moved yet. |
+
+Advanced and first-run setup are React pages. Before settings exist, setup
+replaces the selected pane and previews `Setup.plan` before enabling Set up.
+Advanced can reopen setup. Setup results remain visible until Done, including
+service or theme failures after files were written. Both restore actions use
+the shared confirmation dialog.
 
 ## Loading
 
@@ -66,6 +72,13 @@ status menu or the classic window shows up everywhere.
 
 `protocol.ts` and `BridgeMessages.swift` describe the same shapes and must be
 changed together.
+
+Advanced uses named `advanced.getState`, `restartService`, `stopService`,
+`rebuild`, `restoreSnapshot`, `repairAddition` and `restoreOriginals` requests.
+`setup.getPlan`, `setup.run` and `setup.openAccessibility` serve setup.
+`advanced.changed` carries a fresh reading; `advanced.invalidated` asks for a
+read after shared service, snapshot or theme changes. The shell's service pill
+uses the same native daemon monitor.
 
 ## Development
 

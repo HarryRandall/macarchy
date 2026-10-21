@@ -35,18 +35,12 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         return prepare(model).1
     }
 
-    /// Brings the window forward, creating and loading it on first use. Before
-    /// setup has run there are no settings to show, so the classic window,
-    /// which runs setup, opens instead.
+    /// Brings the window forward, showing the setup plan before first use.
     func show(_ pane: Pane? = nil) {
         guard let model else { return }
         if let pane, Pane.migrated.contains(pane), pane != InterfacePreferences.selectedPane {
             InterfacePreferences.selectedPane = pane
             if let surface, surface.isReady { surface.send(.shellChanged(model.shellState())) }
-        }
-        if !FileManager.default.fileExists(atPath: model.settingsStore.url.path) {
-            AppDelegate.showClassicWindow(pane: nil, show: nil)
-            return
         }
         let (window, surface) = prepare(model)
         NSApp.setActivationPolicy(.regular)
@@ -76,6 +70,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         // One line per feature the settings window shows.
         surface.router.registerShell(model: model, surface: surface)
         surface.router.registerLayout(model: model)
+        surface.router.registerAdvanced(model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
