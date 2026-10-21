@@ -120,6 +120,9 @@ function Gallery() {
       <div className="h-full overflow-y-auto bg-page">
         <header className="sticky top-0 z-40 flex flex-wrap items-center gap-4 border-b border-hairline bg-bar/90 px-6 py-3 backdrop-blur-xl">
           <h1 className="text-section-title text-fg">Components</h1>
+          <a href="options/" className="text-meta text-accent hover:underline">
+            Design options
+          </a>
           <SegmentedControl
             label="Window appearance"
             value={appearance}
