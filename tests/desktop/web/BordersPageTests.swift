@@ -87,14 +87,14 @@ extension WebInterfaceTests {
                     surface, #"page.key(page.select("Active border colour hex value"), "Escape");"#)
                 #expect(harness.settingsData == before)
                 try await bordersButton(surface, "Apply")
+                // theme.json is written after settings.json, so wait for both.
                 try await waitUntil("complete border appearance saved") {
                     let values = try? harness.store.read().flatValues
+                    let theme = try? Theme.read(from: harness.themes.appending(path: "lumon"))
                     return values?["BORDER_WIDTH"] == "10" && values?["BORDER_RADIUS"] == "0.3"
                         && values?["BORDERS_BLACKLIST"]?.contains("Messages") == true
+                        && theme?.colors.borderActive == "0x80112233"
                 }
-                #expect(
-                    try Theme.read(from: harness.themes.appending(path: "lumon")).colors
-                        .borderActive == "0x80112233")
                 #expect(
                     await harness.desktop.calls(to: "borders").last?.contains("width=10.0") == true)
                 let saved = harness.settingsData
