@@ -112,3 +112,22 @@ folder renders each state of both pages there as PNGs for review.
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
 4. Delete the SwiftUI pane and anything only it used.
+
+## Shortcuts
+
+The Shortcuts page reads the person's skhdrc through `SkhdShortcuts` in the
+core. Its named bridge operations are `shortcuts.getState`, `shortcuts.validate`,
+`shortcuts.rebind`, `shortcuts.disable`, `shortcuts.reset` and
+`shortcuts.openConfiguration`. Opening and refreshing never seed the file.
+Writes check the loaded revision, snapshot the original, preserve custom lines
+and restart skhd. A failed restart is reported separately from a successful save.
+Only an explicitly confirmed reset replaces commands with bundled defaults.
+
+The focused React recorder captures keydown events. Swift validates the chord
+and renders its skhd spelling and key caps. macOS may intercept system shortcuts
+before they reach WebKit. `shortcuts.changed` and `shortcuts.unavailable` events
+report external file changes; an open recording is retained and a stale edit
+must be reopened before saving. The broadcaster checks the selected skhdrc
+once a second, including symlinks and the `~/.skhdrc` fallback.
+
+Browser development supports `?fail=shortcuts` and `?fail=shortcuts-state`.

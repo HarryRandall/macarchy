@@ -141,8 +141,8 @@ let offscreenOrigin = CGPoint(x: -20000, y: -20000)
 /// The settings page's web view, moved into a borderless window far off
 /// screen that is never ordered in, and focused as if the window were key.
 @MainActor
-func offscreenSettings(_ harness: Harness) throws -> (NSWindow, WebSurface) {
-    let (_, surface) = try harness.settingsPage()
+func offscreenSettings(_ harness: Harness, pane: Pane = .layout) throws -> (NSWindow, WebSurface) {
+    let (_, surface) = try harness.settingsPage(pane: pane)
     let window = ReportsKeyWindow(
         contentRect: NSRect(origin: offscreenOrigin, size: SettingsWindow.defaultSize),
         styleMask: [.borderless], backing: .buffered, defer: false)

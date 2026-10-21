@@ -149,7 +149,9 @@ struct RootView: View {
         case .borders: BordersPane()
         case .menuBar: MenuBarPane()
         case .rules: RulesPane()
-        case .shortcuts: ShortcutsPane()
+        case .shortcuts:
+            ContentUnavailableView(
+                "Shortcuts is in the new settings window", systemImage: "macwindow")
         case .health: HealthPane()
         case .report: ReportPane()
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")
