@@ -7,14 +7,14 @@ import { CountBadge } from "./badge";
 import { HelpTooltip } from "./help-tooltip";
 
 const rowVariants = cva(
-  "group/row relative flex min-w-0 items-center gap-3 transition-colors duration-140",
+  "group/row relative flex min-w-0 items-center gap-3 transition-colors duration-150",
   {
     variants: {
       size: {
-        /** Matches `SettingRow`, for rows in a settings card. */
-        default: "min-h-11 px-4 py-2.5",
+        /** Matches `Row`, for rows in a settings card. */
+        default: "min-h-12 px-5 py-3",
         /** Dense lists, such as shortcuts. */
-        compact: "min-h-9 px-3 py-2",
+        compact: "min-h-10 px-4 py-2",
       },
     },
     defaultVariants: { size: "default" },
@@ -52,7 +52,7 @@ type ListRowProps = Omit<ComponentProps<"div">, "title" | "onSelect"> &
 
 /**
  * A row in a list of things the person manages: floating apps, custom rules,
- * shortcuts, backups. Put rows in a `SettingsCard`, which draws the hairlines.
+ * shortcuts, backups. Put rows in a `Card`, which draws the hairlines.
  */
 function ListRow({
   title,
@@ -77,7 +77,7 @@ function ListRow({
       <span
         className={cn(
           "truncate text-fg",
-          titleMono ? "font-mono text-mono-detail" : "text-row-title",
+          titleMono ? "font-mono text-mono" : "text-body font-medium",
         )}
       >
         {title}
@@ -85,8 +85,8 @@ function ListRow({
       {detail ? (
         <span
           className={cn(
-            "truncate text-fg-secondary select-text",
-            detailMono ? "font-mono text-mono-detail" : "text-row-detail",
+            "truncate select-text",
+            detailMono ? "font-mono text-mono text-fg-tertiary" : "text-small text-fg-secondary",
           )}
         >
           {detail}
@@ -120,15 +120,16 @@ function ListRow({
   return (
     <div
       data-slot="list-row"
+      data-row=""
       data-selected={selected || undefined}
       aria-disabled={disabled || undefined}
       className={cn(
         rowVariants({ size }),
-        onSelect && "hover:bg-hover has-[[data-row-primary]:active]:bg-hover",
+        onSelect && "hover:bg-hover has-[[data-row-primary]:active]:bg-muted",
         onSelect &&
-          "has-[[data-row-primary]:focus-visible]:outline-2 has-[[data-row-primary]:focus-visible]:-outline-offset-2 has-[[data-row-primary]:focus-visible]:outline-accent-stroke",
-        selected && "bg-accent-stroke/14 hover:bg-accent-stroke/18",
-        disabled && "opacity-45",
+          "has-[[data-row-primary]:focus-visible]:ring-2 has-[[data-row-primary]:focus-visible]:ring-accent has-[[data-row-primary]:focus-visible]:ring-inset",
+        selected && "bg-accent-soft hover:bg-accent-soft",
+        disabled && "opacity-50",
         className,
       )}
       {...props}
@@ -147,7 +148,7 @@ function ListRow({
               className={cn(
                 "flex items-center gap-1",
                 revealActions &&
-                  "opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100",
+                  "opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100",
               )}
             >
               {actions}
@@ -160,7 +161,7 @@ function ListRow({
   );
 }
 
-/** A band heading a run of rows, with how many there are: a shortcut group. */
+/** A band heading a run of rows inside a card, with how many there are: a shortcut group. */
 function ListGroupHeader({
   title,
   count,
@@ -179,10 +180,13 @@ function ListGroupHeader({
   return (
     <div
       data-slot="list-group-header"
-      className={cn("flex items-center gap-2 bg-well px-3 py-2", className)}
+      data-row=""
+      className={cn("flex items-center gap-2 bg-side px-5 py-2", className)}
       {...props}
     >
-      <Heading className="line-clamp-2 text-meta text-fg-secondary">{title}</Heading>
+      <Heading className="line-clamp-2 text-caption font-semibold tracking-[0.05em] text-fg-tertiary uppercase">
+        {title}
+      </Heading>
       {count === undefined ? null : <CountBadge count={count} />}
       {trailing ? <div className="ml-auto flex items-center gap-2">{trailing}</div> : null}
     </div>

@@ -5,17 +5,23 @@ import { type ColourFormat, cssColour, formatColour, parseColour } from "~/lib/c
 import { cn } from "~/lib/cn";
 
 import { ColourPicker } from "./colour-picker";
+import { focusRing } from "./focus-ring";
+import { popupMotion } from "./surface";
 import { Tooltip } from "./tooltip";
 
 const wellVariants = cva(
-  "inline-flex shrink-0 items-center gap-2 rounded-control bg-well transition-[background-color,opacity] select-none hover:bg-hover active:opacity-75 disabled:pointer-events-none disabled:opacity-45 data-popup-open:bg-hover",
+  [
+    "inline-flex shrink-0 items-center gap-2 rounded-control border border-hairline bg-card shadow-card select-none",
+    "transition-[background-color,border-color,opacity] hover:bg-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-50 data-popup-open:border-accent",
+    focusRing,
+  ],
   {
     variants: {
       size: {
         /** In a settings row. */
-        default: "h-7 pr-1 pl-2",
+        default: "h-8 pr-2.5 pl-1",
         /** A bare swatch, where the hex is shown elsewhere. */
-        swatch: "size-7 justify-center",
+        swatch: "size-8 justify-center",
       },
     },
     defaultVariants: { size: "default" },
@@ -70,36 +76,39 @@ function ColourWell({
           data-slot="colour-well"
           className={cn(wellVariants({ size }), className)}
         >
-          {size === "swatch" ? null : (
-            <span
-              className={cn(
-                "font-mono text-mono-detail",
-                unset ? "text-fg-meta" : "text-fg-secondary",
-              )}
-            >
-              {shown}
-            </span>
-          )}
           <span
             aria-hidden
             className={cn(
-              "relative size-5 shrink-0 overflow-hidden rounded-small border border-hairline",
-              parsed ? "bg-checkerboard" : "border-dashed border-fg-secondary/60",
+              "relative size-6 shrink-0 overflow-hidden rounded-key",
+              parsed
+                ? "bg-checkerboard shadow-[inset_0_0_0_1px_rgb(0_0_0/0.1)]"
+                : "border border-dashed border-line-strong",
             )}
           >
             {parsed ? (
               <span className="absolute inset-0" style={{ background: cssColour(parsed) }} />
             ) : null}
           </span>
+          {size === "swatch" ? null : (
+            <span
+              className={cn(
+                "font-mono text-mono-value",
+                unset ? "text-fg-tertiary" : "text-fg",
+                parsed && format === "rgb" && "uppercase",
+              )}
+            >
+              {shown}
+            </span>
+          )}
         </Popover.Trigger>
       </Tooltip>
       <Popover.Portal>
-        <Popover.Positioner side="bottom" sideOffset={6} collisionPadding={12} className="z-50">
+        <Popover.Positioner side="bottom" sideOffset={6} collisionPadding={8} className="z-50">
           <Popover.Popup
             aria-label={label}
             className={cn(
-              "rounded-card border border-hairline bg-popover/95 p-3 shadow-[0_8px_24px_rgb(0_0_0/0.28)] backdrop-blur-xl outline-none",
-              "origin-(--transform-origin) transition-[opacity,scale] duration-140 data-ending-style:opacity-0 data-starting-style:scale-97 data-starting-style:opacity-0",
+              "rounded-panel border border-hairline bg-popover p-3 shadow-pop outline-none",
+              popupMotion,
             )}
           >
             <ColourPicker

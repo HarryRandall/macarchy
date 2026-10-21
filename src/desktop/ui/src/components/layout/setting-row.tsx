@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import { HelpTooltip } from "~/components/ui/help-tooltip";
+import { Row } from "~/components/ui/card";
 
-/** An optional leading icon, a title with detail under it, and a trailing control. */
+/** An earlier name for `Row`: an optional leading icon, a title with detail, a trailing control. */
 function SettingRow({
   title,
   detail,
@@ -21,21 +21,17 @@ function SettingRow({
   leading?: ReactNode;
   children?: ReactNode;
 }) {
-  const Title = controlId ? "label" : "span";
   return (
-    <div data-slot="setting-row" className="flex items-center gap-3 px-4 py-3">
-      {leading}
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="flex items-center gap-[3px]">
-          <Title htmlFor={controlId} className="text-row-title text-fg">
-            {title}
-          </Title>
-          {help ? <HelpTooltip text={help} /> : null}
-        </div>
-        {detail ? <p className="text-row-detail text-fg-secondary">{detail}</p> : null}
-      </div>
-      <div className="ml-auto flex shrink-0 items-center pl-3">{children}</div>
-    </div>
+    <Row
+      // The desktop web tests find rows by this slot.
+      data-slot="setting-row"
+      title={title}
+      description={detail}
+      help={help}
+      controlId={controlId}
+      leading={leading}
+      control={children}
+    />
   );
 }
 

@@ -18,6 +18,7 @@ function ValueSlider({
   step = 1,
   unit,
   disabled,
+  width = 180,
   onValueChange,
 }: {
   label: string;
@@ -29,15 +30,18 @@ function ValueSlider({
   step?: number;
   unit?: string;
   disabled?: boolean;
+  /** The track's width in pixels. */
+  width?: number;
   onValueChange: (value: number) => void;
 }) {
   const fallbackId = useId();
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-3">
       <Tooltip content="Drag to adjust, or type an exact value">
         <Slider
           id={id ?? fallbackId}
-          className="w-37"
+          aria-label={id ? undefined : label}
+          style={{ width }}
           value={value}
           min={min}
           max={max}
@@ -56,7 +60,7 @@ function ValueSlider({
           disabled={disabled}
           onValueChange={onValueChange}
         />
-        {unit ? <span className="text-[12px] text-fg-secondary tabular-nums">{unit}</span> : null}
+        {unit ? <span className="text-meta text-fg-tertiary tabular-nums">{unit}</span> : null}
       </div>
     </div>
   );

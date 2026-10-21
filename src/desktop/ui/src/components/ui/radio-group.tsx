@@ -4,6 +4,8 @@ import { type ReactNode, useId } from "react";
 
 import { cn } from "~/lib/cn";
 
+import { focusRing } from "./focus-ring";
+
 interface RadioOption<V extends string> {
   value: V;
   label: string;
@@ -55,18 +57,19 @@ function RadioGroup<V extends string>({
               aria-labelledby={labelId}
               aria-describedby={option.description ? descriptionId : undefined}
               className={cn(
-                "mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-hairline bg-well shadow-[inset_0_1px_1px_rgb(0_0_0/0.08)]",
-                "transition-colors data-checked:border-transparent data-checked:bg-accent data-checked:shadow-[inset_0_0_0_1px_var(--accent-stroke)] data-checked:focus-visible:outline-accent-fg data-disabled:opacity-45",
+                "mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-line-strong bg-card shadow-card",
+                "transition-colors data-checked:border-transparent data-checked:bg-strong data-disabled:opacity-50",
+                focusRing,
               )}
             >
-              <Radio.Indicator className="size-1.5 rounded-full bg-accent-fg" />
+              <Radio.Indicator className="size-1.5 rounded-full bg-strong-fg" />
             </Radio.Root>
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span id={labelId} className="text-row-title text-fg">
+              <span id={labelId} className="text-body font-medium text-fg">
                 {option.label}
               </span>
               {option.description ? (
-                <span id={descriptionId} className="text-row-detail text-fg-secondary">
+                <span id={descriptionId} className="text-small text-fg-secondary">
                   {option.description}
                 </span>
               ) : null}

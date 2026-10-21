@@ -2,9 +2,8 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { type ReactElement, type ReactNode, useRef, useState } from "react";
 
 import { Button } from "./button";
-import { dialogVariants } from "./dialog";
+import { dialogBackdropClass, dialogVariants } from "./dialog";
 import { InlineStatus } from "./inline-status";
-import { Spinner } from "./spinner";
 
 type ConfirmDialogProps = {
   title: string;
@@ -90,7 +89,7 @@ function ConfirmDialog({
     >
       {trigger ? <AlertDialog.Trigger render={trigger} /> : null}
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/32 transition-opacity duration-[280ms] ease-out data-ending-style:duration-[220ms] data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <AlertDialog.Backdrop className={dialogBackdropClass} />
         <AlertDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-6">
           <AlertDialog.Popup
             data-slot="confirm-dialog"
@@ -98,8 +97,8 @@ function ConfirmDialog({
             className={dialogVariants({ size: "sm" })}
           >
             <div className="flex flex-col gap-1.5 px-5 pt-5 pb-4">
-              <AlertDialog.Title className="text-section-title text-fg">{title}</AlertDialog.Title>
-              <AlertDialog.Description className="text-row-title text-fg-secondary select-text">
+              <AlertDialog.Title className="text-card-title text-fg">{title}</AlertDialog.Title>
+              <AlertDialog.Description className="text-detail text-fg-secondary select-text">
                 {description}
               </AlertDialog.Description>
               {error ? (
@@ -108,17 +107,15 @@ function ConfirmDialog({
                 </InlineStatus>
               ) : null}
             </div>
-            <div className="flex items-center justify-end gap-2 px-5 pb-5">
+            <div className="flex items-center justify-end gap-2 border-t border-hairline bg-side px-5 py-3">
               <AlertDialog.Close ref={cancelRef} disabled={busy} render={<Button />}>
                 {cancelLabel}
               </AlertDialog.Close>
               <Button
                 variant={tone === "danger" ? "danger" : "primary"}
-                disabled={busy}
-                aria-busy={busy || undefined}
+                busy={busy}
                 onClick={() => void confirm()}
               >
-                {busy ? <Spinner size="sm" /> : null}
                 {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
               </Button>
             </div>

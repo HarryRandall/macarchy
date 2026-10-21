@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 
-/** A heading introducing a run of cards or a grid, with optional trailing meta. */
+import { SectionLabel } from "~/components/ui/card";
+
+/**
+ * An earlier name for `SectionLabel`, with optional trailing meta. Its
+ * callers space it with their own gap, so it drops the label's margin.
+ */
 function SectionHeading({
   title,
   trailing,
@@ -11,12 +16,13 @@ function SectionHeading({
   id?: string;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 pt-1">
-      <h2 id={id} className="text-section-title text-fg">
-        {title}
-      </h2>
-      {trailing ? <span className="text-meta text-fg-meta">{trailing}</span> : null}
-    </div>
+    <SectionLabel
+      id={id}
+      className="mb-0"
+      action={trailing ? <span className="text-meta text-fg-tertiary">{trailing}</span> : undefined}
+    >
+      {title}
+    </SectionLabel>
   );
 }
 

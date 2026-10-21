@@ -7,23 +7,22 @@ import { cn } from "~/lib/cn";
 
 const inputVariants = cva(
   [
-    "w-full min-w-0 rounded-control border border-hairline bg-well text-fg outline-none placeholder:text-fg-secondary",
-    // Focus thickens the border inwards to a 2 pt accent ring, as macOS draws
-    // it, so a scrolling container's edge cannot clip it.
-    "transition-[border-color,box-shadow] focus:border-accent-stroke focus:shadow-[inset_0_0_0_1px_var(--accent-stroke)] focus-visible:outline-none",
-    "disabled:opacity-45 aria-invalid:border-danger data-invalid:border-danger",
-    "aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--status-danger)] data-invalid:focus:shadow-[inset_0_0_0_1px_var(--status-danger)]",
+    "w-full min-w-0 rounded-control border border-hairline bg-card text-fg shadow-card outline-none placeholder:text-fg-tertiary",
+    // A soft halo outside the accent border; the global outline is suppressed.
+    "transition-[border-color,box-shadow] focus:border-accent focus:ring-[3px] focus:ring-accent-soft focus-visible:outline-none",
+    "disabled:opacity-50 aria-invalid:border-danger data-invalid:border-danger",
+    "aria-invalid:focus:ring-danger-soft data-invalid:focus:ring-danger-soft",
   ],
   {
     variants: {
       variant: {
-        default: "text-row-title",
+        default: "text-body",
         /** Paths, commands, patterns and hex values: anything read character by character. */
-        mono: "font-mono text-[12px]",
+        mono: "font-mono text-mono-value",
       },
       size: {
-        default: "h-7 px-2",
-        sm: "h-6 px-1.5",
+        default: "h-8 px-2.5",
+        sm: "h-7 px-2",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -65,7 +64,7 @@ function Textarea({ className, variant, ...props }: TextareaProps) {
       data-slot="textarea"
       className={cn(
         inputVariants({ variant }),
-        "min-h-[90px] resize-y px-2 py-1.5 leading-[18px]",
+        "min-h-[90px] resize-y px-2.5 py-2 leading-[18px]",
         className,
       )}
       {...props}
@@ -94,7 +93,7 @@ function Label({
   return (
     <FieldPrimitive.Label
       data-slot="field-label"
-      className={cn("text-meta font-medium text-fg-secondary", className)}
+      className={cn("text-small font-medium text-fg", className)}
       {...props}
     />
   );
@@ -108,7 +107,7 @@ function Description({
   return (
     <FieldPrimitive.Description
       data-slot="field-description"
-      className={cn("text-row-detail text-fg-secondary", className)}
+      className={cn("text-small text-fg-secondary", className)}
       {...props}
     />
   );
@@ -122,7 +121,7 @@ function ErrorText({
   return (
     <FieldPrimitive.Error
       data-slot="field-error"
-      className={cn("text-row-detail text-danger select-text", className)}
+      className={cn("text-small text-danger select-text", className)}
       {...props}
     />
   );
@@ -179,7 +178,7 @@ function TextareaField({
     <div data-slot="field" className={cn("flex min-w-0 flex-col gap-1.5", fieldClassName)}>
       <label
         htmlFor={controlId}
-        className={cn("text-meta font-medium text-fg-secondary", hideLabel && "sr-only")}
+        className={cn("text-small font-medium text-fg", hideLabel && "sr-only")}
       >
         {label}
       </label>
@@ -190,12 +189,12 @@ function TextareaField({
         {...props}
       />
       {description ? (
-        <p id={descriptionId} className="text-row-detail text-fg-secondary">
+        <p id={descriptionId} className="text-small text-fg-secondary">
           {description}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="text-row-detail text-danger select-text">
+        <p id={errorId} className="text-small text-danger select-text">
           {error}
         </p>
       ) : null}

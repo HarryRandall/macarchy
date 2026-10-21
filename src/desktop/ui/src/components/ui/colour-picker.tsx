@@ -136,7 +136,7 @@ function ColourPicker({
                 aria-label={written}
                 aria-pressed={written === formatted}
                 onClick={() => applyHex(swatch)}
-                className="relative size-5 overflow-hidden rounded-[5px] border border-hairline bg-checkerboard aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-accent-stroke"
+                className="relative size-5 overflow-hidden rounded-full bg-checkerboard shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)] transition-transform outline-none hover:scale-110 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-popover aria-pressed:ring-2 aria-pressed:ring-fg aria-pressed:ring-offset-2 aria-pressed:ring-offset-popover"
               >
                 <span className="absolute inset-0" style={{ background: cssColour(parsed) }} />
               </button>
@@ -147,7 +147,7 @@ function ColourPicker({
       <div className="flex items-center gap-2">
         <span
           aria-hidden
-          className="relative size-[22px] shrink-0 overflow-hidden rounded-small border border-hairline bg-checkerboard"
+          className="relative size-8 shrink-0 overflow-hidden rounded-control bg-checkerboard shadow-[inset_0_0_0_1px_rgb(0_0_0/0.1)]"
         >
           <span className="absolute inset-0" style={{ background: cssColour(rgba) }} />
         </span>
@@ -169,7 +169,10 @@ function ColourPicker({
               setDraft(null);
             }
           }}
-          className={inputVariants({ variant: "mono", size: "default" })}
+          className={cn(
+            inputVariants({ variant: "mono", size: "default" }),
+            opacity ? null : "uppercase",
+          )}
         />
       </div>
     </div>
@@ -220,7 +223,7 @@ function SaturationField({
       aria-valuemax={100}
       aria-valuenow={Math.round(hsva.s * 100)}
       aria-valuetext={`Saturation ${percent(hsva.s)}, brightness ${percent(hsva.v)}`}
-      className="relative h-[172px] w-full touch-none rounded-control"
+      className="relative h-[172px] w-full touch-none rounded-tile outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-popover"
       style={{
         background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), hsl(${hsva.h * 360} 100% 50%)`,
       }}
@@ -286,7 +289,7 @@ function GradientStrip({
       }}
       style={{ "--track": track } as CSSProperties}
       className={cn(
-        "h-3.5 w-full cursor-default appearance-none rounded-full bg-transparent",
+        "h-3.5 w-full cursor-default appearance-none rounded-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-popover",
         checkerboard && "bg-checkerboard",
         "[&::-webkit-slider-runnable-track]:h-3.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-(image:--track)",
         "[&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-black/20",

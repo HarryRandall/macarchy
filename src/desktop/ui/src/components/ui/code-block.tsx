@@ -6,14 +6,14 @@ import { cn } from "~/lib/cn";
 import { CopyButton } from "./copy-button";
 
 const codeBlockVariants = cva(
-  "relative min-w-0 rounded-control border border-hairline font-mono text-mono-detail text-fg",
+  "relative min-w-0 rounded-tile border border-hairline font-mono text-mono text-fg",
   {
     variants: {
       variant: {
         /** Recessed, inside a card or a dialog. */
-        well: "bg-well",
+        well: "bg-side",
         /** Raised, standing alone on the page. */
-        card: "bg-card",
+        card: "bg-card shadow-card",
       },
     },
     defaultVariants: { variant: "well" },
@@ -64,7 +64,7 @@ function CodeBlock({
         tabIndex={0}
         aria-label={label}
         className={cn(
-          "overflow-auto rounded-[inherit] px-3 py-2 select-text",
+          "overflow-auto rounded-[inherit] px-3 py-2.5 outline-none select-text focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
           wrap ? "break-words whitespace-pre-wrap" : "whitespace-pre",
           copyLabel && "pr-10",
         )}
@@ -73,8 +73,8 @@ function CodeBlock({
         <code>{code}</code>
       </pre>
       {copyLabel ? (
-        <div className="absolute top-1 right-1">
-          <CopyButton iconOnly text={code} label={copyLabel} write={write} />
+        <div className="absolute top-1.5 right-1.5">
+          <CopyButton iconOnly size="sm" text={code} label={copyLabel} write={write} />
         </div>
       ) : null}
     </div>

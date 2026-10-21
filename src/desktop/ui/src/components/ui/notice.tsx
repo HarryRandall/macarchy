@@ -4,21 +4,18 @@ import type { ComponentProps } from "react";
 
 import { cn } from "~/lib/cn";
 
-import { Button } from "./button";
+import { IconButton } from "./icon-button";
 
-const rootVariants = cva(
-  "flex items-start gap-3 rounded-card border px-4 py-3 text-row-title text-fg",
-  {
-    variants: {
-      variant: {
-        info: "border-hairline bg-card",
-        warning: "border-warning/35 bg-warning/10",
-        error: "border-danger/35 bg-danger/10",
-      },
+const rootVariants = cva("flex items-start gap-3 rounded-card border px-4 py-3 text-body text-fg", {
+  variants: {
+    variant: {
+      info: "border-hairline bg-side",
+      warning: "border-warning/30 bg-warning-soft",
+      error: "border-danger/30 bg-danger-soft",
     },
-    defaultVariants: { variant: "info" },
   },
-);
+  defaultVariants: { variant: "info" },
+});
 
 const icons = { info: Info, warning: TriangleAlert, error: CircleAlert };
 const iconColours = { info: "text-fg-secondary", warning: "text-warning", error: "text-danger" };
@@ -51,30 +48,26 @@ function Root({
 }
 
 function Title({ className, ...props }: ComponentProps<"p">) {
-  return <p className={cn("font-semibold", className)} {...props} />;
+  return <p className={cn("font-medium", className)} {...props} />;
 }
 
 function Description({ className, ...props }: ComponentProps<"p">) {
-  return (
-    <p className={cn("text-row-detail text-fg-secondary select-text", className)} {...props} />
-  );
+  return <p className={cn("text-detail text-fg-secondary select-text", className)} {...props} />;
 }
 
 function Actions({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("mt-2 flex gap-2", className)} {...props} />;
+  return <div className={cn("mt-2.5 flex flex-wrap gap-2", className)} {...props} />;
 }
 
-function Dismiss({ label = "Dismiss", ...props }: ComponentProps<"button"> & { label?: string }) {
+function Dismiss({
+  label = "Dismiss",
+  className,
+  ...props
+}: Omit<ComponentProps<"button">, "children"> & { label?: string }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      aria-label={label}
-      className="-my-0.5 -mr-1 self-start"
-      {...props}
-    >
+    <IconButton label={label} size="sm" className={cn("-my-0.5 -mr-1.5", className)} {...props}>
       <X aria-hidden />
-    </Button>
+    </IconButton>
   );
 }
 

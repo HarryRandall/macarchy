@@ -4,7 +4,7 @@ import { type ComponentProps, type ReactNode, useId } from "react";
 import { cn } from "~/lib/cn";
 
 const heroVariants = cva(
-  "relative flex flex-col overflow-hidden rounded-card border border-hairline bg-card",
+  "relative flex flex-col overflow-hidden rounded-panel border border-hairline bg-card shadow-card",
   {
     variants: {
       layout: {
@@ -60,23 +60,18 @@ function HeroCard({
   const text = (
     <div className="flex min-w-0 flex-col gap-1">
       {eyebrow ? (
-        <p
-          className={cn(
-            "text-eyebrow uppercase",
-            overlay ? "tracking-[1.2px] text-white/75" : "text-fg-secondary",
-          )}
-        >
+        <p className={cn("text-label uppercase", overlay ? "text-white/75" : "text-fg-tertiary")}>
           {eyebrow}
         </p>
       ) : null}
       <h2
         id={titleId}
-        className={cn("truncate", overlay ? "text-page-title text-white" : "text-hero-title")}
+        className={cn("truncate", overlay ? "text-hero-title text-white" : "text-title text-fg")}
       >
         {title}
       </h2>
       {subtitle ? (
-        <p className={cn("text-meta", overlay ? "text-white/75" : "text-fg-secondary")}>
+        <p className={cn("text-detail", overlay ? "text-white/75" : "text-fg-secondary")}>
           {subtitle}
         </p>
       ) : null}
@@ -119,7 +114,7 @@ function HeroCard({
       {badge ? (
         <div
           data-appearance="dark"
-          className="absolute top-3 right-3 flex gap-2 rounded-full bg-black/40 backdrop-blur-md"
+          className="absolute top-3 right-3 flex gap-2 rounded-small bg-black/40 ring-1 ring-white/15 backdrop-blur-md"
         >
           {badge}
         </div>

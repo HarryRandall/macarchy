@@ -2,6 +2,12 @@ import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 
 import { cn } from "~/lib/cn";
 
+import { focusRing } from "./focus-ring";
+
+/**
+ * An on/off setting that applies at once. The track fills with the strong
+ * ink when on, so the state reads without colour.
+ */
 function Switch({
   className,
   size = "default",
@@ -11,23 +17,19 @@ function Switch({
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full p-0.5 transition-colors duration-200",
-        "bg-well data-checked:bg-accent data-disabled:opacity-45",
-        // Matches the accent unless it is too close to the surface, when it
-        // outlines the track so the on state still reads.
-        "data-checked:shadow-[inset_0_0_0_1px_var(--accent-stroke)]",
-        // The focus ring is drawn inside, where an accent ring would vanish on the fill.
-        "data-checked:focus-visible:outline-accent-fg",
-        size === "sm" ? "h-4 w-[26px] [--thumb:12px]" : "h-[18px] w-8 [--thumb:14px]",
+        "group/switch relative inline-flex shrink-0 cursor-default items-center rounded-full bg-line-strong transition-colors duration-200",
+        "data-checked:bg-strong data-disabled:opacity-50",
+        focusRing,
+        size === "sm" ? "h-4 w-7 [--thumb:12px]" : "h-5 w-[34px] [--thumb:16px]",
         className,
       )}
       {...props}
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          "pointer-events-none block size-(--thumb) rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.35),0_1px_2px_rgb(0_0_0/0.3)]",
-          "transition-transform duration-snappy",
-          size === "sm" ? "data-checked:translate-x-2.5" : "data-checked:translate-x-3.5",
+          "pointer-events-none block size-(--thumb) translate-x-0.5 rounded-full bg-white shadow-[0_1px_2px_rgb(0_0_0/0.2)]",
+          "transition-transform duration-200 ease-glide data-checked:bg-strong-fg",
+          size === "sm" ? "data-checked:translate-x-3.5" : "data-checked:translate-x-4",
         )}
       />
     </SwitchPrimitive.Root>
