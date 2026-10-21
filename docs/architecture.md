@@ -3,14 +3,19 @@
 Macarchy has three Swift targets that share one implementation:
 
 - **Macarchy** (`src/core`): settings, themes, setup and integrations.
-- **App** (`src/desktop`): the app lifecycle and native surfaces in `native`,
-  and the SwiftUI settings window in `classic`. `src/desktop/ui` is excluded.
+- **App** (`src/desktop`): the native shell in `native` (lifecycle, windows,
+  the switcher panel, the menu bar item and the web view bridge), and the
+  SwiftUI settings window in `classic` for the panes not yet migrated.
 - **CLI** (`src/cli`): the `macarchy` command, bundled inside the app.
 
-`tools/build.sh` copies `resources` into the app's `Contents/Resources`, flat:
-`themes`, `sketchybar` (the menu bar scripts and font), `skhd` (the default
-shortcuts), and `logo.svg` and `AppIcon.icns` from `resources/app`. The bundle's
-`Info.plist` comes from `packaging/macos`.
+The settings window and the theme switcher are drawn by a React interface in
+`src/desktop/ui`, hosted in web views; see [the interface guide](interface.md).
+
+`tools/build.sh` builds the interface and copies it to `Contents/Resources/ui`,
+then copies `resources` into `Contents/Resources`, flat: `themes`, `sketchybar`
+(the menu bar scripts and font), `skhd` (the default shortcuts), and `logo.svg`
+and `AppIcon.icns` from `resources/app`. The bundle's `Info.plist` comes from
+`packaging/macos`.
 
 ## One folder
 
@@ -69,6 +74,8 @@ a file edited outside its keep region is snapshotted and reported.
 ## Checks
 
 `swift test` covers persistence, locking, process cancellation, skhd parsing and
-rewriting, theme outputs, Neovim discovery, rules and the menu bar editor.
+rewriting, theme outputs, Neovim discovery, rules, the menu bar editor, layout
+editing, and the bridge and web views against the built interface.
+`corepack pnpm run check` in `src/desktop/ui` covers the interface.
 `tests/integration/setup.sh` runs setup, a repeat setup and uninstall
 in a temporary home against fake tools.

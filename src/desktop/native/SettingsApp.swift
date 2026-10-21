@@ -10,27 +10,36 @@ struct SettingsApp: App {
         _model = State(initialValue: model)
         // The switcher's hotkey must work before any window has opened.
         ThemeSwitcher.shared.attach(model)
+        SettingsWindow.shared.attach(model)
+        AppDelegate.model = model
+        model.openMigrated = { pane in SettingsWindow.shared.show(pane) }
+        StateBroadcast.shared.start(model)
+        Task { await model.loadEverything() }
     }
 
+    // Both settings windows are AppKit windows the app opens itself; the menu
+    // bar item is the only scene.
     var body: some Scene {
-        Window("Macarchy", id: "main") {
-            RootView()
+        MenuBarExtra {
+            StatusMenu()
                 .environment(model)
-                .task { await model.loadEverything() }
+        } label: {
+            StatusLabel()
         }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
-        .defaultSize(width: 1000, height: 720)
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .toolbar) {
-                Button("Search…") {
-                    model.modal.present(inContent: true) { CommandPalette() }
-                }
-                .keyboardShortcut("k", modifiers: .command)
+                // Search and the console are still the classic window's; from
+                // the React window they open it.
+                Button("Search…") { AppDelegate.showClassicWindow(pane: nil, show: .search) }
+                    .keyboardShortcut("k", modifiers: .command)
 
                 Button(model.consoleOpen ? "Hide Console" : "Show Console") {
-                    model.consoleOpen.toggle()
+                    if model.consoleOpen {
+                        model.consoleOpen = false
+                    } else {
+                        AppDelegate.showClassicWindow(pane: nil, show: .console)
+                    }
                 }
                 .keyboardShortcut("c", modifiers: [.command, .option])
 
@@ -42,13 +51,6 @@ struct SettingsApp: App {
                     .keyboardShortcut("]", modifiers: .command)
                     .disabled(!model.canGoForward)
             }
-        }
-
-        MenuBarExtra {
-            StatusMenu()
-                .environment(model)
-        } label: {
-            StatusLabel()
         }
     }
 }

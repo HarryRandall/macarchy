@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// One wallpaper a theme offers, named the way the Raycast switcher named it.
 struct SwitcherBackground: Identifiable, Hashable {
@@ -18,7 +19,31 @@ struct SwitcherBackground: Identifiable, Hashable {
 
     /// Images in `backgrounds/` and the theme root. A root copy identical to
     /// one in `backgrounds/` is the same picture and is listed once.
+    ///
+    /// Cached per folder state: comparing large wallpapers byte for byte on
+    /// every state change would stall the main thread.
     static func all(in theme: InstalledTheme) -> [SwitcherBackground] {
+        let key = cacheKey(theme)
+        if let cached = cache.withLock({ $0[key] }) { return cached }
+        let result = scan(theme)
+        cache.withLock { $0[key] = result }
+        return result
+    }
+
+    private static let cache = Mutex<[String: [SwitcherBackground]]>([:])
+
+    /// The folders' paths and modification dates: adding, removing or
+    /// renaming an image changes one of them.
+    private static func cacheKey(_ theme: InstalledTheme) -> String {
+        [theme.directory, theme.directory.appending(path: "backgrounds")].map { url in
+            let date =
+                (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate?.timeIntervalSince1970 ?? 0
+            return "\(url.path)@\(date)"
+        }.joined(separator: "|")
+    }
+
+    private static func scan(_ theme: InstalledTheme) -> [SwitcherBackground] {
         let fm = FileManager.default
         var unique: [(url: URL, size: Int)] = []
         for url in theme.availableBackgrounds {

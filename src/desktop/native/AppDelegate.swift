@@ -13,6 +13,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         repairAppLink()
+        // The classic SwiftUI window no longer opens itself at launch; this
+        // is where the app's window comes from now.
+        Self.showMainWindow()
+        #if DEBUG
+        // A development build cannot register ⌘⌃Space while an installed copy
+        // holds it, and `macarchy switcher` would open both. This name only
+        // reaches debug builds.
+        DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("io.github.harryrandall.macarchy.debug.switcher"),
+            object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { ThemeSwitcher.shared.toggle() }
+        }
+        #endif
         windowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: nil, queue: .main
         ) { notification in
@@ -62,16 +76,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    /// SwiftUI only hands out `openWindow` to views. The status item label lives
-    /// as long as the process, so it supplies the action for AppKit callbacks.
-    static var openMainWindow: (() -> Void)?
-
-    /// Brings the Dock icon back before the window opens so it activates normally.
+    /// Shows the settings window: the React one, or the classic one while
+    /// setup has yet to run.
     static func showMainWindow() {
-        NSApp.setActivationPolicy(.regular)
-        openMainWindow?()
-        NSApp.activate()
+        SettingsWindow.shared.show()
     }
+
+    /// Opens the SwiftUI window for the panes that have not moved to React,
+    /// optionally at a pane and with its search or console showing.
+    static func showClassicWindow(pane: Pane?, show: OpenClassicParams.Show?) {
+        guard let model else { return }
+        if let pane, !Pane.migrated.contains(pane) { model.selection = pane }
+        ClassicWindow.shared.show(model)
+        switch show {
+        case .search: model.modal.present(inContent: true) { CommandPalette() }
+        case .console: model.consoleOpen = true
+        case nil: break
+        }
+    }
+
+    static weak var model: AppModel?
 
     private static func hideToMenuBar() {
         NSApp.setActivationPolicy(.accessory)

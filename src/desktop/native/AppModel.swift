@@ -8,7 +8,10 @@ import Observation
 @Observable
 final class AppModel {
     let log: CommandLog
-    let layout: LayoutModel
+    /// The last layout read, for the Home summary. The Layout page itself
+    /// reads and edits through `YabaiLayout`.
+    var layout: LayoutSnapshot?
+    let settingsStore: SettingsStore
     let themes: ThemeCatalog
     let daemons: DaemonMonitor
     let borders: BordersModel
@@ -31,15 +34,29 @@ final class AppModel {
 
     let backend: Integrations
 
-    var selection: Pane? =
-        Pane(rawValue: UserDefaults.standard.string(forKey: "selectedPane") ?? "home") ?? .home
-    {
+    var selection: Pane? = AppModel.restoredSelection {
         didSet {
+            // A pane that has moved to the React window opens there instead,
+            // and this window stays where it was.
+            if let pane = selection, Pane.migrated.contains(pane) {
+                selection = oldValue
+                openMigrated?(pane)
+                return
+            }
             UserDefaults.standard.set(selection?.rawValue, forKey: "selectedPane")
             guard !navigating, oldValue != selection else { return }
             if let oldValue { back.append(oldValue) }
             forward.removeAll()
         }
+    }
+
+    /// Opens a pane that now lives in the React settings window.
+    var openMigrated: ((Pane) -> Void)?
+
+    private static var restoredSelection: Pane {
+        let saved = Pane(rawValue: UserDefaults.standard.string(forKey: "selectedPane") ?? "home")
+        if let saved, !Pane.migrated.contains(saved) { return saved }
+        return Pane.navigationOrder.first { !Pane.migrated.contains($0) } ?? .home
     }
 
     /// Where the arrows in the window's bar go. Panes are visited rather than
@@ -71,11 +88,11 @@ final class AppModel {
         navigating = false
     }
 
-    init(backend: Integrations = Integrations()) {
+    init(backend: Integrations = Integrations(), settingsStore: SettingsStore = SettingsStore()) {
         let log = CommandLog()
         self.log = log
         self.backend = backend
-        self.layout = LayoutModel(backend: backend, log: log)
+        self.settingsStore = settingsStore
         self.themes = ThemeCatalog(backend: backend, log: log)
         self.daemons = DaemonMonitor(backend: backend, log: log)
         let borders = BordersModel(backend: backend, log: log)
@@ -138,9 +155,24 @@ final class AppModel {
         log.record(await ScriptingAddition.repair())
     }
 
+    var yabaiLayout: YabaiLayout { YabaiLayout(integrations: backend, store: settingsStore) }
+
+    /// Reads the layout without changing it. Failures leave the last reading.
+    @discardableResult
+    func refreshLayout() async -> LayoutSnapshot? {
+        do {
+            let snapshot = try await yabaiLayout.read()
+            layout = snapshot
+            return snapshot
+        } catch {
+            log.failure("read layout", error.localizedDescription)
+            return nil
+        }
+    }
+
     func loadEverything() async {
         themes.reload()
-        await layout.hydrate()
+        await refreshLayout()
         await borders.hydrate()
         await daemons.refresh()
         snapshots.refresh()

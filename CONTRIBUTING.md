@@ -6,8 +6,10 @@ Read [the architecture guide](docs/architecture.md) for the shared app and CLI d
 
 ## Build and install
 
-Requires an Apple Silicon Mac with macOS 26 or later, Xcode 27 and
-[Homebrew](https://brew.sh). Open Xcode once to finish installing its components.
+Requires an Apple Silicon Mac with macOS 26 or later, Xcode 27,
+[Homebrew](https://brew.sh) and Node.js 22.12 or later (for building the
+interface; pnpm comes through Node's corepack). Open Xcode once to finish
+installing its components.
 
 ```sh
 git clone https://github.com/HarryRandall/macarchy.git
@@ -40,8 +42,11 @@ when prompted, then restart them from **Advanced**.
 
 ## Checks
 
-Run `swift build`, `swift test`, `./tools/lint.sh` and
-`tests/integration/setup.sh`. CI runs the same. Tests must use temporary
+Run `corepack pnpm run check` and `corepack pnpm run build` in `src/desktop/ui`,
+then `swift build`, `swift test`, `./tools/lint.sh` and
+`tests/integration/setup.sh`. CI runs the same. The web view tests in
+`swift test` need the built interface; without it they are skipped locally and
+fail in CI. Tests must use temporary
 homes (`MACARCHY_HOME`), fake tools (`MACARCHY_SEARCH_PATH`) and must never alter
 the running desktop. Use Xcode 27's `swift-format`; CI installs SwiftLint through Homebrew.
 
@@ -53,15 +58,25 @@ and `Info.plist`. Do not add empty folders for speculative future features.
 
 The App and CLI targets use the shared Macarchy target. Themes, configuration
 and integration behaviour belong in `src/core`; the command is in `src/cli`.
-In `src/desktop`, `native` holds the app lifecycle, menu bar item and theme
-switcher panel, and `classic` holds the SwiftUI settings interface still to be
-migrated. `src/desktop/ui` is excluded from the Swift build and lint. Add
-targets or protocols only when a concrete dependency or test needs them. Prefer
-small concrete types over generic frameworks.
+In `src/desktop`, `native` holds the app lifecycle, windows, switcher panel,
+menu bar item and web view bridge; `ui` holds the React interface; and
+`classic` holds the SwiftUI panes still to be migrated. Add targets or
+protocols only when a concrete dependency or test needs them. Prefer small
+concrete types over generic frameworks.
+
+React owns presentation and interaction state. Filesystem access, desktop
+changes and persistence stay in Swift, reached through named bridge methods
+whose handlers call `src/core`. [The interface guide](docs/interface.md)
+covers the bridge, loading and development.
+
+In `src/desktop/ui`, files use kebab-case and components PascalCase named
+exports. Controls in `components/ui` own their look through `variant` and
+`size`; features choose variants and add only layout classes.
 
 | Path | Contents |
 |---|---|
 | `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes` |
+| `src/desktop` | `native`, `ui` (React), `classic` (SwiftUI, being migrated) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
 | `resources` | `app` (logo and icon), `themes`, `integrations/sketchybar`, `integrations/skhd` |
 | `packaging/macos` | `Info.plist` |
@@ -106,10 +121,10 @@ Report partial application explicitly rather than as success.
 ## Interface help
 
 Prefer contextual tooltips for secondary instructions over persistent explanatory
-lines. Use `HelpTooltip` for help beside a group and `hoverHelp` for an individual
-control. Keep wording brief and describe the action. Keep essential status, errors
-and information needed to make a decision visible. Use the shared tooltip host so
-wrapped text stays inside its bubble and above scrolling content.
+lines. Keep wording brief and describe the action. Keep essential status, errors
+and information needed to make a decision visible. In React, sections and rows
+take a `help` tooltip and controls use the shared `Tooltip`; in the classic
+SwiftUI panes, use `HelpTooltip` beside a group and `hoverHelp` on a control.
 
 ## Configuration reference
 

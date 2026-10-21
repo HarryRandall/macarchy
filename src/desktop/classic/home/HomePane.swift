@@ -109,10 +109,10 @@ struct HomePane: View {
     }
 
     private var layoutName: String {
-        switch model.layout.layout {
-        case "bsp": "Tiled"
-        case "stack": "Stacked"
-        default: "Freeform"
+        switch model.layout?.values.layout ?? .bsp {
+        case .bsp: "Tiled"
+        case .stack: "Stacked"
+        case .float: "Freeform"
         }
     }
 

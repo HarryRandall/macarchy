@@ -42,7 +42,8 @@ Built around [yabai](https://github.com/asmvik/yabai),
 [Build and install from source →](CONTRIBUTING.md#build-and-install)
 Requires Xcode 27 and Homebrew. Prebuilt releases are not available yet.
 
-Open Macarchy to set up your desktop, then use **⌘⌃Space** to switch themes.
+Open Macarchy to set up your desktop, then use **⌘⌃Space**, or **Theme
+Switcher…** in its menu bar item, to switch themes.
 Add your own wallpapers to complete the look; wallpapers are not bundled.
 
 For setup, shortcuts and configuration, see the

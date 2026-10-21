@@ -82,6 +82,9 @@ struct TrafficLights: NSViewRepresentable {
                         forName: name, object: window, queue: nil
                     ) { [weak self] _ in
                         MainActor.assumeIsolated {
+                            // An AppKit window can create its buttons after
+                            // this view joins it, so adopting is retried here.
+                            self?.adopt()
                             self?.place()
                             self?.syncHover()
                         }

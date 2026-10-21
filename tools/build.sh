@@ -15,6 +15,13 @@ CONFIG="${1:-release}"
 DIST="$ROOT/.build/artifacts"
 APP="$DIST/$APP_NAME.app"
 
+echo "==> Building the interface"
+# The interface is built here and bundled; the app itself never needs Node or
+# a development server.
+UI="$ROOT/src/desktop/ui"
+command -v corepack >/dev/null || { echo "error: Node.js 22.12 or later is required to build the interface" >&2; exit 1; }
+(cd "$UI" && corepack pnpm install --frozen-lockfile && corepack pnpm run build)
+
 echo "==> Building ($CONFIG)"
 cd "$ROOT"
 swift build -c "$CONFIG"
@@ -34,6 +41,7 @@ cp "$ROOT/packaging/macos/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/resources/app/logo.svg" "$APP/Contents/Resources/"
 cp -R "$ROOT/resources/themes" "$ROOT/resources/integrations/sketchybar" \
   "$ROOT/resources/integrations/skhd" "$APP/Contents/Resources/"
+cp -R "$UI/dist" "$APP/Contents/Resources/ui"
 CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
 cp "$CLI_PATH" "$APP/Contents/MacOS/macarchy"
 echo "    bundled $(find "$ROOT/resources/themes" -name theme.json | wc -l | tr -d ' ') themes, the menu bar and default shortcuts"

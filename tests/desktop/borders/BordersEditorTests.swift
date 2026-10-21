@@ -66,7 +66,14 @@ struct BordersEditorTests {
         editor.changed()
         editor.draft.width = 10
         editor.changed()
-        try await Task.sleep(for: .milliseconds(300))
+        // Wait for the write rather than a fixed time: other suites can keep
+        // the main actor busy past the debounce. Then wait out one more
+        // debounce, to be sure the two edits did not produce a second write.
+        let deadline = ContinuousClock.now + .seconds(3)
+        while writes.isEmpty || editor.hasChanges, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try await Task.sleep(for: .milliseconds(250))
         #expect(writes.count == 1)
         #expect(writes.first?.width == 10)
         #expect(!editor.hasChanges)

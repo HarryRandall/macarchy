@@ -20,6 +20,12 @@ struct StatusMenu: View {
 
         Divider()
 
+        // Also reachable when ⌘⌃Space belongs to another app or the system.
+        Button("Theme Switcher…") {
+            Task { await ThemeSwitcher.shared.show() }
+        }
+        .keyboardShortcut(" ", modifiers: [.command, .control])
+
         Button("Settings…") { AppDelegate.showMainWindow() }
             .keyboardShortcut(",", modifiers: .command)
 
