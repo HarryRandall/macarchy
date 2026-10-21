@@ -145,7 +145,9 @@ struct RootView: View {
         case .advanced:
             ContentUnavailableView(
                 "Advanced is in the new settings window", systemImage: "macwindow")
-        case .borders: BordersPane()
+        case .borders:
+            ContentUnavailableView(
+                "Borders is in the new settings window", systemImage: "macwindow")
         case .menuBar: MenuBarPane()
         case .shortcuts: ShortcutsPane()
         case .health: HealthPane()

@@ -14,8 +14,6 @@ final class AppModel {
     let settingsStore: SettingsStore
     let themes: ThemeCatalog
     let daemons: DaemonMonitor
-    let borders: BordersModel
-    let bordersEditor: BordersEditor
     let snapshots: SnapshotBrowser
     let menuBar: MenuBarModel
     let rc: RCGenerator
@@ -92,12 +90,6 @@ final class AppModel {
         self.settingsStore = settingsStore
         self.themes = ThemeCatalog(backend: backend, log: log)
         self.daemons = DaemonMonitor(backend: backend, log: log)
-        let borders = BordersModel(backend: backend, log: log)
-        self.borders = borders
-        let themes = self.themes
-        self.bordersEditor = BordersEditor { appearance in
-            try await borders.commit(appearance, themes: themes)
-        }
         self.snapshots = SnapshotBrowser()
         self.menuBar = MenuBarModel(backend: backend, log: log)
         self.rc = RCGenerator(log: log)
@@ -156,7 +148,6 @@ final class AppModel {
     func loadEverything() async {
         themes.reload()
         await refreshLayout()
-        await borders.hydrate()
         await daemons.refresh()
         snapshots.refresh()
         await menuBar.hydrate()

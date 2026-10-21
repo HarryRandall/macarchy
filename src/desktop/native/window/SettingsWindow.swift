@@ -72,6 +72,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerLayout(model: model)
         surface.router.registerRules(model: model)
         surface.router.registerAdvanced(model: model)
+        surface.router.registerBorders(model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),

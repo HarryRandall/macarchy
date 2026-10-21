@@ -89,7 +89,15 @@ final class StateBroadcast {
             Task { @MainActor in
                 self?.publish()
                 self?.observe()
+                await self?.publishBorders()
             }
+        }
+    }
+
+    private func publishBorders() async {
+        guard let model else { return }
+        do { settings()?.send(.bordersChanged(try await model.bordersState())) } catch {
+            model.log.failure("refresh borders", error.localizedDescription)
         }
     }
 
@@ -161,6 +169,7 @@ final class StateBroadcast {
             self.advancedChanged()
             model.themes.reload()
             await self.publishRules(model)
+            await self.publishBorders()
             if let snapshot = await model.refreshLayout() {
                 self.settings()?.send(.layoutChanged(model.layoutState(snapshot)))
             }
