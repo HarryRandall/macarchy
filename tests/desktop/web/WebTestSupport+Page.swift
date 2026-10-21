@@ -27,11 +27,6 @@ let prelude = """
       number(label) { return document.querySelector(`input[aria-label="${label} in pt"]`); },
       toggle(label) { return document.querySelector(`[role=switch][aria-label="${label}"]`); },
       select(label) { return document.querySelector(`[aria-label="${label}"]`); },
-      card(title) {
-        return [...document.querySelectorAll('[role=group][aria-label="Choose your layout"] button')]
-          .find((button) => [...button.querySelectorAll("span")]
-            .some((span) => span.childElementCount === 0 && span.textContent.trim() === title));
-      },
       disabled(element) {
         return element.disabled === true || element.getAttribute("aria-disabled") === "true"
           || element.hasAttribute("data-disabled");

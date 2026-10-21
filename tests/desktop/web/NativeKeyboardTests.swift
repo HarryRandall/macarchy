@@ -30,10 +30,8 @@ extension WebInterfaceTests {
 
                 let sidebar = ["Home", "Themes", "Layout", "Shortcuts", "Advanced"]
                 let page = [
-                    "Split direction", "New windows", "Balance window sizes", "Between windows",
-                    "Between windows in pt", "Match all screen edges", "Screen margins",
-                    "Screen margins in pt", "Modifier key", "Move pointer to focused window",
-                    "Drop action"
+                    "BSP", "Auto balance", "Window gap", "Window gap in pt", "Screen padding",
+                    "Screen padding in pt", "Match all screen edges", "Mouse follows focus"
                 ]
                 let positions = (sidebar + page).map { labels.firstIndex(of: $0) }
                 #expect(!positions.contains(nil), "missing stops in \(labels)")
@@ -69,7 +67,7 @@ extension WebInterfaceTests {
                 let plainPositions = plain.compactMap { labels.firstIndex(of: $0) }
                 #expect(plainPositions.count == plain.count, "\(plain) not in \(labels)")
                 #expect(plainPositions == plainPositions.sorted(), "\(plain)")
-                for field in ["Between windows in pt", "Screen margins in pt", "Split direction"] {
+                for field in ["Window gap in pt", "Screen padding in pt"] {
                     #expect(plain.contains(field), "plain Tab skipped \(field): \(plain)")
                 }
             }
@@ -83,8 +81,8 @@ extension WebInterfaceTests {
                 try await recordFocusBaseline(surface)
 
                 try #require(
-                    try await tabTo("Between windows", type: "range", in: window, surface),
-                    "⌥Tab never reached the Between windows slider")
+                    try await tabTo("Window gap", type: "range", in: window, surface),
+                    "⌥Tab never reached the Window gap slider")
 
                 // As a held key repeats.
                 for _ in 0..<3 {
@@ -106,7 +104,7 @@ extension WebInterfaceTests {
                 #expect(await harness.desktop.writes == [["window_gap", "10"]])
                 try await forgetLastFocus(surface)
                 let focus = try await focused(surface)
-                #expect(focus.label == "Between windows" && focus.focusVisible, "\(focus)")
+                #expect(focus.label == "Window gap" && focus.focusVisible, "\(focus)")
             }
         }
 

@@ -4,14 +4,25 @@ import Testing
 @testable import App
 @testable import Macarchy
 
+/// Finds a segmented control, or one of its options, by label. Scoped to the
+/// control because the sidebar row is also labelled "Layout".
+private let segment = """
+    const segments = (group) =>
+      document.querySelector(`[data-slot=segmented-control][aria-label="${group}"]`);
+    const segment = (group, label) =>
+      [...segments(group).querySelectorAll("button")]
+        .find((button) => button.textContent.trim() === label);
+
+    """
+
 /// The Layout page has rendered the daemon's values.
 @MainActor
 func waitForLayout(_ surface: WebSurface, gap: Int) async throws {
     try await waitFor(
         surface, "the Layout page with a window gap of \(gap)",
         """
-        return page.number("Between windows")?.value === "\(gap)"
-          && page.range("Between windows")?.value === "\(gap)";
+        return page.number("Window gap")?.value === "\(gap)"
+          && page.range("Window gap")?.value === "\(gap)";
         """)
 }
 
@@ -55,7 +66,7 @@ extension WebInterfaceTests {
                 try await run(
                     surface,
                     """
-                    const slider = page.range("Between windows");
+                    const slider = page.range("Window gap");
                     for (const value of [15, 16, 17, 20]) page.setValue(slider, value);
                     """)
                 try await waitUntil("yabai to receive window_gap 20") {
@@ -78,17 +89,17 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("linked margins write every edge; unlinked, only the top")
+        @Test("linked padding writes every edge; unlinked, only the top")
         func linkedPadding() async throws {
             try await withHarness { harness in
                 let (_, surface) = try harness.settingsPage()
                 try await waitForLayout(surface, gap: 8)
                 try await waitFor(
-                    surface, "linked margins",
-                    #"return page.toggle("Match all screen edges").getAttribute("aria-checked") === "true" && !!page.range("Screen margins");"#
+                    surface, "linked padding",
+                    #"return page.toggle("Match all screen edges").getAttribute("aria-checked") === "true" && !!page.range("Screen padding");"#
                 )
 
-                try await run(surface, #"page.setValue(page.range("Screen margins"), 12);"#)
+                try await run(surface, #"page.setValue(page.range("Screen padding"), 12);"#)
                 try await waitUntil("all four edges at 12") {
                     let writes = await harness.desktop.writes
                     return ["top_padding", "bottom_padding", "left_padding", "right_padding"]
@@ -97,10 +108,10 @@ extension WebInterfaceTests {
 
                 try await run(surface, #"page.toggle("Match all screen edges").click();"#)
                 try await waitFor(
-                    surface, "the top margin control",
-                    #"return page.toggle("Match all screen edges").getAttribute("aria-checked") === "false" && !!page.range("Top margin");"#
+                    surface, "the top padding control",
+                    #"return page.toggle("Match all screen edges").getAttribute("aria-checked") === "false" && !!page.range("Top padding");"#
                 )
-                try await run(surface, #"page.setValue(page.range("Top margin"), 20);"#)
+                try await run(surface, #"page.setValue(page.range("Top padding"), 20);"#)
                 try await waitUntil("the top edge at 20") {
                     await harness.desktop.writes.contains(["top_padding", "20"])
                 }
@@ -121,22 +132,23 @@ extension WebInterfaceTests {
                 try await waitForLayout(surface, gap: 8)
                 try await waitFor(
                     surface, "tiling controls enabled",
-                    #"return !page.disabled(page.select("Split direction")) && !page.disabled(page.toggle("Balance window sizes"));"#
+                    segment
+                        + #"return !page.disabled(segments("Split")) && !page.disabled(page.toggle("Auto balance"));"#
                 )
 
-                try await run(surface, #"page.card("Stack").click();"#)
+                try await run(surface, segment + #"segment("Layout", "Stack").click();"#)
                 try await waitUntil("yabai to receive layout stack") {
                     await harness.desktop.writes.contains(["layout", "stack"])
                 }
                 try await waitFor(
                     surface, "Stack selected and the arrangement controls disabled",
-                    """
-                    return page.card("Stack").getAttribute("aria-pressed") === "true"
-                      && page.card("Tile").getAttribute("aria-pressed") === "false"
-                      && page.disabled(page.select("Split direction"))
-                      && page.disabled(page.select("New windows"))
-                      && page.disabled(page.toggle("Balance window sizes"));
-                    """)
+                    segment + """
+                        return segment("Layout", "Stack").getAttribute("aria-pressed") === "true"
+                          && segment("Layout", "BSP").getAttribute("aria-pressed") === "false"
+                          && page.disabled(segment("Split", "Auto"))
+                          && page.disabled(segment("New windows", "Second child"))
+                          && page.disabled(page.toggle("Auto balance"));
+                        """)
                 try await waitUntil("settings.json to record the layout") {
                     (try? harness.store.read().flatValues["YABAI_LAYOUT"]) == "stack"
                 }
@@ -152,7 +164,7 @@ extension WebInterfaceTests {
                 let (_, surface) = try harness.settingsPage()
                 try await waitForLayout(surface, gap: 14)
 
-                try await run(surface, #"page.setValue(page.range("Between windows"), 25);"#)
+                try await run(surface, #"page.setValue(page.range("Window gap"), 25);"#)
                 try await waitFor(
                     surface, "the apply error",
                     """
@@ -179,24 +191,24 @@ extension WebInterfaceTests {
                 try await waitForLayout(surface, gap: 20)
                 try await waitFor(
                     surface, "the saved-layout notice and disabled controls",
-                    """
-                    const notice = [...document.querySelectorAll("[role=status]")]
-                      .find((element) => element.innerText.includes("Showing your saved layout"));
-                    return !!notice && notice.innerText.includes("yabai isn't responding")
-                      && page.card("Stack").getAttribute("aria-pressed") === "true"
-                      && page.range("Between windows").disabled
-                      && page.number("Between windows").disabled
-                      && page.card("Tile").disabled
-                      && page.disabled(page.toggle("Match all screen edges"))
-                      && page.disabled(page.select("Modifier key"));
-                    """)
+                    segment + """
+                        const notice = [...document.querySelectorAll("[role=status]")]
+                          .find((element) => element.innerText.includes("Showing your saved layout"));
+                        return !!notice && notice.innerText.includes("yabai isn't responding")
+                          && segment("Layout", "Stack").getAttribute("aria-pressed") === "true"
+                          && page.range("Window gap").disabled
+                          && page.number("Window gap").disabled
+                          && page.disabled(segment("Layout", "BSP"))
+                          && page.disabled(page.toggle("Match all screen edges"))
+                          && page.disabled(segments("Modifier"));
+                        """)
 
                 try await run(
                     surface,
-                    """
-                    page.setValue(page.range("Between windows"), 4);
-                    page.card("Tile").click();
-                    """)
+                    segment + """
+                        page.setValue(page.range("Window gap"), 4);
+                        segment("Layout", "BSP").click();
+                        """)
                 // swiftlint:disable:next no_fixed_sleep_in_tests - proves disabled controls never write; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(400))
 

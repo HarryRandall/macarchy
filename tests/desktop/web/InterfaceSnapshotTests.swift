@@ -51,13 +51,13 @@ extension WebInterfaceTests {
                 try await shootSettings("settings-layout-\(suffix)", appearance: appearance)
             }
 
-            try await shootSettings("settings-layout-room-to-breathe") { surface in
+            try await shootSettings("settings-layout-gaps") { surface in
                 try await run(
                     surface,
                     """
                     const heading = [...document.querySelectorAll("main *")]
                       .find((element) => element.childElementCount === 0
-                        && element.textContent.trim() === "Room to breathe");
+                        && element.textContent.trim() === "Gaps");
                     // Only the page scrolls; scrollIntoView would also move
                     // the shell, whose overflow is hidden.
                     const main = document.querySelector("main");
@@ -68,7 +68,7 @@ extension WebInterfaceTests {
             try await withHarness { harness in
                 await harness.desktop.reject("window_gap", message: "invalid value for window_gap")
                 try await shootSettings("settings-layout-apply-error", in: harness) { surface in
-                    try await run(surface, #"page.setValue(page.range("Between windows"), 25);"#)
+                    try await run(surface, #"page.setValue(page.range("Window gap"), 25);"#)
                     try await waitFor(
                         surface, "the apply error",
                         #"return [...document.querySelectorAll("[role=alert]")].some((a) => a.innerText.includes("Could not apply that change"));"#
@@ -88,10 +88,10 @@ extension WebInterfaceTests {
             }
 
             try await shootSettings("settings-layout-stack") { surface in
-                try await run(surface, #"page.card("Stack").click();"#)
+                try await run(surface, stackSegment + #"stack.click();"#)
                 try await waitFor(
                     surface, "Stack chosen",
-                    #"return page.card("Stack").getAttribute("aria-pressed") === "true" && page.disabled(page.select("Split direction"));"#
+                    stackSegment + #"return stack.getAttribute("aria-pressed") === "true" && page.disabled(page.toggle("Auto balance"));"#
                 )
             }
 
@@ -157,3 +157,10 @@ extension WebInterfaceTests {
         }
     }
 }
+
+/// The Stack option of the Layout page's layout control.
+private let stackSegment = """
+    const stack = [...document.querySelectorAll('[data-slot=segmented-control][aria-label="Layout"] button')]
+      .find((button) => button.textContent.trim() === "Stack");
+
+    """
