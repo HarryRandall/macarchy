@@ -8,8 +8,7 @@ struct RootView: View {
     /// straight to stored defaults comes back through UserDefaults on its own,
     /// outside the transaction that asked for it, so `withAnimation` had
     /// nothing to animate and the collapse always snapped.
-    @State private var sidebarVisible =
-        UserDefaults.standard.object(forKey: "sidebarVisible") as? Bool ?? true
+    @State private var sidebarVisible = InterfacePreferences.sidebarVisible
     /// Whether the window is wide enough to show the console beside a pane.
     @State private var hasRoomForPanel = true
 
@@ -81,7 +80,7 @@ struct RootView: View {
         .hoverHelpHost()
         .background(WindowRefresh().frame(width: 0, height: 0))
         .onChange(of: sidebarVisible) { _, isVisible in
-            UserDefaults.standard.set(isVisible, forKey: "sidebarVisible")
+            InterfacePreferences.sidebarVisible = isVisible
         }
         .task { await DesignSettings.shared.watch() }
     }

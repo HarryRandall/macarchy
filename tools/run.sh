@@ -54,6 +54,60 @@ for tool in yabai skhd sketchybar borders; do
   chmod +x "$BIN/$tool"
 done
 
+# launchctl and defaults act on the login session and the global domain
+# whatever HOME says, and the app only looks for them on its search path.
+# This launchctl records each call and reports every job as running.
+cat >"$BIN/launchctl" <<SH
+#!/bin/sh
+printf '%s\n' "\$*" >>'$HOME_DIR/launchctl.log'
+case "\$1" in
+  print) printf 'state = running\npid = 4242\n' ;;
+  kickstart | kill | list | bootstrap | bootout) ;;
+  *) echo "The development launchctl does not support \$1." >&2; exit 1 ;;
+esac
+SH
+
+# Global values live in a file in the temporary home, one KEY=VALUE per line,
+# with the real tool's messages and exit codes for the calls the app makes.
+cat >"$BIN/defaults" <<SH
+#!/bin/sh
+store='$HOME_DIR/global-defaults'
+touch "\$store"
+if [ "\$2" != -g ]; then
+  echo "The development defaults only supports the global domain." >&2
+  exit 1
+fi
+key="\$3"
+others() { awk -v k="\$key" 'index(\$0, k "=") != 1' "\$store"; }
+case "\$1 \$#" in
+  "read 3")
+    if ! awk -v k="\$key" 'index(\$0, k "=") == 1 { v = substr(\$0, length(k) + 2); f = 1 }
+      END { if (f) print v; exit !f }' "\$store"; then
+      printf '\nThe domain/default pair of (kCFPreferencesAnyApplication, %s) does not exist\n' \\
+        "\$key" >&2
+      exit 1
+    fi
+    ;;
+  "write 5")
+    [ "\$4" = -float ] || { echo "The development defaults only writes -float." >&2; exit 1; }
+    value="\$(awk -v v="\$5" 'BEGIN { print v + 0 }')"
+    { others; echo "\$key=\$value"; } >"\$store.new" && mv "\$store.new" "\$store"
+    ;;
+  "delete 3")
+    if ! awk -v k="\$key" 'index(\$0, k "=") == 1 { f = 1 } END { exit !f }' "\$store"; then
+      printf 'Domain (kCFPreferencesAnyApplication) not found.\nDefaults have not been changed.\n' >&2
+      exit 1
+    fi
+    others >"\$store.new" && mv "\$store.new" "\$store"
+    ;;
+  *)
+    echo "The development defaults does not support: \$*" >&2
+    exit 1
+    ;;
+esac
+SH
+chmod +x "$BIN/launchctl" "$BIN/defaults"
+
 # open cannot report the PID it starts, so the new one is whichever copy of
 # this build was not already running. HOME reaches the bundled bar scripts,
 # which find their tools through it.

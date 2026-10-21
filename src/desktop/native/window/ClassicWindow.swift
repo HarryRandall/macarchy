@@ -36,8 +36,7 @@ final class ClassicWindow {
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
         window.setContentSize(NSSize(width: 1000, height: 720))
-        if !window.setFrameUsingName("MacarchyClassic") { window.center() }
-        window.setFrameAutosaveName("MacarchyClassic")
+        Preferences.restoreFrame(of: window, autosaveName: "MacarchyClassic")
         return window
     }
 }

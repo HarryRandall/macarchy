@@ -71,14 +71,14 @@ enum InterfacePreferences {
 
     static var selectedPane: Pane {
         get {
-            UserDefaults.standard.string(forKey: paneKey).flatMap(Pane.init(rawValue:))
+            Preferences.store.string(forKey: paneKey).flatMap(Pane.init(rawValue:))
                 .flatMap { Pane.migrated.contains($0) ? $0 : nil } ?? .home
         }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: paneKey) }
+        set { Preferences.store.set(newValue.rawValue, forKey: paneKey) }
     }
 
     static var sidebarVisible: Bool {
-        get { UserDefaults.standard.object(forKey: sidebarKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: sidebarKey) }
+        get { Preferences.store.object(forKey: sidebarKey) as? Bool ?? true }
+        set { Preferences.store.set(newValue, forKey: sidebarKey) }
     }
 }

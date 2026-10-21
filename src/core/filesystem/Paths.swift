@@ -63,8 +63,8 @@ public enum Paths {
     public static var sketchybar: String { executable("sketchybar") }
     public static var borders: String { executable("borders") }
     public static var ghostty: String { executable("ghostty") }
-    public static let launchctl = "/bin/launchctl"
-    public static let defaults = "/usr/bin/defaults"
+    public static var launchctl: String { launchctl(in: ProcessInfo.processInfo.environment) }
+    public static var defaults: String { defaults(in: ProcessInfo.processInfo.environment) }
     public static let ioreg = "/usr/sbin/ioreg"
     public static let ps = "/bin/ps"
     public static let tail = "/usr/bin/tail"
@@ -99,6 +99,30 @@ public enum Paths {
             if fm.isExecutableFile(atPath: candidate) { return candidate }
         }
         return searchDirectories[0] + "/" + name
+    }
+
+    static func launchctl(in environment: [String: String]) -> String {
+        systemTool("launchctl", at: "/bin/launchctl", in: environment)
+    }
+
+    static func defaults(in environment: [String: String]) -> String {
+        systemTool("defaults", at: "/usr/bin/defaults", in: environment)
+    }
+
+    /// launchctl and defaults act on the login session and the global domain
+    /// whatever `MACARCHY_HOME` says, so with `MACARCHY_SEARCH_PATH` set only
+    /// a fake there is used. Without one the path names a file that does not
+    /// exist, so the command fails instead of reaching the real tool.
+    private static func systemTool(
+        _ name: String, at system: String, in environment: [String: String]
+    ) -> String {
+        guard let override = environment["MACARCHY_SEARCH_PATH"] else { return system }
+        let directories = override.split(separator: ":").map(String.init)
+        for directory in directories {
+            let candidate = directory + "/" + name
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return (directories.first ?? "") + "/" + name
     }
 
     /// Where apps are installed. `MACARCHY_APPLICATIONS` replaces the list in tests.
