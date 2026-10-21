@@ -12,7 +12,6 @@ extension ThemeSwitcherView {
                     .frame(width: 22)
             } title: {
                 Text("Switch Background")
-                Text(activeTheme?.title ?? "").foregroundStyle(.secondary)
             } accessories: {
                 Text("\(backgroundCount(activeTheme)) options").foregroundStyle(.secondary)
             }
