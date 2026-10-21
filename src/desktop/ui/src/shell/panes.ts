@@ -61,3 +61,19 @@ const fallbackPane: PaneId = "home";
 export function reactPaneFor(selected: PaneId): PaneId {
   return reactPanes.has(selected) ? selected : fallbackPane;
 }
+
+/**
+ * What the window can show: a pane, or a page reached only from menus. The
+ * changelog belongs to the window, not the host, so it is never saved as
+ * the selected pane.
+ */
+export type Route = PaneId | "changelog";
+
+export function routeTitle(route: Route): string {
+  return route === "changelog" ? "Changelog" : panes[route].title;
+}
+
+/** The sidebar group a route sits in, for the breadcrumb; none for overview pages. */
+export function routeGroup(route: Route): string | null {
+  return groups.find((group) => group.panes.some((pane) => pane === route))?.title ?? null;
+}

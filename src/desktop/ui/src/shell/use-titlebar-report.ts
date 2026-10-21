@@ -60,10 +60,16 @@ export function useTitlebarReport(
     // oxlint-disable-next-line macarchy/no-raw-resize-observer -- this reports native hit regions, not React state, so there is nothing to flush.
     const observer = new ResizeObserver(schedule);
     observer.observe(root);
+    // Pages portal their actions into the bar and the search swaps between a
+    // field and a button; neither resizes what is observed above.
+    const mutations = new MutationObserver(schedule);
     for (const element of root.querySelectorAll(
       "[data-titlebar-control], [data-titlebar-region]",
     )) {
       observer.observe(element);
+    }
+    for (const region of root.querySelectorAll("[data-titlebar-region]")) {
+      mutations.observe(region, { childList: true, subtree: true, attributes: true });
     }
     root.addEventListener("transitionend", schedule);
     window.addEventListener("resize", schedule);
@@ -72,6 +78,7 @@ export function useTitlebarReport(
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      mutations.disconnect();
       root.removeEventListener("transitionend", schedule);
       window.removeEventListener("resize", schedule);
     };
