@@ -53,7 +53,7 @@ export const groups: { title: string; panes: PaneId[] }[] = [
 export const reactPanes = new Set<PaneId>(pages.map((page) => page.id));
 
 /** Shown when the saved pane is not, or no longer, a React page. */
-const fallbackPane: PaneId = "layout";
+const fallbackPane: PaneId = "home";
 
 export function reactPaneFor(selected: PaneId): PaneId {
   return reactPanes.has(selected) ? selected : fallbackPane;

@@ -112,3 +112,25 @@ folder renders each state of both pages there as PNGs for review.
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
 4. Delete the SwiftUI pane and anything only it used.
+
+## Overview pages
+
+Home, Setup health and Report a problem are React pages. Home is the new
+window's default pane. The classic window restores an unmigrated selection,
+falling back to Workshop while it remains classic. Workshop and Plugins links
+on Home are labelled as previews.
+
+Home reads `DesktopOverview` in core, without using another page's React store.
+`home.changed` and `health.changed` invalidate read-only summaries after model
+or settings changes and on window focus. A file fingerprint also detects theme,
+shortcut and snapshot changes made outside the app. Slow health reads are
+serialised and keep the previous findings visible while checking again.
+
+`DiagnosticSnapshot` gathers the same Doctor checks and Diagnostics environment
+as the classic pages did. Report keeps these facts for the page session and
+prepares a redacted preview for each description. Native report actions accept
+the preview's token, so copying and opening share precisely the displayed body;
+a stale token is refused. `ProblemReport` prepares the issue URL and the long
+report clipboard fallback. Clipboard, browser and Finder actions stay native
+and are replaced by recorders in tests. Preparing or refreshing never writes
+settings, reads logs or submits an issue.

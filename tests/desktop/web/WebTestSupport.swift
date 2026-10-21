@@ -170,7 +170,8 @@ final class Harness {
     }
 
     /// The settings window's page, loading but never shown.
-    func settingsPage() throws -> (SettingsWindow, WebSurface) {
+    func settingsPage(pane: Pane = .layout) throws -> (SettingsWindow, WebSurface) {
+        InterfacePreferences.selectedPane = pane
         let window = SettingsWindow()
         window.attach(model)
         return (window, try #require(window.preload()))

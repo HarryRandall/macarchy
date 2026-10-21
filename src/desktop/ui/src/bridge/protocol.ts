@@ -33,6 +33,14 @@ export interface Rect {
   height: number;
 }
 
+import type { HomeEvent, HomeMethods } from "./contract/home";
+import type { HealthEvent, HealthMethods } from "./contract/health";
+import type { ReportMethods } from "./contract/report";
+
+export type * from "./contract/home";
+export type * from "./contract/health";
+export type * from "./contract/report";
+
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
 import type { ShellEvent, ShellMethods } from "./contract/shell";
 import type { SwitcherEvent, SwitcherMethods } from "./contract/switcher";
@@ -46,7 +54,15 @@ interface AppMethods {
   "app.ready": { params: { surface: Surface }; result: null };
 }
 
-export interface BridgeMethods extends AppMethods, ShellMethods, LayoutMethods, SwitcherMethods {}
+export interface BridgeMethods
+  extends
+    AppMethods,
+    ShellMethods,
+    LayoutMethods,
+    SwitcherMethods,
+    HomeMethods,
+    HealthMethods,
+    ReportMethods {}
 
 export type BridgeMethod = keyof BridgeMethods;
 export type ParamsOf<M extends BridgeMethod> = BridgeMethods[M]["params"];
@@ -59,7 +75,7 @@ export type BridgeErrorCode =
 export type Reply<T> =
   { ok: true; value: T } | { ok: false; error: { code: BridgeErrorCode; message: string } };
 
-export type BridgeEvent = ShellEvent | LayoutEvent | SwitcherEvent;
+export type BridgeEvent = ShellEvent | LayoutEvent | SwitcherEvent | HomeEvent | HealthEvent;
 
 /**
  * Installed by the host at document start, before any page script runs, so
