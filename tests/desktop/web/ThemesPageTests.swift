@@ -21,7 +21,14 @@ private func themesPage(
 private func waitForThemes(_ surface: WebSurface) async throws {
     try await waitFor(
         surface, "the Themes collection",
-        "return !!document.querySelector('[aria-label=\"Customise lumon\"]');")
+        "return !!document.querySelector('[aria-label^=\"View lumon\" i]');")
+}
+
+@MainActor
+private func waitForCurrent(_ surface: WebSurface, _ theme: String) async throws {
+    try await waitFor(
+        surface, "the current theme",
+        "return !!document.querySelector('[data-theme=\"\(theme)\"][data-current]');")
 }
 
 @MainActor
@@ -30,6 +37,14 @@ private func themeButton(_ surface: WebSurface, _ label: String) async throws {
         surface,
         "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '\(label)').click();"
     )
+}
+
+@MainActor
+private func chooseWallpaper(_ surface: WebSurface, _ path: String) async throws {
+    try await waitFor(
+        surface, "the wallpaper strip",
+        "return !!document.querySelector('[data-wallpaper=\"\(path)\"]:not(:disabled)');")
+    try await run(surface, "document.querySelector('[data-wallpaper=\"\(path)\"]').click();")
 }
 
 @MainActor
@@ -83,10 +98,7 @@ extension WebInterfaceTests {
                 let broadcast = StateBroadcast(settings: { surface }, switcher: { nil })
                 broadcast.start(harness.model)
                 try harness.store.update { $0.currentTheme = "awakening" }
-                try await waitFor(
-                    surface, "the externally selected theme",
-                    "return document.querySelector('[data-slot=hero-card] h2')?.textContent === 'awakening';"
-                )
+                try await waitForCurrent(surface, "awakening")
                 #expect(recorder.applied.isEmpty && recorder.backgrounds.isEmpty)
             }
         }
@@ -100,8 +112,7 @@ extension WebInterfaceTests {
                 let surface = try themesPage(harness, actions: recorder.actions)
                 try await waitForThemes(surface)
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Customise lumon\"]').click();")
-                try await themeButton(surface, "Colours")
+                    surface, "document.querySelector('[aria-label^=\"View lumon\" i]').click();")
                 let directory = harness.themes.appending(path: "lumon")
                 let wasDark = try Theme.read(from: directory).dark
                 try await run(surface, "page.toggle('Dark mode').click();")
@@ -140,7 +151,7 @@ extension WebInterfaceTests {
                 )
                 try await waitFor(
                     surface, "the reset confirmation",
-                    "return page.text().includes('Reset lumon to its shipped version?');")
+                    "return page.text().toLowerCase().includes('reset lumon to its shipped version?');")
                 #expect(try Theme.read(from: directory) == edited)
                 try await themeButton(surface, "Reset theme")
                 try await waitUntil("shipped default restored") {
@@ -164,13 +175,12 @@ extension WebInterfaceTests {
                 let surface = try themesPage(harness, actions: actions)
                 try await waitForThemes(surface)
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Apply awakening\"]').click();")
+                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();")
                 try await waitUntil("recorded apply") { recorder.applied == ["awakening"] }
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Customise lumon\"]').click();")
-                try await themeButton(surface, "Wallpaper")
+                    surface, "document.querySelector('[aria-label^=\"View lumon\" i]').click();")
                 let before = harness.settingsData
-                try await themeButton(surface, "one.png")
+                try await chooseWallpaper(surface, "backgrounds/one.png")
                 try await waitFor(
                     surface, "the wallpaper failure",
                     "return page.text().includes('Wallpaper rejected');")
@@ -196,10 +206,9 @@ extension WebInterfaceTests {
                 try await themeButton(surface, "Import…")
                 try await waitFor(
                     surface, "the imported theme",
-                    "return !!document.querySelector('[aria-label=\"Customise portable\"]');")
+                    "return !!document.querySelector('[aria-label^=\"View portable\" i]');")
                 try await run(
-                    surface,
-                    "document.querySelector('[aria-label=\"Customise portable\"]').click();")
+                    surface, "document.querySelector('[aria-label^=\"View portable\" i]').click();")
                 try await run(
                     surface, "document.querySelector('[aria-label=\"More actions\"]').click();")
                 try await waitFor(
@@ -239,17 +248,12 @@ extension WebInterfaceTests {
                 let surface = try themesPage(harness, actions: actions)
                 try await waitForThemes(surface)
                 try await run(
-                    surface, "document.querySelector('[aria-label=\"Apply awakening\"]').click();")
-                try await waitFor(
-                    surface, "the applied theme",
-                    "return document.querySelector('[data-slot=hero-card] h2')?.textContent === 'awakening';"
-                )
+                    surface, "document.querySelector('[aria-label=\"Apply awakening\" i]').click();")
+                try await waitForCurrent(surface, "awakening")
                 #expect(try harness.store.read().currentTheme == "awakening")
                 try await run(
-                    surface,
-                    "document.querySelector('[aria-label=\"Customise awakening\"]').click();")
-                try await themeButton(surface, "Wallpaper")
-                try await themeButton(surface, "choice.png")
+                    surface, "document.querySelector('[aria-label^=\"View awakening\" i]').click();")
+                try await chooseWallpaper(surface, "backgrounds/choice.png")
                 try await waitUntil("saved wallpaper") {
                     (try? harness.store.read().wallpapers["awakening"]) == "backgrounds/choice.png"
                 }

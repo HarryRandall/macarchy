@@ -8,7 +8,7 @@ extension WebInterfaceTests {
     @MainActor
     @Suite("Home page")
     struct HomePageTests {
-        @Test("real summary is read-only, previews are labelled and external state refreshes")
+        @Test("real summary is read-only, its sections show and external state refreshes")
         func summary() async throws {
             try await withHarness { harness in
                 try harness.write("ctrl - a : echo a\n", to: ".config/skhd/skhdrc")
@@ -17,11 +17,12 @@ extension WebInterfaceTests {
                 try await waitFor(
                     surface, "Home summary",
                     """
-                    return page.text().toLowerCase().includes("your desktop")
-                      && page.text().includes("lumon")
-                      && page.text().includes("Plugins (preview)")
-                      && page.text().includes("Workshop (preview)")
-                      && document.querySelectorAll('[data-slot="stat-tile"]').length === 4;
+                    const hero = document.querySelector('[data-slot="home-hero"]');
+                    return !!hero && hero.textContent.toLowerCase().includes("lumon")
+                      && page.text().toLowerCase().includes("enabled")
+                      && page.text().toLowerCase().includes("recent activity")
+                      && page.text().toLowerCase().includes("insights")
+                      && document.querySelectorAll('[data-slot="stat"]').length === 4;
                     """)
                 #expect(harness.settingsData == before)
                 #expect(await harness.desktop.writes.isEmpty)
@@ -30,11 +31,7 @@ extension WebInterfaceTests {
                 try await waitFor(
                     surface, "external layout summary", "return page.text().includes('Stacked');")
                 try await run(
-                    surface,
-                    """
-                    [...document.querySelectorAll('button')]
-                      .find(button => button.getAttribute('aria-label')?.startsWith('Layout.')).click();
-                    """)
+                    surface, "document.querySelector('[aria-label=\"Open Layout\"]').click();")
                 try await waitForLayout(surface, gap: 8)
                 #expect(harness.settingsData == before)
             }
@@ -74,7 +71,7 @@ extension WebInterfaceTests {
                     surface, "summary error",
                     """
                     return !!document.querySelector('[role=alert]') && page.text().includes('Try again')
-                      && !document.querySelector('[data-slot="hero-card"]');
+                      && !document.querySelector('[data-slot="home-hero"]');
                     """)
                 #expect(harness.settingsData == before)
                 #expect(await harness.desktop.writes.isEmpty)

@@ -1,99 +1,54 @@
-import {
-  Clock,
-  Command,
-  LayoutPanelLeft,
-  Palette,
-  PanelTop,
-  Puzzle,
-  SquareDashed,
-  type LucideIcon,
-} from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "~/components/layout/page-header";
-import { SectionHeading } from "~/components/layout/section-heading";
-import { SettingRow } from "~/components/layout/setting-row";
-import { SettingsSection } from "~/components/layout/settings-section";
-import { Button } from "~/components/ui/button";
-import { HeroCard } from "~/components/ui/hero-card";
-import { type Tint } from "~/components/ui/icon-tile";
-import { OverviewActionCard } from "~/components/ui/overview-action-card";
-import { StatTile } from "~/components/ui/stat-tile";
-import { StatusChip } from "~/components/ui/status-chip";
+import { Card, SectionLabel } from "~/components/ui/card";
+import { Notice } from "~/components/ui/notice";
 import { Spinner } from "~/components/ui/spinner";
+import { Stat, StatStrip } from "~/components/ui/stat";
 import { ReadNotice } from "~/features/overview/read-notice";
+import { themeLook } from "~/features/themes/theme-look";
+import type { ThemesStore } from "~/features/themes/themes-store";
 import { useStore } from "~/lib/store";
 import type { PageContext } from "~/shell/page";
-import type { PaneId } from "~/bridge/protocol";
+import { relativeTime } from "./home-activity";
+import { HomeActivity } from "./home-activity-card";
+import { HomeHero } from "./home-hero";
+import { HomeInsights } from "./home-insights";
+import { HomeIntegrations, layoutNames } from "./home-integrations";
 import type { HomeStore } from "./home-store";
+import type { ActivityStores, ServiceSwitches } from "./services-store";
 
-const actions: {
-  pane: PaneId;
-  title: string;
-  icon: LucideIcon;
-  detail: string;
-  tint: Tint;
-  preview?: boolean;
-}[] = [
-  {
-    pane: "themes",
-    title: "Themes",
-    icon: Palette,
-    detail: "Wallpaper, colours and the whole look",
-    tint: "purple",
-  },
-  {
-    pane: "menuBar",
-    title: "Menu Bar",
-    icon: PanelTop,
-    detail: "Your essentials, arranged your way",
-    tint: "blue",
-  },
-  {
-    pane: "borders",
-    title: "Borders",
-    icon: SquareDashed,
-    detail: "A little definition for your windows",
-    tint: "teal",
-  },
-  {
-    pane: "layout",
-    title: "Layout",
-    icon: LayoutPanelLeft,
-    detail: "Give every window a place",
-    tint: "orange",
-  },
-  {
-    pane: "shortcuts",
-    title: "Shortcuts",
-    icon: Command,
-    detail: "Less reaching, more doing",
-    tint: "pink",
-  },
-  {
-    pane: "plugins",
-    title: "Plugins",
-    icon: Puzzle,
-    detail: "A preview of tools for your desktop",
-    tint: "green",
-    preview: true,
-  },
-];
-
-export function lastChangeLabel(timestamp: number | null) {
-  if (timestamp === null) return "Never";
-  const minutes = Math.max(0, Math.floor((Date.now() / 1000 - timestamp) / 60));
-  if (minutes === 0) return "Just now";
-  const formatter = new Intl.RelativeTimeFormat("en-GB", { style: "short" });
-  if (minutes < 60) return formatter.format(-minutes, "minute");
-  if (minutes < 1440) return formatter.format(-Math.floor(minutes / 60), "hour");
-  return formatter.format(-Math.floor(minutes / 1440), "day");
-}
-
-export function HomePage({ store, context }: { store: HomeStore; context: PageContext }) {
+export function HomePage({
+  store,
+  themes,
+  activity,
+  switches,
+  context,
+}: {
+  store: HomeStore;
+  themes: ThemesStore;
+  activity: ActivityStores;
+  switches: ServiceSwitches;
+  context: PageContext;
+}) {
   const snapshot = useStore(store);
+  const themesSnapshot = useStore(themes);
+  const shell = useStore(activity.shell);
+  const log = useStore(activity.log);
+  const switching = useStore(switches);
+  const [today] = useState(() => new Date());
+  const [wallpaperError, setWallpaperError] = useState<string | null>(null);
   const state = snapshot.state;
+  const now = today.getTime() / 1000;
+
+  const installed = themesSnapshot.state?.themes ?? [];
+  const current = installed.find(
+    (theme) => theme.summary.name === (themesSnapshot.state?.current ?? state?.theme),
+  );
+  const look = current ? themeLook(current) : null;
+
   return (
     <>
-      <PageHeader title="Home" subtitle={state?.subtitle ?? "A space that works for you."} />
+      <PageHeader title="Home" />
       <ReadNotice
         error={snapshot.error}
         retry={() => void store.load()}
@@ -105,80 +60,57 @@ export function HomePage({ store, context }: { store: HomeStore; context: PageCo
         ) : null
       ) : (
         <>
-          <HeroCard
-            layout="overlay"
-            artworkHeight={210}
-            eyebrow="Your desktop"
-            title={state.theme ?? "Make room for your next idea."}
-            artwork={
-              <div className="size-full bg-[linear-gradient(135deg,var(--accent),#141414)]">
-                {state.wallpaper ? (
-                  <img src={state.wallpaper} alt="" className="size-full object-cover" />
-                ) : null}
-              </div>
-            }
-            meta={
-              <>
-                <StatusChip
-                  tone={state.running === state.total ? "success" : "warning"}
-                  label={`${state.running}/${state.total} services`}
-                  live={state.running === state.total}
-                />
-                <StatusChip label={`${state.themeCount} themes`} />
-              </>
-            }
-            actions={<Button onClick={() => context.navigate("themes")}>Browse themes</Button>}
+          <HomeHero
+            title={state.theme}
+            wallpaper={state.wallpaper}
+            theme={current}
+            busy={themesSnapshot.busy}
+            onNextWallpaper={async (path) => {
+              if (!current) return;
+              setWallpaperError(null);
+              await themes.choose(current.summary.name, path);
+              setWallpaperError(themes.getSnapshot().error);
+            }}
+            onChangeTheme={() => context.navigate("themes")}
           />
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
-            <StatTile
-              icon={<Palette />}
-              value={String(state.themeCount)}
-              caption="Themes"
-              tint="purple"
-              emphasis
-            />
-            <StatTile
-              icon={<Command />}
-              value={String(state.shortcutsCount)}
-              caption="Shortcuts"
-              tint="blue"
-              emphasis
-            />
-            <StatTile
-              icon={<LayoutPanelLeft />}
-              value={{ bsp: "Tiled", stack: "Stacked", float: "Freeform" }[state.layout]}
-              caption="Layout"
-              tint="teal"
-            />
-            <StatTile
-              icon={<Clock />}
-              value={lastChangeLabel(state.lastChange)}
-              caption="Last change"
-              tint="orange"
-            />
-          </div>
-          <SectionHeading title="Make it feel right" />
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-            {actions.map(({ pane, title, icon: Icon, detail, tint, preview }) => {
-              const label = `${title}${preview ? " (preview)" : ""}`;
-              return (
-                <OverviewActionCard
-                  key={pane}
-                  title={label}
-                  detail={detail}
-                  icon={<Icon aria-hidden />}
-                  tint={tint}
-                  onClick={() => context.navigate(pane)}
-                  aria-label={`${label}. ${detail}`}
-                />
-              );
-            })}
-          </div>
-          <SettingsSection title="Explore">
-            <SettingRow title="Workshop (preview)" help="Preview themes and menu bar designs.">
-              <Button onClick={() => context.navigate("workshop")}>Open Workshop preview</Button>
-            </SettingRow>
-          </SettingsSection>
+          {wallpaperError ? (
+            <Notice.Root variant="error" className="mb-6">
+              <Notice.Header onDismiss={() => setWallpaperError(null)}>
+                <Notice.Title>Could not change the wallpaper</Notice.Title>
+                <Notice.Description>{wallpaperError}</Notice.Description>
+              </Notice.Header>
+            </Notice.Root>
+          ) : null}
+
+          <SectionLabel>At a glance</SectionLabel>
+          <Card className="mb-6">
+            <StatStrip aria-label="At a glance">
+              <Stat label="Themes" value={state.themeCount} />
+              <Stat label="Shortcuts" value={state.shortcutsCount} />
+              <Stat label="Layout" value={layoutNames[state.layout]} />
+              <Stat label="Last change" value={relativeTime(state.lastChange, now)} />
+            </StatStrip>
+          </Card>
+
+          <SectionLabel>Enabled</SectionLabel>
+          <HomeIntegrations
+            state={state}
+            look={look}
+            services={shell.state?.serviceList ?? null}
+            pending={switching.pending}
+            error={switching.error}
+            onToggle={(service, running) => void switches.setRunning(service, running)}
+            onDismiss={switches.dismiss}
+            onOpen={(pane) => context.navigate(pane)}
+          />
+
+          <HomeActivity entries={log.state} error={log.error} now={now} />
+
+          <HomeInsights
+            today={today}
+            titles={installed.map((theme) => theme.summary.title)}
+            current={look?.title ?? null}
+          />
         </>
       )}
     </>

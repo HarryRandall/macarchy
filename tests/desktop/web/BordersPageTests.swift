@@ -23,8 +23,7 @@ private func openBorders(_ harness: Harness) async throws -> (SettingsWindow, We
         surface, #"document.querySelector('button[data-pane-row][aria-label="Borders"]').click();"#)
     try await waitFor(
         surface, "Borders",
-        #"return page.text().includes("The outline drawn around the focused window.") && !!page.range("Width");"#
-    )
+        #"return page.text().includes("Generated command") && !!page.select("Border width");"#)
     return (window, surface)
 }
 
@@ -48,12 +47,12 @@ extension WebInterfaceTests {
                 let (window, surface) = try await openBorders(harness)
                 defer { _ = window }
                 try await waitFor(
-                    surface, "saved width", #"return page.range("Width").value === "9";"#)
+                    surface, "saved width", #"return page.select("Border width").value === "9";"#)
                 surface.send(.bordersChanged(try await harness.model.bordersState()))
                 // swiftlint:disable:next no_fixed_sleep_in_tests - proves a refresh never writes; an absence has no signal to await.
                 try await Task.sleep(for: .milliseconds(300))
                 #expect(harness.settingsData == before)
-                #expect(await harness.desktop.calls(to: "borders").isEmpty)
+                #expect(await borderCommands(harness).isEmpty)
                 #expect(
                     await harness.desktop.calls(to: "defaults").allSatisfy { $0.first == "read" })
             }
@@ -65,9 +64,9 @@ extension WebInterfaceTests {
                 let before = harness.settingsData
                 let (window, surface) = try await openBorders(harness)
                 defer { _ = window }
-                try await run(surface, #"page.setValue(page.range("Width"), 10);"#)
+                try await run(surface, #"page.setValue(page.select("Border width"), 10);"#)
                 try await bordersButton(surface, "Square")
-                try await bordersButton(surface, "Add Application…")
+                try await bordersButton(surface, "Add app")
                 try await waitFor(
                     surface, "picked app", #"return page.text().includes("Messages");"#)
                 try await run(
@@ -97,16 +96,16 @@ extension WebInterfaceTests {
                         && theme?.colors.borderActive == "0x80112233"
                 }
                 #expect(
-                    await harness.desktop.calls(to: "borders").last?.contains("width=10.0") == true)
+                    await borderCommands(harness).last?.contains("width=10.0") == true)
                 let saved = harness.settingsData
-                try await bordersButton(surface, "Reset")
-                try await bordersButton(surface, "Use default")
+                try await bordersButton(surface, "Reset to theme")
+                try await bordersButton(surface, "Default")
                 try await bordersButton(surface, "Clear all")
                 #expect(harness.settingsData == saved)
                 try await bordersButton(surface, "Discard")
                 try await waitFor(
                     surface, "discarded draft",
-                    #"return page.range("Width").value === "10" && page.text().includes("Messages");"#
+                    #"return page.select("Border width").value === "10" && page.text().includes("Messages");"#
                 )
             }
         }
@@ -120,14 +119,14 @@ extension WebInterfaceTests {
                     surface,
                     #"""
                     page.toggle("Live preview").click();
-                    for (const width of [8, 9, 10, 11]) page.setValue(page.range("Width"), width);
+                    for (const width of [8, 9, 10, 11]) page.setValue(page.select("Border width"), width);
                     """#)
                 try await waitUntil("live edit saved") {
                     (try? harness.store.read().flatValues["BORDER_WIDTH"]) == "11"
                 }
                 // swiftlint:disable:next no_fixed_sleep_in_tests - proves the drag coalesced to one call; outlasts the page's debounce.
                 try await Task.sleep(for: .milliseconds(300))
-                #expect(await harness.desktop.calls(to: "borders").count == 1)
+                #expect(await borderCommands(harness).count == 1)
                 let saved = harness.settingsData
                 await harness.desktop.answer("borders") { _ in .failure("Border test rejection") }
                 try await run(surface, #"page.toggle("Show borders").click();"#)
@@ -151,14 +150,14 @@ extension WebInterfaceTests {
                 try harness.store.write(["BORDER_WIDTH": "12"])
                 surface.send(.bordersChanged(try await harness.model.bordersState()))
                 try await waitFor(
-                    surface, "external width", #"return page.range("Width").value === "12";"#)
-                try await run(surface, #"page.setValue(page.range("Width"), 10);"#)
+                    surface, "external width", #"return page.select("Border width").value === "12";"#)
+                try await run(surface, #"page.setValue(page.select("Border width"), 10);"#)
                 try harness.store.update { $0.currentTheme = "blackgold" }
                 harness.model.themes.reload()
                 surface.send(.themesChanged(harness.model.switcherState()))
                 try await waitFor(
                     surface, "draft retained on theme change",
-                    #"return page.range("Width").value === "10" && page.text().includes("Borders changed elsewhere");"#
+                    #"return page.select("Border width").value === "10" && page.text().includes("Borders changed elsewhere");"#
                 )
                 try await bordersButton(surface, "Apply")
                 try await waitFor(
@@ -167,8 +166,8 @@ extension WebInterfaceTests {
                 #expect(try harness.store.read().flatValues["BORDER_WIDTH"] == "12")
                 try await bordersButton(surface, "Discard")
                 try await waitFor(
-                    surface, "latest theme loaded", #"return page.range("Width").value === "12";"#)
-                #expect(await harness.desktop.calls(to: "borders").isEmpty)
+                    surface, "latest theme loaded", #"return page.select("Border width").value === "12";"#)
+                #expect(await borderCommands(harness).isEmpty)
             }
         }
 
@@ -181,9 +180,9 @@ extension WebInterfaceTests {
                 surface.send(.bordersChanged(try await harness.model.bordersState()))
                 try await waitFor(
                     surface, "missing borders",
-                    #"return page.text().includes("isn't installed") && page.range("Width").disabled;"#
+                    #"return page.text().includes("isn't installed") && page.select("Border width").disabled;"#
                 )
-                #expect(await harness.desktop.calls(to: "borders").isEmpty)
+                #expect(await borderCommands(harness).isEmpty)
             }
             try await withHarness(tools: ["borders"]) { harness in
                 let (window, surface) = try await openBorders(harness)
@@ -195,8 +194,15 @@ extension WebInterfaceTests {
                     surface, "failed read",
                     #"return page.text().includes("Could not read your borders") && page.text().includes("Try again");"#
                 )
-                #expect(await harness.desktop.calls(to: "borders").isEmpty)
+                #expect(await borderCommands(harness).isEmpty)
             }
         }
     }
+}
+
+/// What the page asked JankyBorders to do. Setup health, which the shell
+/// reads at startup, only asks for its version.
+@MainActor
+private func borderCommands(_ harness: Harness) async -> [[String]] {
+    await harness.desktop.calls(to: "borders").filter { $0 != ["--version"] }
 }
