@@ -26,6 +26,7 @@ final class DesignSettings {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
         let file = root.appending(path: "design/appearance.json")
         while !Task.isCancelled {
             do {

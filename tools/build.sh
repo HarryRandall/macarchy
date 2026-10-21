@@ -26,15 +26,17 @@ echo "==> Assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
-cp "$ROOT/macarchy/app/resources/Info.plist" "$APP/Contents/Info.plist"
-[ -f "$ROOT/macarchy/app/resources/AppIcon.icns" ] && cp "$ROOT/macarchy/app/resources/AppIcon.icns" "$APP/Contents/Resources/"
+cp "$ROOT/packaging/macos/Info.plist" "$APP/Contents/Info.plist"
+[ -f "$ROOT/resources/app/AppIcon.icns" ] && cp "$ROOT/resources/app/AppIcon.icns" "$APP/Contents/Resources/"
 
 # Themes, the starter bar and default shortcuts. The command line tool ships
 # inside the app, so one bundle is the whole install.
-cp -R "$ROOT/macarchy/resources/." "$APP/Contents/Resources/"
+cp "$ROOT/resources/app/logo.svg" "$APP/Contents/Resources/"
+cp -R "$ROOT/resources/themes" "$ROOT/resources/integrations/sketchybar" \
+  "$ROOT/resources/integrations/skhd" "$APP/Contents/Resources/"
 CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
 cp "$CLI_PATH" "$APP/Contents/MacOS/macarchy"
-echo "    bundled $(find "$ROOT/macarchy/resources/themes" -name theme.json | wc -l | tr -d ' ') themes, the menu bar and default shortcuts"
+echo "    bundled $(find "$ROOT/resources/themes" -name theme.json | wc -l | tr -d ' ') themes, the menu bar and default shortcuts"
 
 echo "==> Signing"
 IDENTITY="${MACARCHY_SIGN_IDENTITY:-}"

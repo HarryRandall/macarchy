@@ -9,11 +9,11 @@ let package = Package(
         .executable(name: "macarchy", targets: ["CLI"])
     ],
     targets: [
-        .target(name: "Macarchy", path: "macarchy/core"),
-        .executableTarget(name: "App", dependencies: ["Macarchy"], path: "macarchy/app", exclude: ["resources"]),
-        .executableTarget(name: "CLI", dependencies: ["Macarchy"], path: "macarchy/commands"),
-        .testTarget(name: "MacarchyTests", dependencies: ["Macarchy"], path: "macarchy/tests/core"),
-        .testTarget(name: "AppTests", dependencies: ["App", "Macarchy"], path: "macarchy/tests/app")
+        .target(name: "Macarchy", path: "src/core"),
+        .executableTarget(name: "App", dependencies: ["Macarchy"], path: "src/desktop", exclude: ["ui"]),
+        .executableTarget(name: "CLI", dependencies: ["Macarchy"], path: "src/cli"),
+        .testTarget(name: "MacarchyTests", dependencies: ["Macarchy"], path: "tests/core"),
+        .testTarget(name: "AppTests", dependencies: ["App", "Macarchy"], path: "tests/desktop")
     ],
     swiftLanguageModes: [.v6]
 )

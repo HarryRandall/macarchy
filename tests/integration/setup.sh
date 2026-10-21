@@ -1,14 +1,20 @@
 #!/bin/bash
 # Runs setup and uninstall against a temporary home with fake daemons, never
-# the installed desktop. Usage: macarchy/tests/integration/setup.sh
+# the installed desktop. Usage: tests/integration/setup.sh
 set -euo pipefail
-REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 swift build --package-path "$REPO" -c debug >/dev/null
 CLI="$(swift build --package-path "$REPO" --show-bin-path)/macarchy"
 
 HOME_DIR="$(mktemp -d -t macarchy-setup-test)"
-trap 'rm -rf "$HOME_DIR"' EXIT
-export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$REPO/macarchy/resources"
+RESOURCES="$(mktemp -d -t macarchy-setup-resources)"
+trap 'rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
+# The repository splits bundled files by kind; stage them in the app bundle's
+# Resources layout, which is what Paths.resources expects.
+cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
+cp -R "$REPO/resources/themes" "$REPO/resources/integrations/sketchybar" \
+  "$REPO/resources/integrations/skhd" "$RESOURCES/"
+export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$RESOURCES"
 export MACARCHY_SEARCH_PATH="$HOME_DIR/fake-bin" MACARCHY_APPLICATIONS="$HOME_DIR/Applications"
 mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/skhd"
 for tool in yabai skhd sketchybar borders; do

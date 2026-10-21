@@ -41,7 +41,7 @@ when prompted, then restart them from **Advanced**.
 ## Checks
 
 Run `swift build`, `swift test`, `./tools/lint.sh` and
-`macarchy/tests/integration/setup.sh`. CI runs the same. Tests must use temporary
+`tests/integration/setup.sh`. CI runs the same. Tests must use temporary
 homes (`MACARCHY_HOME`), fake tools (`MACARCHY_SEARCH_PATH`) and must never alter
 the running desktop. Use Xcode 27's `swift-format`; CI installs SwiftLint through Homebrew.
 
@@ -51,10 +51,20 @@ Directories use lowercase names with hyphens between words. Swift filenames
 match their primary type. Keep conventional filenames such as `Package.swift`
 and `Info.plist`. Do not add empty folders for speculative future features.
 
-The App and CLI targets use the shared Macarchy target. UI state belongs in
-`macarchy/app`; themes, configuration and integration behaviour belong in
-`macarchy/core`. Add targets or protocols only when a concrete dependency or test
-needs them. Prefer small concrete types over generic frameworks.
+The App and CLI targets use the shared Macarchy target. Themes, configuration
+and integration behaviour belong in `src/core`; the command is in `src/cli`.
+In `src/desktop`, `native` holds the app lifecycle, menu bar item and theme
+switcher panel, and `classic` holds the SwiftUI settings interface still to be
+migrated. `src/desktop/ui` is excluded from the Swift build and lint. Add
+targets or protocols only when a concrete dependency or test needs them. Prefer
+small concrete types over generic frameworks.
+
+| Path | Contents |
+|---|---|
+| `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes` |
+| `tests` | `core`, `desktop`, `integration` and `fixtures` |
+| `resources` | `app` (logo and icon), `themes`, `integrations/sketchybar`, `integrations/skhd` |
+| `packaging/macos` | `Info.plist` |
 
 ## Behaviour
 
@@ -74,7 +84,8 @@ needs them. Prefer small concrete types over generic frameworks.
 - Every integration is optional. Detect it, skip it when it is missing, and say
   so; never fail a whole operation because one tool is absent.
 - Locate executables with `Paths.executable`, never a hard-coded prefix.
-- Ship desktop files in `macarchy/resources`; they are bundled into the app.
+- Ship desktop files in `resources`; `tools/build.sh` copies them into the
+  app's `Contents/Resources`.
 - Nothing here may require System Integrity Protection to be disabled.
 
 ## Style

@@ -1,4 +1,4 @@
-// Renders the app icon from macarchy/resources/logo.svg. Used by tools/make-icon.sh.
+// Renders the app icon from resources/app/logo.svg. Used by tools/make-icon.sh.
 // Usage: icon <logo.svg> <out.png> <pixels> <strokeWidth>
 import AppKit
 

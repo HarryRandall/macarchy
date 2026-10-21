@@ -35,9 +35,9 @@ public enum Paths {
 
     /// Themes, the starter bar and default shortcuts shipped with the app.
     ///
-    /// `MACARCHY_RESOURCES` points development builds and tests at the
-    /// repository; installed copies read the app bundle, through the link if
-    /// the caller is the CLI started by launchd.
+    /// `MACARCHY_RESOURCES` points development builds and tests at a folder
+    /// in the bundle's layout; installed copies read the app bundle, through
+    /// the link if the caller is the CLI started by launchd.
     public static var resources: URL? {
         let fm = FileManager.default
         func valid(_ url: URL) -> Bool {

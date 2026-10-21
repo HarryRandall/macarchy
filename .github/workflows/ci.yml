@@ -22,4 +22,4 @@ jobs:
       - name: Lint
         run: ./tools/lint.sh
       - name: Setup integration test
-        run: macarchy/tests/integration/setup.sh
+        run: tests/integration/setup.sh

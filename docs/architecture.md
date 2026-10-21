@@ -2,12 +2,15 @@
 
 Macarchy has three Swift targets that share one implementation:
 
-- **Macarchy** (`macarchy/core`): settings, themes, setup and integrations.
-- **App** (`macarchy/app`): the SwiftUI settings window.
-- **CLI** (`macarchy/commands`): the `macarchy` command, bundled inside the app.
+- **Macarchy** (`src/core`): settings, themes, setup and integrations.
+- **App** (`src/desktop`): the app lifecycle and native surfaces in `native`,
+  and the SwiftUI settings window in `classic`. `src/desktop/ui` is excluded.
+- **CLI** (`src/cli`): the `macarchy` command, bundled inside the app.
 
-`macarchy/resources` is copied into the app bundle: themes, the menu bar scripts
-and font, and the default shortcuts.
+`tools/build.sh` copies `resources` into the app's `Contents/Resources`, flat:
+`themes`, `sketchybar` (the menu bar scripts and font), `skhd` (the default
+shortcuts), and `logo.svg` and `AppIcon.icns` from `resources/app`. The bundle's
+`Info.plist` comes from `packaging/macos`.
 
 ## One folder
 
@@ -67,5 +70,5 @@ a file edited outside its keep region is snapshotted and reported.
 
 `swift test` covers persistence, locking, process cancellation, skhd parsing and
 rewriting, theme outputs, Neovim discovery, rules and the menu bar editor.
-`macarchy/tests/integration/setup.sh` runs setup, a repeat setup and uninstall
+`tests/integration/setup.sh` runs setup, a repeat setup and uninstall
 in a temporary home against fake tools.

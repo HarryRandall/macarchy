@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="macarchy/resources/logo.svg" width="112" alt="Macarchy logo">
+  <img src="resources/app/logo.svg" width="112" alt="Macarchy logo">
 </p>
 <h1 align="center">Macarchy</h1>
 <p align="center"><strong>Your Mac. Your desktop.</strong><br>A themed, tiling desktop for macOS, managed in one native app.</p>
