@@ -1,6 +1,9 @@
 import { rulesPage } from "~/features/rules/page";
 import { advancedPage } from "~/features/advanced/page";
 import { bordersPage } from "~/features/borders/page";
+import { homePage } from "~/features/home/page";
+import { healthPage } from "~/features/health/page";
+import { reportPage } from "~/features/report/page";
 import { layoutPage } from "~/features/layout/page";
 
 import type { RegisteredPage } from "./page";
@@ -10,4 +13,12 @@ import type { RegisteredPage } from "./page";
  * To migrate a page, add its definition here and its pane to `Pane.migrated`
  * in Swift.
  */
-export const pages: RegisteredPage[] = [layoutPage, rulesPage, advancedPage, bordersPage];
+export const pages: RegisteredPage[] = ([] = [
+  layoutPage,
+  rulesPage,
+  advancedPage,
+  bordersPage,
+  homePage,
+  healthPage,
+  reportPage,
+]);

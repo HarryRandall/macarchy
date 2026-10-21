@@ -72,7 +72,7 @@ enum InterfacePreferences {
     static var selectedPane: Pane {
         get {
             UserDefaults.standard.string(forKey: paneKey).flatMap(Pane.init(rawValue:))
-                .flatMap { Pane.migrated.contains($0) ? $0 : nil } ?? .layout
+                .flatMap { Pane.migrated.contains($0) ? $0 : nil } ?? .home
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: paneKey) }
     }

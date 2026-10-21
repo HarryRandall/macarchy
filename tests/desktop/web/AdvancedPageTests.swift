@@ -6,8 +6,7 @@ import Testing
 
 @MainActor
 private func advancedPage(_ harness: Harness) throws -> WebSurface {
-    InterfacePreferences.selectedPane = .advanced
-    return try harness.settingsPage().1
+    try harness.settingsPage(pane: .advanced).1
 }
 
 extension WebInterfaceTests {

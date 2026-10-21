@@ -22,6 +22,7 @@ final class StateBroadcast {
     private var lastMaintenance = ""
     private var watcher: DispatchSourceFileSystemObject?
     private var lastSettings: Data?
+    private let homeFiles = HomeFileWatch()
     private var pendingReload: Task<Void, Never>?
 
     init(
@@ -39,6 +40,7 @@ final class StateBroadcast {
         lastShell = model.shellState()
         observe()
         watchSettings()
+        homeFiles.start { [weak self] in self?.publishOverview() }
     }
 
     /// Records a save the app made itself, so the watcher does not treat it
@@ -46,6 +48,7 @@ final class StateBroadcast {
     func settingsWritten() {
         guard let model else { return }
         lastSettings = try? Data(contentsOf: model.settingsStore.url)
+        publishOverview()
     }
 
     func rulesWritten(_ model: AppModel) async {
@@ -83,6 +86,8 @@ final class StateBroadcast {
             _ = model.themes.themes
             _ = model.themes.current
             _ = model.daemons.states
+            _ = model.layout
+            _ = model.shortcuts.bindings
             _ = model.snapshots.snapshots
         } onChange: { [weak self] in
             // Runs before the change lands; read the new values afterwards.
@@ -103,6 +108,7 @@ final class StateBroadcast {
 
     private func publish() {
         guard let model else { return }
+        publishOverview()
         let themes = model.switcherState()
         if themes != lastThemes {
             lastThemes = themes
@@ -127,6 +133,11 @@ final class StateBroadcast {
             lastShell = shell
             settings()?.send(.shellChanged(shell))
         }
+    }
+
+    private func publishOverview() {
+        settings()?.send(.homeChanged)
+        settings()?.send(.healthChanged)
     }
 
     /// `settings.json` is replaced atomically, so the folder is watched rather
@@ -167,6 +178,7 @@ final class StateBroadcast {
             guard data != self.lastSettings else { return }
             self.lastSettings = data
             self.advancedChanged()
+            self.publishOverview()
             model.themes.reload()
             await self.publishRules(model)
             await self.publishBorders()

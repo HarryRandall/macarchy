@@ -37,8 +37,7 @@ private func rulesPage(_ harness: Harness, unavailable: Bool = false) async thro
         return .success()
     }
     // Saved, not faked, so every shell.changed the host sends agrees.
-    InterfacePreferences.selectedPane = .rules
-    let (_, surface) = try harness.settingsPage()
+    let (_, surface) = try harness.settingsPage(pane: .rules)
     surface.router.registerRules(model: harness.model, chooseApplication: { "Calculator" })
     try await rulesWait(
         surface,

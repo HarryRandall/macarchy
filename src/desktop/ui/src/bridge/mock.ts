@@ -359,6 +359,46 @@ export function installMockHost() {
       if (query.has("debug")) console.debug("[mock] titlebar", params);
       return null;
     },
+    "home.getState": () => ({
+      theme: switcher.current,
+      themeCount: themes.length,
+      shortcutsCount: 24,
+      layout: daemon.layout,
+      running: shell.services.running,
+      total: shell.services.total,
+      lastChange: null,
+      wallpaper: null,
+      subtitle: "A space that works for you.",
+    }),
+    "health.getState": () => ({
+      checks: [
+        {
+          id: "Configuration/Setup",
+          group: "Configuration",
+          title: "Setup",
+          status: "failed",
+          detail: "Macarchy has not been set up",
+          fix: "Open Macarchy, or run: macarchy setup",
+        },
+      ],
+      environment: {
+        model: "Mac",
+        architecture: "Apple Silicon",
+        macOS: "26.0",
+        app: "development build",
+        settingsFolder: "~/.config/macarchy",
+      },
+      checkedAt: Date.now() / 1000,
+    }),
+    "health.copyFix": () => null,
+    "health.revealSettings": () => null,
+    "report.prepare": ({ description }) => ({
+      body: `## What happened\n\n${description || "_Not described_"}\n\n## Environment\n\nBrowser preview`,
+      token: "preview",
+    }),
+    "report.copy": () => null,
+    "report.openIssue": () => ({ copied: false }),
+    "report.openIssues": () => null,
     "layout.getState": () => {
       if (failures.has("layout-state")) {
         throw new MockFailure("unavailable", "Could not read the layout from yabai.");

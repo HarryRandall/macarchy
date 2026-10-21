@@ -56,6 +56,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
+import { OverviewActionCard } from "~/components/ui/overview-action-card";
 import { Notice } from "~/components/ui/notice";
 import { RadioGroup } from "~/components/ui/radio-group";
 import { SearchField } from "~/components/ui/search-field";
@@ -559,6 +560,12 @@ function Lists() {
 function Tiles() {
   return (
     <Group title="Tiles">
+      <OverviewActionCard
+        title="Themes"
+        detail="Wallpaper, colours and the whole look"
+        icon={<Palette aria-hidden />}
+        tint="purple"
+      />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
         <StatTile
           icon={<Command />}

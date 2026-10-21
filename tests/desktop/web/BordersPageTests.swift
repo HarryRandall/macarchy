@@ -13,13 +13,7 @@ private func openBorders(_ harness: Harness) async throws -> (SettingsWindow, We
         with: .failure("does not exist"))
     await harness.desktop.answer("launchctl") { _ in .success("state = running\npid = 42") }
     await harness.desktop.answer("borders") { _ in .success() }
-    let (window, surface) = try harness.settingsPage()
-    surface.router.register("shell.getState") { (_: Empty) in
-        var state = harness.model.shellState()
-        state.selectedPane = "borders"
-        return state
-    }
-    surface.router.register("shell.setPreferences") { (_: ShellPreferences) in Null() }
+    let (window, surface) = try harness.settingsPage(pane: .borders)
     surface.router.registerBorders(
         model: harness.model, pickApplication: { BordersApplication(name: "Messages", icon: nil) })
     try await waitFor(

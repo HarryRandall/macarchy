@@ -136,8 +136,7 @@ extension WebInterfaceTests {
                     let original = "echo original\n"
                     try harness.write(original, to: ".config/yabai/yabairc")
                     _ = try await harness.model.setupSession.run(existing: .replace, app: nil)
-                    InterfacePreferences.selectedPane = .advanced
-                    let (_, surface) = try harness.settingsPage()
+                    let (_, surface) = try harness.settingsPage(pane: .advanced)
                     try await waitFor(
                         surface, "restore originals",
                         #"return page.text().includes("Restore original files");"#)

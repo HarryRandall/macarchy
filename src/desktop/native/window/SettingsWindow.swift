@@ -73,6 +73,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerRules(model: model)
         surface.router.registerAdvanced(model: model)
         surface.router.registerBorders(model: model)
+        surface.router.registerHome(model: model)
+        surface.router.registerHealth(model: model)
+        surface.router.registerReport(model: model)
 
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -126,6 +129,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         guard let model, let surface, surface.isReady else { return }
         surface.send(.shellChanged(model.shellState()))
+        surface.send(.homeChanged)
+        surface.send(.healthChanged)
         Task {
             if let snapshot = await model.refreshLayout() {
                 surface.send(.layoutChanged(model.layoutState(snapshot)))

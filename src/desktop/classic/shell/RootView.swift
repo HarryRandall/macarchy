@@ -134,7 +134,9 @@ struct RootView: View {
     @ViewBuilder
     private var detail: some View {
         switch model.selection {
-        case .home: HomePane()
+        case .home, .health, .report:
+            ContentUnavailableView(
+                "Open this page in the new settings window", systemImage: "macwindow")
         case .workshop: WorkshopPane()
         case .plugins: PluginsPane()
         case .layout, .rules:
@@ -150,8 +152,6 @@ struct RootView: View {
                 "Borders is in the new settings window", systemImage: "macwindow")
         case .menuBar: MenuBarPane()
         case .shortcuts: ShortcutsPane()
-        case .health: HealthPane()
-        case .report: ReportPane()
         case nil: ContentUnavailableView("Select a section", systemImage: "sidebar.left")
         }
     }
