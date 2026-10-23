@@ -49,6 +49,18 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
     /// Seconds between runs of `command`.
     public var interval: Int?
 
+    // MARK: - Widget instance
+    //
+    // A component that shows a widget from `WidgetCatalogue` names it here.
+    // Its own item is `id`, and anything left unset follows the widget.
+
+    /// The id of the widget this component shows.
+    public var widget: String?
+    /// Values for the widget's settings that differ from its defaults.
+    public var settings: [String: SettingValue]?
+    /// Dropdown rows that replace the widget's own, when edited.
+    public var menu: [WidgetMenuRow]?
+
     public init(
         id: String, title: String, side: String, members: [String],
         brackets: [String] = [], visible: Bool = true, drawing: [String: Bool] = [:]
@@ -105,7 +117,13 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
                 [String: [String: String]].self, forKey: .presentationDefaults) ?? [:]
         command = try container.decodeIfPresent(String.self, forKey: .command)
         interval = try container.decodeIfPresent(Int.self, forKey: .interval)
+        widget = try container.decodeIfPresent(String.self, forKey: .widget)
+        settings = try container.decodeIfPresent([String: SettingValue].self, forKey: .settings)
+        menu = try container.decodeIfPresent([WidgetMenuRow].self, forKey: .menu)
     }
+
+    /// Whether the component shows a widget rather than a native item or a made one.
+    public var isWidget: Bool { widget != nil }
 
     /// Authored boxes use contiguous native slots with no inherited outer padding.
     public var hasBoxLayout: Bool {

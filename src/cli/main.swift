@@ -25,6 +25,8 @@ let usage = """
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
       rules [toggle]              Reapply window rules, or float/tile the focused window.
       bar toggle                  Show or hide the menu bar.
+      widget list                 List the bar widgets that can be added.
+      widget check <id|folder>    Check a widget's files and say what to fix.
       switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
       startup yabai|sketchybar|borders   Run by the startup files at login.
@@ -114,6 +116,17 @@ do {
     case "bar":
         guard args.dropFirst().first == "toggle" else { throw ConfigurationError(usage) }
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))
+    case "widget":
+        switch (args.dropFirst().first, args.count) {
+        case ("list", 2):
+            for line in WidgetReport.list() { print(line) }
+        case ("check", 3):
+            let report = WidgetReport.check(args[2])
+            for line in report.lines { print(line) }
+            if !report.ok { exit(1) }
+        default:
+            throw ConfigurationError("Usage: macarchy widget list | widget check <id|folder>")
+        }
     case "restore":
         guard args.count >= 2 else {
             throw ConfigurationError("Usage: macarchy restore <snapshot> [--apply]")

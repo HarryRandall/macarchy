@@ -25,6 +25,8 @@ public enum Paths {
     public static var appRoot: URL { home.appending(path: ".config/macarchy") }
     public static var settings: URL { appRoot.appending(path: "settings.json") }
     public static var themesDirectory: URL { appRoot.appending(path: "themes") }
+    /// Bar widgets people made or imported, one folder each.
+    public static var widgetsDirectory: URL { appRoot.appending(path: "widgets") }
     public static var snapshotsDirectory: URL { appRoot.appending(path: "snapshots") }
     /// Files rendered from the active theme for other programs to read.
     public static var generatedDirectory: URL { appRoot.appending(path: "generated") }

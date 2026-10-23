@@ -101,10 +101,10 @@ exports. Controls in `components/ui` own their look through `variant` and
 
 | Path | Contents |
 |---|---|
-| `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes` |
+| `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes`, `widgets` |
 | `src/desktop` | `native`, `ui` (React), `classic` (SwiftUI, being migrated) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
-| `resources` | `app` (logo and icon), `themes`, `integrations/sketchybar`, `integrations/skhd` |
+| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar`, `integrations/skhd` |
 | `packaging/macos` | `Info.plist` |
 
 ## Behaviour

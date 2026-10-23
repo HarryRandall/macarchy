@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "id": "battery",
+  "name": "Battery",
+  "version": "1.0.0",
+  "author": "Macarchy",
+  "description": "Charge and power source, with Energy Mode and the apps using significant energy.",
+  "icon": "􀛨",
+  "source": "battery",
+  "label": "{percent}",
+  "settings": {
+    "showPercent": { "type": "toggle", "label": "Show percentage", "default": true },
+    "lowAt": { "type": "number", "label": "Red below", "default": 10, "min": 1, "max": 50, "unit": "%" }
+  },
+  "style": { "box": "none", "size": 13 },
+  "update": { "every": "1m", "events": ["system_woke", "power_source_changed"] },
+  "click": {
+    "dropdown": [
+      { "type": "heading", "label": "Battery", "value": "{percent}" },
+      { "type": "text", "label": "Power Source: {source}" },
+      { "type": "text", "label": "{state}" },
+      { "type": "divider" },
+      { "type": "heading", "label": "Energy Mode" },
+      { "type": "choice", "value": "{energyMode}", "options": ["Automatic", "Low Power", "High Power"] },
+      { "type": "divider" },
+      { "type": "heading", "label": "Using Significant Energy" },
+      { "type": "apps", "value": "{energyApps}" },
+      { "type": "divider" },
+      { "type": "action", "label": "Battery Settings…", "open": "x-apple.systempreferences:com.apple.Battery-Settings.extension" }
+    ]
+  },
+  "samples": { "widest": "100%", "unavailable": "--" }
+}

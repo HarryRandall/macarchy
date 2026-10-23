@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Macarchy bar widget",
+  "description": "The widget.json at the root of a Macarchy bar widget folder. `macarchy widget check` gives the same answers with line numbers.",
+  "type": "object",
+  "required": ["schema", "id", "name", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$", "description": "Matches the folder name." },
+    "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "author": { "type": "string" },
+    "description": { "type": "string" },
+    "icon": { "type": "string", "description": "A glyph drawn before the label, such as an SF Symbol character." },
+    "source": { "enum": ["date", "battery", "cpu"], "description": "A reading Macarchy provides. Use this or provider, not both." },
+    "provider": { "type": "string", "pattern": "^[^./][^/]*$", "description": "An executable file in the folder. It prints JSON, or plain text to set only the label." },
+    "label": { "type": "string", "description": "What the bar shows, with readings and settings in braces." },
+    "settings": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]{0,39}$" },
+      "additionalProperties": { "$ref": "#/$defs/setting" }
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "box": { "enum": ["none", "outline", "fill"] },
+        "size": { "type": "number", "minimum": 8, "maximum": 24 },
+        "iconColour": { "$ref": "#/$defs/colour" },
+        "textColour": { "$ref": "#/$defs/colour" },
+        "radius": { "type": "number", "minimum": 0, "maximum": 20 },
+        "paddingLeft": { "type": "number", "minimum": 0, "maximum": 40 },
+        "paddingRight": { "type": "number", "minimum": 0, "maximum": 40 }
+      }
+    },
+    "update": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "every": { "type": "string", "pattern": "^([1-9][0-9]{0,4}[smh]|second|minute)$" },
+        "events": {
+          "type": "array",
+          "items": { "enum": ["system_woke", "power_source_changed", "timezone_changed", "space_changed", "front_app_switched", "display_changed"] }
+        }
+      }
+    },
+    "click": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 1,
+      "properties": {
+        "open": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "dropdown": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/row" } }
+      }
+    },
+    "samples": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "widest": { "type": "string" }, "unavailable": { "type": "string" } }
+    },
+    "permissions": { "type": "array", "items": { "enum": ["network"] } }
+  },
+  "$defs": {
+    "colour": {
+      "type": "string",
+      "pattern": "^(text|accent|muted|#([0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"
+    },
+    "setting": {
+      "type": "object",
+      "required": ["type", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["text", "number", "toggle", "choice", "colour", "format"] },
+        "label": { "type": "string", "minLength": 1 },
+        "default": { "type": ["string", "number", "boolean"] },
+        "options": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" },
+        "unit": { "type": "string" },
+        "hint": { "type": "string" }
+      }
+    },
+    "row": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["heading", "text", "reading", "action", "toggle", "choice", "graph", "cores", "apps", "divider"] },
+        "label": { "type": "string" },
+        "value": { "type": "string" },
+        "run": { "type": "string" },
+        "open": { "type": "string" },
+        "setting": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
