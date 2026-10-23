@@ -145,6 +145,9 @@ extension WebInterfaceTests {
                 let refreshed = await prepare("Typed again", refresh: true)
                 #expect(refreshed.contains("skhd-v0.5.0"))
                 #expect(await versionCalls(harness) == 3 * perCollection)
+                // Typing prepares on every keystroke; only collections reach the Console.
+                let prepared = harness.model.log.entries.filter { $0.command == "prepare report" }
+                #expect(prepared.count == 3)
             }
         }
 

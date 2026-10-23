@@ -8,7 +8,10 @@ extension BridgeRouter {
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
             let prepared = await session.prepare(
                 params.description, refresh: params.refresh, integrations: model.backend)
-            model.log.note("prepare report", "Redacted diagnostic report prepared")
+            // Draft edits prepare on every keystroke; only a collection is worth a line.
+            if params.refresh {
+                model.log.note("prepare report", "Redacted diagnostic report prepared")
+            }
             return prepared
         }
         register("report.copy") { [weak model] (params: ReportCopyParams) in
