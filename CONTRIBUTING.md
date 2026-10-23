@@ -85,10 +85,9 @@ and `Info.plist`. Do not add empty folders for speculative future features.
 The App and CLI targets use the shared Macarchy target. Themes, configuration
 and integration behaviour belong in `src/core`; the command is in `src/cli`.
 In `src/desktop`, `native` holds the app lifecycle, windows, switcher panel,
-menu bar item and web view bridge; `ui` holds the React interface; and
-`classic` holds the SwiftUI panes still to be migrated. Add targets or
-protocols only when a concrete dependency or test needs them. Prefer small
-concrete types over generic frameworks.
+menu bar item, web view bridge and the models behind each page; `ui` holds
+the React interface. Add targets or protocols only when a concrete dependency
+or test needs them. Prefer small concrete types over generic frameworks.
 
 React owns presentation and interaction state. Filesystem access, desktop
 changes and persistence stay in Swift, reached through named bridge methods
@@ -102,7 +101,7 @@ exports. Controls in `components/ui` own their look through `variant` and
 | Path | Contents |
 |---|---|
 | `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes` |
-| `src/desktop` | `native`, `ui` (React), `classic` (SwiftUI, being migrated) |
+| `src/desktop` | `native`, `ui` (React) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
 | `resources` | `app` (logo and icon), `themes`, `integrations/sketchybar`, `integrations/skhd` |
 | `packaging/macos` | `Info.plist` |
@@ -149,8 +148,7 @@ Report partial application explicitly rather than as success.
 Prefer contextual tooltips for secondary instructions over persistent explanatory
 lines. Keep wording brief and describe the action. Keep essential status, errors
 and information needed to make a decision visible. In React, sections and rows
-take a `help` tooltip and controls use the shared `Tooltip`; in the classic
-SwiftUI panes, use `HelpTooltip` beside a group and `hoverHelp` on a control.
+take a `help` tooltip and controls use the shared `Tooltip`.
 
 ## Configuration reference
 

@@ -4,8 +4,8 @@ Macarchy has three Swift targets that share one implementation:
 
 - **Macarchy** (`src/core`): settings, themes, setup and integrations.
 - **App** (`src/desktop`): the native shell in `native` (lifecycle, windows,
-  the switcher panel, the menu bar item and the web view bridge), and the
-  SwiftUI settings window in `classic` for the panes not yet migrated.
+  the switcher panel, the menu bar item, the web view bridge and the models
+  behind each page).
 - **CLI** (`src/cli`): the `macarchy` command, bundled inside the app.
 
 The settings window and the theme switcher are drawn by a React interface in
