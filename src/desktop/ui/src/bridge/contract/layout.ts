@@ -45,5 +45,5 @@ export interface LayoutMethods {
   "layout.apply": { params: LayoutApplyParams; result: null };
 }
 
-/** Layout changed somewhere else: the CLI, the classic window, a reload. */
+/** Layout changed somewhere else: the CLI, a reload. */
 export type LayoutEvent = { type: "layout.changed"; state: LayoutState };

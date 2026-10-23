@@ -14,17 +14,15 @@ struct ShellActions {
 }
 
 extension BridgeRouter {
-    /// The settings window's frame: its state, preferences, the classic window,
-    /// the title bar's drag area, the activity log and the app-wide actions.
+    /// The settings window's frame: its state, preferences, the title bar's drag
+    /// area, the activity log and the app-wide actions.
     func registerShell(model: AppModel, surface: WebSurface, actions: ShellActions = .live) {
         register("shell.getState") { [weak model] (_: Empty) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
             return model.shellState()
         }
         register("shell.setPreferences") { [weak surface] (params: ShellPreferences) in
-            if let raw = params.selectedPane, let pane = Pane(rawValue: raw),
-                Pane.migrated.contains(pane)
-            {
+            if let raw = params.selectedPane, let pane = Pane(rawValue: raw) {
                 InterfacePreferences.selectedPane = pane
             }
             if let visible = params.sidebarVisible { InterfacePreferences.sidebarVisible = visible }
@@ -32,11 +30,6 @@ extension BridgeRouter {
                 InterfacePreferences.appearance = mode
                 surface?.webView.window?.appearance = mode.nsAppearance
             }
-            return Null()
-        }
-        register("shell.openClassic") { (params: OpenClassicParams) in
-            AppDelegate.showClassicWindow(
-                pane: params.pane.flatMap(Pane.init(rawValue:)), show: params.show)
             return Null()
         }
         register("shell.setTitlebar") { [weak surface] (params: TitlebarParams) in
@@ -118,8 +111,8 @@ extension AppModel {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development build"
     }
 
-    /// The theme's border colour, as the classic window tints itself, or the
-    /// system accent before any theme applies.
+    /// The theme's border colour, or the system accent before any theme
+    /// applies.
     var accentHex: String {
         if let hex = TerminalPalette.rgb(previewTheme?.manifest?.colors.borderActive) { return hex }
         return NSColor.controlAccentColor.hexString
@@ -136,10 +129,8 @@ extension NSColor {
     }
 }
 
-/// Window preferences the React shell keeps. The sidebar's visibility is
-/// shared with the classic window; the selected pane is not, because the two
-/// windows show different sets of panes. The appearance applies to the React
-/// window only.
+/// Window preferences the React shell keeps: the selected pane, the sidebar's
+/// visibility and the window's appearance.
 enum InterfacePreferences {
     private static let paneKey = "interface.selectedPane"
     private static let sidebarKey = "sidebarVisible"
@@ -147,8 +138,7 @@ enum InterfacePreferences {
 
     static var selectedPane: Pane {
         get {
-            Preferences.store.string(forKey: paneKey).flatMap(Pane.init(rawValue:))
-                .flatMap { Pane.migrated.contains($0) ? $0 : nil } ?? .home
+            Preferences.store.string(forKey: paneKey).flatMap(Pane.init(rawValue:)) ?? .home
         }
         set { Preferences.store.set(newValue.rawValue, forKey: paneKey) }
     }

@@ -51,12 +51,6 @@ struct ShellPreferences: Codable, Sendable {
     var appearance: AppearanceMode?
 }
 
-struct OpenClassicParams: Codable, Sendable {
-    enum Show: String, Codable, Sendable { case search, console }
-    var pane: String?
-    var show: Show?
-}
-
 struct TitlebarParams: Codable, Sendable {
     var height: Double
     var controls: [WebRect]

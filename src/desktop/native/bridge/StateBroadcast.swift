@@ -3,7 +3,7 @@ import Macarchy
 import Observation
 
 /// Tells every open page when shared state changes, wherever the change came
-/// from: the status menu, the classic window, the switcher or the CLI.
+/// from: the status menu, the switcher or the CLI.
 ///
 /// In-app changes are seen by observing the models the status menu reads.
 /// Changes from outside, such as `macarchy theme next` bound in skhd, arrive

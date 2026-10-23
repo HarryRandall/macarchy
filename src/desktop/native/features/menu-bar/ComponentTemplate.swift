@@ -47,23 +47,3 @@ struct ComponentTemplate: Identifiable {
         if component.text.isEmpty { component.text = samples.first ?? "" }
     }
 }
-
-/// Glyphs the picker offers, grouped so the list is scannable.
-///
-/// These are the sketchybar app font and Nerd Font glyphs the desktop already
-/// ships, not arbitrary emoji — anything here renders in the real bar.
-enum GlyphCatalogue {
-    struct Group: Identifiable {
-        let id: String
-        let glyphs: [String]
-    }
-
-    static let groups: [Group] = [
-        .init(
-            id: "Shapes",
-            glyphs: ["●", "○", "◆", "◇", "■", "□", "▲", "△", "★", "☆", "▮", "▯"]),
-        .init(
-            id: "Arrows",
-            glyphs: ["↑", "↓", "↕", "→", "←", "⇡", "⇣", "⇅", "»", "«"])
-    ]
-}

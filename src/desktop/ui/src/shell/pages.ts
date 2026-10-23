@@ -14,9 +14,8 @@ import { workshopPage } from "~/features/workshop/page";
 import type { RegisteredPage } from "./page";
 
 /**
- * Every pane React draws. A pane not listed here opens the classic window.
- * To migrate a page, add its definition here and its pane to `Pane.migrated`
- * in Swift.
+ * Every pane the settings window draws. A new pane needs its definition here
+ * and a case in Swift's `Pane`.
  */
 export const pages: RegisteredPage[] = [
   layoutPage,

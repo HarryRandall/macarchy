@@ -11,13 +11,11 @@ struct SettingsApp: App {
         // The switcher's hotkey must work before any window has opened.
         ThemeSwitcher.shared.attach(model)
         SettingsWindow.shared.attach(model)
-        AppDelegate.model = model
-        model.openMigrated = { pane in SettingsWindow.shared.show(pane) }
         StateBroadcast.shared.start(model)
         Task { await model.loadEverything() }
     }
 
-    // Both settings windows are AppKit windows the app opens itself; the menu
+    // The settings window is an AppKit window the app opens itself; the menu
     // bar item is the only scene.
     var body: some Scene {
         MenuBarExtra {

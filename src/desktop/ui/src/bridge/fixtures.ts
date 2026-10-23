@@ -639,12 +639,6 @@ export const methodFixtures: MethodFixtures = {
     { params: { appearance: "system" }, result: null },
     { params: {}, result: null },
   ],
-  "shell.openClassic": [
-    { params: { pane: "workshop", show: "search" }, result: null },
-    { params: { pane: "plugins", show: "console" }, result: null },
-    { params: { pane: "menuBar" }, result: null },
-    { params: {}, result: null },
-  ],
   "shell.setTitlebar": [
     {
       params: {

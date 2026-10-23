@@ -80,7 +80,7 @@ export function SettingsApp({
   const selected = shellSnapshot.state ? reactPaneFor(shellSnapshot.state.selectedPane) : null;
 
   // History follows the host's selection, which can also change from the
-  // classic window or the setup flow; going back to a page is not a new visit.
+  // setup flow; going back to a page is not a new visit.
   const [navigation, setNavigation] = useState<Navigation>({ history: null, selected: null });
   if (selected && navigation.selected !== selected) {
     setNavigation({

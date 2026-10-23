@@ -1020,32 +1020,6 @@
       }
     }
   ],
-  "shell.openClassic": [
-    {
-      "params": {
-        "pane": "workshop",
-        "show": "search"
-      },
-      "result": null
-    },
-    {
-      "params": {
-        "pane": "plugins",
-        "show": "console"
-      },
-      "result": null
-    },
-    {
-      "params": {
-        "pane": "menuBar"
-      },
-      "result": null
-    },
-    {
-      "params": {},
-      "result": null
-    }
-  ],
   "shell.quit": [
     {
       "params": {},

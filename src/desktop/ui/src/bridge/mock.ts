@@ -479,10 +479,6 @@ export function installMockHost() {
       console.info("[mock] quit; a browser tab keeps running");
       return null;
     },
-    "shell.openClassic": (params) => {
-      console.info("[mock] open classic window", params);
-      return null;
-    },
     "shell.setTitlebar": (params) => {
       if (query.has("debug")) console.debug("[mock] titlebar", params);
       return null;

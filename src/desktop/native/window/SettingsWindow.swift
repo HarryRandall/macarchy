@@ -47,12 +47,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     /// Brings the window forward, showing the setup plan before first use.
-    func show(_ pane: Pane? = nil) {
+    func show() {
         guard let model else { return }
-        if let pane, Pane.migrated.contains(pane), pane != InterfacePreferences.selectedPane {
-            InterfacePreferences.selectedPane = pane
-            if let surface, surface.isReady { surface.send(.shellChanged(model.shellState())) }
-        }
         let (window, surface) = prepare(model)
         NSApp.setActivationPolicy(.regular)
         if window.isVisible {
@@ -144,7 +140,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     /// Coming forward is when something else may have changed the desktop:
-    /// a daemon restarted, the CLI ran, the classic window edited a setting.
+    /// a daemon restarted, the CLI ran, the status menu changed the theme.
     func windowDidBecomeKey(_ notification: Notification) {
         guard let model, let surface, surface.isReady else { return }
         surface.send(.shellChanged(model.shellState()))

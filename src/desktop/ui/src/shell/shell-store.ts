@@ -26,7 +26,6 @@ export interface ShellSnapshot {
 type ShellMethod =
   | "shell.getState"
   | "shell.setPreferences"
-  | "shell.openClassic"
   | "shell.restartAll"
   | "shell.revealSettings"
   | "shell.quit"
@@ -124,20 +123,17 @@ export function createShellStore(deps: {
       deps.request("shell.setPreferences", { sidebarVisible }).catch(report);
     },
 
-    /** React panes are selected here; the rest open the classic window. */
+    /** Selects a pane with a page; any other is ignored. */
     selectPane(pane: PaneId) {
-      if (reactPanes.has(pane)) {
-        patchState({ selectedPane: pane });
-        pendingPane = pane;
-        deps
-          .request("shell.setPreferences", { selectedPane: pane })
-          .catch(report)
-          .finally(() => {
-            if (pendingPane === pane) pendingPane = null;
-          });
-      } else {
-        deps.request("shell.openClassic", { pane }).catch(report);
-      }
+      if (!reactPanes.has(pane)) return;
+      patchState({ selectedPane: pane });
+      pendingPane = pane;
+      deps
+        .request("shell.setPreferences", { selectedPane: pane })
+        .catch(report)
+        .finally(() => {
+          if (pendingPane === pane) pendingPane = null;
+        });
     },
 
     setAppearance(mode: AppearanceMode) {
