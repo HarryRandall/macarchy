@@ -7,11 +7,19 @@
 /**
  * @typedef {{ type: string, range?: [number, number], start?: number, end?: number } & Record<string, any>} Node
  * @typedef {{ type: "Line" | "Block", value: string, range?: [number, number], start?: number, end?: number }} Comment
- * @typedef {{ comment: Comment, text: string, startLine: number, endLine: number, directive: boolean }} CommentEntry
+ * @typedef {{
+ *   comment: Comment,
+ *   text: string,
+ *   startLine: number,
+ *   endLine: number,
+ *   directive: boolean,
+ *   trailing: boolean,
+ * }} CommentEntry
  * @typedef {{
  *   filename: string,
  *   report(descriptor: { node: Node | Comment, message: string }): void,
  *   sourceCode: {
+ *     text: string,
  *     getAllComments(): Comment[],
  *     getLocFromIndex(index: number): { line: number, column: number },
  *   },
@@ -45,13 +53,19 @@ const DIRECTIVE =
  */
 function commentEntries(context) {
   const { sourceCode } = context;
-  return sourceCode.getAllComments().map((comment) => ({
-    comment,
-    text: comment.value,
-    startLine: sourceCode.getLocFromIndex(startOf(comment)).line,
-    endLine: sourceCode.getLocFromIndex(endOf(comment)).line,
-    directive: DIRECTIVE.test(comment.value),
-  }));
+  const source = sourceCode.text;
+  return sourceCode.getAllComments().map((comment) => {
+    const start = startOf(comment);
+    const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+    return {
+      comment,
+      text: comment.value,
+      startLine: sourceCode.getLocFromIndex(start).line,
+      endLine: sourceCode.getLocFromIndex(endOf(comment)).line,
+      directive: DIRECTIVE.test(comment.value),
+      trailing: source.slice(lineStart, start).trim() !== "",
+    };
+  });
 }
 
 /**
@@ -559,7 +573,7 @@ function repeatsName(text, name) {
 /**
  * @param {CommentEntry} entry
  * @param {Map<number, string>} declared
- * @param {Set<number>} commentLines
+ * @param {Set<number>} commentLines Lines where a comment on its own line ends.
  * @returns {string | null}
  */
 function lowValueReason(entry, declared, commentLines) {
@@ -577,7 +591,8 @@ function lowValueReason(entry, declared, commentLines) {
   if (isLine && CODE.some((pattern) => pattern.test(text))) {
     return "Delete commented-out code; version control keeps it.";
   }
-  const alone = entry.startLine === entry.endLine && !commentLines.has(entry.startLine - 1);
+  const alone =
+    !entry.trailing && entry.startLine === entry.endLine && !commentLines.has(entry.startLine - 1);
   const name = alone ? declared.get(entry.endLine + 1) : undefined;
   if (name && repeatsName(text, name)) {
     return `This comment only repeats the name ${name}. Say why instead, or remove it.`;
@@ -628,7 +643,9 @@ const noLowValueComments = {
       MethodDefinition: declareMember,
       "Program:exit"() {
         const comments = commentEntries(context);
-        const commentLines = new Set(comments.map((entry) => entry.endLine));
+        const commentLines = new Set(
+          comments.filter((entry) => !entry.trailing).map((entry) => entry.endLine),
+        );
         for (const entry of comments) {
           if (entry.directive) continue;
           const message = lowValueReason(entry, declared, commentLines);

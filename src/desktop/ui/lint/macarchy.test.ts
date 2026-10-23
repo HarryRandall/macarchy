@@ -353,6 +353,25 @@ export const b = 2;
   },
   {
     rule: comments,
+    name: "allows a trailing comment above a declaration",
+    code: `declare function readId(): string;
+declare function load(id: string): unknown;
+const id = readId(); // the user
+export const user = load(id);
+`,
+    errors: 0,
+  },
+  {
+    rule: comments,
+    name: "reports a name repeated below a trailing comment",
+    code: `export const id = "1"; // read once
+// The user.
+export const user = { id };
+`,
+    errors: 1,
+  },
+  {
+    rule: comments,
     name: "reports a divider",
     code: `// ----------\nexport const a = 1;\n`,
     errors: 1,
