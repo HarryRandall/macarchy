@@ -96,7 +96,7 @@ export function Sidebar({
       <div
         className={cn(
           "px-2 pb-2 transition-[padding] duration-200 ease-out",
-          collapsed ? "pt-2.5" : "pt-0.5",
+          collapsed ? "px-[8px] pt-2.5" : "pt-0.5",
         )}
       >
         <BrandMenu
@@ -115,7 +115,10 @@ export function Sidebar({
       <nav
         aria-label="Settings"
         onKeyDown={walk}
-        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-1 [scrollbar-width:none]"
+        className={cn(
+          "min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-1 [scrollbar-width:none]",
+          collapsed ? "px-[8px]" : "px-2",
+        )}
       >
         <ul className="flex flex-col gap-0.5">{overview.map(row)}</ul>
         {groups.map((group) => (
@@ -131,7 +134,7 @@ export function Sidebar({
               </span>
               <span
                 className={cn(
-                  "absolute top-[10px] left-[10px] h-px w-5 bg-line-strong transition-opacity duration-150",
+                  "absolute top-[10px] left-[10px] h-px w-[20px] bg-line-strong transition-opacity duration-150",
                   collapsed ? "opacity-100" : "opacity-0",
                 )}
               />
@@ -148,7 +151,7 @@ export function Sidebar({
         onDismiss={onDismissCard}
       />
 
-      <div className="border-t border-hairline px-2 py-3">
+      <div className={cn("border-t border-hairline py-3", collapsed ? "px-[8px]" : "px-2")}>
         <Tooltip
           content={fresh ? `What's new in ${version}` : `Version ${version}, up to date`}
           side="right"
@@ -161,7 +164,7 @@ export function Sidebar({
             aria-label={collapsed ? `Version ${version}, open the changelog` : undefined}
             className={cn(
               "flex h-[18px] items-center gap-2 overflow-hidden rounded-[5px] pl-[17px] text-left text-[12px] whitespace-nowrap text-fg-secondary transition-[width,color] duration-200 ease-out hover:text-fg focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
-              collapsed ? "w-10" : "w-full",
+              collapsed ? "w-[40px] justify-center gap-0 pl-0" : "w-full",
             )}
           >
             <span className="relative size-1.5 shrink-0 rounded-full bg-success">
@@ -179,7 +182,7 @@ export function Sidebar({
               aria-hidden={collapsed}
               className={cn(
                 "flex min-w-0 flex-1 items-center gap-2 transition-opacity duration-150",
-                collapsed ? "opacity-0" : "opacity-100",
+                collapsed ? "hidden" : "opacity-100",
               )}
             >
               {/* Mock: "up to date" until the app can check for releases. */}

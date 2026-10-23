@@ -117,7 +117,7 @@ export function BrandMenu({
           aria-label={collapsed ? "Macarchy menu" : undefined}
           className={cn(
             "group flex h-10 items-center gap-2.5 overflow-hidden rounded-[8px] px-1.5 text-left whitespace-nowrap transition-[width,background-color] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
-            collapsed ? "w-10" : "w-full",
+            collapsed ? "w-[40px] justify-center gap-0 px-0" : "w-full",
             open ? "bg-hover" : "hover:bg-hover",
           )}
         >
@@ -126,7 +126,7 @@ export function BrandMenu({
             aria-hidden={collapsed}
             className={cn(
               "flex min-w-0 flex-1 items-center gap-2.5 transition-opacity duration-150",
-              collapsed ? "opacity-0" : "opacity-100",
+              collapsed ? "hidden" : "opacity-100",
             )}
           >
             <span className="min-w-0 flex-1">
