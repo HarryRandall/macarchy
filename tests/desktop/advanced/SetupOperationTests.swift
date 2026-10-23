@@ -23,7 +23,6 @@ extension WebInterfaceTests {
                     let first = await harness.model.setupSession.run(existing: .keep, app: nil)
                     #expect(first.failure == nil)
                     let yabairc = Paths.display(StartupConfiguration.yabairc.url)
-                    #expect(first.lines.contains("Backed up \(yabairc)"))
                     #expect(first.lines.contains("Wrote \(yabairc)"))
                     #expect(first.lines.contains("Wrote \(Paths.display(harness.store.url))"))
                     #expect(try harness.store.read().flatValues["YABAI_WINDOW_GAP"] == "17")
@@ -37,9 +36,11 @@ extension WebInterfaceTests {
                             $0.hasPrefix("Wrote") || $0.hasPrefix("Backed up")
                         })
                     _ = try await harness.model.setupSession.restoreOriginals()
+                    // Setup only read the person's yabairc; it never changed it.
                     #expect(
-                        try String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
-                            == original)
+                        try String(
+                            contentsOf: harness.home.appending(path: ".config/yabai/yabairc"),
+                            encoding: .utf8) == original)
                 }
             }
         }
@@ -59,7 +60,7 @@ extension WebInterfaceTests {
                     #expect(report.commands.contains { !$0.ok })
                     #expect(report.lines.contains { $0.contains("Some changes applied") })
                     #expect(report.commands.contains { $0.command.hasPrefix("record theme") })
-                    #expect(await harness.desktop.calls(to: "yabai").contains(["--start-service"]))
+                    #expect(await bootstrapped(.yabai, harness))
                 }
             }
         }
@@ -94,7 +95,7 @@ extension WebInterfaceTests {
                         applyTheme: { await themes.record($0) })
                     let full = await session.run(existing: .keep, app: nil)
                     #expect(full.failure == nil)
-                    #expect(await harness.desktop.calls(to: "yabai").contains(["--start-service"]))
+                    #expect(await bootstrapped(.yabai, harness))
                     #expect(await themes.names.count == 1)
                     #expect(!filesOnly.isEmpty)
                     #expect(Array(full.lines.prefix(filesOnly.count)) == filesOnly)
@@ -118,7 +119,6 @@ extension WebInterfaceTests {
                     #expect(report.lines.contains { $0.hasPrefix("Moved") })
                     #expect(report.lines.contains("Installed default shortcuts"))
                     let yabairc = Paths.display(StartupConfiguration.yabairc.url)
-                    #expect(report.lines.contains("Backed up \(yabairc)"))
                     #expect(report.lines.contains("Wrote \(yabairc)"))
                     #expect(report.lines.contains("Wrote \(Paths.display(harness.store.url))"))
                     #expect(try harness.store.read().flatValues["YABAI_WINDOW_GAP"] == "17")
@@ -168,8 +168,8 @@ extension WebInterfaceTests {
                 try await withSetupResources(harness) {
                     let settings = harness.store.url
                     // Starting the services is the last step before the theme is read.
-                    await harness.desktop.answer("yabai") { arguments in
-                        guard arguments == ["--start-service"] else { return nil }
+                    await harness.desktop.answer("launchctl") { arguments in
+                        guard arguments.first == "bootstrap" else { return nil }
                         try? "{".write(to: settings, atomically: true, encoding: .utf8)
                         return .success()
                     }
@@ -248,6 +248,14 @@ extension WebInterfaceTests {
                 #expect(harness.settingsData == before)
             }
         }
+    }
+}
+
+/// Whether starting the services loaded Macarchy's agent for `daemon`.
+@MainActor
+private func bootstrapped(_ daemon: Daemon, _ harness: Harness) async -> Bool {
+    await harness.desktop.calls(to: "launchctl").contains {
+        $0.first == "bootstrap" && $0.last == DaemonAgents.plist(daemon).path
     }
 }
 

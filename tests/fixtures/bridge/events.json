@@ -4,7 +4,7 @@
       "state": {
         "addition": "repair",
         "additionExplanation": "yabai was updated, so its sudoers rule needs repairing.",
-        "backupsDirectory": "~/.config/macarchy/backups",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "services": [
           {

@@ -39,7 +39,7 @@ ctrl + alt + shift - 8 : yabai -m window --space 8 && yabai -m space --focus 8
 ctrl + alt + shift - 9 : yabai -m window --space 9 && yabai -m space --focus 9
 
 # Float or tile the window, remembered per app
-ctrl + alt - t : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" rules toggle
+ctrl + alt - t : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" rules toggle
 
 # Fill the screen with the window
 ctrl + alt - f : yabai -m window --toggle zoom-fullscreen
@@ -55,8 +55,8 @@ ctrl + alt - 0x18 : yabai -m window --ratio rel:0.05
 ctrl + alt - 0x1B : yabai -m window --ratio rel:-0.05
 
 # Next and previous theme
-ctrl + alt - 0x2F : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next
-ctrl + alt - 0x2B : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme prev
+ctrl + alt - 0x2F : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next
+ctrl + alt - 0x2B : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" theme prev
 
 # Show or hide the menu bar
-ctrl + alt - b : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" bar toggle
+ctrl + alt - b : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" bar toggle

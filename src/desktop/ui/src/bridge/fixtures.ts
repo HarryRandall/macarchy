@@ -112,7 +112,7 @@ const log: LogEntry[] = [
   {
     id: "6E5C4D3B-8F7A-4B9C-9D2E-3F4A5B6C7D8E",
     command: "open skhdrc",
-    detail: "~/.config/skhd/skhdrc",
+    detail: "~/Library/Application Support/Macarchy/config/skhdrc",
     ok: true,
     at: 1792570506,
     status: null,
@@ -311,7 +311,7 @@ const advanced: AdvancedState = {
   addition: "active",
   additionExplanation: "The scripting addition is loaded.",
   wakeHelpers: true,
-  backupsDirectory: "~/.config/macarchy/backups",
+  backupsDirectory: "~/Library/Application Support/Macarchy/backups",
 };
 
 const advancedBeforeSetup: AdvancedState = {
@@ -327,7 +327,7 @@ const advancedBeforeSetup: AdvancedState = {
   addition: "missing",
   additionExplanation: "yabai is not installed, so there is no scripting addition to load.",
   wakeHelpers: false,
-  backupsDirectory: "~/.config/macarchy/backups",
+  backupsDirectory: "~/Library/Application Support/Macarchy/backups",
 };
 
 const tools: SetupState["tools"] = [
@@ -365,12 +365,12 @@ const keepPlan: SetupState = {
   tools,
   changes: [
     {
-      path: "~/.config/yabai/yabairc",
+      path: "~/Library/Application Support/Macarchy/config/yabairc",
       action: "create",
       detail: "Starts tiling with Macarchy's layout and rules",
     },
     {
-      path: "~/.config/skhd/skhdrc",
+      path: "~/Library/Application Support/Macarchy/config/skhdrc",
       action: "adopt",
       detail: "Keeps your shortcuts and adds Macarchy's",
     },
@@ -383,7 +383,7 @@ const replacePlan: SetupState = {
   tools,
   changes: [
     {
-      path: "~/.config/skhd/skhdrc",
+      path: "~/Library/Application Support/Macarchy/config/skhdrc",
       action: "replace",
       detail: "Backs up your shortcuts and starts from Macarchy's defaults",
     },
@@ -510,7 +510,7 @@ const health: HealthState = {
     architecture: "Apple Silicon",
     macOS: "26.1",
     app: "1.4.0 (142)",
-    settingsFolder: "~/.config/macarchy",
+    settingsFolder: "~/Library/Application Support/Macarchy",
   },
   checkedAt: 1792570500,
 };

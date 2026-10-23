@@ -38,10 +38,13 @@ public enum GhosttyConfig {
         config.split(separator: "\n").contains { isInclude($0) }
     }
 
-    /// Appends the include once; an existing one is left where it is.
+    /// Appends the include once; an existing one is left where it is. An
+    /// include of the folder Macarchy used before Application Support is
+    /// replaced, since that folder goes once setup has run.
     public static func addingInclude(to config: String) -> String {
-        guard !hasInclude(config) else { return config }
-        var text = config
+        guard !config.split(separator: "\n").contains(where: { isInclude($0, of: themeURL.path) })
+        else { return config }
+        var text = hasInclude(config) ? removingInclude(from: config) : config
         if !text.isEmpty, !text.hasSuffix("\n") { text += "\n" }
         if !text.isEmpty { text += "\n" }
         return text + comment + "\n" + includeLine + "\n"
@@ -53,10 +56,18 @@ public enum GhosttyConfig {
             .joined(separator: "\n")
     }
 
+    /// Where the colours were before the move to Application Support.
+    static var legacyThemePath: String {
+        Paths.legacyRoot.appending(path: "generated/ghostty.conf").path
+    }
+
     private static func isInclude(_ line: Substring) -> Bool {
+        isInclude(line, of: themeURL.path) || isInclude(line, of: legacyThemePath)
+    }
+
+    private static func isInclude(_ line: Substring, of path: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard trimmed.hasPrefix("config-file") else { return false }
-        return trimmed.hasSuffix(themeURL.path)
+        return trimmed.hasPrefix("config-file") && trimmed.hasSuffix(path)
     }
 
     /// Colour keys a theme may set. Everything else in a theme's palette file

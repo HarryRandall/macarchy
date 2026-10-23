@@ -21,7 +21,7 @@ public struct DesktopOverview: Sendable {
     public init(
         integrations: Integrations = Integrations(), store: SettingsStore = SettingsStore(),
         themes: URL = Paths.themesDirectory,
-        shortcuts: URL = Paths.home.appending(path: ".config/skhd/skhdrc"),
+        shortcuts: URL = Setup.skhdrc,
         snapshots: SnapshotStore = SnapshotStore()
     ) {
         self.integrations = integrations

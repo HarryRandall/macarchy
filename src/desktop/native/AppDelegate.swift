@@ -41,15 +41,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Startup files reach the CLI through a link to the app. If the app was
-    /// moved or replaced since setup, point the link at this copy. Before
-    /// setup there is no link, and opening the app changes nothing.
+    /// moved or replaced since setup, or the link went missing, point it at
+    /// this copy. Before setup there is nothing to link, and opening the app
+    /// changes nothing.
     private func repairAppLink() {
         let bundle = Bundle.main.bundleURL
         guard !Self.isDevelopmentRun, bundle.pathExtension == "app",
-            let current = try? FileManager.default.destinationOfSymbolicLink(
-                atPath: Paths.appLink.path),
-            current != bundle.resolvingSymlinksInPath().path
+            FileManager.default.fileExists(atPath: Paths.settings.path)
         else { return }
+        let current = try? FileManager.default.destinationOfSymbolicLink(
+            atPath: Paths.appLink.path)
+        guard current != bundle.resolvingSymlinksInPath().path else { return }
         try? Setup.link(bundle)
     }
 

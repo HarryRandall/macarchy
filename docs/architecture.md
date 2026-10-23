@@ -19,39 +19,50 @@ and `AppIcon.icns` from `resources/app`. The bundle's `Info.plist` comes from
 
 ## One folder
 
-Macarchy owns `~/.config/macarchy`:
+Macarchy owns `~/Library/Application Support/Macarchy`:
 
 | Path | Purpose |
 |---|---|
 | `settings.json` | Every preference: theme, layout, borders, menu bar, rules. Schema-versioned. |
+| `config/` | The configs yabai, skhd, SketchyBar and borders run with. |
 | `themes/` | Installed themes. Bundled ones are copied in by setup and never overwritten. |
 | `generated/` | Rendered from the active theme for other programs: Ghostty colours, bar colours, shell colours, Neovim colourscheme name. |
-| `backups/` | Originals of every file setup replaced, with a manifest. Never pruned. |
+| `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest. |
 | `snapshots/` | Rolling copies taken before each change, for undo. |
 | `bin/` | Optional replacements for daemon executables. |
-| `state/` | Scratch state for the menu bar scripts. |
+| `state/` | Daemon logs and scratch state for the menu bar scripts. |
 | `Macarchy.app` | A link to the installed app. |
 
-`MACARCHY_HOME` relocates everything for tests.
+`MACARCHY_HOME` relocates everything for tests. Earlier versions used
+`~/.config/macarchy`; `LegacyLayout` moves it on first launch and leaves a link
+there until setup runs again.
 
 ## Startup
 
-yabai, skhd, SketchyBar and borders read their config from fixed paths, so
-setup writes short startup files there. Each runs
-`~/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy startup <tool>`, which
-reads `settings.json` and applies it, then keeps one `macarchy:keep yours`
-region for the person's own commands. The app link means an updated or moved
-app keeps working; the app repairs the link when it launches.
+Macarchy runs yabai, skhd, SketchyBar and borders from its own LaunchAgents
+(`io.github.harryrandall.macarchy.<tool>`), each started with its file in
+`config/` (`yabai -c`, `skhd -c`, `sketchybar --config`, and bordersrc run
+directly), so nothing is written where the tools look by default. `DaemonAgents`
+writes the agents and switches off the ones the tools' installers made.
 
-`skhdrc` is the exception: it stays the person's file, seeded with defaults.
+The yabai, SketchyBar and borders files are short startup files. Each runs
+`macarchy startup <tool>` through the app link, which reads `settings.json` and
+applies it, then keeps one `macarchy:keep yours` region for the person's own
+commands. The app link means an updated or moved app keeps working; the app
+repairs the link when it launches.
+
+`skhdrc` is the exception: seeded with defaults, then the person's file.
 
 ## Setup and uninstall
 
-`Setup.plan` lists every change without writing. `Setup.run` backs each target
-up once, then adopts or replaces existing configuration, links the app,
-installs themes and adds Ghostty's include line. `Setup.uninstall` restores the
-backups and deletes files that did not exist before. Running setup again is
-idempotent and never reseeds a file the person has edited.
+`Setup.plan` lists every change without writing. `Setup.run` writes the files
+in `config/`, starting from the person's own configs when they choose to keep
+them (those are read, never changed), links the app, installs themes, writes
+the agents and adds Ghostty's include line, backing up the agents and Ghostty
+config it changes. `Setup.uninstall` stops Macarchy's agents, restores the
+backups and deletes what did not exist before; `Setup.returnServices` then
+hands each tool back to its installer. Running setup again is idempotent and
+never reseeds a file the person has edited.
 `SetupSession` sequences setup, service startup and theme application, returning
 partial failures with the results. The app and the `macarchy setup` and
 `uninstall` commands all go through it; `--no-apply` runs the file steps only. Its theme application is injectable so tests
@@ -62,9 +73,9 @@ hand-off is injected by the native host.
 
 ## Integrations
 
-Executables are found with `Paths.executable`: `~/.config/macarchy/bin`, then
+Executables are found with `Paths.executable`: Macarchy's `bin/`, then
 both Homebrew prefixes, then `PATH`. launchd labels are discovered from
-`~/Library/LaunchAgents`. Commands run through `CommandRunner` with argument
+`~/Library/LaunchAgents`, Macarchy's own first. Commands run through `CommandRunner` with argument
 arrays, a timeout and cancellation that also stops child processes.
 
 Every integration is optional. Theme application skips tools that are not

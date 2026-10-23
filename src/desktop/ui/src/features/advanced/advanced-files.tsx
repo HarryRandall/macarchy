@@ -30,21 +30,21 @@ export const generatedFiles = [
     title: "Window layout",
     tool: "yabai",
     icon: LayoutGrid,
-    path: "~/.config/yabai/yabairc",
+    path: "~/Library/Application Support/Macarchy/config/yabairc",
   },
   {
     id: "sketchybarrc",
     title: "Menu bar",
     tool: "SketchyBar",
     icon: PanelTop,
-    path: "~/.config/sketchybar/sketchybarrc",
+    path: "~/Library/Application Support/Macarchy/config/sketchybarrc",
   },
   {
     id: "bordersrc",
     title: "Window borders",
     tool: "JankyBorders",
     icon: SquareDashed,
-    path: "~/.config/borders/bordersrc",
+    path: "~/Library/Application Support/Macarchy/config/bordersrc",
   },
 ] as const satisfies readonly {
   id: GeneratedFileId;

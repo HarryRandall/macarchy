@@ -10,7 +10,7 @@ RUN="${TMPDIR:-/tmp}/macarchy-run-$(printf %s "$ROOT" | cksum | cut -d' ' -f1)"
 HOME_DIR="$RUN/home"
 # Macarchy's own bin folder: the app and the bundled bar scripts both look
 # there before Homebrew, so nothing reaches the real daemons.
-BIN="$HOME_DIR/.config/macarchy/bin"
+BIN="$HOME_DIR/Library/Application Support/Macarchy/bin"
 
 # PIDs of processes running this build's executable.
 copies() {
@@ -39,10 +39,10 @@ fi
 
 rm -rf "$RUN"
 mkdir -p "$BIN"
-cp -R "$ROOT/resources/themes" "$HOME_DIR/.config/macarchy/themes"
+cp -R "$ROOT/resources/themes" "$HOME_DIR/Library/Application Support/Macarchy/themes"
 # Every key, since settings without one fail to decode. An existing file also
 # means setup is not offered.
-cat >"$HOME_DIR/.config/macarchy/settings.json" <<'JSON'
+cat >"$HOME_DIR/Library/Application Support/Macarchy/settings.json" <<'JSON'
 {
   "schema": 1, "currentTheme": null, "wallpapers": {}, "layout": {}, "borders": {},
   "menuBar": {}, "floatingApps": [], "windowRules": null, "barConfiguration": null,

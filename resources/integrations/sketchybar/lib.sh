@@ -2,7 +2,7 @@
 # Shared by the bundled bar scripts. sketchybar runs plugins with launchd's
 # minimal PATH, so every executable is located explicitly.
 
-MACARCHY_ROOT="$HOME/.config/macarchy"
+MACARCHY_ROOT="$HOME/Library/Application Support/Macarchy"
 MACARCHY_STATE="$MACARCHY_ROOT/state/bar"
 mkdir -p "$MACARCHY_STATE"
 

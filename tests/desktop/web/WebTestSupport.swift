@@ -81,8 +81,8 @@ final class Harness {
     let store: SettingsStore
     let desktop = FakeDesktop()
     let model: AppModel
-    /// `~/.config/macarchy` inside the temporary home.
-    var root: URL { home.appending(path: ".config/macarchy") }
+    /// `~/Library/Application Support/Macarchy` inside the temporary home.
+    var root: URL { home.appending(path: "Library/Application Support/Macarchy") }
     var themes: URL { root.appending(path: "themes") }
     /// The only directory on `MACARCHY_SEARCH_PATH`.
     var bin: URL { home.appending(path: "bin") }
@@ -102,7 +102,7 @@ final class Harness {
         let fm = FileManager.default
         home = fm.temporaryDirectory.appending(path: "macarchy-web-test-\(UUID())")
         let bundled = repository.appending(path: "resources/themes")
-        let themes = home.appending(path: ".config/macarchy/themes")
+        let themes = home.appending(path: "Library/Application Support/Macarchy/themes")
         if let chosen {
             try fm.createDirectory(at: themes, withIntermediateDirectories: true)
             for name in chosen {
@@ -119,7 +119,8 @@ final class Harness {
         setenv("MACARCHY_HOME", home.path, 1)
         setenv("MACARCHY_SEARCH_PATH", home.appending(path: "bin").path, 1)
 
-        store = SettingsStore(url: home.appending(path: ".config/macarchy/settings.json"))
+        store = SettingsStore(
+            url: home.appending(path: "Library/Application Support/Macarchy/settings.json"))
         try store.update { document in
             document.currentTheme = currentTheme
             document.mergeFlat(settings)
@@ -191,6 +192,9 @@ final class Harness {
 }
 
 /// Runs `body` with a fresh `Harness`, removing its home afterwards.
+/// The shortcuts file inside a harness home, for `Harness.write`.
+let shortcutsFile = "Library/Application Support/Macarchy/config/skhdrc"
+
 @MainActor
 func withHarness(
     settings: [String: String] = [:], currentTheme: String = "lumon", themes: [String]? = nil,

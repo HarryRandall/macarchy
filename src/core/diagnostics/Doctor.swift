@@ -148,6 +148,13 @@ public enum Doctor {
                     fix: "Open Macarchy, or run: macarchy setup")
             ]
         }
+        if LegacyLayout.linkRemains {
+            results.append(
+                HealthCheck(
+                    .configuration, "Setup", .failed,
+                    "Set up before Macarchy moved to Application Support",
+                    fix: "Open Macarchy, or run: macarchy setup"))
+        }
         let linked = fm.fileExists(
             atPath: Paths.appLink.appending(path: "Contents/MacOS/macarchy").path)
         results.append(
@@ -171,6 +178,14 @@ public enum Doctor {
                 HealthCheck(.configuration, "Settings", .failed, error.localizedDescription))
         }
         results += await startupFileChecks(integrations: integrations)
+        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+            let agent = fm.fileExists(atPath: DaemonAgents.plist(daemon).path)
+            results.append(
+                HealthCheck(
+                    .configuration, "\(daemon.displayName) agent", agent ? .passed : .failed,
+                    agent ? "" : "Not started by Macarchy, so it misses Macarchy's config",
+                    fix: "Run setup again"))
+        }
         return results
     }
 

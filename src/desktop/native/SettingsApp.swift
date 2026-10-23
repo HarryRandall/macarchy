@@ -1,3 +1,4 @@
+import Macarchy
 import SwiftUI
 
 @main
@@ -6,6 +7,9 @@ struct SettingsApp: App {
     @State private var model: AppModel
 
     init() {
+        // Before anything reads settings, so a first launch after the move
+        // to Application Support finds them there.
+        LegacyLayout.migrate()
         let model = AppModel()
         _model = State(initialValue: model)
         // The switcher's hotkey must work before any window has opened.

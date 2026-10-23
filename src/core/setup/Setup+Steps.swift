@@ -44,6 +44,22 @@ extension Setup {
         }
     }
 
+    /// skhd's file is only seeded, from the person's own shortcuts or the
+    /// defaults; after that it is theirs, edited on the Shortcuts page.
+    static func seedShortcuts(existing: Existing, report: inout [String]) throws {
+        let shortcuts = skhdrc
+        guard !FileManager.default.fileExists(atPath: shortcuts.path) else { return }
+        if existing == .keep, let source = skhdSource, let text = adoptable(source) {
+            try FileManager.default.createDirectory(
+                at: shortcuts.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try text.write(to: shortcuts, atomically: true, encoding: .utf8)
+            report.append("Copied your shortcuts from \(Paths.display(source))")
+        } else {
+            try installDefaultShortcuts(to: shortcuts)
+            report.append("Installed default shortcuts")
+        }
+    }
+
     /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
     /// it was registered with, which from Finder does not include Homebrew.
     public static func installDefaultShortcuts(to url: URL = skhdrc) throws {

@@ -3,17 +3,20 @@ import Foundation
 /// First-run setup and its undo.
 ///
 /// Setup is explicit and previewable: `plan` describes every file it would
-/// touch without changing anything. Running it backs up each file just before
-/// changing it, into `~/.config/macarchy/backups`. `uninstall` puts those
-/// originals back, removes files that did not exist before and clears the
-/// record, so a later setup starts from whatever is there then.
+/// touch without changing anything. It writes the daemons' configs into
+/// `Paths.configDirectory` and Macarchy's LaunchAgents start the daemons with
+/// them, so a person's own configs are read, never changed. The installers'
+/// agents and Ghostty's config are backed up before setup changes them;
+/// `uninstall` puts those back, removes what did not exist before and clears
+/// the record, so a later setup starts from whatever is there then.
 public enum Setup {
     /// What to do with configuration a person already has.
     public enum Existing: String, Sendable, CaseIterable {
-        /// Keep their commands, layered onto Macarchy's. Their top-level yabai
-        /// settings move into Macarchy; a hand-built bar replaces Macarchy's bar.
+        /// Start from their configs, layered onto Macarchy's. Their top-level
+        /// yabai settings move into Macarchy; a hand-built bar replaces
+        /// Macarchy's bar.
         case keep
-        /// Start from Macarchy's defaults. The originals stay in backups.
+        /// Start from Macarchy's defaults. Their configs stay where they are, unused.
         case replace
     }
 
@@ -25,26 +28,27 @@ public enum Setup {
         public var id: String { path.path }
     }
 
+    /// Whether setup has to run: it never has, or it last ran before the
+    /// move to Application Support and the old folder still stands in.
+    public static var isNeeded: Bool {
+        !FileManager.default.fileExists(atPath: Paths.settings.path) || LegacyLayout.linkRemains
+    }
+
     // MARK: - Locations
 
-    /// skhd reads `~/.config/skhd/skhdrc`, then `~/.skhdrc`. The shortcuts file
-    /// is whichever exists, so an older dotfile is edited in place, not shadowed.
-    public static var skhdrc: URL {
-        let primary = Paths.home.appending(path: ".config/skhd/skhdrc")
-        let dotfile = Paths.home.appending(path: ".skhdrc")
-        let fm = FileManager.default
-        return !fm.fileExists(atPath: primary.path) && fm.fileExists(atPath: dotfile.path)
-            ? dotfile : primary
+    /// The shortcuts skhd runs with, edited by the Shortcuts page.
+    public static var skhdrc: URL { Paths.configDirectory.appending(path: "skhdrc") }
+
+    /// A config the person had before Macarchy, where the daemon looks by
+    /// default. With `keep`, setup starts from it; it is never changed.
+    static func ownConfig(_ candidates: [String]) -> URL? {
+        candidates.map { Paths.home.appending(path: $0) }
+            .first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
-    /// The yabai config in effect, which may be an older `~/.yabairc`.
-    static var yabaiSource: URL {
-        let primary = StartupConfiguration.yabairc.url
-        let dotfile = Paths.home.appending(path: ".yabairc")
-        let fm = FileManager.default
-        return !fm.fileExists(atPath: primary.path) && fm.fileExists(atPath: dotfile.path)
-            ? dotfile : primary
-    }
+    static var yabaiSource: URL? { ownConfig([".config/yabai/yabairc", ".yabairc"]) }
+    static var skhdSource: URL? { ownConfig([".config/skhd/skhdrc", ".skhdrc"]) }
+    static var sketchybarSource: URL? { ownConfig([".config/sketchybar/sketchybarrc"]) }
 
     /// Ghostty is themed when it is installed or already configured.
     static var ghosttyWanted: Bool {
@@ -69,17 +73,20 @@ public enum Setup {
 
     /// Every file setup would write, and how. Reads only.
     public static func plan(existing: Existing) -> [Change] {
-        func change(_ url: URL, source: URL? = nil, _ adopt: String, _ create: String) -> Change {
+        func change(_ url: URL, source: URL?, _ adopt: String, _ create: String) -> Change {
             if isGenerated(url) {
                 return Change(
                     path: url, action: .replace, detail: "Regenerated, keeping your region")
             }
-            guard adoptable(source ?? url) != nil else {
+            guard let source, adoptable(source) != nil else {
                 return Change(path: url, action: .create, detail: create)
             }
             return existing == .keep
                 ? Change(path: url, action: .adopt, detail: adopt)
-                : Change(path: url, action: .replace, detail: "Replaced; the original is backed up")
+                : Change(
+                    path: url, action: .create,
+                    detail: "Starts from Macarchy's defaults; \(Paths.display(source)) is left "
+                        + "as it is")
         }
         var changes = [
             Change(
@@ -87,12 +94,13 @@ public enum Setup {
                 detail: "Points startup files at the installed app"),
             change(
                 StartupConfiguration.yabairc.url, source: yabaiSource,
-                "Simple layout values move into Macarchy; everything else is kept as written",
+                "Starts from your yabairc: simple layout values move into Macarchy and "
+                    + "everything else is kept as written",
                 "Starts tiling with Macarchy's layout and rules"),
             shortcutsChange(existing),
             change(
-                StartupConfiguration.sketchybarrc.url,
-                "Your bar is kept; Macarchy's bar stays off",
+                StartupConfiguration.sketchybarrc.url, source: sketchybarSource,
+                "Runs your own bar; Macarchy's bar stays off",
                 "Installs Macarchy's menu bar"),
             Change(
                 path: StartupConfiguration.bordersrc.url,
@@ -100,12 +108,12 @@ public enum Setup {
                     atPath: StartupConfiguration.bordersrc.url.path) ? .replace : .create,
                 detail: "Borders follow the theme and the Borders page")
         ]
-        if Paths.isInstalled("borders") {
+        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             changes.append(
                 Change(
-                    path: BordersService.plist, action: .create,
-                    detail: "Starts borders at login. Homebrew's borders agent is backed up "
-                        + "and switched off when the services start"))
+                    path: DaemonAgents.plist(daemon), action: .create,
+                    detail: "Starts \(daemon.displayName) at login with Macarchy's config. "
+                        + "Any agent it had is backed up and switched off when the services start"))
         }
         if ghosttyWanted {
             changes.append(
@@ -118,16 +126,13 @@ public enum Setup {
 
     private static func shortcutsChange(_ existing: Existing) -> Change {
         let url = skhdrc
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return Change(
-                path: url, action: .create, detail: "Installs Macarchy's default shortcuts")
-        }
-        if Backups().hasRecord(for: url) {
+        if FileManager.default.fileExists(atPath: url.path) {
             return Change(path: url, action: .adopt, detail: "Already set up; left as it is")
         }
-        return existing == .keep
-            ? Change(path: url, action: .adopt, detail: "Your shortcuts are kept as they are")
-            : Change(path: url, action: .replace, detail: "Replaced with Macarchy's defaults")
+        if existing == .keep, let source = skhdSource, adoptable(source) != nil {
+            return Change(path: url, action: .adopt, detail: "Starts from your own shortcuts")
+        }
+        return Change(path: url, action: .create, detail: "Installs Macarchy's default shortcuts")
     }
 
     // MARK: - Running
@@ -156,7 +161,8 @@ public enum Setup {
     private static func perform(existing: Existing, app: URL?, report: inout [String]) throws {
         let fm = FileManager.default
         for directory in [
-            Paths.appRoot, Paths.themesDirectory, Paths.generatedDirectory, Paths.backupsDirectory
+            Paths.appRoot, Paths.themesDirectory, Paths.generatedDirectory, Paths.backupsDirectory,
+            Paths.configDirectory, Paths.stateDirectory
         ] {
             try fm.createDirectory(at: directory, withIntermediateDirectories: true)
         }
@@ -188,7 +194,7 @@ public enum Setup {
         let yabairc = StartupConfiguration.yabairc.url
         var yabaiKept: String?
         if !isGenerated(yabairc) {
-            if existing == .keep, let text = adoptable(yabaiSource) {
+            if existing == .keep, let source = yabaiSource, let text = adoptable(source) {
                 let adopted = StartupConfiguration.adoptYabai(text)
                 try updateSettings { $0.mergeFlat(adopted.values) }
                 yabaiKept = adopted.kept
@@ -197,23 +203,15 @@ public enum Setup {
                 yabaiKept = ""
             }
         }
-        try backUp(yabairc)
         try generate(yabairc, StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
 
-        // skhd: the file stays the person's; Macarchy only seeds it.
-        let shortcuts = skhdrc
-        let missing = !fm.fileExists(atPath: shortcuts.path)
-        if missing || (existing == .replace && !backups.hasRecord(for: shortcuts)) {
-            try backUp(shortcuts)
-            try installDefaultShortcuts(to: shortcuts)
-            report.append("Installed default shortcuts")
-        }
+        try seedShortcuts(existing: existing, report: &report)
 
         // SketchyBar: a hand-built bar is kept whole, with Macarchy's switched off.
         let sketchybarrc = StartupConfiguration.sketchybarrc.url
         var barKept: String?
         if !isGenerated(sketchybarrc) {
-            if existing == .keep, let text = adoptable(sketchybarrc) {
+            if existing == .keep, let source = sketchybarSource, let text = adoptable(source) {
                 barKept = StartupConfiguration.tidy(
                     text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
                 try updateSettings { $0.bundledBar = false }
@@ -223,14 +221,12 @@ public enum Setup {
                 try updateSettings { $0.bundledBar = true }
             }
         }
-        try backUp(sketchybarrc)
         try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))
 
         let bordersrc = StartupConfiguration.bordersrc.url
-        try backUp(bordersrc)
         try generate(bordersrc, StartupConfiguration().generateBordersRC())
-        if Paths.isInstalled("borders") {
-            try BordersService.install(backups: backups, report: &report)
+        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+            try DaemonAgents.install(daemon, backups: backups, report: &report)
         }
 
         if ghosttyWanted {
@@ -245,6 +241,14 @@ public enum Setup {
                 report.append("Added the theme include to Ghostty")
             }
         }
+
+        // Startup files from before the move to Application Support reached
+        // the app through the old folder; nothing does now.
+        if LegacyLayout.linkRemains {
+            try LegacyLayout.removeLink()
+            report.append(
+                "Removed \(Paths.display(Paths.legacyRoot)), which Macarchy no longer uses")
+        }
     }
 
     /// Restores every original from backups and removes what setup created.
@@ -255,9 +259,9 @@ public enum Setup {
         -> [String]
     {
         try await OperationLock.run {
-            await BordersService.stop(integrations: integrations)
+            await DaemonAgents.stopAll(integrations: integrations)
             let report = try uninstallLocked()
-            await BordersService.restoreHomebrew(integrations: integrations)
+            await DaemonAgents.restoreReplaced(integrations: integrations)
             return report
         }
     }
@@ -282,8 +286,9 @@ public enum Setup {
 }
 
 extension Setup {
-    /// Starts every installed daemon: registers its LaunchAgent if needed,
-    /// otherwise restarts it so it reads the new startup files.
+    /// Starts every installed daemon from Macarchy's agent, switching off
+    /// the agent it had before. A daemon setup has not given an agent yet is
+    /// reported, not started some other way.
     public static func startServices(
         integrations: Integrations = Integrations()
     ) async
@@ -291,12 +296,30 @@ extension Setup {
     {
         var results: [CommandResult] = []
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
-            if daemon == .borders,
-                FileManager.default.fileExists(atPath: BordersService.plist.path)
-            {
-                results.append(await BordersService.start(integrations: integrations))
+            guard FileManager.default.fileExists(atPath: DaemonAgents.plist(daemon).path) else {
+                results.append(
+                    CommandResult(
+                        command: daemon.startCommand, status: 1,
+                        stderr: "Run setup so Macarchy can start \(daemon.displayName)"))
                 continue
             }
+            results.append(await DaemonAgents.start(daemon, integrations: integrations))
+        }
+        return results
+    }
+}
+
+extension Setup {
+    /// After uninstall, hands each installed daemon back to its installer:
+    /// restarts the agent it had before setup, or registers one the way its
+    /// installer would.
+    public static func returnServices(
+        integrations: Integrations = Integrations()
+    ) async
+        -> [CommandResult]
+    {
+        var results: [CommandResult] = []
+        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             if daemon.isRegistered {
                 results.append(await integrations.restart(daemon))
                 continue
@@ -308,7 +331,7 @@ extension Setup {
                 guard Paths.isInstalled("brew") else {
                     results.append(
                         CommandResult(
-                            command: daemon.startCommand, status: 1,
+                            command: "brew services start \(daemon.rawValue)", status: 1,
                             stderr: "Homebrew is needed to start \(daemon.displayName)"))
                     continue
                 }

@@ -173,7 +173,7 @@ export function LayoutPage({ store }: { store: LayoutStore }) {
           >
             <FileCode2 aria-hidden size={13} />
             <span className="min-w-0 flex-1 truncate font-mono">
-              ~/.config/macarchy/settings.json
+              ~/Library/Application Support/Macarchy/settings.json
             </span>
             <span className="shrink-0">{showSaved ? "Hide" : "Show"} saved values</span>
             <ChevronDown

@@ -11,7 +11,7 @@ extension WebInterfaceTests {
         @Test("real summary is read-only, its sections show and external state refreshes")
         func summary() async throws {
             try await withHarness { harness in
-                try harness.write("ctrl - a : echo a\n", to: ".config/skhd/skhdrc")
+                try harness.write("ctrl - a : echo a\n", to: shortcutsFile)
                 let before = harness.settingsData
                 let (_, surface) = try harness.settingsPage(pane: .home)
                 try await waitFor(
@@ -37,21 +37,21 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("the file watch follows ~/.skhdrc and a symlinked skhdrc's target")
+        @Test("the file watch follows the shortcuts file and a symlinked one's target")
         func shortcutFileWatch() async throws {
             try await withHarness { harness in
                 let fm = FileManager.default
                 let watch = HomeFileWatch()
-                try harness.write("ctrl - a : echo a\n", to: ".skhdrc")
-                let dotfile = watch.fingerprint()
-                try harness.write("ctrl - a : echo a\nctrl - b : echo b\n", to: ".skhdrc")
-                #expect(watch.fingerprint() != dotfile)
+                let shortcuts = shortcutsFile
+                try harness.write("ctrl - a : echo a\n", to: shortcuts)
+                let plain = watch.fingerprint()
+                try harness.write("ctrl - a : echo a\nctrl - b : echo b\n", to: shortcuts)
+                #expect(watch.fingerprint() != plain)
 
                 try harness.write("ctrl - c : echo c\n", to: "dotfiles/skhdrc")
                 let unlinked = watch.fingerprint()
-                let link = harness.home.appending(path: ".config/skhd/skhdrc")
-                try fm.createDirectory(
-                    at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
+                let link = harness.home.appending(path: shortcuts)
+                try fm.removeItem(at: link)
                 try fm.createSymbolicLink(
                     at: link, withDestinationURL: harness.home.appending(path: "dotfiles/skhdrc"))
                 let linked = watch.fingerprint()

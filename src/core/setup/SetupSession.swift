@@ -63,7 +63,7 @@ public struct SetupSession: Sendable {
     public func restoreOriginals() async throws -> Report {
         do {
             let lines = try await Setup.uninstall(integrations: integrations)
-            let commands = await Setup.startServices(integrations: integrations)
+            let commands = await Setup.returnServices(integrations: integrations)
             return Report(
                 lines: lines
                     + commands.filter { !$0.ok }.map { "Files restored, but \($0.summary)" },

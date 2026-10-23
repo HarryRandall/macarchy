@@ -2,9 +2,10 @@ import Foundation
 
 /// Every filesystem location the app and CLI depend on, in one place.
 ///
-/// Macarchy owns exactly one folder, `~/.config/macarchy`. The only files it
-/// writes outside it are the startup files the daemons read from fixed places,
-/// and Ghostty's include line, all of which setup backs up first.
+/// Macarchy owns exactly one folder, `~/Library/Application Support/Macarchy`:
+/// settings, themes, the daemons' configs, history and logs. Its own
+/// LaunchAgents start the daemons with those configs, so the only things it
+/// writes outside the folder are the agents and Ghostty's include line.
 public enum Paths {
     public static var home: URL { home(in: ProcessInfo.processInfo.environment) }
 
@@ -22,13 +23,19 @@ public enum Paths {
         environment["MACARCHY_HOME"] != nil || environment["MACARCHY_SEARCH_PATH"] != nil
     }
 
-    public static var appRoot: URL { home.appending(path: ".config/macarchy") }
+    public static var appRoot: URL { home.appending(path: "Library/Application Support/Macarchy") }
+    /// Where earlier versions kept everything. `LegacyLayout` moves it into `appRoot`.
+    public static var legacyRoot: URL { home.appending(path: ".config/macarchy") }
+    /// The configs Macarchy's LaunchAgents start yabai, skhd, SketchyBar and borders with.
+    public static var configDirectory: URL { appRoot.appending(path: "config") }
+    /// Logs and scratch state for the daemons and the bar scripts.
+    public static var stateDirectory: URL { appRoot.appending(path: "state") }
     public static var settings: URL { appRoot.appending(path: "settings.json") }
     public static var themesDirectory: URL { appRoot.appending(path: "themes") }
     public static var snapshotsDirectory: URL { appRoot.appending(path: "snapshots") }
     /// Files rendered from the active theme for other programs to read.
     public static var generatedDirectory: URL { appRoot.appending(path: "generated") }
-    /// Originals of every file setup replaced, kept until uninstall.
+    /// Originals of the files setup replaced or moved aside, kept until uninstall.
     public static var backupsDirectory: URL { appRoot.appending(path: "backups") }
     /// Drop-in replacements for daemon executables, such as a custom borders build.
     public static var binDirectory: URL { appRoot.appending(path: "bin") }
@@ -38,8 +45,10 @@ public enum Paths {
     public static var appLink: URL { appRoot.appending(path: "Macarchy.app") }
 
     /// The command startup files run. Spelled with `$HOME` so the file stays
-    /// correct if the account is renamed or restored onto another Mac.
-    public static let cliInShell = "\"$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy\""
+    /// correct if the account is renamed or restored onto another Mac, and
+    /// quoted for the space in Application Support.
+    public static let cliInShell =
+        "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy\""
 
     // MARK: - Bundled resources
 

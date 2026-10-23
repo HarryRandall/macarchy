@@ -337,7 +337,7 @@ export function installMockHost() {
     addition: "missing",
     additionExplanation: "The scripting addition is optional.",
     wakeHelpers: true,
-    backupsDirectory: "~/.config/macarchy/backups",
+    backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   };
   let borders: BordersState = {
     appearance: {
@@ -401,7 +401,7 @@ export function installMockHost() {
       tools: [],
       changes: [
         {
-          path: "~/.config/yabai/yabairc",
+          path: "~/Library/Application Support/Macarchy/config/yabairc",
           action: "create",
           detail: "Starts tiling with Macarchy's layout and rules",
         },
@@ -471,7 +471,7 @@ export function installMockHost() {
       };
     },
     "shell.revealSettings": () => {
-      console.info("[mock] reveal ~/.config/macarchy in Finder");
+      console.info("[mock] reveal ~/Library/Application Support/Macarchy in Finder");
       record("reveal settings");
       return null;
     },
@@ -510,7 +510,7 @@ export function installMockHost() {
         architecture: "Apple Silicon",
         macOS: "26.0",
         app: "development build",
-        settingsFolder: "~/.config/macarchy",
+        settingsFolder: "~/Library/Application Support/Macarchy",
       },
       checkedAt: Date.now() / 1000,
     }),

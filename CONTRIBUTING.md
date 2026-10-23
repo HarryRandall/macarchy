@@ -118,7 +118,8 @@ exports. Controls in `components/ui` own their look through `variant` and
   source in shell files.
 - Snapshot before destructive writes. Preserve custom startup regions and
   report externally edited generated files.
-- Everything Macarchy owns lives in `~/.config/macarchy`, through `Paths`.
+- Everything Macarchy owns lives in `~/Library/Application Support/Macarchy`,
+  through `Paths`. Quote paths in shell: the folder name has a space.
   Write outside it only where a tool requires a fixed location, and only after
   `Setup` has backed the file up.
 - Every integration is optional. Detect it, skip it when it is missing, and say
@@ -154,25 +155,25 @@ take a `help` tooltip and controls use the shared `Tooltip`.
 
 ### Existing dotfiles
 
-Setup asks what to do with existing yabai, skhd and SketchyBar configs:
+Setup asks whether to start from existing yabai, skhd and SketchyBar configs.
+It only reads them; Macarchy runs the tools with its own copies.
 
 - **Keep mine and add Macarchy.** Your shortcuts and bar stay as they are. Plain
   top-level `yabai -m config` lines move into Macarchy's Layout page; every other
   line, including anything inside loops and conditionals, is kept word for word.
   If you keep your own bar, Macarchy triggers a `macarchy_theme_changed`
   SketchyBar event on theme changes and writes the colours to
-  `~/.config/macarchy/generated/bar-colours.sh` for your items to use.
-- **Start fresh.** Macarchy's defaults replace them.
+  `generated/bar-colours.sh` for your items to use.
+- **Start fresh.** Macarchy starts from its defaults.
 
-Either way the originals are copied to `~/.config/macarchy/backups` first.
-**Advanced → Restore original files** puts them all back.
+Your own files are left as they are either way.
 
 ### Ghostty
 
 Your Ghostty config is never rewritten. Setup adds one line:
 
 ```
-config-file = ?/Users/you/.config/macarchy/generated/ghostty.conf
+config-file = ?/Users/you/Library/Application Support/Macarchy/generated/ghostty.conf
 ```
 
 It goes at the end of the last config file Ghostty loads, so theme colours win
@@ -180,16 +181,22 @@ and everything else is yours. No Ghostty? That step is skipped.
 
 ### What it changes
 
-Everything Macarchy owns lives in **`~/.config/macarchy`**: settings, themes,
-backups and files rendered from the active theme. Outside it, it only writes the
-startup files each tool reads from a fixed place:
+Everything Macarchy owns lives in **`~/Library/Application Support/Macarchy`**:
+settings, themes, the tools' configs, history and files rendered from the
+active theme. The tools' configs are in its `config/` folder:
 
 | File | Contents |
 |---|---|
-| `~/.config/yabai/yabairc` | Hands over to Macarchy, plus a region for your own commands |
-| `~/.config/sketchybar/sketchybarrc` | Same |
-| `~/.config/borders/bordersrc` | Same |
-| `~/.config/skhd/skhdrc` | Your shortcuts (or `~/.skhdrc` if that is what you use). Seeded with defaults on a fresh setup |
+| `yabairc` | Hands over to Macarchy, plus a region for your own commands |
+| `sketchybarrc` | Same |
+| `bordersrc` | Same |
+| `skhdrc` | Your shortcuts, seeded with defaults (or from your own) on first setup |
+
+Outside the folder it only writes:
+
+| File | Contents |
+|---|---|
+| `~/Library/LaunchAgents/io.github.harryrandall.macarchy.<tool>.plist` | Starts each tool at login with its config. The tool's own agent is switched off and backed up |
 | `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
@@ -231,7 +238,7 @@ only if you want those. Setup health shows its status either way.
 The app includes a `macarchy` command, used by the startup files:
 
 ```sh
-~/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy doctor
+"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" doctor
 ```
 
 `setup`, `uninstall`, `doctor`, `apply`, `theme <name|next|prev>`,
@@ -250,12 +257,12 @@ folder and pick them on the Themes page.
 #### Neovim
 
 Macarchy writes the theme's colourscheme name to
-`~/.config/macarchy/generated/nvim-colorscheme` and signals running Neovim
+`~/Library/Application Support/Macarchy/generated/nvim-colorscheme` and signals running Neovim
 instances. To follow it, add this to your config:
 
 ```lua
 local function macarchy_colourscheme()
-  local file = io.open(vim.fn.expand("~/.config/macarchy/generated/nvim-colorscheme"))
+  local file = io.open(vim.fn.expand("~/Library/Application Support/Macarchy/generated/nvim-colorscheme"))
   if not file then return end
   local name = file:read("*l")
   file:close()
@@ -267,16 +274,16 @@ vim.api.nvim_create_autocmd("VimResized", { callback = macarchy_colourscheme })
 
 #### Custom builds
 
-A file in `~/.config/macarchy/bin` replaces the Homebrew copy of the same tool,
+A file in Macarchy's `bin/` folder replaces the Homebrew copy of the same tool,
 for example a patched `borders`.
 
 ### Uninstall
 
-1. **Advanced → Restore original files** (or `macarchy uninstall`) puts back
-   every file setup replaced, removes the ones it created and restarts the
-   services.
-2. Delete Macarchy.app, and `~/.config/macarchy` if you do not want your
-   settings and themes.
+1. **Advanced → Restore original files** (or `macarchy uninstall`) stops
+   Macarchy's agents, gives each tool back the agent it had and removes
+   Ghostty's include line.
+2. Delete Macarchy.app, and `~/Library/Application Support/Macarchy` if you do
+   not want your settings and themes.
 
 ### Reporting problems
 
