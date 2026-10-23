@@ -644,6 +644,12 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
   },
   {
     rule: dom,
+    name: "allows asking for the node environment",
+    code: `// ${pragma} node\nexport {};\n`,
+    errors: 0,
+  },
+  {
+    rule: dom,
     name: "reports an environment pragma",
     code: `// ${pragma} jsdom\nexport {};\n`,
     errors: 1,

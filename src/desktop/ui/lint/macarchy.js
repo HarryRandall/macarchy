@@ -934,7 +934,7 @@ const noDomTestEnvironment = {
     return {
       Program() {
         for (const entry of commentEntries(context)) {
-          if (/@vitest-environment\b/.test(entry.text)) {
+          if (/@vitest-environment\s+(?!node\b)\S/.test(entry.text)) {
             context.report({ node: entry.comment, message });
           }
         }
