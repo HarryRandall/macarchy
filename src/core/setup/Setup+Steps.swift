@@ -18,20 +18,30 @@ extension Setup {
 
     /// Copies bundled themes that are not installed yet. Installed themes,
     /// including edited copies of bundled ones, are never overwritten.
-    static func installThemes() throws -> [String] {
+    /// Each theme is copied into a staging folder and moved into place, so a
+    /// failed copy leaves no partial theme that later runs would skip. The
+    /// line lists the themes installed before any failure.
+    static func installThemes(report: inout [String]) throws {
         let fm = FileManager.default
         guard let source = Paths.resources?.appending(path: "themes") else {
             throw ConfigurationError("Bundled themes are missing. Reinstall Macarchy.")
         }
         var installed: [String] = []
+        defer {
+            if !installed.isEmpty {
+                report.append("Installed themes: \(installed.joined(separator: ", "))")
+            }
+        }
         for theme in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
         where Theme.load(from: theme) != nil {
             let destination = Paths.themesDirectory.appending(path: theme.lastPathComponent)
             guard !fm.fileExists(atPath: destination.path) else { continue }
-            try fm.copyItem(at: theme, to: destination)
+            let staging = Paths.themesDirectory.appending(path: ".install-\(UUID())")
+            defer { try? fm.removeItem(at: staging) }
+            try fm.copyItem(at: theme, to: staging)
+            try fm.moveItem(at: staging, to: destination)
             installed.append(theme.lastPathComponent)
         }
-        return installed.isEmpty ? [] : ["Installed themes: \(installed.joined(separator: ", "))"]
     }
 
     /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
