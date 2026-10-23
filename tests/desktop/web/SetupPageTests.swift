@@ -49,11 +49,26 @@ extension WebInterfaceTests {
                         surface,
                         #"[...document.querySelectorAll('button')].find(b => b.textContent === "Set up Macarchy").click();"#
                     )
+                    // Without settings there is nothing to close to, so only a retry is offered.
                     try await waitFor(
                         surface, "setup error",
-                        #"return page.text().includes("Setup could not finish") && page.text().includes("some files may already have changed");"#
-                    )
+                        """
+                        const text = page.text();
+                        const buttons = [...document.querySelectorAll('button')].map(b => b.textContent);
+                        return text.includes("Setup could not finish")
+                          && text.includes("some files may already have changed")
+                          && buttons.includes("Try again")
+                          && !buttons.includes("Done") && !buttons.includes("Check setup health");
+                        """)
                     #expect(!FileManager.default.fileExists(atPath: harness.store.url.path))
+                    try await run(
+                        surface,
+                        #"[...document.querySelectorAll('button')].find(b => b.textContent === "Try again").click();"#
+                    )
+                    try await waitFor(
+                        surface, "setup plan again",
+                        #"return page.text().includes("What will change") && !page.text().includes("Setup could not finish");"#
+                    )
                 }
             }
         }
