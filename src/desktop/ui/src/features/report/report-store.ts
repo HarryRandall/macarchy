@@ -12,13 +12,15 @@ export function createReportStore(host: PageHost) {
     preview: ReportState | null;
     preparing: boolean;
     busy: boolean;
+    /** Why the last preparation failed. */
     error: string | null;
     /**
      * The last preparation failed, so the preview may not match the draft.
-     * Copy and Open wait for a good one; a failed copy or open does not set
-     * this, so both can be tried again at once.
+     * Copy and Open wait for a good one.
      */
     stale: boolean;
+    /** Why the last copy or open failed. Kept apart so both can be tried again at once. */
+    actionError: string | null;
     notice: string | null;
   } = {
     status: "loading",
@@ -29,6 +31,7 @@ export function createReportStore(host: PageHost) {
     busy: false,
     error: null,
     stale: false,
+    actionError: null,
     notice: null,
   };
   let revision = 0;
@@ -90,12 +93,12 @@ export function createReportStore(host: PageHost) {
   /** Runs a native action, resolving to whether it went through. */
   async function action(perform: () => Promise<string | null>): Promise<boolean> {
     if (snapshot.busy || snapshot.preparing) return false;
-    set({ busy: true, error: null, notice: null });
+    set({ busy: true, actionError: null, notice: null });
     try {
       set({ notice: await perform() });
       return true;
     } catch (error) {
-      set({ error: errorMessage(error) });
+      set({ actionError: errorMessage(error) });
       return false;
     } finally {
       set({ busy: false });

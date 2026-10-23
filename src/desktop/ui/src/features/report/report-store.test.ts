@@ -105,10 +105,29 @@ it("shows preparation and action failures without claiming a copy or open succee
   deps.request.mockRejectedValueOnce(new Error("Clipboard unavailable"));
   await store.copy();
   expect(store.getSnapshot()).toMatchObject({
-    error: "Clipboard unavailable",
+    error: null,
+    actionError: "Clipboard unavailable",
     notice: null,
     busy: false,
   });
+});
+
+it("a failed action keeps a preparation failure and its retry apart", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  deps.request.mockRejectedValueOnce(new Error("Collection unavailable"));
+  await store.load();
+  deps.request.mockRejectedValueOnce(new Error("No browser"));
+  await expect(store.openIssues()).resolves.toBe(false);
+  expect(store.getSnapshot()).toMatchObject({
+    error: "Collection unavailable",
+    stale: true,
+    actionError: "No browser",
+  });
+  await store.load();
+  deps.request.mockResolvedValueOnce(null);
+  await expect(store.copy()).resolves.toBe(true);
+  expect(store.getSnapshot()).toMatchObject({ error: null, stale: false, actionError: null });
 });
 
 it("copy and open can be tried again straight after they fail, but not on a stale preview", async () => {
@@ -120,7 +139,7 @@ it("copy and open can be tried again straight after they fail, but not on a stal
   await expect(store.copy()).resolves.toBe(false);
   deps.request.mockResolvedValueOnce(null);
   await expect(store.copy()).resolves.toBe(true);
-  expect(store.getSnapshot()).toMatchObject({ error: null, notice: "Copied" });
+  expect(store.getSnapshot()).toMatchObject({ actionError: null, notice: "Copied" });
   deps.request.mockRejectedValueOnce(new Error("No browser"));
   await expect(store.open()).resolves.toBe(false);
   deps.request.mockResolvedValueOnce({ copied: false });
