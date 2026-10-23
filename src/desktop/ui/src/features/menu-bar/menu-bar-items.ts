@@ -1,9 +1,53 @@
-import type { BarItem, LibraryItem, Zone } from "./menu-bar-mock";
+import type {
+  BarItemKind,
+  BarZone,
+  MenuBarItemEdit,
+  MenuBarItemState,
+  MenuBarSettings,
+} from "~/bridge/protocol";
+
+export type Zone = BarZone;
+export type BarItem = MenuBarItemState;
+
+export const zones: readonly Zone[] = ["left", "centre", "right"];
 
 export const zoneLabels: Record<Zone, string> = { left: "Left", centre: "Centre", right: "Right" };
 
-export function zonesFor(centre: boolean): Zone[] {
-  return centre ? ["left", "centre", "right"] : ["left", "right"];
+/** Seconds between runs of a command item, as the page offers them. */
+export const intervals = [
+  { value: "1", label: "1s" },
+  { value: "5", label: "5s" },
+  { value: "30", label: "30s" },
+  { value: "60", label: "1m" },
+  { value: "300", label: "5m" },
+] as const;
+
+/** Glyphs a made item can show. SketchyBar draws them in SF Pro, so they render as here. */
+export const glyphs = ["", "●", "○", "◆", "★", "▲", "■", "↑", "↓", "→", "⇅", "»"] as const;
+
+/** Items the page can make, with what the library says about them. */
+export const makeable: { kind: BarItemKind; name: string; detail: string }[] = [
+  { kind: "text", name: "Text", detail: "A label you write" },
+  { kind: "spacer", name: "Spacer", detail: "Empty width, to push items apart" },
+  { kind: "command", name: "Command", detail: "Shows what a shell command prints" },
+];
+
+/** A new item for `zone`. Its id becomes a SketchyBar item name. */
+export function newItem(kind: BarItemKind, zone: Zone, patch: Partial<BarItem> = {}): BarItem {
+  const name = makeable.find((entry) => entry.kind === kind)?.name ?? "Item";
+  return {
+    id: `macarchy.${crypto.randomUUID().toLowerCase()}`,
+    title: name,
+    zone,
+    visible: true,
+    kind,
+    text: kind === "text" ? "Hello" : "",
+    icon: "",
+    command: kind === "command" ? "" : null,
+    interval: kind === "command" ? 30 : null,
+    reading: "",
+    ...patch,
+  };
 }
 
 function insertAtZoneEnd(items: BarItem[], item: BarItem): BarItem[] {
@@ -38,12 +82,7 @@ export function stepItem(items: BarItem[], id: string, direction: -1 | 1): BarIt
 }
 
 /** To the end of the neighbouring zone, for the keyboard; nothing past either edge. */
-export function shiftZone(
-  items: BarItem[],
-  id: string,
-  direction: -1 | 1,
-  zones: readonly Zone[],
-): BarItem[] {
+export function shiftZone(items: BarItem[], id: string, direction: -1 | 1): BarItem[] {
   const item = items.find((entry) => entry.id === id);
   if (!item) return items;
   const zone = zones[zones.indexOf(item.zone) + direction];
@@ -54,26 +93,39 @@ export function addItem(items: BarItem[], item: BarItem): BarItem[] {
   return insertAtZoneEnd(items, item);
 }
 
+/** Made items go; the bar's own can only be hidden. */
 export function removeItem(items: BarItem[], id: string): BarItem[] {
-  return items.filter((entry) => entry.id !== id);
+  return items.filter((entry) => entry.id !== id || entry.kind === null);
 }
 
 export function patchItem(items: BarItem[], id: string, patch: Partial<BarItem>): BarItem[] {
   return items.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
 }
 
-/** Items left in the centre zone while it is turned off, which the bar cannot show. */
-export function hiddenInCentre(items: BarItem[], centre: boolean): number {
-  return centre ? 0 : items.filter((entry) => entry.zone === "centre").length;
+/** What the page sends back: the list without its readings. */
+export function editsOf(items: BarItem[]): MenuBarItemEdit[] {
+  return items.map(({ reading: _reading, ...edit }) => edit);
 }
 
-export function matchesLibrary(entry: LibraryItem, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  return `${entry.name} ${entry.detail ?? ""} ${entry.category}`.toLowerCase().includes(needle);
-}
-
-/** Every field, so an edit undone by hand no longer counts as a change. */
+/** Every edited field, so an edit undone by hand no longer counts as a change. */
 export function sameItems(a: BarItem[], b: BarItem[]): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(editsOf(a)) === JSON.stringify(editsOf(b));
+}
+
+export function sameBar(a: MenuBarSettings, b: MenuBarSettings): boolean {
+  return a.height === b.height && a.padding === b.padding && a.position === b.position;
+}
+
+/** Why an item cannot be applied yet, if it cannot. */
+export function problemWith(item: BarItem): string | null {
+  if (!item.title.trim()) return "Every item needs a name.";
+  if (item.kind === "command" && !item.command?.trim()) return `${item.title} needs a command.`;
+  return null;
+}
+
+/** What the preview and the list show for an item. */
+export function shownText(item: BarItem): string {
+  if (item.kind === "text") return item.text;
+  if (item.kind === "command") return item.reading || "…";
+  return item.reading;
 }

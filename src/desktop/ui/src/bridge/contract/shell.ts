@@ -77,7 +77,13 @@ export interface ShellMethods {
   "shell.quit": { params: Record<string, never>; result: null };
 }
 
+/** The window's own shortcuts. ⌘Q is the app menu's, so it is not here. */
+export type ShellShortcut =
+  "palette" | "sidebar" | "back" | "forward" | "shortcuts" | "logs" | "reload" | "folder";
+
 export type ShellEvent =
   | { type: "shell.changed"; state: ShellState }
   /** The log changed; read it again with `shell.getLog`. */
-  | { type: "shell.logChanged" };
+  | { type: "shell.logChanged" }
+  /** A shortcut chosen from the app menu, whose key equivalents can reach AppKit first. */
+  | { type: "shell.shortcut"; state: { shortcut: ShellShortcut } };

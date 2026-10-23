@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { Bridge } from "~/bridge/client";
-import type { BridgeMethods, PaneId } from "~/bridge/protocol";
+import type { PaneId } from "~/bridge/protocol";
 import type { ReadableStore } from "~/lib/store";
 
 /** What the shell needs to know about any page's store. */
@@ -21,9 +21,8 @@ export interface PageHost {
 
 /** What a page may ask of the window around it. */
 export interface PageContext {
-  /** Shows another pane: a React page here, anything else in the classic window. */
+  /** Shows another pane. */
   navigate(pane: PaneId): void;
-  openClassic(params: BridgeMethods["shell.openClassic"]["params"]): void;
   /** Opens the window's logs panel, as ⇧⌘L does. */
   openLogs(): void;
 }

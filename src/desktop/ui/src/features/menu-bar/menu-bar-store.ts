@@ -1,4 +1,11 @@
-import type { BridgeEvent, ThemesState } from "~/bridge/protocol";
+import { errorMessage } from "~/bridge/client";
+import type {
+  BridgeEvent,
+  MenuBarItemEdit,
+  MenuBarSettings,
+  MenuBarState,
+  ThemesState,
+} from "~/bridge/protocol";
 import { createListeners } from "~/lib/store";
 
 /** The colours and wallpaper the bar preview is painted in. */
@@ -37,10 +44,17 @@ export interface MenuBarSnapshot {
   status: "loading" | "ready" | "failed";
   /** Null until read, and when the themes could not be read. */
   look: BarLook | null;
+  /** Null until read, and when reading failed. */
+  state: MenuBarState | null;
+  /** Why the last read or apply failed. */
+  error: string | null;
+  applying: boolean;
 }
 
 export interface MenuBarStoreDeps {
   getThemes(): Promise<ThemesState>;
+  getState(): Promise<MenuBarState>;
+  apply(items: MenuBarItemEdit[], bar: MenuBarSettings): Promise<MenuBarState>;
   subscribe(
     type: "themes.changed",
     handler: (event: Extract<BridgeEvent, { type: "themes.changed" }>) => void,
@@ -48,33 +62,80 @@ export interface MenuBarStoreDeps {
 }
 
 /**
- * The Menu Bar page reads only the applied theme, to paint its preview. The
- * bar's items and settings are placeholders until the bar has a bridge, so a
- * failed read still leaves the page usable in the default colours.
+ * The bar as SketchyBar and the saved configuration have it, and the applied
+ * theme to paint its preview in. The page keeps its own draft; this only
+ * holds what is on the bar. A failed theme read still leaves the page usable
+ * in the default colours.
  */
 export function createMenuBarStore(deps: MenuBarStoreDeps) {
   const listeners = createListeners();
-  let snapshot: MenuBarSnapshot = { status: "loading", look: null };
+  let snapshot: MenuBarSnapshot = {
+    status: "loading",
+    look: null,
+    state: null,
+    error: null,
+    applying: false,
+  };
   let reads = 0;
 
-  async function load() {
-    const read = ++reads;
-    let look: BarLook | null = null;
-    try {
-      look = barLook(await deps.getThemes());
-    } catch {
-      look = snapshot.look;
-    }
-    if (read !== reads) return;
-    snapshot = { status: "ready", look };
+  function set(patch: Partial<MenuBarSnapshot>) {
+    snapshot = { ...snapshot, ...patch };
     listeners.notify();
   }
 
+  async function readLook(): Promise<BarLook | null> {
+    try {
+      return barLook(await deps.getThemes());
+    } catch {
+      return snapshot.look;
+    }
+  }
+
+  async function load() {
+    const read = ++reads;
+    const [look, bar] = await Promise.all([
+      readLook(),
+      deps.getState().then(
+        (state) => ({ state, error: null }),
+        (error: unknown) => ({ state: null, error: errorMessage(error) }),
+      ),
+    ]);
+    if (read !== reads) return;
+    set({
+      status: bar.state ? "ready" : "failed",
+      look,
+      state: bar.state ?? snapshot.state,
+      error: bar.error,
+    });
+  }
+
+  /** Resolves true once the bar matches; on failure the error says why. */
+  async function apply(items: MenuBarItemEdit[], bar: MenuBarSettings): Promise<boolean> {
+    if (snapshot.applying) return false;
+    reads++;
+    set({ applying: true, error: null });
+    try {
+      const state = await deps.apply(items, bar);
+      set({ applying: false, state, status: "ready" });
+      return true;
+    } catch (error) {
+      set({ applying: false, error: errorMessage(error) });
+      return false;
+    }
+  }
+
   deps.subscribe("themes.changed", () => {
-    if (snapshot.status !== "loading") void load();
+    if (snapshot.status === "loading") return;
+    void readLook().then((look) => set({ look }));
   });
 
-  return { subscribe: listeners.subscribe, getSnapshot: () => snapshot, load };
+  return {
+    subscribe: listeners.subscribe,
+    getSnapshot: () => snapshot,
+    load,
+    apply,
+    dismissError: () => set({ error: null }),
+  };
 }
 
 export type MenuBarStore = ReturnType<typeof createMenuBarStore>;

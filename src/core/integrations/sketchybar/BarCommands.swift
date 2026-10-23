@@ -118,18 +118,29 @@ public enum BarCommands {
 
     static func customSettings(_ component: BarComponent) -> [String] {
         let spacer = component.kind == "spacer"
+        let command = component.kind == "command"
         // The label goes through `rendered` so a format like "{value}%" is
         // what lands on the bar rather than the bare text.
+        let label = component.rendered(component.text)
         return [
             "--set", component.id,
-            "icon=\(component.icon)", "label=\(component.rendered(component.text))",
+            "icon=\(component.icon)", "label=\(label)",
             "icon.drawing=\(!spacer && !component.icon.isEmpty ? "on" : "off")",
-            "label.drawing=\(!spacer && !component.rendered(component.text).isEmpty ? "on" : "off")",
+            "label.drawing=\(command || (!spacer && !label.isEmpty) ? "on" : "off")",
             "width=\(component.boxWidth.map { String($0) } ?? (spacer ? String(Int(component.customWidth)) : "dynamic"))",
             "icon.font=SF Pro:Regular:15", "label.font=SF Pro:Regular:12",
             "icon.padding_left=0", "icon.padding_right=\(spacer ? 0 : 4)",
             "label.padding_left=\(spacer ? 0 : 4)", "label.padding_right=0", "label.y_offset=0"
         ] + (spacer ? ["padding_left=0", "padding_right=0", "background.drawing=off"] : [])
+            + (command ? commandSettings(component) : [])
+    }
+
+    /// SketchyBar runs the script through `sh` every `interval` seconds; the
+    /// command's output becomes the label.
+    static func commandSettings(_ component: BarComponent) -> [String] {
+        let bar = "'" + Paths.sketchybar.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        let script = "\(bar) --set \"$NAME\" label=\"$(\(component.command ?? "true"))\""
+        return ["script=\(script)", "update_freq=\(component.interval ?? 30)", "updates=on"]
     }
 
     /// Colours and the fill behind a component, for every component.

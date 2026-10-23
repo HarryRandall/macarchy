@@ -23,6 +23,15 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
             Set(components.map(\.id)).count == components.count,
             components.allSatisfy({ ["left", "center", "right"].contains($0.side) })
         else { throw ConfigurationError("Invalid menu bar components or spacing") }
+        for component in components where component.kind == "command" {
+            guard let command = component.command,
+                !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                let interval = component.interval, (1...86_400).contains(interval)
+            else {
+                throw ConfigurationError(
+                    "\(component.title) needs a command and an interval of 1 to 86400 seconds")
+            }
+        }
         let properties: Set<String> = [
             "align", "icon.width", "label.width", "icon.align", "label.align",
             "icon", "icon.font", "label.font", "icon.color", "label.color",

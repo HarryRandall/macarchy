@@ -98,6 +98,9 @@ struct BridgeContractFixtureTests {
         return [
             "shell.changed": { try .shellChanged(JSON.decode(ShellState.self, $0)) },
             "shell.logChanged": { _ in .shellLogChanged },
+            "shell.shortcut": {
+                try .shellShortcut(JSON.decode(ShellShortcutState.self, $0).shortcut)
+            },
             "layout.changed": { try .layoutChanged(JSON.decode(LayoutState.self, $0)) },
             "themes.changed": { try .themesChanged(JSON.decode(SwitcherState.self, $0)) },
             "switcher.willOpen": {

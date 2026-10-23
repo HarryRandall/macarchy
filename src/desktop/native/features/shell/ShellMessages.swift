@@ -105,4 +105,19 @@ extension BridgeEvent {
 
     /// Tells the page to read the log again.
     static var shellLogChanged: BridgeEvent { BridgeEvent("shell.logChanged") }
+
+    /// One of the window's shortcuts, chosen from the app menu. Menu key
+    /// equivalents can reach AppKit before the page, so the menu hands them on.
+    static func shellShortcut(_ shortcut: ShellShortcut) -> BridgeEvent {
+        BridgeEvent("shell.shortcut", state: ShellShortcutState(shortcut: shortcut))
+    }
+}
+
+/// Mirrors `ShellShortcut` in `src/desktop/ui/src/bridge/contract/shell.ts`.
+enum ShellShortcut: String, Codable, Sendable {
+    case palette, sidebar, back, forward, shortcuts, logs, reload, folder
+}
+
+struct ShellShortcutState: Codable, Sendable, Equatable {
+    var shortcut: ShellShortcut
 }

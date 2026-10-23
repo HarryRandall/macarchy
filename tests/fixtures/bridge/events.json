@@ -188,6 +188,20 @@
       "type": "shell.logChanged"
     }
   ],
+  "shell.shortcut": [
+    {
+      "state": {
+        "shortcut": "palette"
+      },
+      "type": "shell.shortcut"
+    },
+    {
+      "state": {
+        "shortcut": "back"
+      },
+      "type": "shell.shortcut"
+    }
+  ],
   "shortcuts.changed": [
     {
       "state": {

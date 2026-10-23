@@ -2,20 +2,33 @@ import { describe, expect, it } from "vitest";
 
 import {
   addItem,
-  hiddenInCentre,
-  matchesLibrary,
+  type BarItem,
+  editsOf,
   moveItem,
+  newItem,
   patchItem,
+  problemWith,
   removeItem,
   sameItems,
   shiftZone,
+  shownText,
   stepItem,
-  zonesFor,
+  type Zone,
 } from "./menu-bar-items";
-import { type BarItem, library, type Zone } from "./menu-bar-mock";
 
-function item(id: string, zone: Zone): BarItem {
-  return { id, label: id, zone, on: true, sample: "", icon: "AppWindow" };
+function item(id: string, zone: Zone, kind: BarItem["kind"] = null): BarItem {
+  return {
+    id,
+    title: id,
+    zone,
+    visible: true,
+    kind,
+    text: "",
+    icon: "",
+    command: null,
+    interval: null,
+    reading: "",
+  };
 }
 
 const bar = [item("a", "left"), item("b", "left"), item("c", "right"), item("d", "right")];
@@ -63,14 +76,14 @@ describe("stepItem", () => {
 });
 
 describe("shiftZone", () => {
-  it("moves to the neighbouring zone, skipping a hidden centre", () => {
-    expect(order(shiftZone(bar, "b", 1, zonesFor(false)))).toContain("right:b");
-    expect(order(shiftZone(bar, "b", 1, zonesFor(true)))).toContain("centre:b");
+  it("moves to the neighbouring zone", () => {
+    expect(order(shiftZone(bar, "b", 1))).toContain("centre:b");
+    expect(order(shiftZone(bar, "c", -1))).toContain("centre:c");
   });
 
   it("stops at the outer zones", () => {
-    expect(shiftZone(bar, "a", -1, zonesFor(true))).toBe(bar);
-    expect(shiftZone(bar, "d", 1, zonesFor(true))).toBe(bar);
+    expect(shiftZone(bar, "a", -1)).toBe(bar);
+    expect(shiftZone(bar, "d", 1)).toBe(bar);
   });
 });
 
@@ -85,36 +98,47 @@ describe("addItem, removeItem and patchItem", () => {
     ]);
   });
 
-  it("removes and patches by id", () => {
-    expect(order(removeItem(bar, "c"))).toEqual(["left:a", "left:b", "right:d"]);
-    expect(patchItem(bar, "a", { on: false })[0]?.on).toBe(false);
-    expect(patchItem(bar, "a", { on: false })[1]).toBe(bar[1]);
+  it("removes made items only, and patches by id", () => {
+    const made = [...bar, item("macarchy.e", "right", "text")];
+    expect(order(removeItem(made, "macarchy.e"))).toEqual(order(bar));
+    expect(removeItem(bar, "c")).toEqual(bar);
+    expect(patchItem(bar, "a", { visible: false })[0]?.visible).toBe(false);
+    expect(patchItem(bar, "a", { visible: false })[1]).toBe(bar[1]);
   });
 });
 
-describe("hiddenInCentre", () => {
-  it("counts centre items only while the centre zone is off", () => {
-    const withCentre = [...bar, item("e", "centre")];
-    expect(hiddenInCentre(withCentre, false)).toBe(1);
-    expect(hiddenInCentre(withCentre, true)).toBe(0);
+describe("newItem", () => {
+  it("makes a SketchyBar-safe id and the kind's defaults", () => {
+    const made = newItem("command", "centre");
+    expect(made.id).toMatch(/^macarchy\.[a-z0-9-]+$/);
+    expect(made).toMatchObject({ zone: "centre", kind: "command", command: "", interval: 30 });
+    expect(newItem("text", "left").text).toBe("Hello");
   });
 });
 
-const names = (query: string) =>
-  library.filter((entry) => matchesLibrary(entry, query)).map((entry) => entry.name);
+describe("problemWith and shownText", () => {
+  it("needs a name, and a command for a command item", () => {
+    expect(problemWith(item("a", "left"))).toBeNull();
+    expect(problemWith({ ...item("a", "left"), title: " " })).toMatch(/name/);
+    expect(problemWith(newItem("command", "left"))).toMatch(/command/);
+  });
 
-describe("matchesLibrary", () => {
-  it("searches the name, detail and category", () => {
-    expect(names("bolt")).toEqual(["Battery"]);
-    expect(names("MEDIA")).toEqual(["Now playing"]);
-    expect(names("  ")).toHaveLength(library.length);
+  it("shows a text item's text and a waiting command", () => {
+    expect(shownText({ ...item("t", "left", "text"), text: "Hi" })).toBe("Hi");
+    expect(shownText(item("c", "left", "command"))).toBe("…");
+    expect(shownText({ ...item("cpu", "right"), reading: "12%" })).toBe("12%");
   });
 });
 
 describe("sameItems", () => {
   it("treats an edit put back by hand as no change", () => {
-    const edited = patchItem(bar, "a", { label: "Changed" });
+    const edited = patchItem(bar, "a", { title: "Changed" });
     expect(sameItems(bar, edited)).toBe(false);
-    expect(sameItems(bar, patchItem(edited, "a", { label: "a" }))).toBe(true);
+    expect(sameItems(bar, patchItem(edited, "a", { title: "a" }))).toBe(true);
+  });
+
+  it("ignores readings, which the page never edits", () => {
+    expect(sameItems(bar, patchItem(bar, "a", { reading: "12%" }))).toBe(true);
+    expect(editsOf(bar)[0]).not.toHaveProperty("reading");
   });
 });

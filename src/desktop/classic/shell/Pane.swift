@@ -47,8 +47,8 @@ enum Pane: String, CaseIterable, Identifiable, Hashable {
     ]
 
     /// Migrated panes whose editor has not been ported: React shows the page
-    /// and sends its editing here, so this window must still open them.
-    static let classicEditors: Set<Pane> = [.menuBar]
+    /// and sends its editing here. Every editor is React now.
+    static let classicEditors: Set<Pane> = []
 
     /// Whether this window shows the pane itself rather than sending it to React.
     var opensInClassic: Bool { !Pane.migrated.contains(self) || Pane.classicEditors.contains(self) }

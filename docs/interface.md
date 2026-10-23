@@ -2,8 +2,7 @@
 
 The settings window and the theme switcher are React pages in native AppKit
 windows. Swift owns everything that touches the desktop or the disk; React owns
-presentation and interaction state. The menu bar item and the Menu Bar
-component editor are still SwiftUI.
+presentation and interaction state. Only the menu bar item is still SwiftUI.
 
 ## Pieces
 
@@ -20,7 +19,7 @@ component editor are still SwiftUI.
 | `src/desktop/native/bridge` | The Swift mirror of the contract, the router, state snapshots and the broadcaster. |
 | `src/desktop/native/window` | The React settings window, the classic window's AppKit host, and the window buttons both use. |
 | `src/desktop/native/switcher` | The floating switcher panel and its global shortcut. |
-| `src/desktop/classic` | The SwiftUI window, kept for the Menu Bar component editor. |
+| `src/desktop/classic` | The old SwiftUI window, which nothing opens now. `MenuBarModel` and its helpers still live here and back the Menu Bar page. |
 
 Advanced and first-run setup are React pages. Before settings exist, setup
 replaces the selected pane and previews `Setup.plan` before enabling Set up.
@@ -193,8 +192,6 @@ folder renders each state of both pages there as PNGs for review.
 2. Add its requests and events to `protocol.ts` and `BridgeMessages.swift`,
    and register handlers that call shared operations in `src/core`.
 3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
-   A pane whose editor has not moved yet also goes in `Pane.classicEditors`,
-   so `shell.openClassic` can still show it in the classic window.
 4. Delete the SwiftUI pane and anything only it used.
 
 ## Rules
@@ -236,9 +233,8 @@ must be discarded before editing the new theme.
 ## Overview pages
 
 Home, Setup health and Report a problem are React pages. Home is the new
-window's default pane. The classic window only shows the Menu Bar editor now,
-which the React Menu Bar page opens. Workshop and Plugins are labelled as
-previews wherever they appear.
+window's default pane. Workshop and Plugins are labelled as previews wherever
+they appear.
 
 Home reads `DesktopOverview` in core, without using another page's React store.
 `home.changed` and `health.changed` invalidate read-only summaries after model
@@ -256,6 +252,26 @@ a stale token is refused. `ProblemReport` prepares the issue URL and the long
 report clipboard fallback. Clipboard, browser and Finder actions stay native
 and are replaced by recorders in tests. Preparing or refreshing never writes
 settings, reads logs or submits an issue.
+
+## Menu Bar
+
+The Menu Bar page edits a draft of the bar and applies it in one go.
+`menuBar.getState` reads SketchyBar and the saved configuration through
+`MenuBarModel`; `menuBar.apply` takes the whole list back, in order, with each
+item's zone and visibility, and the bar's height, position and padding.
+`MenuBarEdits` lays that over the saved configuration, so colours, spacing and
+other authored details the page does not show survive. The bar's own items can
+only be hidden. Items made on the page are text, spacers and commands; a
+command runs through `sh` every `interval` seconds and its output becomes the
+label. Their ids are `macarchy.` and a lower-case suffix, and Swift refuses any
+other new id.
+
+## App menu
+
+Search, Show Logs, Back and Forward in the app menu send `shell.shortcut` to
+the page, which runs them as its own keys do. A menu key equivalent can reach
+AppKit before the page, so the page ignores a menu shortcut that repeats the
+key it has just handled.
 
 ## Shortcuts
 

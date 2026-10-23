@@ -5,6 +5,8 @@
  * Query flags:
  *   ?fail=layout         layout.apply rejects
  *   ?fail=layout-state   layout.getState rejects
+ *   ?fail=menu-bar       menuBar.apply rejects
+ *   ?bar=stopped         SketchyBar is "not running"
  *   ?fail=switcher       applying a theme or background fails and reopens the switcher
  *   ?fail=restart        Restart All leaves skhd stopped
  *   ?source=saved        yabai is "not running"; layout is read-only
@@ -14,6 +16,7 @@
  * closeSwitcher(), changeLayout({ windowGap: 20 }), setAccent("#ff9f0a"),
  * setAppearance("dark"), setServices(2), log("yabai -m space --balance").
  */
+import { createMenuBarMock } from "~/features/menu-bar/menu-bar-mock";
 import { createThemesMock } from "~/features/themes/themes-mock";
 import { shortcutsMock } from "~/features/shortcuts/shortcuts-mock";
 
@@ -209,6 +212,7 @@ export function installMockHost() {
   const query = new URLSearchParams(window.location.search);
   const failures = new Set((query.get("fail") ?? "").split(",").filter(Boolean));
   const saved = query.get("source") === "saved";
+  const menuBar = createMenuBarMock({ stopped: query.get("bar") === "stopped" });
 
   const services: ShellState["serviceList"] = [
     { id: "yabai", name: "yabai", state: "running" },
@@ -523,6 +527,14 @@ export function installMockHost() {
     "report.copy": () => null,
     "report.openIssue": () => ({ copied: false }),
     "report.openIssues": () => null,
+    "menuBar.getState": () => menuBar.getState(),
+    "menuBar.apply": ({ items, bar }) => {
+      if (failures.has("menu-bar")) {
+        throw new MockFailure("operation_failed", "sketchybar rejected the change: unknown item.");
+      }
+      console.info("[mock] menuBar.apply", { items, bar });
+      return menuBar.apply(items, bar);
+    },
     "layout.getState": () => {
       if (failures.has("layout-state")) {
         throw new MockFailure("unavailable", "Could not read the layout from yabai.");

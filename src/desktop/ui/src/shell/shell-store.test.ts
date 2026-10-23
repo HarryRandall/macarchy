@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BridgeEvent, ShellState } from "~/bridge/protocol";
+import type { BridgeEvent, ShellShortcut, ShellState } from "~/bridge/protocol";
 
 import { createShellStore } from "./shell-store";
 
@@ -27,7 +27,7 @@ interface Call {
 }
 
 function harness() {
-  let handler: ((event: Extract<BridgeEvent, { type: "shell.changed" }>) => void) | null = null;
+  const handlers = new Map<string, (event: BridgeEvent) => void>();
   const calls: Call[] = [];
   const store = createShellStore({
     request: ((method: string, params: unknown) => {
@@ -41,8 +41,8 @@ function harness() {
         });
       });
     }) as never,
-    subscribe: (_type, next) => {
-      handler = next;
+    subscribe: (type, next) => {
+      handlers.set(type, next as (event: BridgeEvent) => void);
       return () => {};
     },
   });
@@ -50,7 +50,9 @@ function harness() {
     store,
     calls,
     send: (patch: Partial<ShellState>) =>
-      handler?.({ type: "shell.changed", state: { ...state, ...patch } }),
+      handlers.get("shell.changed")?.({ type: "shell.changed", state: { ...state, ...patch } }),
+    menu: (shortcut: ShellShortcut) =>
+      handlers.get("shell.shortcut")?.({ type: "shell.shortcut", state: { shortcut } }),
   };
 }
 
@@ -60,6 +62,16 @@ async function flush() {
 }
 
 describe("shell store", () => {
+  it("passes the app menu's shortcuts to whoever is listening", () => {
+    const { store, menu } = harness();
+    const heard: ShellShortcut[] = [];
+    const stop = store.onShortcut((shortcut) => heard.push(shortcut));
+    menu("palette");
+    stop();
+    menu("logs");
+    expect(heard).toEqual(["palette"]);
+  });
+
   it("keeps a click while its selection is being saved", async () => {
     const { store, send, calls } = harness();
     await store.load();

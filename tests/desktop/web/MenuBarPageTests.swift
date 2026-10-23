@@ -4,40 +4,64 @@ import Testing
 @testable import App
 @testable import Macarchy
 
+/// A running SketchyBar with a CPU and a battery item on the right. Queries
+/// answer from that; every other call succeeds and is only recorded.
+private func runBar(_ desktop: FakeDesktop) async {
+    await desktop.answer("sketchybar") { arguments in
+        guard arguments.first == "--query" else { return .success() }
+        switch arguments.last {
+        case "bar":
+            return .success(#"{"height":35,"position":"top","items":["cpu","battery"]}"#)
+        case "cpu", "battery":
+            let label = arguments.last == "cpu" ? "12%" : "84%"
+            return .success(
+                #"{"geometry":{"position":"right","drawing":"on"},"label":{"value":"\#(label)"},"#
+                    + #""bounding_rects":{"display-1":{"origin":[100,0],"size":[40,35]}}}"#)
+        default:
+            return .failure("no such item")
+        }
+    }
+}
+
 /// The Menu Bar page has drawn its preview and zones.
 @MainActor
 private func waitForMenuBar(_ surface: WebSurface) async throws {
     try await waitFor(
         surface, "the Menu Bar page",
         """
-        return page.text().includes("Changes here are a preview")
-          && !!document.querySelector('[role=group][aria-label="Menu bar preview"]')
+        return !!document.querySelector('[role=group][aria-label="Menu bar preview"]')
           && !!document.querySelector('button[aria-label="Move Battery"]');
         """)
 }
+
+private let applyButton = """
+    const apply = [...document.querySelectorAll("[data-slot=top-bar-actions] button")]
+      .find((button) => button.textContent.trim() === "Apply");
+    """
 
 extension WebInterfaceTests {
     @MainActor
     @Suite("Menu Bar page")
     struct MenuBarPageTests {
-        @Test("the page is drawn here, with the editor in the top bar")
-        func drawnInReact() async throws {
-            try await withHarness { harness in
+        @Test("the page shows the running bar, with Apply waiting for a change")
+        func drawnFromTheBar() async throws {
+            try await withHarness(tools: ["yabai", "sketchybar"]) { harness in
+                await runBar(harness.desktop)
                 let (_, surface) = try harness.settingsPage(pane: .menuBar)
                 try await waitForMenuBar(surface)
                 try await waitFor(
-                    surface, "Open the editor in the top bar",
-                    """
-                    return [...document.querySelectorAll("[data-slot=top-bar-actions] button")]
-                      .some((button) => button.textContent.trim() === "Open the editor");
-                    """)
+                    surface, "the readings and a disabled Apply",
+                    applyButton + """
+                        return page.text().includes("84%") && !!apply && page.disabled(apply)
+                          && !page.text().includes("Open the editor");
+                        """)
             }
         }
 
-        @Test("editing the draft stays on the page and never writes")
-        func editsStayLocal() async throws {
-            try await withHarness { harness in
-                let before = harness.settingsData
+        @Test("Apply moves an item on the bar and saves it for startup")
+        func appliesAMove() async throws {
+            try await withHarness(tools: ["yabai", "sketchybar"]) { harness in
+                await runBar(harness.desktop)
                 let (_, surface) = try harness.settingsPage(pane: .menuBar)
                 try await waitForMenuBar(surface)
 
@@ -49,39 +73,31 @@ extension WebInterfaceTests {
                     surface, "the keyboard move announced",
                     """
                     return [...document.querySelectorAll("[aria-live=polite]")]
-                      .some((region) => region.textContent === "CPU, Left zone, 2 of 2");
+                      .some((region) => region.textContent === "CPU, Centre zone, 1 of 1");
                     """)
+                try await run(surface, applyButton + "apply.click();")
 
-                try await run(surface, #"page.toggle("Centre zone").click();"#)
                 try await waitFor(
-                    surface, "the centre zone",
-                    #"return [...document.querySelectorAll("h3")].some((heading) => heading.textContent === "Centre");"#
-                )
+                    surface, "the change applied", applyButton + "return page.disabled(apply);")
+                let calls = await harness.desktop.calls(to: "sketchybar")
+                #expect(calls.contains { $0.contains("--set") && $0.contains("position=center") })
+                let saved = try harness.store.read().barConfiguration
+                #expect(saved?.components.first { $0.id == "cpu" }?.side == "center")
+            }
+        }
 
-                try await run(
-                    surface,
-                    #"document.querySelector('button[aria-label="Remove Battery"]').click();"#)
+        @Test("a stopped bar says so and nothing can apply")
+        func stoppedBar() async throws {
+            try await withHarness(tools: ["yabai", "sketchybar"]) { harness in
+                await harness.desktop.answer("sketchybar") { _ in
+                    .failure("sketchybar is not running.")
+                }
+                let (_, surface) = try harness.settingsPage(pane: .menuBar)
                 try await waitFor(
-                    surface, "Battery removed",
-                    #"return !document.querySelector('button[aria-label="Move Battery"]');"#)
-
-                try await run(
-                    surface,
-                    """
-                    [...document.querySelectorAll("button")]
-                      .find((button) => button.textContent.trim() === "Reset").click();
-                    """)
-                try await waitFor(
-                    surface, "the draft reset",
-                    """
-                    return !!document.querySelector('button[aria-label="Move Battery"]')
-                      && page.toggle("Centre zone").getAttribute("aria-checked") === "false";
-                    """)
-
-                // swiftlint:disable:next no_fixed_sleep_in_tests - proves editing never writes; an absence has no signal to await.
-                try await Task.sleep(for: .milliseconds(300))
-                #expect(await harness.desktop.writes.isEmpty)
-                #expect(harness.settingsData == before)
+                    surface, "the bar reported as not running",
+                    applyButton + """
+                        return page.text().includes("The bar is not running") && page.disabled(apply);
+                        """)
             }
         }
     }

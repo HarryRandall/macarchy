@@ -18,6 +18,8 @@ import type {
   HealthState,
   HomeState,
   LayoutState,
+  MenuBarItemState,
+  MenuBarState,
   LogEntry,
   ParamsOf,
   ResultOf,
@@ -187,6 +189,44 @@ const layoutFromSettings: LayoutState = {
   unavailableReason:
     "yabai is not running, so these are your saved settings. Start yabai from Advanced to change them.",
   wallpaper: null,
+};
+
+const clock: MenuBarItemState = {
+  id: "calendar",
+  title: "Clock",
+  zone: "right",
+  visible: true,
+  kind: null,
+  text: "",
+  icon: "",
+  command: null,
+  interval: null,
+  reading: "Thu 23 Oct 14:05",
+};
+
+const uptime: MenuBarItemState = {
+  id: "macarchy.uptime-1",
+  title: "Uptime",
+  zone: "centre",
+  visible: true,
+  kind: "command",
+  text: "",
+  icon: "↑",
+  command: "uptime | cut -d, -f1",
+  interval: 60,
+  reading: "",
+};
+
+const menuBar: MenuBarState = {
+  items: [clock, uptime],
+  bar: { height: 35, position: "top", padding: 10 },
+  unavailableReason: null,
+};
+
+const menuBarStopped: MenuBarState = {
+  items: [],
+  bar: { height: 35, position: "top", padding: 10 },
+  unavailableReason: "sketchybar is not running.",
 };
 
 const awakening: ThemeSummary = {
@@ -654,6 +694,43 @@ export const methodFixtures: MethodFixtures = {
     { params: { changes: { windowGap: 20 }, linkPadding: false }, result: null },
   ],
 
+  "menuBar.getState": [
+    { params: {}, result: menuBar },
+    { params: {}, result: menuBarStopped },
+  ],
+  "menuBar.apply": [
+    {
+      params: {
+        items: [
+          {
+            id: "calendar",
+            title: "Clock",
+            zone: "right",
+            visible: false,
+            kind: null,
+            text: "",
+            icon: "",
+            command: null,
+            interval: null,
+          },
+          {
+            id: "macarchy.note-2",
+            title: "Text",
+            zone: "left",
+            visible: true,
+            kind: "text",
+            text: "Hello",
+            icon: "",
+            command: null,
+            interval: null,
+          },
+        ],
+        bar: { height: 30, position: "bottom", padding: 6 },
+      },
+      result: menuBar,
+    },
+  ],
+
   "switcher.getState": [{ params: {}, result: switcher }],
   "switcher.refresh": [{ params: {}, result: switcherWithoutTheme }],
   "switcher.applyTheme": [{ params: { theme: "awakening" }, result: null }],
@@ -860,6 +937,10 @@ export const eventFixtures: EventFixtures = {
     },
   ],
   "shell.logChanged": [{ type: "shell.logChanged" }],
+  "shell.shortcut": [
+    { type: "shell.shortcut", state: { shortcut: "palette" } },
+    { type: "shell.shortcut", state: { shortcut: "back" } },
+  ],
   "layout.changed": [
     {
       type: "layout.changed",

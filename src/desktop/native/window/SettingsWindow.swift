@@ -28,6 +28,17 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { window?.isVisible ?? false }
 
+    /// Runs one of the page's shortcuts for the app menu. Opening the palette
+    /// brings the window forward first; the others need it showing already.
+    func perform(_ shortcut: ShellShortcut) {
+        guard isVisible, let surface, surface.isReady else {
+            if shortcut == .palette { show() }
+            return
+        }
+        if shortcut == .palette { window?.makeKeyAndOrderFront(nil) }
+        surface.send(.shellShortcut(shortcut))
+    }
+
     /// Creates the window and loads its page without showing it.
     @discardableResult
     func preload() -> WebSurface? {
@@ -120,6 +131,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerReport(model: model)
         surface.router.registerThemes(model: model)
         surface.router.registerShortcuts(model: model)
+        surface.router.registerMenuBar(model: model)
     }
 
     /// The window paints its own ground before the page has drawn, and while

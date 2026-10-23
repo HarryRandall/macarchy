@@ -164,9 +164,9 @@ struct ShellBridgeTests {
         #expect(sent.value == 2)
     }
 
-    @Test("React draws every pane and only the Menu Bar editor still opens classic")
+    @Test("React draws every pane and nothing opens the classic window")
     func routing() {
         #expect(Pane.migrated == Set(Pane.allCases))
-        #expect(Pane.allCases.filter(\.opensInClassic) == [.menuBar])
+        #expect(Pane.allCases.filter(\.opensInClassic).isEmpty)
     }
 }

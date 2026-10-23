@@ -29,27 +29,19 @@ struct SettingsApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .toolbar) {
-                // Search and the console are still the classic window's; from
-                // the React window they open it.
-                Button("Search…") { AppDelegate.showClassicWindow(pane: nil, show: .search) }
+                // The page owns these; the menu only names them and passes
+                // them on, since its key equivalents can reach AppKit first.
+                Button("Search…") { SettingsWindow.shared.perform(.palette) }
                     .keyboardShortcut("k", modifiers: .command)
 
-                Button(model.consoleOpen ? "Hide Console" : "Show Console") {
-                    if model.consoleOpen {
-                        model.consoleOpen = false
-                    } else {
-                        AppDelegate.showClassicWindow(pane: nil, show: .console)
-                    }
-                }
-                .keyboardShortcut("c", modifiers: [.command, .option])
+                Button("Show Logs") { SettingsWindow.shared.perform(.logs) }
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
 
-                Button("Back") { model.goBack() }
+                Button("Back") { SettingsWindow.shared.perform(.back) }
                     .keyboardShortcut("[", modifiers: .command)
-                    .disabled(!model.canGoBack)
 
-                Button("Forward") { model.goForward() }
+                Button("Forward") { SettingsWindow.shared.perform(.forward) }
                     .keyboardShortcut("]", modifiers: .command)
-                    .disabled(!model.canGoForward)
             }
         }
     }

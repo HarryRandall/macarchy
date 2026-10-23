@@ -8,6 +8,8 @@ export const menuBarPage = definePage({
   create: (host) =>
     createMenuBarStore({
       getThemes: () => host.request("themes.getState"),
+      getState: () => host.request("menuBar.getState"),
+      apply: (items, bar) => host.request("menuBar.apply", { items, bar }),
       subscribe: host.subscribe,
     }),
   render: (store, context) => <MenuBarPage store={store} context={context} />,

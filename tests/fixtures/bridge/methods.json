@@ -447,6 +447,126 @@
       }
     }
   ],
+  "menuBar.apply": [
+    {
+      "params": {
+        "bar": {
+          "height": 30,
+          "padding": 6,
+          "position": "bottom"
+        },
+        "items": [
+          {
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "text": "",
+            "title": "Clock",
+            "visible": false,
+            "zone": "right"
+          },
+          {
+            "command": null,
+            "icon": "",
+            "id": "macarchy.note-2",
+            "interval": null,
+            "kind": "text",
+            "text": "Hello",
+            "title": "Text",
+            "visible": true,
+            "zone": "left"
+          }
+        ]
+      },
+      "result": {
+        "bar": {
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [
+          {
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "reading": "Thu 23 Oct 14:05",
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "zone": "right"
+          },
+          {
+            "command": "uptime | cut -d, -f1",
+            "icon": "↑",
+            "id": "macarchy.uptime-1",
+            "interval": 60,
+            "kind": "command",
+            "reading": "",
+            "text": "",
+            "title": "Uptime",
+            "visible": true,
+            "zone": "centre"
+          }
+        ],
+        "unavailableReason": null
+      }
+    }
+  ],
+  "menuBar.getState": [
+    {
+      "params": {},
+      "result": {
+        "bar": {
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [
+          {
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "reading": "Thu 23 Oct 14:05",
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "zone": "right"
+          },
+          {
+            "command": "uptime | cut -d, -f1",
+            "icon": "↑",
+            "id": "macarchy.uptime-1",
+            "interval": 60,
+            "kind": "command",
+            "reading": "",
+            "text": "",
+            "title": "Uptime",
+            "visible": true,
+            "zone": "centre"
+          }
+        ],
+        "unavailableReason": null
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "bar": {
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [],
+        "unavailableReason": "sketchybar is not running."
+      }
+    }
+  ],
   "report.copy": [
     {
       "params": {

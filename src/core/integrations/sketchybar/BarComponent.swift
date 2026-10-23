@@ -44,6 +44,10 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
     public var presentation: [String: [String: String]] = [:]
     /// Values captured before the first edit, used by Reset and startup replay.
     public var presentationDefaults: [String: [String: String]] = [:]
+    /// What a `command` component runs, through `sh`, to fill its label.
+    public var command: String?
+    /// Seconds between runs of `command`.
+    public var interval: Int?
 
     public init(
         id: String, title: String, side: String, members: [String],
@@ -99,6 +103,8 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
         presentationDefaults =
             try container.decodeIfPresent(
                 [String: [String: String]].self, forKey: .presentationDefaults) ?? [:]
+        command = try container.decodeIfPresent(String.self, forKey: .command)
+        interval = try container.decodeIfPresent(Int.self, forKey: .interval)
     }
 
     /// Authored boxes use contiguous native slots with no inherited outer padding.

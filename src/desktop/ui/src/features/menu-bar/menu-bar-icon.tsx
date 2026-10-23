@@ -2,75 +2,63 @@ import {
   Activity,
   AppWindow,
   BatteryMedium,
-  Bluetooth,
-  CalendarDays,
   Clock,
-  CloudSun,
-  Coffee,
   Cpu,
-  Globe,
-  Gpu,
-  HardDrive,
   Hash,
   type LucideIcon,
-  Mail,
   MemoryStick,
-  Music,
-  Palette,
+  MoveHorizontal,
   PanelTop,
-  Rocket,
   Terminal,
+  Type,
   Volume2,
   Wifi,
-  Zap,
 } from "lucide-react";
-import type { CSSProperties } from "react";
+import { createElement, type CSSProperties } from "react";
 
-import { BrandMark } from "~/shell/brand-mark";
+import type { BarItem } from "./menu-bar-items";
 
-import type { BarIconName } from "./menu-bar-mock";
-
-const icons: Record<Exclude<BarIconName, "macarchy">, LucideIcon> = {
-  Activity,
-  AppWindow,
-  BatteryMedium,
-  Bluetooth,
-  CalendarDays,
-  Clock,
-  CloudSun,
-  Coffee,
-  Cpu,
-  Globe,
-  Gpu,
-  HardDrive,
-  Hash,
-  Mail,
-  MemoryStick,
-  Music,
-  Palette,
-  PanelTop,
-  Rocket,
-  Terminal,
-  Volume2,
-  Wifi,
-  Zap,
+/** The bar's own items by SketchyBar name; anything else is a panel. */
+const builtIn: Record<string, LucideIcon> = {
+  workspaces: Hash,
+  calendar: Clock,
+  battery: BatteryMedium,
+  cpu: Cpu,
+  memory: MemoryStick,
+  ram: MemoryStick,
+  front_app: AppWindow,
+  network: Activity,
+  wifi: Wifi,
+  volume: Volume2,
 };
+
+const made: Record<NonNullable<BarItem["kind"]>, LucideIcon> = {
+  text: Type,
+  spacer: MoveHorizontal,
+  command: Terminal,
+};
+
+export function iconFor(item: Pick<BarItem, "id" | "kind">): LucideIcon {
+  return item.kind ? made[item.kind] : (builtIn[item.id] ?? PanelTop);
+}
 
 /** A bar item's glyph; decorative, since the item's name is always beside it. */
 export function ItemIcon({
-  icon,
+  item,
   size,
   className,
   style,
 }: {
-  icon: BarIconName;
+  item: Pick<BarItem, "id" | "kind">;
   size: number;
   className?: string;
   style?: CSSProperties;
 }) {
-  if (icon === "macarchy") {
-    return <BrandMark width={size + 2} height={size + 2} className={className} style={style} />;
-  }
-  const Icon = icons[icon];
-  return <Icon aria-hidden size={size} strokeWidth={1.75} className={className} style={style} />;
+  return createElement(iconFor(item), {
+    "aria-hidden": true,
+    size,
+    strokeWidth: 1.75,
+    className,
+    style,
+  });
 }

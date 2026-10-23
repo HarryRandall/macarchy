@@ -39,6 +39,7 @@ import type { HealthEvent, HealthMethods } from "./contract/health";
 import type { HomeEvent, HomeMethods } from "./contract/home";
 import type { ThemesMethods } from "./contract/themes";
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
+import type { MenuBarMethods } from "./contract/menu-bar";
 import type { ReportMethods } from "./contract/report";
 import type { RulesEvent, RulesMethods } from "./contract/rules";
 import type { ShortcutsEvent, ShortcutsMethods } from "./contract/shortcuts";
@@ -52,6 +53,7 @@ export type * from "./contract/home";
 export type * from "./contract/themes";
 export type * from "./contract/shortcuts";
 export type * from "./contract/layout";
+export type * from "./contract/menu-bar";
 export type * from "./contract/report";
 export type * from "./contract/rules";
 export type * from "./contract/shell";
@@ -67,6 +69,7 @@ export interface BridgeMethods
     AppMethods,
     ShellMethods,
     LayoutMethods,
+    MenuBarMethods,
     SwitcherMethods,
     RulesMethods,
     AdvancedMethods,

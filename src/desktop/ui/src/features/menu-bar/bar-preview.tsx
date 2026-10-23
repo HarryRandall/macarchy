@@ -1,8 +1,10 @@
 import { focusRing } from "~/components/ui/focus-ring";
 import { cn } from "~/lib/cn";
 
+import type { MenuBarSettings } from "~/bridge/protocol";
+
 import { ItemIcon } from "./menu-bar-icon";
-import type { BarItem, BarSettings, Zone } from "./menu-bar-mock";
+import { type BarItem, shownText, type Zone } from "./menu-bar-items";
 import type { BarLook } from "./menu-bar-store";
 
 const spaces = ["1", "2", "3", "4", "5"];
@@ -19,53 +21,58 @@ export function BarPreview({
   onSelect,
 }: {
   items: BarItem[];
-  bar: BarSettings;
+  bar: MenuBarSettings;
   look: BarLook;
   active: string | null;
   onSelect: (id: string) => void;
 }) {
+  const shown = (name: Zone) => items.filter((item) => item.zone === name && item.visible);
   const zone = (name: Zone) =>
-    items
-      .filter((item) => item.zone === name && item.on)
-      .map((item) => (
-        <button
-          type="button"
-          key={item.id}
-          aria-label={`Edit ${item.label}`}
-          aria-pressed={item.id === active}
-          onClick={() => onSelect(item.id)}
-          className={cn(
-            "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 whitespace-nowrap transition-colors hover:bg-white/10",
-            focusRing,
-          )}
-          style={{
-            color: look.foreground,
-            background: item.id === active ? "rgba(255,255,255,0.12)" : undefined,
-            boxShadow: item.id === active ? `0 0 0 1px ${look.accent}` : undefined,
-          }}
-        >
-          {item.id === "workspaces" ? (
-            spaces.map((space) => (
-              <span
-                key={space}
-                className="grid size-4 place-items-center rounded-[3px] text-[10px] font-semibold"
-                style={
-                  space === "1"
-                    ? { background: look.accent, color: look.background }
-                    : { opacity: 0.6 }
-                }
-              >
-                {space}
-              </span>
-            ))
-          ) : (
-            <>
-              <ItemIcon icon={item.icon} size={11} style={{ color: look.accent }} />
-              {item.id === "theme_switcher" ? look.themeTitle : item.sample}
-            </>
-          )}
-        </button>
-      ));
+    shown(name).map((item) => (
+      <button
+        type="button"
+        key={item.id}
+        aria-label={`Edit ${item.title}`}
+        aria-pressed={item.id === active}
+        onClick={() => onSelect(item.id)}
+        className={cn(
+          "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 whitespace-nowrap transition-colors hover:bg-white/10",
+          focusRing,
+        )}
+        style={{
+          color: look.foreground,
+          background: item.id === active ? "rgba(255,255,255,0.12)" : undefined,
+          boxShadow: item.id === active ? `0 0 0 1px ${look.accent}` : undefined,
+        }}
+      >
+        {item.id === "workspaces" ? (
+          spaces.map((space) => (
+            <span
+              key={space}
+              className="grid size-4 place-items-center rounded-[3px] text-[10px] font-semibold"
+              style={
+                space === "1"
+                  ? { background: look.accent, color: look.background }
+                  : { opacity: 0.6 }
+              }
+            >
+              {space}
+            </span>
+          ))
+        ) : item.kind === "spacer" ? (
+          <span aria-hidden className="block w-5" />
+        ) : (
+          <>
+            {item.kind === null ? (
+              <ItemIcon item={item} size={11} style={{ color: look.accent }} />
+            ) : item.icon ? (
+              <span style={{ color: look.accent }}>{item.icon}</span>
+            ) : null}
+            {shownText(item)}
+          </>
+        )}
+      </button>
+    ));
 
   const strip = (
     <div
@@ -80,7 +87,7 @@ export function BarPreview({
     >
       <div className="flex min-w-0 items-center gap-1 overflow-hidden">{zone("left")}</div>
       <div className="flex items-center justify-center gap-1 px-2">
-        {bar.centre ? (
+        {shown("centre").length > 0 ? (
           zone("centre")
         ) : bar.position === "top" ? (
           <span aria-hidden className="block h-full w-[132px] rounded-b-[9px] bg-black" />

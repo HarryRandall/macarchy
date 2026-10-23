@@ -1,6 +1,6 @@
-/** The window's own shortcuts. ⌘Q is the app menu's, so it is not here. */
-export type ShellShortcut =
-  "palette" | "sidebar" | "back" | "forward" | "shortcuts" | "logs" | "reload" | "folder";
+import type { ShellShortcut } from "~/bridge/protocol";
+
+export type { ShellShortcut };
 
 interface KeyPress {
   key: string;

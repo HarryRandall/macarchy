@@ -1,17 +1,17 @@
-import { EyeOff, GripVertical, Pencil, Plus, Terminal, Trash } from "lucide-react";
+import { EyeOff, GripVertical, Pencil, Plus, Trash } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useRef } from "react";
 
 import { Button } from "~/components/ui/button";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
+import { SegmentedControl } from "~/components/ui/segmented-control";
 import { Switch } from "~/components/ui/switch";
 import { Field, Input } from "~/components/ui/text-field";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
-import { zoneLabels } from "./menu-bar-items";
 import { ItemIcon } from "./menu-bar-icon";
-import type { BarItem, Zone } from "./menu-bar-mock";
+import { type BarItem, glyphs, intervals, type Zone, zoneLabels } from "./menu-bar-items";
 
 /** What a key on an item's handle asks for: a step within its zone, or to the next zone. */
 export type KeyMove = { kind: "step" | "zone"; direction: -1 | 1 };
@@ -29,7 +29,6 @@ export type DropTarget = { item: string } | { zone: Zone } | null;
 export function BarZone({
   zone,
   items,
-  centre,
   editing,
   dragging,
   over,
@@ -46,7 +45,6 @@ export function BarZone({
 }: {
   zone: Zone;
   items: BarItem[];
-  centre: boolean;
   editing: string | null;
   dragging: string | null;
   over: DropTarget;
@@ -81,7 +79,7 @@ export function BarZone({
         <h3 id={headingId} className="flex-1">
           {zoneLabels[zone]}
         </h3>
-        <span className="tabular-nums">{items.filter((item) => item.on).length} shown</span>
+        <span className="tabular-nums">{items.filter((item) => item.visible).length} shown</span>
       </div>
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
@@ -120,7 +118,7 @@ export function BarZone({
                 <Tooltip content="Drag, or use the arrow keys, to move" describe={false}>
                   <button
                     type="button"
-                    aria-label={`Move ${item.label}`}
+                    aria-label={`Move ${item.title}`}
                     aria-describedby={moveHintId}
                     data-move-handle={item.id}
                     onKeyDown={(event: KeyboardEvent) => {
@@ -138,32 +136,31 @@ export function BarZone({
                   </button>
                 </Tooltip>
                 <ItemIcon
-                  icon={item.icon}
+                  item={item}
                   size={13}
-                  className={cn("shrink-0", item.on ? "text-fg-secondary" : "text-fg-tertiary")}
+                  className={cn(
+                    "shrink-0",
+                    item.visible ? "text-fg-secondary" : "text-fg-tertiary",
+                  )}
                 />
                 <span
                   className={cn(
                     "min-w-0 flex-1 truncate text-detail font-medium",
-                    item.on ? "text-fg" : "text-fg-tertiary",
+                    item.visible ? "text-fg" : "text-fg-tertiary",
                   )}
                 >
-                  {item.label}
+                  {item.title}
                 </span>
-                {!item.on ? (
+                {!item.visible ? (
                   <Tooltip content="Hidden">
                     <span className="shrink-0 text-fg-tertiary">
                       <EyeOff aria-hidden size={12} />
                       <span className="sr-only">Hidden</span>
                     </span>
                   </Tooltip>
-                ) : item.sample && !centre ? (
-                  <span className="max-w-[110px] truncate font-mono text-caption text-fg-tertiary">
-                    {item.sample}
-                  </span>
                 ) : null}
                 <IconButton
-                  label={`Edit ${item.label}`}
+                  label={`Edit ${item.title}`}
                   size="sm"
                   pressed={open}
                   aria-expanded={open}
@@ -171,14 +168,16 @@ export function BarZone({
                 >
                   <Pencil aria-hidden />
                 </IconButton>
-                <IconButton
-                  label={`Remove ${item.label}`}
-                  size="sm"
-                  tone="danger"
-                  onClick={() => onRemove(item.id)}
-                >
-                  <Trash aria-hidden />
-                </IconButton>
+                {item.kind ? (
+                  <IconButton
+                    label={`Remove ${item.title}`}
+                    size="sm"
+                    tone="danger"
+                    onClick={() => onRemove(item.id)}
+                  >
+                    <Trash aria-hidden />
+                  </IconButton>
+                ) : null}
               </div>
               {open ? (
                 <ItemEditor
@@ -222,7 +221,7 @@ function ItemEditor({
   onDone: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const hasText = item.id !== "workspaces" && item.icon !== "macarchy";
+  const glyphLabelId = useId();
   const onEnter = (event: KeyboardEvent) => {
     if (event.key === "Enter") onDone();
   };
@@ -233,39 +232,79 @@ function ItemEditor({
   return (
     <div ref={ref} className="flex flex-col gap-2.5 border-t border-hairline px-3 pt-2.5 pb-3">
       <Field.Root>
-        <Field.Label className="text-small text-fg-secondary">Label</Field.Label>
+        <Field.Label className="text-small text-fg-secondary">Name</Field.Label>
         <Input
           size="sm"
-          value={item.label}
-          onChange={(event) => onChange({ label: event.currentTarget.value })}
+          value={item.title}
+          onChange={(event) => onChange({ title: event.currentTarget.value })}
           onKeyDown={onEnter}
         />
       </Field.Root>
-      {hasText ? (
+      {item.kind === "text" ? (
         <Field.Root>
-          <Field.Label className="text-small text-fg-secondary">Preview text</Field.Label>
+          <Field.Label className="text-small text-fg-secondary">Text</Field.Label>
           <Input
             size="sm"
-            variant="mono"
-            value={item.sample}
-            onChange={(event) => onChange({ sample: event.currentTarget.value })}
+            value={item.text}
+            onChange={(event) => onChange({ text: event.currentTarget.value })}
             onKeyDown={onEnter}
           />
         </Field.Root>
       ) : null}
-      {item.custom ? (
-        <div className="flex items-center gap-1.5 font-mono text-caption text-fg-tertiary">
-          <Terminal aria-hidden size={11} className="shrink-0" />
-          <span className="min-w-0 truncate">{item.custom.command}</span>
-          <span className="shrink-0">every {item.custom.interval}</span>
+      {item.kind === "command" ? (
+        <>
+          <Field.Root>
+            <Field.Label className="text-small text-fg-secondary">Command</Field.Label>
+            <Input
+              size="sm"
+              variant="mono"
+              value={item.command ?? ""}
+              placeholder="uptime | cut -d, -f1"
+              onChange={(event) => onChange({ command: event.currentTarget.value })}
+              onKeyDown={onEnter}
+            />
+            <Field.Description className="text-caption text-fg-tertiary">
+              Runs in sh; what it prints becomes the label
+            </Field.Description>
+          </Field.Root>
+          <SegmentedControl
+            label="Update every"
+            size="sm"
+            value={String(item.interval ?? 30)}
+            options={intervals}
+            onValueChange={(value) => onChange({ interval: Number(value) })}
+            className="self-start"
+          />
+        </>
+      ) : null}
+      {item.kind === "text" || item.kind === "command" ? (
+        <div className="flex flex-col gap-1.5">
+          <span id={glyphLabelId} className="text-small text-fg-secondary">
+            Glyph
+          </span>
+          <div role="group" aria-labelledby={glyphLabelId} className="flex flex-wrap gap-1">
+            {glyphs.map((glyph) => (
+              <IconButton
+                key={glyph || "none"}
+                label={glyph ? `Glyph ${glyph}` : "No glyph"}
+                size="sm"
+                pressed={item.icon === glyph}
+                onClick={() => onChange({ icon: glyph })}
+              >
+                <span aria-hidden className="text-detail">
+                  {glyph || "–"}
+                </span>
+              </IconButton>
+            ))}
+          </div>
         </div>
       ) : null}
       <div className="flex items-center gap-2 pt-0.5">
         <Switch
           size="sm"
           aria-label="Visible"
-          checked={item.on}
-          onCheckedChange={(checked) => onChange({ on: checked })}
+          checked={item.visible}
+          onCheckedChange={(checked) => onChange({ visible: checked })}
         />
         <span aria-hidden className="flex-1 text-small text-fg-secondary">
           Visible

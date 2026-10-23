@@ -30,7 +30,7 @@ import { formatLogTime, LogsPanel } from "./logs-panel";
 import { groups, overview, panes, reactPanes, type Route, routeTitle } from "./panes";
 import { ServiceStatus } from "./service-status";
 import type { ShellSnapshot, ShellStore } from "./shell-store";
-import { shortcutFor } from "./shortcuts";
+import { type ShellShortcut, shortcutFor } from "./shortcuts";
 import type { Signal } from "./signal";
 import { Sidebar } from "./sidebar";
 import { ToastHost } from "./toast-host";
@@ -239,25 +239,14 @@ export function SettingsShell({
     saveLogsHeight(height);
   };
 
-  // The window's shortcuts read the latest render through a ref, so the
-  // listener is added once.
+  // The window's shortcuts read the latest render through refs, so the
+  // listeners are added once.
   const keys = useRef<(event: KeyboardEvent) => void>(() => {});
+  const runShortcut = useRef<(shortcut: ShellShortcut) => void>(() => {});
+  /** The last shortcut the page took from the keyboard, so the menu's echo of it is ignored. */
+  const lastKey = useRef<{ shortcut: ShellShortcut; at: number } | null>(null);
   useEffect(() => {
-    keys.current = (event) => {
-      if (event.key === "Escape") {
-        if (!logsOpen || event.defaultPrevented) return;
-        if (paletteOpen || aboutOpen || menuOpen || servicesOpen) return;
-        const active = document.activeElement;
-        if (active?.closest(escapeOwners) || isFilledField(active)) return;
-        event.preventDefault();
-        closeLogs();
-        return;
-      }
-      const shortcut = shortcutFor(event);
-      if (!shortcut) return;
-      // A dialog keeps the window's shortcuts from acting behind it, bar the palette's own.
-      if (shortcut !== "palette" && document.activeElement?.closest(modal)) return;
-      event.preventDefault();
+    runShortcut.current = (shortcut) => {
       switch (shortcut) {
         case "palette":
           setPaletteOpen((open) => !open);
@@ -285,12 +274,40 @@ export function SettingsShell({
           break;
       }
     };
+    keys.current = (event) => {
+      if (event.key === "Escape") {
+        if (!logsOpen || event.defaultPrevented) return;
+        if (paletteOpen || aboutOpen || menuOpen || servicesOpen) return;
+        const active = document.activeElement;
+        if (active?.closest(escapeOwners) || isFilledField(active)) return;
+        event.preventDefault();
+        closeLogs();
+        return;
+      }
+      const shortcut = shortcutFor(event);
+      if (!shortcut) return;
+      // A dialog keeps the window's shortcuts from acting behind it, bar the palette's own.
+      if (shortcut !== "palette" && document.activeElement?.closest(modal)) return;
+      event.preventDefault();
+      lastKey.current = { shortcut, at: performance.now() };
+      runShortcut.current(shortcut);
+    };
   });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => keys.current(event);
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+  useEffect(
+    () =>
+      shell.onShortcut((shortcut) => {
+        const last = lastKey.current;
+        if (last?.shortcut === shortcut && performance.now() - last.at < 150) return;
+        if (shortcut !== "palette" && document.activeElement?.closest(modal)) return;
+        runShortcut.current(shortcut);
+      }),
+    [shell],
+  );
 
   const commands: PaletteCommand[] = [
     ...[...overview, ...groups.flatMap((group) => group.panes)].map((id): PaletteCommand => ({

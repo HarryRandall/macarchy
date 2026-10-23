@@ -123,10 +123,9 @@ export function SettingsApp({
   const context = useMemo<PageContext>(
     () => ({
       navigate: (target) => go(target),
-      openClassic: (params) => shell.openClassic(params),
       openLogs: () => logsRequest.emit(),
     }),
-    [go, shell, logsRequest],
+    [go, logsRequest],
   );
 
   // Before paint, so the first frame already carries the theme's accent.

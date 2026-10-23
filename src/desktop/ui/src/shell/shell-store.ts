@@ -5,6 +5,7 @@ import type {
   BridgeMethods,
   PaneId,
   ServiceId,
+  ShellShortcut,
   ShellState,
 } from "~/bridge/protocol";
 import { createListeners } from "~/lib/store";
@@ -37,14 +38,17 @@ type Request = <M extends ShellMethod>(
   params: BridgeMethods[M]["params"],
 ) => Promise<BridgeMethods[M]["result"]>;
 
+type ShellEventType = "shell.changed" | "shell.shortcut";
+
 export function createShellStore(deps: {
   request: Request;
-  subscribe(
-    type: "shell.changed",
-    handler: (event: Extract<BridgeEvent, { type: "shell.changed" }>) => void,
+  subscribe<T extends ShellEventType>(
+    type: T,
+    handler: (event: Extract<BridgeEvent, { type: T }>) => void,
   ): () => void;
 }) {
   const listeners = createListeners();
+  const shortcutListeners = new Set<(shortcut: ShellShortcut) => void>();
   let snapshot: ShellSnapshot = {
     status: "loading",
     state: null,
@@ -81,6 +85,10 @@ export function createShellStore(deps: {
 
   deps.subscribe("shell.changed", (event) => {
     set({ status: "ready", state: withPending(event.state), error: null });
+  });
+
+  deps.subscribe("shell.shortcut", (event) => {
+    for (const listener of shortcutListeners) listener(event.state.shortcut);
   });
 
   /** Marks a service busy for the length of a request; failures reach the caller. */
@@ -147,8 +155,10 @@ export function createShellStore(deps: {
       set({ error: null });
     },
 
-    openClassic(params: BridgeMethods["shell.openClassic"]["params"]) {
-      deps.request("shell.openClassic", params).catch(report);
+    /** Hears the shortcuts the app menu passes on. */
+    onShortcut(listener: (shortcut: ShellShortcut) => void): () => void {
+      shortcutListeners.add(listener);
+      return () => shortcutListeners.delete(listener);
     },
 
     /** Restarts a running service, or starts a stopped one. Rejects with the host's reason. */
