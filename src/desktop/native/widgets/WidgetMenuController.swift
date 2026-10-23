@@ -17,7 +17,10 @@ final class WidgetMenuController {
     /// The widget whose dropdown a click outside just closed, and when. The
     /// same click reaches the bar and asks to open it again, which it ignores.
     private var lastClosed: (id: String, at: Date)?
-    private var monitor: Any?
+    private var monitors: [Any] = []
+    /// Where each widget's item was last seen, so a dropdown opens without
+    /// waiting to ask SketchyBar. Checked again after it opens.
+    private var frames: [String: NSRect] = [:]
     private var refresher: Task<Void, Never>?
     private var observers: [NSObjectProtocol] = []
 
@@ -34,13 +37,30 @@ final class WidgetMenuController {
                     if let id { WidgetMenuController.shared.toggle(id) }
                 }
             })
-        observers.append(
-            NSWorkspace.shared.notificationCenter.addObserver(
-                forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
-            ) { _ in
-                MainActor.assumeIsolated { WidgetMenuController.shared.close() }
-            })
+        // Changing Space, or another app coming forward, means the person
+        // has moved on, as a click elsewhere does.
+        for name in [
+            NSWorkspace.activeSpaceDidChangeNotification,
+            NSWorkspace.didActivateApplicationNotification
+        ] {
+            observers.append(
+                NSWorkspace.shared.notificationCenter.addObserver(
+                    forName: name, object: nil, queue: .main
+                ) { _ in
+                    MainActor.assumeIsolated { WidgetMenuController.shared.close(byClick: true) }
+                })
+        }
         model.pick = { [weak self] row, option in self?.pick(row, option: option) }
+        _ = makePanel()
+        Task { await warmFrames() }
+    }
+
+    /// Learns where every widget sits, so the first dropdown opens quickly too.
+    private func warmFrames() async {
+        await host.reload()
+        for instance in await host.instances {
+            if let frame = await Self.frame(of: instance.id) { frames[instance.id] = frame }
+        }
     }
 
     func toggle(_ id: String) {
@@ -52,19 +72,26 @@ final class WidgetMenuController {
     }
 
     private func open(_ id: String) async {
-        guard let items = await host.menu(for: id), !items.isEmpty,
-            let item = await Self.frame(of: id)
-        else { return }
+        guard let items = await host.menu(for: id), !items.isEmpty else { return }
+        let cached = frames[id]
+        var found = cached
+        if found == nil { found = await Self.frame(of: id) }
+        guard let item = found else { return }
         close()
         model.items = items
         let panel = panel ?? makePanel()
-        let size = panel.contentView?.fittingSize ?? .zero
-        panel.setFrame(Self.placement(of: size, under: item), display: true)
+        place(panel, under: item)
         panel.orderFrontRegardless()
         openID = id
-        monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
-            _ in
-            MainActor.assumeIsolated { WidgetMenuController.shared.close(byClick: true) }
+        watchClicks(outside: panel)
+        if cached != nil {
+            // The bar may have moved since; follow it if so.
+            if let current = await Self.frame(of: id), current != item, openID == id {
+                frames[id] = current
+                place(panel, under: current)
+            }
+        } else {
+            frames[id] = item
         }
         // Readings such as a clock keep moving while the dropdown is open.
         refresher = Task { [weak self] in
@@ -81,9 +108,41 @@ final class WidgetMenuController {
         openID = nil
         refresher?.cancel()
         refresher = nil
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = nil
+        for monitor in monitors { NSEvent.removeMonitor(monitor) }
+        monitors = []
         panel?.orderOut(nil)
+    }
+
+    private func place(_ panel: NSPanel, under item: NSRect) {
+        let size = panel.contentView?.fittingSize ?? .zero
+        panel.setFrame(Self.placement(of: size, under: item), display: true)
+    }
+
+    /// Closes on a click anywhere but the dropdown: in another app, on the
+    /// desktop, or in one of Macarchy's own windows.
+    private func watchClicks(outside panel: NSPanel) {
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        if let global = NSEvent.addGlobalMonitorForEvents(
+            matching: mask,
+            handler: { _ in
+                MainActor.assumeIsolated { WidgetMenuController.shared.close(byClick: true) }
+            })
+        {
+            monitors.append(global)
+        }
+        if let local = NSEvent.addLocalMonitorForEvents(
+            matching: mask,
+            handler: { event in
+                MainActor.assumeIsolated {
+                    if event.window !== WidgetMenuController.shared.panel {
+                        WidgetMenuController.shared.close(byClick: true)
+                    }
+                }
+                return event
+            })
+        {
+            monitors.append(local)
+        }
     }
 
     private func pick(_ row: Int, option: String?) {

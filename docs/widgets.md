@@ -39,7 +39,19 @@ not used in its place.
 
 Dropdown rows have a `type`: `heading`, `text`, `reading`, `action`, `toggle`,
 `choice`, `graph`, `cores`, `apps` or `divider`. An action runs or opens
-something; a toggle or choice changes one of the widget's settings.
+something; a toggle or choice changes one of the widget's settings. A provider
+can print `rows` to replace them, for lists that change.
+
+The richer rows read their `value` as text, usually a reading the provider
+fills in:
+
+| Row | Value |
+|---|---|
+| `graph` | Numbers out of 100, separated by commas: `12,30,45`. |
+| `cores` | Two groups of numbers, performance then efficiency cores: `62,48,71\|80,74`. |
+| `apps` | `Name:value` pairs separated by commas, such as `Firefox:9%`; the value is optional. Icons come from the app. |
+
+Macarchy draws the dropdown itself, in a panel that never takes focus.
 
 A widget whose provider, click or dropdown runs a command is a scripted
 widget. It runs as the person, and the interface marks it with a Script badge.

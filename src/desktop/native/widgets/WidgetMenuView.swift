@@ -76,6 +76,12 @@ struct WidgetMenuView: View {
                     Text(option)
                 }
             }
+        case "graph":
+            MenuGraph(caption: item.label, points: MenuValues.numbers(item.value))
+        case "cores":
+            MenuCores(groups: MenuValues.groups(item.value))
+        case "apps":
+            MenuApps(apps: MenuValues.apps(item.value))
         default:
             HStack {
                 Text(item.label)

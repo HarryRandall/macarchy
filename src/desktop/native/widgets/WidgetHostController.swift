@@ -15,10 +15,16 @@ final class WidgetHostController {
     private var powerSource: CFRunLoopSource?
     private var stream: FSEventStreamRef?
     private var lastBar: Data?
+    /// Keeps App Nap away: napping delays the host's timers and the click
+    /// notifications from the bar, which makes widgets and dropdowns lag.
+    private var activity: NSObjectProtocol?
 
     func start() {
         guard observers.isEmpty else { return }
         lastBar = barData()
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep],
+            reason: "Keeping bar widgets and their dropdowns responsive")
         Task { await host.start() }
         let workspace = NSWorkspace.shared.notificationCenter
         observe(workspace, NSWorkspace.didWakeNotification, event: "system_woke")
@@ -80,8 +86,12 @@ final class WidgetHostController {
 
     private func filesChanged(_ paths: [String]) {
         let widgets = Paths.widgetsDirectory.resolvingSymlinksInPath().path + "/"
+        // Hidden files are a widget's own scratch state, such as a history it
+        // keeps between runs; restarting on those would never stop.
         let touchedWidgets = paths.contains {
-            URL(fileURLWithPath: $0).resolvingSymlinksInPath().path.hasPrefix(widgets)
+            let url = URL(fileURLWithPath: $0)
+            return !url.lastPathComponent.hasPrefix(".")
+                && url.resolvingSymlinksInPath().path.hasPrefix(widgets)
         }
         let bar = barData()
         guard touchedWidgets || bar != lastBar else { return }
