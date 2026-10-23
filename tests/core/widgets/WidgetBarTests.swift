@@ -137,7 +137,7 @@ struct WidgetBarTests {
             arguments[$0 + 1]
         }
         #expect(targets == ["macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"])
-        #expect(arguments.contains("icon.width=36") && arguments.contains("label.padding_left=-36"))
+        #expect(arguments.contains("width=39") && arguments.contains("label.padding_right=-36"))
         #expect(arguments.contains("background.border_width=1"))
 
         let recorder = CallRecorder()

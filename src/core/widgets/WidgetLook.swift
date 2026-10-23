@@ -52,6 +52,16 @@ public struct WidgetLook: Sendable {
     /// The bracket that draws a two-line widget's box around both items.
     public static func boxID(_ id: String) -> String { id + ".box" }
 
+    /// How wide a character of the stacked lines' font is, in points.
+    static let characterWidth = 6
+
+    /// The characters in a two-line widget's widest sample line, which sets
+    /// the width of its column.
+    public static func columnCharacters(_ manifest: WidgetManifest) -> Int {
+        let widest = (manifest.samples?.widest ?? "100.0%").split(separator: "\n").map(\.count)
+        return max(widest.max() ?? 6, 3)
+    }
+
     /// Whether the widget stacks its label's two lines beside its icon.
     public func isStacked(_ component: BarComponent) -> Bool {
         component.widget.flatMap { manifests[$0] }?.style?.lines == 2
@@ -109,18 +119,18 @@ public struct WidgetLook: Sendable {
     private func stackedArguments(
         _ component: BarComponent, manifest: WidgetManifest, style: WidgetStyle, icon: [String]
     ) -> [String] {
-        let widest =
-            (manifest.samples?.widest ?? "100.0%").split(separator: "\n")
-            .map(\.count).max() ?? 6
-        let column = max(widest, 3) * 6
+        // As the bar's stacked readings have always been drawn: each line
+        // takes no width of its own and is right-aligned at the column's
+        // edge, so the two end exactly over each other.
+        let column = Self.columnCharacters(manifest) * Self.characterWidth
         let font = "Menlo:Bold:10.0"
+        let right = Int(style.paddingRight ?? 8)
         var lines = [
-            "icon.font=\(font)", "label.font=\(font)", "icon.width=\(column)",
-            "label.width=\(column)", "icon.align=right", "label.align=right",
-            "icon.y_offset=6", "label.y_offset=-6", "icon.padding_left=0", "icon.padding_right=0",
-            "label.padding_left=-\(column)", "label.padding_right=0", "padding_left=0",
-            "padding_right=\(Int(style.paddingRight ?? 8))",
-            "width=\(column + Int(style.paddingRight ?? 8))",
+            "icon.font=\(font)", "label.font=\(font)", "icon.width=0", "label.width=0",
+            "icon.align=right", "label.align=right", "icon.y_offset=6", "label.y_offset=-5",
+            "icon.padding_left=\(column)", "icon.padding_right=-\(column)",
+            "label.padding_left=\(column)", "label.padding_right=-\(column)", "padding_left=0",
+            "padding_right=\(right)", "width=\(column + 3)",
             "background.drawing=off", "script=", icon.first { $0.hasPrefix("click_script=") } ?? ""
         ]
         if let colour = style.textColour.flatMap(colour) {
