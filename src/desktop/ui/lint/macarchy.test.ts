@@ -92,6 +92,30 @@ const cases: Case[] = [
   },
   {
     rule: suppression,
+    name: "allows a reason that starts with global or eslint",
+    code: `// global state leaks between renders, so log it here.
+// oxlint-disable-next-line no-console
+console.log(1);
+/* eslint warns about this, but the output is the point */
+// oxlint-disable-next-line no-console
+console.log(2);
+`,
+    errors: 0,
+  },
+  {
+    rule: suppression,
+    name: "does not take a globals directive as the reason",
+    code: `/* global reporter: writable */\n// oxlint-disable-next-line no-console\nconsole.log(1);\n`,
+    errors: 1,
+  },
+  {
+    rule: suppression,
+    name: "does not take a rule configuration as the reason",
+    code: `/* eslint no-console: "off" */\n// oxlint-disable-next-line no-alert\nalert(1);\n`,
+    errors: 1,
+  },
+  {
+    rule: suppression,
     name: "reports a disable comment without a reason",
     code: `// oxlint-disable-next-line no-console\nconsole.log(1);\n`,
     errors: 1,
@@ -480,6 +504,12 @@ export const user = { id };
     rule: comments,
     name: "reports a TODO without an issue",
     code: `// TODO: tidy this up\nexport const a = 1;\n`,
+    errors: 1,
+  },
+  {
+    rule: comments,
+    name: "checks prose that starts with global",
+    code: `// global TODO: share this cache\nexport const a = 1;\n`,
     errors: 1,
   },
   {

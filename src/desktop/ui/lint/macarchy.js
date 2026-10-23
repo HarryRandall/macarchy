@@ -46,7 +46,25 @@ function lineOf(context, node) {
 }
 
 const DIRECTIVE =
-  /^\s*\*?\s*(?:(?:oxlint|eslint)-(?:disable|enable)|eslint\s|globals?\s|@ts-|@vitest-environment|prettier-ignore|#(?:end)?region\b|\/\s*<reference\b)/;
+  /^\s*\*?\s*(?:(?:oxlint|eslint)-(?:disable|enable)\b|@ts-|@vitest-environment|prettier-ignore|#(?:end)?region\b|\/\s*<reference\b)/;
+/** `eslint rule: value` in a block comment, which configures rules for the file. */
+const RULE_CONFIG = /^\s*\*?\s*eslint\s+[@\w/-]+\s*:/;
+/** `global name, other: writable` in a block comment, which declares globals. */
+const GLOBALS =
+  /^\s*\*?\s*globals?\s+[\w$]+(?:\s*:\s*\w+)?(?:\s*,\s*[\w$]+(?:\s*:\s*\w+)?)*\s*,?\s*(?:--[^]*)?$/;
+
+/**
+ * True for a comment a tool reads as an instruction rather than prose.
+ * Rule configuration and globals only take effect in block comments, so a
+ * line comment that starts with "global" or "eslint" is ordinary prose.
+ * @param {Comment} comment
+ */
+function isDirective(comment) {
+  if (DIRECTIVE.test(comment.value)) return true;
+  return (
+    comment.type === "Block" && (RULE_CONFIG.test(comment.value) || GLOBALS.test(comment.value))
+  );
+}
 
 /**
  * @param {Context} context
@@ -63,7 +81,7 @@ function commentEntries(context) {
       text: comment.value,
       startLine: sourceCode.getLocFromIndex(start).line,
       endLine: sourceCode.getLocFromIndex(endOf(comment)).line,
-      directive: DIRECTIVE.test(comment.value),
+      directive: isDirective(comment),
       trailing: source.slice(lineStart, start).trim() !== "",
     };
   });
