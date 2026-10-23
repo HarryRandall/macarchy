@@ -474,6 +474,9 @@ function compoundBefore(selector, end) {
   return selector.slice(index + 1, end);
 }
 
+/** Tags that stand for the whole document, as `:root` does. */
+const DOCUMENT_TAGS = new Set(["html", "body"]);
+
 /**
  * Tailwind's `&` is the utility's own generated class, so it anchors too.
  * @param {string} compound
@@ -482,12 +485,12 @@ function isAnchored(compound) {
   const bare = compound.replace(/\((?:[^()]|\([^()]*\))*\)/g, "");
   if (/[&.#[]/.test(bare)) return true;
   const tag = /^[a-z][\w-]*/i.exec(bare)?.[0];
-  return tag !== undefined && tag.toLowerCase() !== "html";
+  return tag !== undefined && !DOCUMENT_TAGS.has(tag.toLowerCase());
 }
 
 /**
  * The first arbitrary variant in `text` whose `:has()` hangs off the
- * document root, `*` or nothing at all.
+ * document root, `html`, `body`, `*` or nothing at all.
  * @param {string} text
  */
 function unscopedHasVariant(text) {

@@ -376,6 +376,12 @@ export const a = (
     code: `export const a = "[html:has(.menu)_&]:hidden";\n`,
     errors: 1,
   },
+  {
+    rule: has,
+    name: "reports the body element",
+    code: `export const a = "[body:has(dialog[open])_&]:overflow-hidden";\n`,
+    errors: 1,
+  },
 
   {
     rule: resize,
