@@ -88,8 +88,8 @@ extension AppearanceMode {
     }
 }
 
-/// What the shell is sent, built from the same models the status menu and the
-/// classic window read, so every entry point shows the same state.
+/// What the shell is sent, built from the same models the status menu reads,
+/// so every entry point shows the same state.
 extension AppModel {
     func shellState() -> ShellState {
         ShellState(
