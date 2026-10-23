@@ -696,23 +696,25 @@ const noWallClockInTests = {
   /** @param {Context} context */
   create(context) {
     let systemTime = 0;
-    /** @param {Node} node */
-    const report = (node) =>
-      context.report({
-        node,
-        message:
-          "Tests must not read the real clock. Use vi.useFakeTimers() with vi.setSystemTime(), or pass a clock in.",
-      });
+    let fakeTimers = false;
+    let pinnedDate = false;
+    /**
+     * Reads of `Date`, which `vi.setSystemTime` pins even without fake
+     * timers, and of the monotonic clocks, which only fake timers replace.
+     * @type {{ date: Node[], monotonic: Node[] }}
+     */
+    const reads = { date: [], monotonic: [] };
     return {
       /** @param {Node} node */
       CallExpression(node) {
+        if (isMember(node.callee, "vi", "useFakeTimers")) fakeTimers = true;
         if (isMember(node.callee, "vi", "setSystemTime")) {
+          pinnedDate = true;
           systemTime++;
-        } else if (
-          systemTime === 0 &&
-          (isMember(node.callee, "Date", "now") || isMember(node.callee, "performance", "now"))
-        ) {
-          report(node);
+        } else if (systemTime === 0 && isMember(node.callee, "Date", "now")) {
+          reads.date.push(node);
+        } else if (systemTime === 0 && isMember(node.callee, "performance", "now")) {
+          reads.monotonic.push(node);
         }
       },
       /** @param {Node} node */
@@ -722,12 +724,25 @@ const noWallClockInTests = {
       /** @param {Node} node */
       NewExpression(node) {
         if (systemTime === 0 && isGlobal(node.callee, "Date") && node.arguments.length === 0) {
-          report(node);
+          reads.date.push(node);
         }
       },
       /** @param {Node} node */
       MemberExpression(node) {
-        if (systemTime === 0 && isMember(node, "process", "hrtime")) report(node);
+        if (systemTime === 0 && isMember(node, "process", "hrtime")) reads.monotonic.push(node);
+      },
+      "Program:exit"() {
+        const real = [
+          ...(fakeTimers || pinnedDate ? [] : reads.date),
+          ...(fakeTimers ? [] : reads.monotonic),
+        ];
+        for (const node of real) {
+          context.report({
+            node,
+            message:
+              "Tests must not read the real clock. Use vi.useFakeTimers() with vi.setSystemTime(), or pass a clock in.",
+          });
+        }
       },
     };
   },

@@ -475,6 +475,33 @@ export const fixed = new Date("2026-10-21T09:00:00Z");
   },
   {
     rule: clock,
+    name: "allows reading the clock after fake timers pin it",
+    code: `vi.useFakeTimers();
+vi.setSystemTime(new Date(2026, 0, 1));
+export const created = Date.now();
+export const today = new Date();
+export const started = performance.now();
+`,
+    errors: 0,
+  },
+  {
+    rule: clock,
+    name: "allows Date once setSystemTime pins it in a hook",
+    code: `beforeEach(() => vi.setSystemTime(new Date(2026, 0, 1)));
+export const created = () => Date.now();
+`,
+    errors: 0,
+  },
+  {
+    rule: clock,
+    name: "reports performance.now() when only Date is pinned",
+    code: `vi.setSystemTime(new Date(2026, 0, 1));
+export const started = performance.now();
+`,
+    errors: 1,
+  },
+  {
+    rule: clock,
     name: "reports Date.now()",
     code: `export const now = Date.now();\n`,
     errors: 1,
