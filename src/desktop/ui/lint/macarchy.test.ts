@@ -247,6 +247,94 @@ export const a = (
   },
 
   {
+    rule: gutter,
+    name: "allows a gutter switched on through a cn object",
+    code: `declare function cn(...classes: unknown[]): string;
+declare const scrolls: boolean;
+export const a = (
+  <div className={cn("overflow-y-auto", { "[scrollbar-gutter:stable_both-edges]": scrolls })}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 0,
+  },
+  {
+    rule: gutter,
+    name: "ignores a class cut by a template expression",
+    code: `declare const axis: string;
+export const a = (
+  <div className={\`flex overflow-\${axis}-auto\`}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 0,
+  },
+  {
+    rule: gutter,
+    name: "reports a template literal with an expression",
+    code: `declare const extra: string;
+export const a = (
+  <div className={\`overflow-y-auto \${extra}\`}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a cn object key",
+    code: `declare function cn(...classes: unknown[]): string;
+declare const scrolls: boolean;
+export const a = (
+  <div className={cn("flex", { "overflow-y-auto": scrolls })}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports an array argument to clsx",
+    code: `declare function clsx(...classes: unknown[]): string;
+export const a = (
+  <div className={clsx(["flex", "overflow-auto"])}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a class read through twMerge",
+    code: `declare function twMerge(...classes: string[]): string;
+declare const extra: string;
+export const a = (
+  <div className={twMerge("overflow-y-auto", extra)}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a fallback behind ?? and a type assertion",
+    code: `declare const custom: string | undefined;
+export const a = (
+  <div className={(custom ?? "overflow-y-auto") as string}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+
+  {
     rule: has,
     name: "allows a variant on the element itself",
     code: `export const a = "[&:has([data-open])]:bg-fill";\n`,

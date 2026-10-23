@@ -237,27 +237,70 @@ const noNativeTitleTooltip = {
   },
 };
 
-const CLASS_HELPERS = new Set(["cn", "clsx"]);
+const CLASS_HELPERS = new Set(["cn", "clsx", "twMerge"]);
+const TYPE_WRAPPERS = new Set([
+  "TSAsExpression",
+  "TSSatisfiesExpression",
+  "TSNonNullExpression",
+  "TSTypeAssertion",
+  "ParenthesizedExpression",
+]);
 
 /**
- * The class strings an expression is known to contain without running it.
- * @param {Node} node
+ * The whole classes in a template literal's static text. A class that runs
+ * into an expression, such as `overflow-` in `overflow-${axis}`, is unknown.
+ * @param {Node[]} quasis
+ */
+function templateClasses(quasis) {
+  return quasis.map((quasi, index) => {
+    const text = quasi.value.cooked ?? quasi.value.raw;
+    const words = text.split(/\s+/);
+    if (index > 0 && !/^\s/.test(text)) words.shift();
+    if (index < quasis.length - 1 && !/\s$/.test(text)) words.pop();
+    return words.join(" ");
+  });
+}
+
+/**
+ * The class names an object passed to a class helper can switch on.
+ * @param {Node} property
+ * @returns {string[]}
+ */
+function propertyClasses(property) {
+  if (property.type === "SpreadElement") return staticStrings(property.argument);
+  if (property.type !== "Property") return [];
+  if (property.computed) return staticStrings(property.key);
+  if (property.key.type === "Identifier") return [property.key.name];
+  return staticStrings(property.key);
+}
+
+/**
+ * The class strings an expression may contain, read without running it.
+ * @param {Node | null | undefined} node
  * @returns {string[]}
  */
 function staticStrings(node) {
+  if (!node) return [];
+  if (TYPE_WRAPPERS.has(node.type)) return staticStrings(node.expression);
   switch (node.type) {
     case "Literal":
       return typeof node.value === "string" ? [node.value] : [];
     case "TemplateLiteral":
-      return node.expressions.length === 0
-        ? node.quasis.map((/** @type {Node} */ quasi) => quasi.value.cooked ?? quasi.value.raw)
-        : [];
+      return templateClasses(node.quasis);
     case "JSXExpressionContainer":
       return staticStrings(node.expression);
     case "LogicalExpression":
-      return staticStrings(node.right);
+      return node.operator === "&&"
+        ? staticStrings(node.right)
+        : [...staticStrings(node.left), ...staticStrings(node.right)];
     case "ConditionalExpression":
       return [...staticStrings(node.consequent), ...staticStrings(node.alternate)];
+    case "ArrayExpression":
+      return node.elements.flatMap((/** @type {Node | null} */ element) => staticStrings(element));
+    case "SpreadElement":
+      return staticStrings(node.argument);
+    case "ObjectExpression":
+      return node.properties.flatMap(propertyClasses);
     case "CallExpression":
       return node.callee.type === "Identifier" && CLASS_HELPERS.has(node.callee.name)
         ? node.arguments.flatMap((/** @type {Node} */ argument) => staticStrings(argument))
