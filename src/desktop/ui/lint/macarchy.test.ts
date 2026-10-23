@@ -695,6 +695,45 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
   },
   {
     rule: polling,
+    name: "allows a loop that reads a stream",
+    code: `declare const reader: ReadableStreamDefaultReader<string>;
+const chunks: string[] = [];
+let done = false;
+let value: string | undefined;
+while (!done) {
+  ({ done, value } = await reader.read());
+  if (value) chunks.push(value);
+}
+export { chunks };
+`,
+    errors: 0,
+  },
+  {
+    rule: polling,
+    name: "allows a loop whose condition assigns the awaited value",
+    code: `declare function next(): Promise<string | null>;
+const lines: string[] = [];
+let line: string | null;
+while ((line = await next()) !== null) lines.push(line);
+export { lines };
+`,
+    errors: 0,
+  },
+  {
+    rule: polling,
+    name: "reports a stream loop that also waits",
+    code: `${pollingHelpers}declare const reader: ReadableStreamDefaultReader<string>;
+let ended = false;
+while (!ended) {
+  ({ done: ended } = await reader.read());
+  await tick();
+}
+export {};
+`,
+    errors: 1,
+  },
+  {
+    rule: polling,
     name: "reports a while loop",
     code: `${pollingHelpers}while (!done()) await tick();\nexport {};\n`,
     errors: 1,

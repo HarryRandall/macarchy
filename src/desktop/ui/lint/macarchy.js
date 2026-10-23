@@ -20,6 +20,7 @@
  *   report(descriptor: { node: Node | Comment, message: string }): void,
  *   sourceCode: {
  *     text: string,
+ *     visitorKeys: Readonly<Record<string, readonly string[]>>,
  *     getAllComments(): Comment[],
  *     getLocFromIndex(index: number): { line: number, column: number },
  *   },
@@ -868,6 +869,61 @@ function rechecks(loop) {
   return loop.type !== "ForStatement" || !loop.update;
 }
 
+const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+
+/**
+ * Every node under `node` that `keep` accepts, without entering nested
+ * functions, which run on their own schedule.
+ * @param {Context} context
+ * @param {Node | null | undefined} node
+ * @param {(node: Node) => boolean} keep
+ * @param {Node[]} [found]
+ * @returns {Node[]}
+ */
+function nodesIn(context, node, keep, found = []) {
+  if (!node || typeof node.type !== "string" || FUNCTIONS.has(node.type)) return found;
+  if (keep(node)) found.push(node);
+  for (const key of context.sourceCode.visitorKeys[node.type] ?? []) {
+    if (node.type === "MemberExpression" && key === "property" && !node.computed) continue;
+    const child = node[key];
+    for (const item of Array.isArray(child) ? child : [child]) nodesIn(context, item, keep, found);
+  }
+  return found;
+}
+
+/**
+ * The variables an assignment target writes, taking `state` for `state.done`.
+ * @param {Node | null | undefined} target
+ * @returns {string[]}
+ */
+function assignedNames(target) {
+  if (!target) return [];
+  switch (target.type) {
+    case "Identifier":
+      return [target.name];
+    case "MemberExpression":
+      return assignedNames(target.object);
+    case "ObjectPattern":
+      return target.properties.flatMap((/** @type {Node} */ property) =>
+        assignedNames(property.type === "Property" ? property.value : property),
+      );
+    case "ArrayPattern":
+      return target.elements.flatMap((/** @type {Node | null} */ element) =>
+        assignedNames(element),
+      );
+    case "AssignmentPattern":
+      return assignedNames(target.left);
+    case "RestElement":
+      return assignedNames(target.argument);
+    default:
+      return [];
+  }
+}
+
+/**
+ * @typedef {{ node: Node, names: Set<string>, fed: Set<number>, waits: boolean }} LoopScope
+ */
+
 const noPollingLoopInTests = {
   meta: {
     type: "suggestion",
@@ -875,15 +931,37 @@ const noPollingLoopInTests = {
   },
   /** @param {Context} context */
   create(context) {
-    /** @type {({ node: Node, awaits: boolean } | null)[]} */
+    /**
+     * Enclosing loops, innermost last, with `null` at each function boundary.
+     * An await feeds a loop when its value is assigned to a variable the
+     * loop's condition reads, as in `({ done } = await reader.read())`;
+     * the loop is then consuming data, not waiting for state to change.
+     * @type {(LoopScope | null)[]}
+     */
     const scopes = [];
+    /** @returns {LoopScope[]} */
+    const enclosingLoops = () => {
+      const loops = [];
+      for (let index = scopes.length - 1; index >= 0; index--) {
+        const scope = scopes[index];
+        if (!scope) break;
+        loops.push(scope);
+      }
+      return loops;
+    };
     /** @param {Node} node */
     const enterLoop = (node) => {
-      scopes.push({ node, awaits: false });
+      const read = nodesIn(context, node.test, (child) => child.type === "Identifier");
+      scopes.push({
+        node,
+        names: new Set(read.map((identifier) => identifier.name)),
+        fed: new Set(),
+        waits: false,
+      });
     };
     const exitLoop = () => {
       const loop = scopes.pop();
-      if (loop?.awaits && rechecks(loop.node)) {
+      if (loop?.waits && rechecks(loop.node)) {
         context.report({
           node: loop.node,
           message:
@@ -910,11 +988,21 @@ const noPollingLoopInTests = {
       "FunctionExpression:exit": exitFunction,
       ArrowFunctionExpression: enterFunction,
       "ArrowFunctionExpression:exit": exitFunction,
-      AwaitExpression() {
-        for (let index = scopes.length - 1; index >= 0; index--) {
-          const scope = scopes[index];
-          if (!scope) break;
-          scope.awaits = true;
+      /** @param {Node} node */
+      AssignmentExpression(node) {
+        const loops = enclosingLoops().filter((loop) =>
+          assignedNames(node.left).some((name) => loop.names.has(name)),
+        );
+        if (loops.length === 0) return;
+        const awaits = nodesIn(context, node.right, (child) => child.type === "AwaitExpression");
+        for (const loop of loops) {
+          for (const awaited of awaits) loop.fed.add(startOf(awaited));
+        }
+      },
+      /** @param {Node} node */
+      AwaitExpression(node) {
+        for (const loop of enclosingLoops()) {
+          if (!loop.fed.has(startOf(node))) loop.waits = true;
         }
       },
     };
