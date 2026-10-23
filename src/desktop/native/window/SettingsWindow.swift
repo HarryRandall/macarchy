@@ -138,6 +138,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.send(.shellChanged(model.shellState()))
         surface.send(.homeChanged)
         surface.send(.healthChanged)
+        surface.send(.reportInvalidated)
         Task {
             if let snapshot = await model.refreshLayout() {
                 surface.send(.layoutChanged(model.layoutState(snapshot)))

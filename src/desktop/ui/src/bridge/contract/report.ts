@@ -13,3 +13,5 @@ export interface ReportMethods {
   "report.openIssue": { params: { token: string; title: string }; result: { copied: boolean } };
   "report.openIssues": { params: Record<string, never>; result: null };
 }
+/** Sent when the window comes forward, since the desktop may have changed. */
+export type ReportEvent = { type: "report.invalidated" };

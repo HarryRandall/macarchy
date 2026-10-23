@@ -39,7 +39,7 @@ import type { HealthEvent, HealthMethods } from "./contract/health";
 import type { HomeEvent, HomeMethods } from "./contract/home";
 import type { ThemesMethods } from "./contract/themes";
 import type { LayoutEvent, LayoutMethods } from "./contract/layout";
-import type { ReportMethods } from "./contract/report";
+import type { ReportEvent, ReportMethods } from "./contract/report";
 import type { RulesEvent, RulesMethods } from "./contract/rules";
 import type { ShortcutsEvent, ShortcutsMethods } from "./contract/shortcuts";
 import type { ShellEvent, ShellMethods } from "./contract/shell";
@@ -97,6 +97,7 @@ export type BridgeEvent =
   | BordersEvent
   | HomeEvent
   | HealthEvent
+  | ReportEvent
   | ShortcutsEvent;
 
 /**

@@ -130,6 +130,27 @@ it("a failed action keeps a preparation failure and its retry apart", async () =
   expect(store.getSnapshot()).toMatchObject({ error: null, stale: false, actionError: null });
 });
 
+it("the window coming back collects again only while the page is showing", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  const [event, invalidated] = deps.subscribe.mock.calls[0] ?? [];
+  expect(event).toBe("report.invalidated");
+  const settled = () => vi.waitFor(() => expect(store.getSnapshot().preparing).toBe(false));
+  invalidated?.({ type: "report.invalidated" } as never);
+  expect(deps.request).not.toHaveBeenCalled();
+  const close = store.opened();
+  await store.load();
+  invalidated?.({ type: "report.invalidated" } as never);
+  await settled();
+  expect(deps.request.mock.calls.map((call) => call[1])).toEqual([
+    { description: "", refresh: true },
+    { description: "", refresh: true },
+  ]);
+  close();
+  invalidated?.({ type: "report.invalidated" } as never);
+  expect(deps.request).toHaveBeenCalledTimes(2);
+});
+
 it("copy and open can be tried again straight after they fail, but not on a stale preview", async () => {
   const deps = host();
   const store = createReportStore(deps as PageHost);

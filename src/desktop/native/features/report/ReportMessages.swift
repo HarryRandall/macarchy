@@ -15,3 +15,9 @@ struct ReportState: Codable {
     var token: String
 }
 struct ReportOpened: Codable { var copied: Bool }
+
+extension BridgeEvent {
+    /// The desktop may have changed while the window was away, so a report
+    /// page that is showing collects its diagnostics again.
+    static var reportInvalidated: BridgeEvent { BridgeEvent("report.invalidated") }
+}

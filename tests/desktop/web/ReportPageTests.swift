@@ -148,6 +148,23 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("the window coming back collects diagnostics again for a page left showing")
+        func windowReturns() async throws {
+            try await withHarness(tools: ["skhd"]) { harness in
+                await harness.desktop.answer("skhd", ["--version"], with: .success("skhd-v0.3.9"))
+                let (_, surface) = try harness.settingsPage(pane: .report)
+                try await reportReady(surface)
+                try await waitFor(
+                    surface, "first diagnostics",
+                    "return document.querySelector('pre').innerText.includes('skhd: skhd-v0.3.9');")
+                await harness.desktop.answer("skhd", ["--version"], with: .success("skhd-v0.4.0"))
+                surface.send(.reportInvalidated)
+                try await waitFor(
+                    surface, "fresh diagnostics",
+                    "return document.querySelector('pre').innerText.includes('skhd: skhd-v0.4.0');")
+            }
+        }
+
         @Test("native failures show an error without a successful notice")
         func failure() async throws {
             try await withHarness(tools: []) { harness in
