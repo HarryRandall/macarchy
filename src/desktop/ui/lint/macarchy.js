@@ -67,24 +67,39 @@ function isDirective(comment) {
 }
 
 /**
+ * The last file's comments, shared by every rule that reads them. oxlint
+ * reuses its `sourceCode` and comment objects from file to file, so the
+ * cache is keyed by the file and its text and keeps its own copy of each
+ * comment.
+ * @type {{ filename: string, text: string, entries: CommentEntry[] } | null}
+ */
+let commentCache = null;
+
+/**
  * @param {Context} context
  * @returns {CommentEntry[]}
  */
 function commentEntries(context) {
-  const { sourceCode } = context;
+  const { filename, sourceCode } = context;
   const source = sourceCode.text;
-  return sourceCode.getAllComments().map((comment) => {
+  if (commentCache?.filename === filename && commentCache.text === source) {
+    return commentCache.entries;
+  }
+  const entries = sourceCode.getAllComments().map((comment) => {
     const start = startOf(comment);
+    const end = endOf(comment);
     const lineStart = source.lastIndexOf("\n", start - 1) + 1;
     return {
-      comment,
+      comment: { type: comment.type, value: comment.value, range: [start, end] },
       text: comment.value,
       startLine: sourceCode.getLocFromIndex(start).line,
-      endLine: sourceCode.getLocFromIndex(endOf(comment)).line,
+      endLine: sourceCode.getLocFromIndex(end).line,
       directive: isDirective(comment),
       trailing: source.slice(lineStart, start).trim() !== "",
     };
   });
+  commentCache = { filename, text: source, entries };
+  return entries;
 }
 
 /**
