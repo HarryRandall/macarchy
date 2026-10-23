@@ -162,6 +162,26 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("unreadable settings after the file steps say only the theme was left out")
+        func unreadableSettingsAfterSetup() async throws {
+            try await withHarness(tools: ["yabai"]) { harness in
+                try await withSetupResources(harness) {
+                    let settings = harness.store.url
+                    // Starting the services is the last step before the theme is read.
+                    await harness.desktop.answer("yabai") { arguments in
+                        guard arguments == ["--start-service"] else { return nil }
+                        try? "{".write(to: settings, atomically: true, encoding: .utf8)
+                        return .success()
+                    }
+                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let failure = try #require(report.failure)
+                    #expect(failure.hasPrefix("Setup finished, but the theme was not applied"))
+                    #expect(!report.lines.isEmpty)
+                    #expect(!report.commands.contains { $0.command.hasPrefix("record theme") })
+                }
+            }
+        }
+
         @Test("a partial setup resolves over the bridge with its lines and an explicit failure")
         func partialFailureOverBridge() async throws {
             try await withHarness(tools: []) { harness in
