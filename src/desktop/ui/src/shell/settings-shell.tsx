@@ -27,7 +27,7 @@ import { CommandPalette, type PaletteCommand } from "./command-palette";
 import { logText, unreadFailures } from "./log-filter";
 import type { LogStore } from "./log-store";
 import { formatLogTime, LogsPanel } from "./logs-panel";
-import { groups, overview, panes, reactPanes, type Route, routeTitle } from "./panes";
+import { groups, overview, panes, type Route, routeTitle } from "./panes";
 import { ServiceStatus } from "./service-status";
 import type { ShellSnapshot, ShellStore } from "./shell-store";
 import { type ShellShortcut, shortcutFor } from "./shortcuts";
@@ -314,7 +314,6 @@ export function SettingsShell({
       id: `go-${id}`,
       label: panes[id].title,
       hint: groups.find((group) => group.panes.includes(id))?.title ?? "Overview",
-      keywords: reactPanes.has(id) ? undefined : ["classic"],
       section: "Go to",
       icon: panes[id].icon,
       run: () => go(id),

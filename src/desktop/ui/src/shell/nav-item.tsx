@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
 import { useId } from "react";
 
 import type { PaneId } from "~/bridge/protocol";
@@ -6,19 +5,17 @@ import { PreviewTag } from "~/components/ui/preview-tag";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
-import { panes, previewPanes, reactPanes } from "./panes";
+import { panes, previewPanes } from "./panes";
 
 /**
  * One sidebar row. Collapsed to the rail it keeps its icon in place and
- * names itself in a tooltip. Panes not drawn here yet open the classic
- * window, which the row says on hover and to screen readers.
+ * names itself in a tooltip.
  */
 export function NavItem({
   id,
   active,
   collapsed,
   issues,
-  classicHintId,
   onSelect,
 }: {
   id: PaneId;
@@ -26,22 +23,17 @@ export function NavItem({
   collapsed: boolean;
   /** Setup health's count of checks to fix; zero or null hides the badge. */
   issues?: number | null;
-  classicHintId: string;
   onSelect: (pane: PaneId) => void;
 }) {
   const { title, icon: Icon } = panes[id];
   const warn = (issues ?? 0) > 0;
   const preview = previewPanes.has(id);
-  const classic = !reactPanes.has(id);
   // The name is always the page's title, so it stays the same expanded or
   // collapsed; the preview label and the issue count are its description.
   const detailId = useId();
   const detail = [preview ? "Preview" : null, warn ? `${issues} to fix` : null]
     .filter(Boolean)
     .join(", ");
-  const describedBy = [detail ? detailId : null, classic ? classicHintId : null]
-    .filter(Boolean)
-    .join(" ");
   return (
     <li>
       <Tooltip
@@ -57,7 +49,7 @@ export function NavItem({
           onClick={() => onSelect(id)}
           aria-current={active ? "page" : undefined}
           aria-label={title}
-          aria-describedby={describedBy || undefined}
+          aria-describedby={detail ? detailId : undefined}
           className={cn(
             "group relative flex h-[30px] items-center gap-2.5 overflow-hidden rounded-[8px] px-[12.5px] text-[13px] tracking-[-0.01em] whitespace-nowrap transition-[background-color,color,width] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
             collapsed ? "w-[40px] justify-center gap-0 px-0" : "w-full",
@@ -92,12 +84,6 @@ export function NavItem({
             )}
           >
             <span className="flex-1 truncate text-left">{title}</span>
-            {classic ? (
-              <ArrowUpRight
-                aria-hidden
-                className="size-3 shrink-0 text-fg-tertiary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-              />
-            ) : null}
             {preview ? <PreviewTag /> : null}
             {warn ? (
               <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-warning-soft px-1 text-[10px] font-semibold tabular-nums text-warning">
