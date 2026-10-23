@@ -92,6 +92,30 @@ const cases: Case[] = [
   },
   {
     rule: suppression,
+    name: "allows a reason that starts with global or eslint",
+    code: `// global state leaks between renders, so log it here.
+// oxlint-disable-next-line no-console
+console.log(1);
+/* eslint warns about this, but the output is the point */
+// oxlint-disable-next-line no-console
+console.log(2);
+`,
+    errors: 0,
+  },
+  {
+    rule: suppression,
+    name: "does not take a globals directive as the reason",
+    code: `/* global reporter: writable */\n// oxlint-disable-next-line no-console\nconsole.log(1);\n`,
+    errors: 1,
+  },
+  {
+    rule: suppression,
+    name: "does not take a rule configuration as the reason",
+    code: `/* eslint no-console: "off" */\n// oxlint-disable-next-line no-alert\nalert(1);\n`,
+    errors: 1,
+  },
+  {
+    rule: suppression,
     name: "reports a disable comment without a reason",
     code: `// oxlint-disable-next-line no-console\nconsole.log(1);\n`,
     errors: 1,
@@ -247,6 +271,94 @@ export const a = (
   },
 
   {
+    rule: gutter,
+    name: "allows a gutter switched on through a cn object",
+    code: `declare function cn(...classes: unknown[]): string;
+declare const scrolls: boolean;
+export const a = (
+  <div className={cn("overflow-y-auto", { "[scrollbar-gutter:stable_both-edges]": scrolls })}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 0,
+  },
+  {
+    rule: gutter,
+    name: "ignores a class cut by a template expression",
+    code: `declare const axis: string;
+export const a = (
+  <div className={\`flex overflow-\${axis}-auto\`}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 0,
+  },
+  {
+    rule: gutter,
+    name: "reports a template literal with an expression",
+    code: `declare const extra: string;
+export const a = (
+  <div className={\`overflow-y-auto \${extra}\`}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a cn object key",
+    code: `declare function cn(...classes: unknown[]): string;
+declare const scrolls: boolean;
+export const a = (
+  <div className={cn("flex", { "overflow-y-auto": scrolls })}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports an array argument to clsx",
+    code: `declare function clsx(...classes: unknown[]): string;
+export const a = (
+  <div className={clsx(["flex", "overflow-auto"])}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a class read through twMerge",
+    code: `declare function twMerge(...classes: string[]): string;
+declare const extra: string;
+export const a = (
+  <div className={twMerge("overflow-y-auto", extra)}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+  {
+    rule: gutter,
+    name: "reports a fallback behind ?? and a type assertion",
+    code: `declare const custom: string | undefined;
+export const a = (
+  <div className={(custom ?? "overflow-y-auto") as string}>
+    <div className="mx-auto" />
+  </div>
+);
+`,
+    errors: 1,
+  },
+
+  {
     rule: has,
     name: "allows a variant on the element itself",
     code: `export const a = "[&:has([data-open])]:bg-fill";\n`,
@@ -286,6 +398,12 @@ export const a = (
     rule: has,
     name: "reports the html element",
     code: `export const a = "[html:has(.menu)_&]:hidden";\n`,
+    errors: 1,
+  },
+  {
+    rule: has,
+    name: "reports the body element",
+    code: `export const a = "[body:has(dialog[open])_&]:overflow-hidden";\n`,
     errors: 1,
   },
 
@@ -353,6 +471,25 @@ export const b = 2;
   },
   {
     rule: comments,
+    name: "allows a trailing comment above a declaration",
+    code: `declare function readId(): string;
+declare function load(id: string): unknown;
+const id = readId(); // the user
+export const user = load(id);
+`,
+    errors: 0,
+  },
+  {
+    rule: comments,
+    name: "reports a name repeated below a trailing comment",
+    code: `export const id = "1"; // read once
+// The user.
+export const user = { id };
+`,
+    errors: 1,
+  },
+  {
+    rule: comments,
     name: "reports a divider",
     code: `// ----------\nexport const a = 1;\n`,
     errors: 1,
@@ -367,6 +504,12 @@ export const b = 2;
     rule: comments,
     name: "reports a TODO without an issue",
     code: `// TODO: tidy this up\nexport const a = 1;\n`,
+    errors: 1,
+  },
+  {
+    rule: comments,
+    name: "checks prose that starts with global",
+    code: `// global TODO: share this cache\nexport const a = 1;\n`,
     errors: 1,
   },
   {
@@ -475,6 +618,33 @@ export const fixed = new Date("2026-10-21T09:00:00Z");
   },
   {
     rule: clock,
+    name: "allows reading the clock after fake timers pin it",
+    code: `vi.useFakeTimers();
+vi.setSystemTime(new Date(2026, 0, 1));
+export const created = Date.now();
+export const today = new Date();
+export const started = performance.now();
+`,
+    errors: 0,
+  },
+  {
+    rule: clock,
+    name: "allows Date once setSystemTime pins it in a hook",
+    code: `beforeEach(() => vi.setSystemTime(new Date(2026, 0, 1)));
+export const created = () => Date.now();
+`,
+    errors: 0,
+  },
+  {
+    rule: clock,
+    name: "reports performance.now() when only Date is pinned",
+    code: `vi.setSystemTime(new Date(2026, 0, 1));
+export const started = performance.now();
+`,
+    errors: 1,
+  },
+  {
+    rule: clock,
     name: "reports Date.now()",
     code: `export const now = Date.now();\n`,
     errors: 1,
@@ -561,6 +731,45 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
   },
   {
     rule: polling,
+    name: "allows a loop that reads a stream",
+    code: `declare const reader: ReadableStreamDefaultReader<string>;
+const chunks: string[] = [];
+let done = false;
+let value: string | undefined;
+while (!done) {
+  ({ done, value } = await reader.read());
+  if (value) chunks.push(value);
+}
+export { chunks };
+`,
+    errors: 0,
+  },
+  {
+    rule: polling,
+    name: "allows a loop whose condition assigns the awaited value",
+    code: `declare function next(): Promise<string | null>;
+const lines: string[] = [];
+let line: string | null;
+while ((line = await next()) !== null) lines.push(line);
+export { lines };
+`,
+    errors: 0,
+  },
+  {
+    rule: polling,
+    name: "reports a stream loop that also waits",
+    code: `${pollingHelpers}declare const reader: ReadableStreamDefaultReader<string>;
+let ended = false;
+while (!ended) {
+  ({ done: ended } = await reader.read());
+  await tick();
+}
+export {};
+`,
+    errors: 1,
+  },
+  {
+    rule: polling,
     name: "reports a while loop",
     code: `${pollingHelpers}while (!done()) await tick();\nexport {};\n`,
     errors: 1,
@@ -604,6 +813,18 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
   },
   {
     rule: loops,
+    name: "allows map inside a test",
+    code: `it("doubles", () => {\n  expect([1, 2].map((n) => n * 2)).toEqual([2, 4]);\n});\n`,
+    errors: 0,
+  },
+  {
+    rule: loops,
+    name: "reports it in a map callback",
+    code: `const cases = [1, 2];\ncases.map((n) => it("handles " + n, () => {}));\n`,
+    errors: 1,
+  },
+  {
+    rule: loops,
     name: "reports test in a while loop",
     code: `let round = 0;\nwhile (round++ < 2) test("again", () => {});\n`,
     errors: 1,
@@ -613,6 +834,12 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
     rule: dom,
     name: "allows Vitest itself",
     code: `import { describe } from "vitest";\nexport { describe };\n`,
+    errors: 0,
+  },
+  {
+    rule: dom,
+    name: "allows asking for the node environment",
+    code: `// ${pragma} node\nexport {};\n`,
     errors: 0,
   },
   {
