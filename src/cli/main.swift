@@ -165,6 +165,8 @@ do {
                 DistributedNotificationCenter.default().postNotificationName(
                     WidgetActions.dropdownNotification, object: nil,
                     userInfo: ["instance": instance], deliverImmediately: true)
+                // Exiting straight away can drop the notification before it is sent.
+                try await Task.sleep(for: .milliseconds(150))
             }
         default:
             throw ConfigurationError(

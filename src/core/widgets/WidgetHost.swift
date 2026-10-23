@@ -20,6 +20,7 @@ public actor WidgetHost {
     private let runner: WidgetProviderRunner
     private let sources: [String: Source]
     private let load: Load
+    private let store: SettingsStore
 
     public private(set) var instances: [WidgetInstance] = []
     /// Why a widget is not showing what it should, by instance id.
@@ -28,11 +29,14 @@ public actor WidgetHost {
     private var lastGood: [String: WidgetOutput] = [:]
     private var sent: [String: [String]] = [:]
     private var loop: Task<Void, Never>?
+    private var components: [String: BarComponent] = [:]
 
     public init(
         integrations: Integrations = Integrations(), runner: WidgetProviderRunner = .init(),
-        sources: [String: Source] = WidgetHost.builtInSources, load: Load? = nil
+        sources: [String: Source] = WidgetHost.builtInSources, load: Load? = nil,
+        store: SettingsStore = SettingsStore()
     ) {
+        self.store = store
         self.integrations = integrations
         self.runner = runner
         self.sources = sources
@@ -79,6 +83,9 @@ public actor WidgetHost {
         let resolved = WidgetInstance.resolve(configuration, catalogue: catalogue)
         instances = resolved.instances
         problems = resolved.problems
+        components = Dictionary(
+            (configuration?.components ?? []).map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first })
         let ids = Set(instances.map(\.id))
         due = Dictionary(uniqueKeysWithValues: instances.map { ($0.id, now) })
         lastGood = lastGood.filter { ids.contains($0.key) }
@@ -158,6 +165,43 @@ public actor WidgetHost {
         instances.filter(\.visible).compactMap { due[$0.id] }.min()
     }
 
+    // MARK: - Dropdowns
+
+    /// The rows of a widget's dropdown as they stand now, or nil when the
+    /// widget is not on the bar.
+    public func menu(for id: String) -> [WidgetMenuItem]? {
+        guard let instance = instances.first(where: { $0.id == id }) else { return nil }
+        let output = lastGood[id]
+        return WidgetMenu.items(
+            instance: instance, component: components[id], output: output,
+            label: Self.clean(Self.label(instance, output: output)))
+    }
+
+    /// Carries out picking a row, and says what it did so the dropdown can
+    /// close or stay open. A setting is saved, and the widget redrawn with it.
+    @discardableResult
+    public func pick(
+        _ row: Int, option: String? = nil, in id: String, execute: WidgetActions.Execute? = nil
+    ) async throws -> WidgetMenu.Effect {
+        guard let instance = instances.first(where: { $0.id == id }) else {
+            throw ConfigurationError("There is no widget called \(id) on the bar")
+        }
+        let effect = WidgetMenu.effect(
+            of: row, option: option, instance: instance, component: components[id],
+            output: lastGood[id])
+        switch effect {
+        case .open(let target): try await WidgetActions.open(target, execute: execute)
+        case .run(let command):
+            try await WidgetActions.run(command, for: instance, execute: execute)
+        case .set(let key, let value):
+            try WidgetMenu.save(key, value, instance: id, store: store)
+            reload()
+            await refresh([id])
+        case .nothing: break
+        }
+        return effect
+    }
+
     // MARK: - Working out a widget
 
     struct Failure: Error, Equatable {
@@ -190,15 +234,7 @@ public actor WidgetHost {
     /// What the widget's item is set to for an output, or its unavailable
     /// sample when there has never been one.
     static func properties(_ instance: WidgetInstance, output: WidgetOutput?) -> [String] {
-        let manifest = instance.manifest
-        let label: String
-        if let output {
-            let values = instance.settings.mapValues(\.string).merging(output.values) { $1 }
-            label = output.label ?? WidgetTemplate.render(manifest.label ?? "", values: values)
-        } else {
-            label = manifest.samples?.unavailable ?? "--"
-        }
-        let shown = clean(label)
+        let shown = clean(label(instance, output: output))
         var properties = ["label=\(shown)", "label.drawing=\(shown.isEmpty ? "off" : "on")"]
         if let icon = output?.icon {
             let glyph = clean(icon)
@@ -212,6 +248,14 @@ public actor WidgetHost {
         }
         properties.append("drawing=\(output?.drawing == false ? "off" : "on")")
         return properties
+    }
+
+    /// The label for an output, or the unavailable sample when there has never been one.
+    static func label(_ instance: WidgetInstance, output: WidgetOutput?) -> String {
+        guard let output else { return instance.manifest.samples?.unavailable ?? "--" }
+        let values = instance.settings.mapValues(\.string).merging(output.values) { $1 }
+        return output.label
+            ?? WidgetTemplate.render(instance.manifest.label ?? "", values: values)
     }
 
     /// One line, no control characters, and short enough for a bar.

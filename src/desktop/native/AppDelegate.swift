@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         repairAppLink()
         WidgetHostController.shared.start()
+        WidgetMenuController.shared.start()
         // The classic SwiftUI window no longer opens itself at launch; this
         // is where the app's window comes from now.
         Self.showMainWindow()
