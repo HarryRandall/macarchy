@@ -157,13 +157,18 @@ function testCall(node, throughCalls, modifiers = []) {
   return null;
 }
 
-/** @param {Node} node */
-function isForEach(node) {
+const ITERATING_METHODS = new Set(["forEach", "map", "flatMap"]);
+
+/**
+ * A call such as `cases.map(...)` that runs its callback once per item.
+ * @param {Node} node
+ */
+function iterates(node) {
   return (
     node.callee.type === "MemberExpression" &&
     !node.callee.computed &&
     node.callee.property.type === "Identifier" &&
-    node.callee.property.name === "forEach"
+    ITERATING_METHODS.has(node.callee.property.name)
   );
 }
 
@@ -943,7 +948,7 @@ const noTestInLoop = {
       "DoWhileStatement:exit": exit,
       /** @param {Node} node */
       CallExpression(node) {
-        if (isForEach(node)) {
+        if (iterates(node)) {
           loops++;
         } else if (loops > 0 && testCall(node.callee, false)) {
           context.report({
@@ -955,7 +960,7 @@ const noTestInLoop = {
       },
       /** @param {Node} node */
       "CallExpression:exit"(node) {
-        if (isForEach(node)) loops--;
+        if (iterates(node)) loops--;
       },
     };
   },

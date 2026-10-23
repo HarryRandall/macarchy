@@ -738,6 +738,18 @@ export const wait = new Promise((resolve) => setTimeout(resolve, 10));
   },
   {
     rule: loops,
+    name: "allows map inside a test",
+    code: `it("doubles", () => {\n  expect([1, 2].map((n) => n * 2)).toEqual([2, 4]);\n});\n`,
+    errors: 0,
+  },
+  {
+    rule: loops,
+    name: "reports it in a map callback",
+    code: `const cases = [1, 2];\ncases.map((n) => it("handles " + n, () => {}));\n`,
+    errors: 1,
+  },
+  {
+    rule: loops,
     name: "reports test in a while loop",
     code: `let round = 0;\nwhile (round++ < 2) test("again", () => {});\n`,
     errors: 1,
