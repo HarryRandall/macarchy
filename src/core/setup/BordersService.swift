@@ -45,14 +45,21 @@ public enum BordersService {
 
     /// Writes Macarchy's agent and moves Homebrew's aside, backing both up
     /// so uninstall returns borders to Homebrew. Does not start anything.
-    static func install(backups: Backups) throws {
+    /// Each backup and write appends a line as it happens, so a failure
+    /// partway still reports what changed.
+    static func install(backups: Backups, report: inout [String]) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: agents, withIntermediateDirectories: true)
         try fm.createDirectory(
             at: Paths.appRoot.appending(path: "state"), withIntermediateDirectories: true)
-        try backups.save([plist] + homebrewPlists)
+        for url in try backups.save([plist] + homebrewPlists) {
+            report.append("Backed up \(Paths.display(url))")
+        }
         let data = try agent()
-        if (try? Data(contentsOf: plist)) != data { try data.write(to: plist, options: .atomic) }
+        if (try? Data(contentsOf: plist)) != data {
+            try data.write(to: plist, options: .atomic)
+            report.append("Wrote \(Paths.display(plist))")
+        }
     }
 
     /// Stops Homebrew's job, loads Macarchy's, and only once Macarchy's is

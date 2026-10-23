@@ -149,7 +149,9 @@ public enum Setup {
         return report
     }
 
-    // The steps read top to bottom in the order they must happen.
+    // The steps read top to bottom in the order they must happen. Each one
+    // appends its line as soon as it has changed a file, so an `Interrupted`
+    // failure still lists everything changed before it.
     // swiftlint:disable:next function_body_length
     private static func perform(existing: Existing, app: URL?, report: inout [String]) throws {
         let fm = FileManager.default
@@ -159,11 +161,26 @@ public enum Setup {
             try fm.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         if let app { try link(app); report.append("Linked \(Paths.display(app))") }
-        report += try installThemes()
+        try installThemes(report: &report)
 
         let backups = Backups()
         let settings = SettingsStore()
-        try settings.update { document in
+        func note(_ line: String) { if !report.contains(line) { report.append(line) } }
+        func backUp(_ url: URL) throws {
+            for kept in try backups.save([url]) { note("Backed up \(Paths.display(kept))") }
+        }
+        func generate(_ url: URL, _ outcome: GeneratedFile.Outcome) throws {
+            try check(outcome)
+            if outcome != .unchanged { note("Wrote \(Paths.display(url))") }
+        }
+        func updateSettings(_ edit: (inout SettingsDocument) throws -> Void) throws {
+            let before = try? Data(contentsOf: settings.url)
+            try settings.update(edit)
+            if (try? Data(contentsOf: settings.url)) != before {
+                note("Wrote \(Paths.display(settings.url))")
+            }
+        }
+        try updateSettings { document in
             if document.currentTheme == nil { document.currentTheme = defaultTheme }
         }
 
@@ -173,21 +190,21 @@ public enum Setup {
         if !isGenerated(yabairc) {
             if existing == .keep, let text = adoptable(yabaiSource) {
                 let adopted = StartupConfiguration.adoptYabai(text)
-                try settings.update { $0.mergeFlat(adopted.values) }
+                try updateSettings { $0.mergeFlat(adopted.values) }
                 yabaiKept = adopted.kept
                 report.append("Moved \(adopted.values.count) yabai settings into Macarchy")
             } else {
                 yabaiKept = ""
             }
         }
-        try backups.save([yabairc])
-        try check(StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
+        try backUp(yabairc)
+        try generate(yabairc, StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
 
         // skhd: the file stays the person's; Macarchy only seeds it.
         let shortcuts = skhdrc
         let missing = !fm.fileExists(atPath: shortcuts.path)
         if missing || (existing == .replace && !backups.hasRecord(for: shortcuts)) {
-            try backups.save([shortcuts])
+            try backUp(shortcuts)
             try installDefaultShortcuts(to: shortcuts)
             report.append("Installed default shortcuts")
         }
@@ -199,26 +216,29 @@ public enum Setup {
             if existing == .keep, let text = adoptable(sketchybarrc) {
                 barKept = StartupConfiguration.tidy(
                     text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
-                try settings.update { $0.bundledBar = false }
+                try updateSettings { $0.bundledBar = false }
                 report.append("Kept your menu bar")
             } else {
                 barKept = ""
-                try settings.update { $0.bundledBar = true }
+                try updateSettings { $0.bundledBar = true }
             }
         }
-        try backups.save([sketchybarrc])
-        try check(StartupConfiguration().generateSketchybarRC(adopting: barKept))
+        try backUp(sketchybarrc)
+        try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))
 
-        try backups.save([StartupConfiguration.bordersrc.url])
-        try check(StartupConfiguration().generateBordersRC())
-        if Paths.isInstalled("borders") { try BordersService.install(backups: backups) }
+        let bordersrc = StartupConfiguration.bordersrc.url
+        try backUp(bordersrc)
+        try generate(bordersrc, StartupConfiguration().generateBordersRC())
+        if Paths.isInstalled("borders") {
+            try BordersService.install(backups: backups, report: &report)
+        }
 
         if ghosttyWanted {
             let target = GhosttyConfig.targetURL
             let current = (try? String(contentsOf: target, encoding: .utf8)) ?? ""
             let updated = GhosttyConfig.addingInclude(to: current)
             if updated != current {
-                try backups.save([target])
+                try backUp(target)
                 try fm.createDirectory(
                     at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try updated.write(to: target, atomically: true, encoding: .utf8)
@@ -258,59 +278,6 @@ public enum Setup {
             try fm.removeItem(at: Paths.appLink)
         }
         return report
-    }
-
-    // MARK: - Steps
-
-    static let defaultTheme = "midnight"
-
-    /// Points the app link at `app`, replacing a stale link but never a real file.
-    public static func link(_ app: URL) throws {
-        let fm = FileManager.default
-        let target = app.resolvingSymlinksInPath().path
-        if let existing = try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path) {
-            if existing == target { return }
-            try fm.removeItem(at: Paths.appLink)
-        } else if fm.fileExists(atPath: Paths.appLink.path) {
-            throw ConfigurationError("\(Paths.display(Paths.appLink)) exists and is not a link")
-        }
-        try fm.createSymbolicLink(atPath: Paths.appLink.path, withDestinationPath: target)
-    }
-
-    /// Copies bundled themes that are not installed yet. Installed themes,
-    /// including edited copies of bundled ones, are never overwritten.
-    static func installThemes() throws -> [String] {
-        let fm = FileManager.default
-        guard let source = Paths.resources?.appending(path: "themes") else {
-            throw ConfigurationError("Bundled themes are missing. Reinstall Macarchy.")
-        }
-        var installed: [String] = []
-        for theme in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
-        where Theme.load(from: theme) != nil {
-            let destination = Paths.themesDirectory.appending(path: theme.lastPathComponent)
-            guard !fm.fileExists(atPath: destination.path) else { continue }
-            try fm.copyItem(at: theme, to: destination)
-            installed.append(theme.lastPathComponent)
-        }
-        return installed.isEmpty ? [] : ["Installed themes: \(installed.joined(separator: ", "))"]
-    }
-
-    /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
-    /// it was registered with, which from Finder does not include Homebrew.
-    public static func installDefaultShortcuts(to url: URL = skhdrc) throws {
-        guard let source = Paths.resources?.appending(path: "skhd/skhdrc") else {
-            throw ConfigurationError("Default shortcuts are missing. Reinstall Macarchy.")
-        }
-        let template = try String(contentsOf: source, encoding: .utf8)
-        let text = template.replacingOccurrences(
-            of: " yabai -m ", with: " \(Shell.quote(Paths.yabai)) -m ")
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try text.write(to: url, atomically: true, encoding: .utf8)
-    }
-
-    static func check(_ outcome: GeneratedFile.Outcome) throws {
-        if case .failed(let message) = outcome { throw ConfigurationError(message) }
     }
 }
 

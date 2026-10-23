@@ -145,6 +145,26 @@ extension WebInterfaceTests {
                 let refreshed = await prepare("Typed again", refresh: true)
                 #expect(refreshed.contains("skhd-v0.5.0"))
                 #expect(await versionCalls(harness) == 3 * perCollection)
+                // Typing prepares on every keystroke; only collections reach the Console.
+                let prepared = harness.model.log.entries.filter { $0.command == "prepare report" }
+                #expect(prepared.count == 3)
+            }
+        }
+
+        @Test("the window coming back collects diagnostics again for a page left showing")
+        func windowReturns() async throws {
+            try await withHarness(tools: ["skhd"]) { harness in
+                await harness.desktop.answer("skhd", ["--version"], with: .success("skhd-v0.3.9"))
+                let (_, surface) = try harness.settingsPage(pane: .report)
+                try await reportReady(surface)
+                try await waitFor(
+                    surface, "first diagnostics",
+                    "return document.querySelector('pre').innerText.includes('skhd: skhd-v0.3.9');")
+                await harness.desktop.answer("skhd", ["--version"], with: .success("skhd-v0.4.0"))
+                surface.send(.reportInvalidated)
+                try await waitFor(
+                    surface, "fresh diagnostics",
+                    "return document.querySelector('pre').innerText.includes('skhd: skhd-v0.4.0');")
             }
         }
 

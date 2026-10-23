@@ -32,6 +32,17 @@ export function createSetupStore(host: PageHost) {
       if (reading === generation) set({ planning: false });
     }
   }
+  /** Rereads the plan after a failed run, keeping its report and reason, since
+   * whether the window can close depends on how far the run got. */
+  async function refresh() {
+    const reading = ++generation;
+    try {
+      const state = await host.request("setup.getPlan", { existing: snapshot.existing });
+      if (reading === generation) set({ state });
+    } catch {
+      // The run's failure is already shown; the earlier plan keeps the window open.
+    }
+  }
   return {
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
@@ -47,6 +58,7 @@ export function createSetupStore(host: PageHost) {
       try {
         const report = await host.request("setup.run", { existing: snapshot.existing });
         set({ report, error: report.failure });
+        if (report.failure) await refresh();
       } catch (error) {
         set({ error: errorMessage(error) });
       } finally {

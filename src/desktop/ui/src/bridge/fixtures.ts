@@ -1001,6 +1001,7 @@ export const eventFixtures: EventFixtures = {
   "borders.changed": [{ type: "borders.changed", state: borders }],
   "home.changed": [{ type: "home.changed" }],
   "health.changed": [{ type: "health.changed" }],
+  "report.invalidated": [{ type: "report.invalidated" }],
   "shortcuts.changed": [{ type: "shortcuts.changed", state: shortcutsAfterEdit }],
   "shortcuts.unavailable": [
     {

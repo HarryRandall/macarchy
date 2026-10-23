@@ -90,4 +90,22 @@ describe("Setup store", () => {
       },
     });
   });
+  it("a failed run rereads whether the window can close, keeping the report and reason", async () => {
+    const { store, request } = harness();
+    await store.load();
+    const failure = "Setup did not finish; some files may already have changed. Bar not written";
+    request.mockResolvedValueOnce({ lines: ["Wrote settings"], failures: [], failure });
+    request.mockResolvedValueOnce({ ...plan, canClose: true });
+    await store.run();
+    expect(request.mock.calls.at(-1)).toEqual(["setup.getPlan", { existing: "keep" }]);
+    expect(store.getSnapshot()).toMatchObject({
+      busy: false,
+      error: failure,
+      state: { canClose: true },
+      report: { lines: ["Wrote settings"], failure },
+    });
+    store.reset();
+    await vi.waitFor(() => expect(store.getSnapshot().planning).toBe(false));
+    expect(store.getSnapshot()).toMatchObject({ error: null, report: null });
+  });
 });

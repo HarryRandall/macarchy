@@ -12,13 +12,15 @@ export function createReportStore(host: PageHost) {
     preview: ReportState | null;
     preparing: boolean;
     busy: boolean;
+    /** Why the last preparation failed. */
     error: string | null;
     /**
      * The last preparation failed, so the preview may not match the draft.
-     * Copy and Open wait for a good one; a failed copy or open does not set
-     * this, so both can be tried again at once.
+     * Copy and Open wait for a good one.
      */
     stale: boolean;
+    /** Why the last copy or open failed. Kept apart so both can be tried again at once. */
+    actionError: string | null;
     notice: string | null;
   } = {
     status: "loading",
@@ -29,11 +31,13 @@ export function createReportStore(host: PageHost) {
     busy: false,
     error: null,
     stale: false,
+    actionError: null,
     notice: null,
   };
   let revision = 0;
   let active: Promise<void> | null = null;
   let shown = false;
+  let mounted = false;
   // Whether the next request, and the one in flight, collect diagnostics again.
   // Draft edits reuse the last collection so typing does not rerun the checks.
   let refresh = false;
@@ -90,17 +94,22 @@ export function createReportStore(host: PageHost) {
   /** Runs a native action, resolving to whether it went through. */
   async function action(perform: () => Promise<string | null>): Promise<boolean> {
     if (snapshot.busy || snapshot.preparing) return false;
-    set({ busy: true, error: null, notice: null });
+    set({ busy: true, actionError: null, notice: null });
     try {
       set({ notice: await perform() });
       return true;
     } catch (error) {
-      set({ error: errorMessage(error) });
+      set({ actionError: errorMessage(error) });
       return false;
     } finally {
       set({ busy: false });
     }
   }
+  // The window stays alive when closed, so a page left showing is never
+  // opened again; the host says when the window comes back instead.
+  host.subscribe("report.invalidated", () => {
+    if (mounted) void load();
+  });
   return {
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
@@ -108,10 +117,15 @@ export function createReportStore(host: PageHost) {
     /**
      * The shell loads a page only the first time it is shown, so coming back
      * to the page collects again: the person may have fixed something since.
+     * Returns the cleanup for when the page goes away.
      */
     opened() {
       if (shown) void load();
       shown = true;
+      mounted = true;
+      return () => {
+        mounted = false;
+      };
     },
     setTitle(title: string) {
       set({ title });

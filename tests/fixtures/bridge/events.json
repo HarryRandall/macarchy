@@ -105,6 +105,11 @@
       "type": "layout.changed"
     }
   ],
+  "report.invalidated": [
+    {
+      "type": "report.invalidated"
+    }
+  ],
   "rules.changed": [
     {
       "state": {
