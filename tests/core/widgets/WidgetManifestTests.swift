@@ -176,6 +176,18 @@ struct WidgetManifestTests {
             ])
     }
 
+    @Test("two-line style and choice icons are checked")
+    func layout() {
+        #expect(
+            messages(manifest("  \"style\": { \"lines\": 3 }")) == ["style.lines should be 1 or 2"])
+        #expect(
+            messages(
+                manifest(
+                    "  \"click\": { \"dropdown\": [{ \"type\": \"text\", \"label\": \"A\", \"icons\": [\"bolt\"] }] }"
+                ))
+                == ["dropdown row 1 can only have icons if it is a choice"])
+    }
+
     @Test("anything that runs a command makes the widget a scripted one")
     func scripted() throws {
         var manifest = WidgetManifest(id: "x", name: "X")

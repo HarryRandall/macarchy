@@ -11,6 +11,9 @@ public struct WidgetOutput: Equatable, Sendable {
     /// The label's colour, as `#rrggbb` or `#rrggbbaa`.
     public var colour: String?
     public var iconColour: String?
+    /// A colour for each line of a two-line label, overriding `colour`; a
+    /// null keeps the usual one.
+    public var lineColours: [String?]?
     /// False hides the widget until a later update shows it again.
     public var drawing: Bool?
     /// Readings for the manifest's label template and dropdown rows.
@@ -34,6 +37,7 @@ public struct WidgetOutput: Equatable, Sendable {
             output.icon = decoded.icon
             output.colour = decoded.colour ?? decoded.color
             output.iconColour = decoded.iconColour ?? decoded.iconColor
+            output.lineColours = decoded.lineColours ?? decoded.lineColors
             output.drawing = decoded.drawing
             output.values = (decoded.values ?? [:]).mapValues(\.string)
             output.rows = decoded.rows
@@ -54,6 +58,8 @@ public struct WidgetOutput: Equatable, Sendable {
         var color: String?
         var iconColour: String?
         var iconColor: String?
+        var lineColours: [String?]?
+        var lineColors: [String?]?
         var drawing: Bool?
         var values: [String: SettingValue]?
         var rows: [WidgetMenuRow]?

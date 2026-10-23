@@ -64,7 +64,8 @@ struct WidgetBarTests {
         #expect(arguments.contains("background.corner_radius=6"))
         #expect(arguments.contains("icon.color=0xffbfa75d"))
         #expect(arguments.contains("label.color=0xffa5b4fc"))
-        #expect(arguments.last == "click_script=\(Paths.cliInShell) widget click 'macarchy.clock'")
+        #expect(
+            arguments.contains("click_script=\(Paths.cliInShell) widget click 'macarchy.clock'"))
     }
 
     @Test(
@@ -72,7 +73,7 @@ struct WidgetBarTests {
     )
     func noClick() {
         let look = WidgetLook(manifests: ["clock": widget()])
-        #expect(look.arguments(for: instance()).last == "click_script=")
+        #expect(look.arguments(for: instance()).contains("click_script="))
         #expect(WidgetLook().arguments(for: instance()).isEmpty)
     }
 
@@ -115,6 +116,52 @@ struct WidgetBarTests {
         #expect(calls[0] == ["--query", "macarchy.clock"])
         #expect(calls[1] == ["--add", "item", "macarchy.clock", "right"])
         #expect(calls[2].contains("icon=􀧞"))
+    }
+
+    @Test("a two-line widget is an icon, a lines item and a box around them")
+    func stacked() async throws {
+        var style = WidgetStyle()
+        style.lines = 2
+        style.box = "outline"
+        var manifest = widget(style: style)
+        manifest.samples = WidgetSamples(widest: "100.0%\n99.9°")
+        let look = WidgetLook(manifests: ["clock": manifest])
+        var configuration = BarConfiguration()
+        configuration.components = [instance()]
+        let normalised = look.normalised(configuration)
+        #expect(normalised.components[0].members == ["macarchy.clock", "macarchy.clock.lines"])
+        #expect(normalised.components[0].brackets == ["macarchy.clock.box"])
+        try normalised.validate()
+        let arguments = look.arguments(for: normalised.components[0])
+        let targets = arguments.indices.filter { arguments[$0] == "--set" }.map {
+            arguments[$0 + 1]
+        }
+        #expect(targets == ["macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"])
+        #expect(arguments.contains("icon.width=36") && arguments.contains("label.padding_left=-36"))
+        #expect(arguments.contains("background.border_width=1"))
+
+        let recorder = CallRecorder()
+        try await BarCommands.replay(
+            configuration,
+            integrations: Integrations { executable, arguments in
+                await recorder.record(executable, arguments, nil, nil)
+            },
+            widgets: look)
+        let calls = await recorder.arguments()
+        #expect(calls.contains(["--add", "item", "macarchy.clock.lines", "right"]))
+        #expect(
+            calls.contains([
+                "--add", "bracket", "macarchy.clock.box", "macarchy.clock", "macarchy.clock.lines"
+            ]))
+    }
+
+    @Test("a widget's items must be the shape its layout needs")
+    func stackedShape() {
+        var component = instance()
+        component.members = ["macarchy.clock", "macarchy.other"]
+        var configuration = BarConfiguration()
+        configuration.components = [component]
+        #expect(throws: ConfigurationError.self) { try configuration.validate() }
     }
 
     @Test("a widget item's id must be safe to put in its click command")

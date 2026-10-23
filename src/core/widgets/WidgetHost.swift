@@ -21,6 +21,8 @@ public actor WidgetHost {
     private let sources: [String: Source]
     private let load: Load
     private let store: SettingsStore
+    private let lookUp: @Sendable () -> WidgetLook
+    private var look = WidgetLook()
 
     public private(set) var instances: [WidgetInstance] = []
     /// Why a widget is not showing what it should, by instance id.
@@ -34,9 +36,11 @@ public actor WidgetHost {
     public init(
         integrations: Integrations = Integrations(), runner: WidgetProviderRunner = .init(),
         sources: [String: Source] = WidgetHost.builtInSources, load: Load? = nil,
-        store: SettingsStore = SettingsStore()
+        store: SettingsStore = SettingsStore(),
+        look: (@Sendable () -> WidgetLook)? = nil
     ) {
         self.store = store
+        self.lookUp = look ?? { WidgetLook.current() }
         self.integrations = integrations
         self.runner = runner
         self.sources = sources
@@ -80,6 +84,7 @@ public actor WidgetHost {
     /// Reads the bar and widgets, and makes every widget due now.
     public func reload(now: Date = Date()) {
         let (configuration, catalogue) = load()
+        look = lookUp()
         let resolved = WidgetInstance.resolve(configuration, catalogue: catalogue)
         instances = resolved.instances
         problems = resolved.problems
@@ -89,7 +94,9 @@ public actor WidgetHost {
         let ids = Set(instances.map(\.id))
         due = Dictionary(uniqueKeysWithValues: instances.map { ($0.id, now) })
         lastGood = lastGood.filter { ids.contains($0.key) }
-        sent = sent.filter { ids.contains($0.key) }
+        // Item ids differ from instance ids for two-line widgets, so start
+        // afresh; everything is due now and is sent again anyway.
+        sent = [:]
     }
 
     /// Works out every widget that is due and sends what changed.
@@ -140,16 +147,21 @@ public actor WidgetHost {
             case nil: break
             }
             due[instance.id] = Self.next(after: now, every: instance.manifest.update?.every)
-            let properties = Self.properties(instance, output: lastGood[instance.id])
-            if sent[instance.id] != properties {
-                arguments += ["--set", instance.id] + properties
+            for (item, properties) in Self.items(
+                instance, output: lastGood[instance.id], look: look)
+            where sent[item] != properties {
+                arguments += ["--set", item] + properties
             }
         }
         guard !arguments.isEmpty else { return nil }
         let result = await integrations.sketchybar(arguments)
         if result.ok {
             for instance in targets {
-                sent[instance.id] = Self.properties(instance, output: lastGood[instance.id])
+                for (item, properties) in Self.items(
+                    instance, output: lastGood[instance.id], look: look)
+                {
+                    sent[item] = properties
+                }
             }
         } else {
             // An item SketchyBar no longer has, after it restarted, fails the
@@ -229,43 +241,6 @@ public actor WidgetHost {
             ).mapError { Failure(message: "\(provider) \($0)") }
         }
         return .success(WidgetOutput())
-    }
-
-    /// What the widget's item is set to for an output, or its unavailable
-    /// sample when there has never been one.
-    static func properties(_ instance: WidgetInstance, output: WidgetOutput?) -> [String] {
-        let shown = clean(label(instance, output: output))
-        var properties = ["label=\(shown)", "label.drawing=\(shown.isEmpty ? "off" : "on")"]
-        if let icon = output?.icon {
-            let glyph = clean(icon)
-            properties += ["icon=\(glyph)", "icon.drawing=\(glyph.isEmpty ? "off" : "on")"]
-        }
-        if let colour = output?.colour.flatMap(WidgetColour.sketchybar) {
-            properties.append("label.color=\(colour)")
-        }
-        if let colour = output?.iconColour.flatMap(WidgetColour.sketchybar) {
-            properties.append("icon.color=\(colour)")
-        }
-        properties.append("drawing=\(output?.drawing == false ? "off" : "on")")
-        return properties
-    }
-
-    /// The label for an output, or the unavailable sample when there has never been one.
-    static func label(_ instance: WidgetInstance, output: WidgetOutput?) -> String {
-        guard let output else { return instance.manifest.samples?.unavailable ?? "--" }
-        let values = instance.settings.mapValues(\.string).merging(output.values) { $1 }
-        return output.label
-            ?? WidgetTemplate.render(instance.manifest.label ?? "", values: values)
-    }
-
-    /// One line, no control characters, and short enough for a bar.
-    static func clean(_ text: String) -> String {
-        let line = text.unicodeScalars.map { scalar -> String in
-            CharacterSet.newlines.contains(scalar)
-                ? " "
-                : CharacterSet.controlCharacters.contains(scalar) ? "" : String(scalar)
-        }.joined()
-        return String(line.trimmingCharacters(in: .whitespaces).prefix(200))
     }
 
     /// The next time a widget updating `every` falls due. Boundaries such as

@@ -7,15 +7,12 @@ public enum BarCommands {
         _ configuration: BarConfiguration, integrations: Integrations,
         widgets: WidgetLook? = nil
     ) async throws {
-        try configuration.validate()
         let hasWidgets = configuration.components.contains(where: \.isWidget)
         let widgets = widgets ?? (hasWidgets ? WidgetLook.current() : WidgetLook())
+        let configuration = widgets.normalised(configuration)
+        try configuration.validate()
         for component in configuration.components where component.ownsItem {
-            let query = await integrations.sketchybar(["--query", component.id])
-            if !query.ok {
-                let result = await integrations.sketchybar(customArguments(component))
-                guard result.ok else { throw ConfigurationError(result.summary) }
-            }
+            try await addMissingItems(component, integrations: integrations)
         }
         for component in configuration.components where component.hasBoxLayout {
             for member in component.members where member.hasPrefix("gap.") {
@@ -31,6 +28,23 @@ public enum BarCommands {
         }
         let arguments = settings(configuration, startup: true, widgets: widgets)
         if !arguments.isEmpty {
+            let result = await integrations.sketchybar(arguments)
+            guard result.ok else { throw ConfigurationError(result.summary) }
+        }
+    }
+
+    /// Adds the items Macarchy owns for a component that the bar does not
+    /// have yet, then a widget's bracket, which can only group items that exist.
+    private static func addMissingItems(
+        _ component: BarComponent, integrations: Integrations
+    ) async throws {
+        var missing: [[String]] = component.members.map { ["--add", "item", $0, component.side] }
+        if component.isWidget {
+            missing += component.brackets.map { ["--add", "bracket", $0] + component.members }
+        }
+        for arguments in missing {
+            let name = arguments[2]
+            guard !(await integrations.sketchybar(["--query", name])).ok else { continue }
             let result = await integrations.sketchybar(arguments)
             guard result.ok else { throw ConfigurationError(result.summary) }
         }
@@ -166,7 +180,7 @@ public enum BarCommands {
     private static func appearanceSettings(_ component: BarComponent) -> [String] {
         var args: [String] = []
         let leaves =
-            component.ownsItem
+            component.isCustom
             ? [component.id]
             : component.members.filter { !$0.hasPrefix("gap.") }
 
@@ -178,8 +192,10 @@ public enum BarCommands {
             if !settings.isEmpty { args += ["--set", leaf] + settings }
         }
 
-        // A custom or widget component is its own item, so it carries its own fill.
-        let fillTargets = component.ownsItem ? [component.id] : component.brackets
+        // A custom component, or a one-item widget, carries its own fill;
+        // otherwise the bracket around the items does.
+        let fillTargets =
+            component.ownsItem && component.brackets.isEmpty ? [component.id] : component.brackets
         for target in fillTargets {
             if let fill = component.backgroundColour {
                 args += [

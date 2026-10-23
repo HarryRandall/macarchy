@@ -116,9 +116,12 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
     public var radius: Double?
     public var paddingLeft: Double?
     public var paddingRight: Double?
+    /// 2 stacks the label's two lines in a fixed-width box beside the icon,
+    /// as CPU load over temperature. The label's lines are split at `\n`.
+    public var lines: Int?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case box, size, iconColour, textColour, radius, paddingLeft, paddingRight
+        case box, size, iconColour, textColour, radius, paddingLeft, paddingRight, lines
     }
 
     public init() {}
@@ -199,9 +202,12 @@ public struct WidgetMenuRow: Codable, Equatable, Sendable {
     public var setting: String?
     /// The choices a choice row shows when it reflects a reading instead of a setting.
     public var options: [String]?
+    /// SF Symbol names, one per option, drawn in round tiles as macOS does
+    /// for Energy Mode.
+    public var icons: [String]?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case type, label, value, run, open, setting, options
+        case type, label, value, run, open, setting, options, icons
     }
 
     public init(type: String, label: String? = nil, value: String? = nil) {

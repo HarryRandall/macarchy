@@ -111,6 +111,7 @@ final class WidgetMenuController {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors = []
         panel?.orderOut(nil)
+        model.pointer = nil
     }
 
     private func place(_ panel: NSPanel, under item: NSRect) {
@@ -166,6 +167,7 @@ final class WidgetMenuController {
         let panel = WidgetMenuPanel()
         let content = FirstMouseHostingView(rootView: WidgetMenuView(model: model))
         content.sizingOptions = [.intrinsicContentSize]
+        content.pointerMoved = { [weak self] point in self?.model.pointer = point }
         panel.contentView = content
         self.panel = panel
         return panel
@@ -225,6 +227,7 @@ private final class WidgetMenuPanel: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true
+        acceptsMouseMovedEvents = true
         hidesOnDeactivate = false
         isMovable = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
@@ -235,7 +238,42 @@ private final class WidgetMenuPanel: NSPanel {
 }
 
 /// Takes the first click, which a window that is not key would otherwise
-/// spend on becoming key.
+/// spend on becoming key, and tracks the pointer itself, since hover only
+/// reaches SwiftUI in the key window.
 private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    var pointerMoved: (CGPoint?) -> Void = { _ in }
+    private var tracking: NSTrackingArea?
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        report(event)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        report(event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        pointerMoved(nil)
+    }
+
+    private func report(_ event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        pointerMoved(CGPoint(x: point.x, y: isFlipped ? point.y : bounds.height - point.y))
+    }
 }

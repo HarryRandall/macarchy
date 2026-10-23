@@ -86,7 +86,7 @@ struct WidgetHostTests {
                     WidgetOutput(values: ["date": "\(Int(now.timeIntervalSince1970))"])
                 }
             ],
-            load: { (bar, snapshot) })
+            load: { (bar, snapshot) }, look: { WidgetLook() })
     }
 
     @Test("everything due goes to SketchyBar in one call")
@@ -203,6 +203,42 @@ struct WidgetHostTests {
         #expect(call.contains("label=It is 1000000000"))
         #expect(
             await host.problems["macarchy.battery"] == "The battery reading is not available yet")
+    }
+
+    @Test("a two-line widget writes its lines into its lines item, each in its own colour")
+    func stacked() {
+        var manifest = manifest("cpu")
+        var style = WidgetStyle()
+        style.lines = 2
+        manifest.style = style
+        let instance = WidgetInstance(
+            id: "macarchy.cpu", manifest: manifest, directory: URL(fileURLWithPath: "/w"),
+            settings: [:], visible: true)
+        var output = WidgetOutput(label: "87.5%\n78.3°")
+        output.lineColours = ["#fbbf24", nil]
+        let items = WidgetHost.items(instance, output: output, look: WidgetLook(text: "0xffdacbe6"))
+        #expect(items.map(\.item) == ["macarchy.cpu", "macarchy.cpu.lines"])
+        #expect(
+            items[1].properties
+                == [
+                    "icon=87.5%", "label=78.3°", "icon.color=0xfffbbf24",
+                    "label.color=0xffdacbe6", "drawing=on"
+                ])
+    }
+
+    @Test("a warning colour goes back to the theme's text colour when it clears")
+    func colourReset() {
+        let instance = WidgetInstance(
+            id: "macarchy.cpu", manifest: manifest("cpu"), directory: URL(fileURLWithPath: "/w"),
+            settings: [:], visible: true)
+        let look = WidgetLook(text: "0xffdacbe6")
+        var warning = WidgetOutput(label: "99%")
+        warning.colour = "#f87171"
+        #expect(
+            WidgetHost.items(instance, output: warning, look: look)[0].properties.contains(
+                "label.color=0xfff87171"))
+        let calm = WidgetHost.items(instance, output: WidgetOutput(label: "12%"), look: look)
+        #expect(calm[0].properties.contains("label.color=0xffdacbe6"))
     }
 
     @Test("labels are one short line with no control characters")

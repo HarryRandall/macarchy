@@ -2,84 +2,77 @@ import AppKit
 import Macarchy
 import SwiftUI
 
-/// What an open dropdown shows, and what picking a row does.
+/// What an open dropdown shows, where the pointer is over it, and what
+/// picking a row does.
 @MainActor
 @Observable
 final class WidgetMenuModel {
     var items: [WidgetMenuItem] = []
+    /// The pointer in the dropdown's own coordinates, top-left origin, or nil
+    /// when it is outside. The panel tracks it itself, because a window that
+    /// never becomes key gets no hover from SwiftUI.
+    var pointer: CGPoint?
     @ObservationIgnored var pick: (Int, String?) -> Void = { _, _ in }
 }
 
 /// A widget's dropdown, drawn to look like a macOS menu.
 struct WidgetMenuView: View {
-    static let width: CGFloat = 288
+    static let width: CGFloat = 304
+    nonisolated static let space = "menu"
     let model: WidgetMenuModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(model.items) { item in row(item) }
         }
-        .padding(6)
+        .padding(.horizontal, 6).padding(.vertical, 8)
         .frame(width: Self.width)
         .background(MenuMaterial())
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 1)
         )
         .font(.system(size: 13))
+        .coordinateSpace(name: Self.space)
     }
 
     @ViewBuilder
     private func row(_ item: WidgetMenuItem) -> some View {
         switch item.type {
         case "divider":
-            Divider().padding(.vertical, 5).padding(.horizontal, 8)
+            Divider().padding(.vertical, 6).padding(.horizontal, 10)
         case "heading":
             HStack {
-                Text(item.label).fontWeight(.semibold)
+                Text(item.label).font(.system(size: 13.5, weight: .bold))
                 Spacer(minLength: 12)
-                Text(item.value).foregroundStyle(.secondary)
+                Text(item.value).foregroundStyle(.secondary).fontWeight(.medium)
             }
-            .padding(.horizontal, 8).padding(.top, 4).padding(.bottom, 2)
+            .padding(.horizontal, 10).padding(.top, 2).padding(.bottom, 4)
         case "text":
-            Text(item.label).foregroundStyle(.secondary)
-                .padding(.horizontal, 8).padding(.vertical, 1)
+            Text(item.label).foregroundStyle(.secondary).lineLimit(1)
+                .padding(.horizontal, 10).padding(.vertical, 1)
         case "action":
-            MenuRowButton(enabled: item.enabled) {
+            MenuRowButton(enabled: item.enabled, pointer: model.pointer) {
                 model.pick(item.id, nil)
-            } label: {
+            } label: { _ in
                 Text(item.label)
             }
         case "toggle":
-            MenuRowButton(enabled: item.enabled) {
+            MenuRowButton(enabled: item.enabled, pointer: model.pointer) {
                 model.pick(item.id, nil)
-            } label: {
+            } label: { _ in
                 Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold))
                     .opacity(item.checked ? 1 : 0).frame(width: 12)
                 Text(item.label)
             }
         case "choice":
-            if !item.label.isEmpty {
-                Text(item.label).fontWeight(.semibold).foregroundStyle(.secondary)
-                    .padding(.horizontal, 8).padding(.top, 2)
-            }
-            ForEach(item.options, id: \.self) { option in
-                MenuRowButton(enabled: item.enabled) {
-                    model.pick(item.id, option)
-                } label: {
-                    Image(
-                        systemName: option == item.selected ? "largecircle.fill.circle" : "circle"
-                    )
-                    .foregroundStyle(option == item.selected ? Color.accentColor : .secondary)
-                    .frame(width: 14)
-                    Text(option)
-                }
-            }
+            choice(item)
         case "graph":
-            MenuGraph(caption: item.label, points: MenuValues.numbers(item.value))
+            MenuGraph(
+                caption: item.label, points: MenuValues.numbers(item.value), pointer: model.pointer)
         case "cores":
-            MenuCores(groups: MenuValues.groups(item.value))
+            MenuCores(groups: MenuValues.groups(item.value), pointer: model.pointer)
         case "apps":
             MenuApps(apps: MenuValues.apps(item.value))
         default:
@@ -88,33 +81,84 @@ struct WidgetMenuView: View {
                 Spacer(minLength: 12)
                 Text(item.value).foregroundStyle(.secondary).monospacedDigit()
             }
-            .padding(.horizontal, 8).frame(height: 24)
+            .padding(.horizontal, 10).frame(height: 24)
+        }
+    }
+
+    /// Options as macOS draws Energy Mode: a round tile per option, filled
+    /// for the one picked. Without icons, plain radio rows.
+    @ViewBuilder
+    private func choice(_ item: WidgetMenuItem) -> some View {
+        if !item.label.isEmpty {
+            Text(item.label).font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+                .padding(.horizontal, 10).padding(.bottom, 4)
+        }
+        ForEach(Array(item.options.enumerated()), id: \.offset) { index, option in
+            let picked = option == item.selected
+            if item.icons.indices.contains(index) {
+                MenuRowButton(
+                    enabled: item.enabled, pointer: model.pointer, height: 36, subtle: true
+                ) {
+                    model.pick(item.id, option)
+                } label: { _ in
+                    ZStack {
+                        Circle().fill(picked ? Color.blue : Color.primary.opacity(0.1))
+                        Image(systemName: item.icons[index]).font(
+                            .system(size: 12, weight: .medium)
+                        )
+                        .foregroundStyle(picked ? Color.white : Color.secondary)
+                    }
+                    .frame(width: 28, height: 28)
+                    Text(option)
+                }
+            } else {
+                MenuRowButton(enabled: item.enabled, pointer: model.pointer) {
+                    model.pick(item.id, option)
+                } label: { hovering in
+                    Image(systemName: picked ? "largecircle.fill.circle" : "circle")
+                        .foregroundStyle(picked && !hovering ? Color.accentColor : .primary)
+                        .frame(width: 14)
+                    Text(option)
+                }
+            }
         }
     }
 }
 
-/// A row that highlights under the pointer, as a menu item does.
+/// A row that highlights under the pointer, as a menu item does. A subtle
+/// row tints instead of filling with the accent, as Control Centre's do.
 private struct MenuRowButton<Label: View>: View {
     let enabled: Bool
+    let pointer: CGPoint?
+    var height: CGFloat = 24
+    var subtle = false
     let action: () -> Void
-    @ViewBuilder let label: () -> Label
-    @State private var hovering = false
+    @ViewBuilder let label: (Bool) -> Label
+    @State private var frame: CGRect = .zero
 
     var body: some View {
+        let hovering = enabled && pointer.map { frame.contains($0) } == true
         Button(action: action) {
-            HStack(spacing: 8) { label() }
-                .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+            HStack(spacing: 10) { label(hovering && !subtle) }
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
                 .contentShape(Rectangle())
                 .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(hovering && enabled ? Color.accentColor : .clear)
+                    RoundedRectangle(cornerRadius: subtle ? 8 : 6, style: .continuous)
+                        .fill(
+                            hovering
+                                ? (subtle ? Color.primary.opacity(0.08) : Color.accentColor)
+                                : .clear)
                 )
-                .foregroundStyle(hovering && enabled ? Color.white : Color.primary)
+                .foregroundStyle(hovering && !subtle ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .onHover { hovering = $0 }
+        .onGeometryChange(for: CGRect.self) {
+            $0.frame(in: .named(WidgetMenuView.space))
+        } action: {
+            frame = $0
+        }
     }
 }
 

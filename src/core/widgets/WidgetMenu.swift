@@ -11,6 +11,8 @@ public struct WidgetMenuItem: Equatable, Sendable, Identifiable {
     public let checked: Bool
     /// A choice's options, and which one is picked.
     public let options: [String]
+    /// SF Symbol names for a choice's options, drawn in round tiles.
+    public let icons: [String]
     public let selected: String?
     /// False for rows that only show something, and for choices that reflect
     /// a reading rather than a setting.
@@ -39,17 +41,18 @@ public enum WidgetMenu {
             case "toggle":
                 return WidgetMenuItem(
                     id: index, type: row.type, label: label, value: "",
-                    checked: current == .bool(true), options: [], selected: nil,
+                    checked: current == .bool(true), options: [], icons: [], selected: nil,
                     enabled: setting != nil)
             case "choice":
                 let options = setting.flatMap { declared[$0]?.options } ?? row.options ?? []
                 return WidgetMenuItem(
                     id: index, type: row.type, label: label, value: value, checked: false,
-                    options: options, selected: current?.string ?? value, enabled: setting != nil)
+                    options: options, icons: row.icons ?? [], selected: current?.string ?? value,
+                    enabled: setting != nil)
             default:
                 return WidgetMenuItem(
                     id: index, type: row.type, label: label, value: value, checked: false,
-                    options: [], selected: nil,
+                    options: [], icons: [], selected: nil,
                     enabled: row.type == "action" && (row.open != nil || row.run != nil))
             }
         }

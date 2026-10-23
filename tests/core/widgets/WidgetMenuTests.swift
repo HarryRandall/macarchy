@@ -123,7 +123,8 @@ struct WidgetMenuTests {
             runner: WidgetProviderRunner { _, _, _, _ in
                 CommandResult(command: "p", status: 0, stdout: "x")
             },
-            load: { (try? store.read().barConfiguration, snapshot) }, store: store)
+            load: { (try? store.read().barConfiguration, snapshot) }, store: store,
+            look: { WidgetLook() })
         await host.reload()
         let effect = try await host.pick(2, in: "macarchy.clock")
         #expect(effect == .set("twentyFourHour", .bool(true)))

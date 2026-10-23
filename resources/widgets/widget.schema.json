@@ -31,7 +31,8 @@
         "textColour": { "$ref": "#/$defs/colour" },
         "radius": { "type": "number", "minimum": 0, "maximum": 20 },
         "paddingLeft": { "type": "number", "minimum": 0, "maximum": 40 },
-        "paddingRight": { "type": "number", "minimum": 0, "maximum": 40 }
+        "paddingRight": { "type": "number", "minimum": 0, "maximum": 40 },
+        "lines": { "enum": [1, 2], "description": "2 stacks the label's lines beside the icon." }
       }
     },
     "update": {
@@ -94,7 +95,8 @@
         "run": { "type": "string" },
         "open": { "type": "string" },
         "setting": { "type": "string" },
-        "options": { "type": "array", "items": { "type": "string" } }
+        "options": { "type": "array", "items": { "type": "string" } },
+        "icons": { "type": "array", "items": { "type": "string" }, "description": "SF Symbol names, one per option." }
       }
     }
   }

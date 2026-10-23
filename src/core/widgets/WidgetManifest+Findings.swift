@@ -202,6 +202,7 @@ extension WidgetStyle {
         range(radius, "radius", 0...20)
         range(paddingLeft, "paddingLeft", 0...40)
         range(paddingRight, "paddingRight", 0...40)
+        if let lines, !(1...2).contains(lines) { add("lines", "style.lines should be 1 or 2") }
         for (field, colour) in [("iconColour", iconColour), ("textColour", textColour)] {
             if let colour, !Self.themeColours.contains(colour),
                 !colour.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")

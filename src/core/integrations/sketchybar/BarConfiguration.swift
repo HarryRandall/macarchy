@@ -68,7 +68,10 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
         for component in components where component.isWidget {
             guard let widget = component.widget,
                 widget.range(of: "^[a-z0-9][a-z0-9-]{0,39}$", options: .regularExpression) != nil,
-                component.kind == nil, component.members == [component.id],
+                component.kind == nil,
+                component.members == [component.id] && component.brackets.isEmpty
+                    || component.members == [component.id, WidgetLook.linesID(component.id)]
+                        && component.brackets == [WidgetLook.boxID(component.id)],
                 component.id.range(of: "^[A-Za-z0-9._-]{1,64}$", options: .regularExpression)
                     != nil,
                 (component.settings ?? [:]).keys.allSatisfy({

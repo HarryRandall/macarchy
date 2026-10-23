@@ -67,6 +67,9 @@ extension WidgetMenuRow {
         if type != "action", run != nil || open != nil {
             notes.append((nil, "can only run or open something if it is an action"))
         }
+        if icons != nil, type != "choice" {
+            notes.append(("icons", "can only have icons if it is a choice"))
+        }
         if !["toggle", "choice"].contains(type), setting != nil {
             notes.append(("setting", "can only change a setting if it is a toggle or choice"))
         }
