@@ -4,7 +4,7 @@ extension BarCommands {
     /// Live Apply changes presentation without replacing a widget's source.
     public static func changes(
         _ configuration: BarConfiguration, from previous: BarConfiguration,
-        baseline: [String: [String: String]]
+        baseline: [String: [String: String]], widgets: WidgetLook = WidgetLook()
     ) -> [String] {
         var args: [String] = []
         let geometry = configuration.geometry.filter { previous.geometry[$0.key] != $0.value }
@@ -40,6 +40,9 @@ extension BarCommands {
                     || old?.boxWidth != component.boxWidth)
             {
                 args += customSettings(component)
+            }
+            if component.isWidget && old != component {
+                args += widgets.arguments(for: component)
             }
             for member in edits.keys.sorted() {
                 guard let values = edits[member], !values.isEmpty else { continue }
@@ -175,7 +178,7 @@ extension BarCommands {
             }
         }
         if let colour = component.backgroundColour {
-            for member in component.isCustom ? [component.id] : component.brackets {
+            for member in component.ownsItem ? [component.id] : component.brackets {
                 result[member, default: [:]]["background.color"] = colour
                 result[member, default: [:]]["background.drawing"] = "on"
                 result[member, default: [:]]["background.corner_radius"] = String(

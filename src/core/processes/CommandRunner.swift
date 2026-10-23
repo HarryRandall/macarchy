@@ -16,15 +16,19 @@ public struct CommandResult: Sendable {
 
 /// Runs executables directly. Output files avoid pipe backpressure deadlocks.
 public enum CommandRunner {
+    /// `environment` replaces the caller's, and `directory` is where the
+    /// process starts; both default to what the caller has.
     public static func run(
-        _ executable: String, _ arguments: [String], timeout: TimeInterval = 30
+        _ executable: String, _ arguments: [String], timeout: TimeInterval = 30,
+        environment: [String: String]? = nil, directory: URL? = nil
     ) async -> CommandResult {
         let cancellation = CancellationFlag()
+        let setup = Setup(environment: environment, directory: directory)
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     continuation.resume(
-                        returning: execute(executable, arguments, timeout, cancellation))
+                        returning: execute(executable, arguments, timeout, setup, cancellation))
                 }
             }
         } onCancel: {
@@ -32,9 +36,14 @@ public enum CommandRunner {
         }
     }
 
+    private struct Setup: Sendable {
+        let environment: [String: String]?
+        let directory: URL?
+    }
+
     private static func execute(
         _ executable: String, _ arguments: [String], _ timeout: TimeInterval,
-        _ cancellation: CancellationFlag
+        _ setup: Setup, _ cancellation: CancellationFlag
     ) -> CommandResult {
         let command = ([URL(fileURLWithPath: executable).lastPathComponent] + arguments).joined(
             separator: " ")
@@ -52,6 +61,8 @@ public enum CommandRunner {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: executable)
             process.arguments = arguments
+            if let environment = setup.environment { process.environment = environment }
+            if let directory = setup.directory { process.currentDirectoryURL = directory }
             process.standardOutput = out; process.standardError = err
             if cancellation.isCancelled { throw CancellationError() }
             try process.run()

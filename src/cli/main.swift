@@ -27,6 +27,9 @@ let usage = """
       bar toggle                  Show or hide the menu bar.
       widget list                 List the bar widgets that can be added.
       widget check <id|folder>    Check a widget's files and say what to fix.
+      widget run                  Keep the bar's widgets updated until Control-C, as the
+                                  app does. For trying widgets without the app.
+      widget click <instance>     Run by the bar when a widget is clicked.
       switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
       startup yabai|sketchybar|borders   Run by the startup files at login.
@@ -124,8 +127,48 @@ do {
             let report = WidgetReport.check(args[2])
             for line in report.lines { print(line) }
             if !report.ok { exit(1) }
+        case ("run", 2):
+            // Only the widget items, so the rest of the bar is left as it is.
+            var configuration = try BarConfigurationStore().load() ?? BarConfiguration()
+            configuration.components = configuration.components.filter(\.isWidget)
+            configuration.geometry = [:]
+            guard !configuration.components.isEmpty else {
+                throw ConfigurationError("The bar has no widgets on it")
+            }
+            // Clicks reach this copy of the CLI, with the same home, so a
+            // development build can be tried without installing it.
+            var look = WidgetLook.current()
+            let executable = Bundle.main.executableURL?.path ?? CommandLine.arguments[0]
+            let home = ProcessInfo.processInfo.environment["MACARCHY_HOME"]
+            look.command =
+                (home.map { "MACARCHY_HOME=\(Shell.quote($0)) " } ?? "") + Shell.quote(executable)
+            try await BarCommands.replay(configuration, integrations: Integrations(), widgets: look)
+            let host = WidgetHost()
+            await host.start()
+            print("Updating \(configuration.components.count) widgets. Stop with Control-C.")
+            var reported: [String: String] = [:]
+            while true {
+                try await Task.sleep(for: .seconds(2))
+                let problems = await host.problems
+                for (id, message) in problems.sorted(by: { $0.key < $1.key })
+                where reported[id] != message {
+                    print("\(id): \(message)")
+                }
+                reported = problems
+            }
+        case ("click", 3):
+            let outcome = try await WidgetActions.click(
+                args[2], configuration: try BarConfigurationStore().load(),
+                catalogue: WidgetCatalogue().read())
+            if case .dropdown(let instance) = outcome {
+                // Drawn by the running app; nothing happens if it is not running.
+                DistributedNotificationCenter.default().postNotificationName(
+                    WidgetActions.dropdownNotification, object: nil,
+                    userInfo: ["instance": instance], deliverImmediately: true)
+            }
         default:
-            throw ConfigurationError("Usage: macarchy widget list | widget check <id|folder>")
+            throw ConfigurationError(
+                "Usage: macarchy widget list | check <id|folder> | run | click <instance>")
         }
     case "restore":
         guard args.count >= 2 else {

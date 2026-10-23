@@ -4,10 +4,13 @@ import Foundation
 /// always a value, never executable shell or a SketchyBar command token.
 public enum BarCommands {
     public static func replay(
-        _ configuration: BarConfiguration, integrations: Integrations
+        _ configuration: BarConfiguration, integrations: Integrations,
+        widgets: WidgetLook? = nil
     ) async throws {
         try configuration.validate()
-        for component in configuration.components where component.isCustom {
+        let hasWidgets = configuration.components.contains(where: \.isWidget)
+        let widgets = widgets ?? (hasWidgets ? WidgetLook.current() : WidgetLook())
+        for component in configuration.components where component.ownsItem {
             let query = await integrations.sketchybar(["--query", component.id])
             if !query.ok {
                 let result = await integrations.sketchybar(customArguments(component))
@@ -26,7 +29,7 @@ public enum BarCommands {
                 }
             }
         }
-        let arguments = settings(configuration, startup: true)
+        let arguments = settings(configuration, startup: true, widgets: widgets)
         if !arguments.isEmpty {
             let result = await integrations.sketchybar(arguments)
             guard result.ok else { throw ConfigurationError(result.summary) }
@@ -37,8 +40,16 @@ public enum BarCommands {
         ["--add", "item", component.id, component.side]
     }
 
+    /// What a made item shows, or how a widget's item looks. Native items
+    /// keep what their own scripts set.
+    private static func itemSettings(_ component: BarComponent, widgets: WidgetLook) -> [String] {
+        if component.isCustom { return customSettings(component) }
+        if component.isWidget { return widgets.arguments(for: component) }
+        return []
+    }
+
     public static func settings(
-        _ configuration: BarConfiguration, startup: Bool = false
+        _ configuration: BarConfiguration, startup: Bool = false, widgets: WidgetLook = WidgetLook()
     ) -> [String] {
         var args: [String] = []
         if !configuration.geometry.isEmpty {
@@ -63,7 +74,7 @@ public enum BarCommands {
                 ]
             }
             args += spacingSettings(component, configuration: configuration)
-            if component.isCustom { args += customSettings(component) }
+            args += itemSettings(component, widgets: widgets)
             args += appearanceSettings(component)
             var presentation = nativePresentation(component.presentation)
             if component.hasBoxLayout {
@@ -155,7 +166,7 @@ public enum BarCommands {
     private static func appearanceSettings(_ component: BarComponent) -> [String] {
         var args: [String] = []
         let leaves =
-            component.isCustom
+            component.ownsItem
             ? [component.id]
             : component.members.filter { !$0.hasPrefix("gap.") }
 
@@ -167,8 +178,8 @@ public enum BarCommands {
             if !settings.isEmpty { args += ["--set", leaf] + settings }
         }
 
-        // A custom component is its own item, so it carries its own fill.
-        let fillTargets = component.isCustom ? [component.id] : component.brackets
+        // A custom or widget component is its own item, so it carries its own fill.
+        let fillTargets = component.ownsItem ? [component.id] : component.brackets
         for target in fillTargets {
             if let fill = component.backgroundColour {
                 args += [

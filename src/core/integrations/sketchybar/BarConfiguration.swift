@@ -32,17 +32,7 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
                     "\(component.title) needs a command and an interval of 1 to 86400 seconds")
             }
         }
-        for component in components where component.isWidget {
-            guard let widget = component.widget,
-                widget.range(of: "^[a-z0-9][a-z0-9-]{0,39}$", options: .regularExpression) != nil,
-                component.kind == nil, component.members == [component.id],
-                (component.settings ?? [:]).keys.allSatisfy({
-                    $0.range(of: "^[a-z][a-zA-Z0-9]{0,39}$", options: .regularExpression) != nil
-                })
-            else {
-                throw ConfigurationError("\(component.title) does not name a widget properly")
-            }
-        }
+        try validateWidgets()
         let properties: Set<String> = [
             "align", "icon.width", "label.width", "icon.align", "label.align",
             "icon", "icon.font", "label.font", "icon.color", "label.color",
@@ -70,6 +60,24 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
                     StartupConfiguration.envName(forBarKey: key).map { ($0, value) }
                 }))
         try settings.validate()
+    }
+
+    /// A widget component names a widget, is one item of its own whose id is
+    /// safe in a click command, and keeps settings under sensible names.
+    private func validateWidgets() throws {
+        for component in components where component.isWidget {
+            guard let widget = component.widget,
+                widget.range(of: "^[a-z0-9][a-z0-9-]{0,39}$", options: .regularExpression) != nil,
+                component.kind == nil, component.members == [component.id],
+                component.id.range(of: "^[A-Za-z0-9._-]{1,64}$", options: .regularExpression)
+                    != nil,
+                (component.settings ?? [:]).keys.allSatisfy({
+                    $0.range(of: "^[a-z][a-zA-Z0-9]{0,39}$", options: .regularExpression) != nil
+                })
+            else {
+                throw ConfigurationError("\(component.title) does not name a widget properly")
+            }
+        }
     }
 
     public func padding(for component: BarComponent) -> Double {

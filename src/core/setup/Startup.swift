@@ -51,6 +51,7 @@ public enum Startup {
             }
             if let configuration = try BarConfigurationStore().load() {
                 try await BarCommands.replay(configuration, integrations: integrations)
+                await fillWidgets(configuration, integrations: integrations)
             }
         case "borders":
             let theme = settings.currentTheme.flatMap {
@@ -60,6 +61,15 @@ public enum Startup {
                 await integrations.borders(BorderCommand.arguments(values: values, theme: theme)))
         default: throw ConfigurationError("Unknown integration: \(name)")
         }
+    }
+
+    /// Fills the widgets in now, so the bar is right before the app starts
+    /// updating it, and stays right if the app is not running.
+    static func fillWidgets(_ configuration: BarConfiguration, integrations: Integrations) async {
+        guard configuration.components.contains(where: \.isWidget) else { return }
+        let host = WidgetHost(integrations: integrations, runner: WidgetProviderRunner(timeout: 2))
+        await host.reload()
+        await host.refresh()
     }
 
     /// yabai signals Macarchy relies on. Labels make re-adding them replace

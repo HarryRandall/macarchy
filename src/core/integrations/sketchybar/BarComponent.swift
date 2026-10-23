@@ -125,6 +125,10 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
     /// Whether the component shows a widget rather than a native item or a made one.
     public var isWidget: Bool { widget != nil }
 
+    /// Whether the component is one item Macarchy adds itself, rather than
+    /// items the bar's own scripts make.
+    public var ownsItem: Bool { isCustom || isWidget }
+
     /// Authored boxes use contiguous native slots with no inherited outer padding.
     public var hasBoxLayout: Bool {
         boxWidth != nil && !isCustom
