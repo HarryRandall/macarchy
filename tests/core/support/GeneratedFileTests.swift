@@ -106,4 +106,15 @@ struct GeneratedFileTests {
         #expect(message.contains("end marker"))
         #expect(try String(contentsOf: file.url, encoding: .utf8) == edited)
     }
+
+    @Test("a forgotten file is no longer reported as edited")
+    func forgetClearsTheLedger() throws {
+        let (file, root) = try sandboxedFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = file.write("#!/bin/bash\necho one\n", reason: "t")
+        try "#!/bin/bash\necho original\n".write(to: file.url, atomically: true, encoding: .utf8)
+        #expect(file.hasDrifted)
+        try file.forget()
+        #expect(!file.hasDrifted)
+    }
 }

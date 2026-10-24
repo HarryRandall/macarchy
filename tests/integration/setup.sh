@@ -121,6 +121,9 @@ grep -q 'echo edited' "$HOME_DIR/.config/yabai/yabairc" && fail "edit outside th
 grep -rq 'echo edited' "$HOME_DIR/.config/macarchy/snapshots" || fail "edited yabairc not snapshotted"
 
 "$CLI" uninstall >/dev/null
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+grep -q 'Edited outside' <<<"$DOCTOR" && fail "doctor reports restored originals as edited"
+[ "$(status env MACARCHY_SEARCH_PATH= "$CLI" startup yabai)" = 1 ] || fail "empty search path crashed"
 grep -qx 'yabai --start-service' "$CALLS" || fail "uninstall did not start yabai"
 grep -qx 'brew services start sketchybar' "$CALLS" || fail "uninstall did not start SketchyBar"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$ORIGINAL_YABAI" ] || fail "yabairc not restored"

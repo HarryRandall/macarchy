@@ -267,6 +267,7 @@ public enum Setup {
     static func uninstallLocked(into report: inout [String]) throws {
         let fm = FileManager.default
         try Backups().restoreAll(into: &report)
+        for file in StartupConfiguration.all { try file.forget() }
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {
             guard let text = try? String(contentsOf: url, encoding: .utf8),

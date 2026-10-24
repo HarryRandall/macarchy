@@ -88,6 +88,17 @@ public struct GeneratedFile: Sendable {
         return Self.generatedHash(onDisk) != recorded && Self.hash(onDisk) != recorded
     }
 
+    /// Drops the recorded hash once the file is no longer Macarchy's, such
+    /// as after uninstall restored the original, so it is not reported as edited.
+    public func forget() throws {
+        guard FileManager.default.fileExists(atPath: ledgerURL.path) else { return }
+        try FileLock.withLock(ledgerURL) {
+            var current = try ledger()
+            guard current.removeValue(forKey: url.path) != nil else { return }
+            try JSONEncoder().encode(current).write(to: ledgerURL, options: .atomic)
+        }
+    }
+
     // MARK: - Preserved regions
 
     /// Pulls out `# >>> macarchy:keep <name>` … `# <<< macarchy:keep` blocks so
