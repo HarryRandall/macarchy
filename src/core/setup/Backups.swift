@@ -48,7 +48,15 @@ struct Backups {
             if let destination = try? fm.destinationOfSymbolicLink(atPath: url.path) {
                 current.entries[url.path] = .link(destination)
             } else if fm.fileExists(atPath: url.path) {
-                let name = "\(current.entries.count)-\(url.lastPathComponent)"
+                // A copy left by an interrupted save has no manifest entry;
+                // step past it rather than fail on every later setup.
+                var index = current.entries.count
+                while fm.fileExists(
+                    atPath: root.appending(path: "\(index)-\(url.lastPathComponent)").path)
+                {
+                    index += 1
+                }
+                let name = "\(index)-\(url.lastPathComponent)"
                 let stored = root.appending(path: name)
                 try fm.copyItem(at: url, to: stored)
                 current.entries[url.path] = .file(name)
