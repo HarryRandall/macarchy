@@ -106,9 +106,8 @@ public struct ThemeApplication: Sendable {
 
             try SnapshotStore().capture(Self.outputs, reason: "apply theme \(name)")
             let generated = Paths.generatedDirectory
-            try Self.write(
-                GhosttyConfig.colours(from: palette ?? ""),
-                to: generated.appending(path: "ghostty.conf"))
+            let ghostty = GhosttyConfig.colours(from: palette ?? "")
+            try Self.write(ghostty.text, to: generated.appending(path: "ghostty.conf"))
             try Self.write(outputs.shell, to: generated.appending(path: "shell-env"))
             try Self.write(outputs.nvim + "\n", to: generated.appending(path: "nvim-colorscheme"))
             try Self.write(outputs.barColours, to: generated.appending(path: "bar-colours.sh"))
@@ -137,13 +136,28 @@ public struct ThemeApplication: Sendable {
             if let wallpaper { try await effects.setWallpaper(wallpaper) }
             await effects.refreshApplications(integrations)
             try SettingsStore().update { $0.currentTheme = name }
-            let note = skipped.isEmpty ? "" : " (not running: \(skipped.joined(separator: ", ")))"
-            return CommandResult(
-                command: "theme \(name)", status: 0, stdout: "Applied \(name)\(note)")
+            return Self.applied(name, stopped: skipped, colours: ghostty.skipped)
         } catch {
             return CommandResult(
                 command: "theme \(name)", status: 1, stderr: error.localizedDescription)
         }
+    }
+
+    /// Marks a skipped entry as a Ghostty colour the theme could not use,
+    /// rather than a service that was not running.
+    public static let ghosttyColourPrefix = "Ghostty colour "
+
+    /// A finished theme, naming stopped services and any Ghostty colours
+    /// left out, so a partial application is reported as one.
+    static func applied(_ name: String, stopped: [String], colours: [String]) -> CommandResult {
+        let notes = [
+            stopped.isEmpty ? nil : "not running: \(stopped.joined(separator: ", "))",
+            colours.isEmpty ? nil : "Ghostty colours left out: \(colours.joined(separator: ", "))"
+        ].compactMap { $0 }
+        let note = notes.isEmpty ? "" : " (\(notes.joined(separator: "; ")))"
+        return CommandResult(
+            command: "theme \(name)", status: 0, stdout: "Applied \(name)\(note)",
+            skipped: stopped + colours.map { ghosttyColourPrefix + $0 })
     }
 
     /// Macarchy's bar is recoloured in place. A person's own bar is told

@@ -49,12 +49,49 @@ struct GhosttyConfigTests {
             config-file = /tmp/elsewhere
             window-padding-x = 8
             """
-        let rendered = GhosttyConfig.colours(from: palette)
+        let rendered = GhosttyConfig.colours(from: palette).text
         #expect(rendered.contains("background = #101010"))
         #expect(rendered.contains("palette = 4=#1e90ff"))
         #expect(!rendered.contains("command"))
         #expect(!rendered.contains("config-file"))
         #expect(!rendered.contains("not-a-colour"))
         #expect(!rendered.contains("padding"))
+    }
+
+    @Test("colours are read as the bar reads them and the rest are reported")
+    func unreadableColoursAreReported() {
+        let palette = """
+            background = 101010
+            foreground = 0xffEEEEEE
+            cursor-color = black
+            selection-background = 0x80112233
+            palette = 1 = #aa0000
+            palette = 300=#ffffff
+            command = /bin/sh
+            """
+        let rendered = GhosttyConfig.colours(from: palette)
+        #expect(rendered.text.contains("background = #101010"))
+        #expect(rendered.text.contains("foreground = #EEEEEE"))
+        #expect(rendered.text.contains("palette = 1=#aa0000"))
+        #expect(!rendered.text.contains("black"))
+        #expect(!rendered.text.contains("300"))
+        #expect(
+            rendered.skipped == [
+                "cursor-color = black", "selection-background = 0x80112233",
+                "palette = 300=#ffffff"
+            ])
+    }
+
+    @Test("a theme result names the Ghostty colours it left out")
+    func resultNamesSkippedColours() {
+        let result = ThemeApplication.applied(
+            "dusk", stopped: ["borders"], colours: ["cursor-color = black"])
+        #expect(result.ok)
+        #expect(
+            result.stdout
+                == "Applied dusk (not running: borders; Ghostty colours left out: "
+                + "cursor-color = black)")
+        #expect(result.skipped == ["borders", "Ghostty colour cursor-color = black"])
+        #expect(ThemeApplication.applied("dusk", stopped: [], colours: []).stdout == "Applied dusk")
     }
 }

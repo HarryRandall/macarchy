@@ -47,4 +47,31 @@ struct ThemeOutputsTests {
         theme.colors.borderActive = "invalid"
         #expect(throws: (any Error).self) { try theme.validate() }
     }
+
+    /// Themes may spell colours `#rrggbb`; SketchyBar and borders read only
+    /// `0xAARRGGBB`.
+    @Test func hashColoursReachTheBarAndBordersAsARGB() throws {
+        var theme = Theme(name: "t")
+        theme.colors.sketchybarBar = "#112233"
+        theme.colors.sketchybarText = "#ffffff"
+        theme.colors.borderActive = "#ff0000"
+        theme.colors.borderInactive = "0x80aabbcc"
+        try theme.validate()
+        let bar = ThemeOutputs(theme: theme, ghostty: "").barColours
+        #expect(bar.contains(#"BAR_COLOR="0xff112233""#))
+        #expect(bar.contains(#"TEXT_COLOR="0xffffffff""#))
+        #expect(bar.contains(#"ACCENT_COLOR="0xffff0000""#))
+        let borders = BorderCommand.arguments(values: [:], theme: theme)
+        #expect(borders.contains("active_color=0xffff0000"))
+        #expect(borders.contains("inactive_color=0x80aabbcc"))
+    }
+
+    /// A palette without `#` themes Ghostty, so it must theme the bar too.
+    @Test func paletteColoursWithoutHashReachTheBar() {
+        let outputs = ThemeOutputs(
+            theme: Theme(name: "t"), ghostty: "foreground = c0c0c0\npalette = 4=0xff3366ff")
+        #expect(outputs.barText == "0xffc0c0c0")
+        #expect(outputs.barAccent == "0xff3366ff")
+        #expect(Theme.argb("0x80aabbcc") == "0x80aabbcc")
+    }
 }

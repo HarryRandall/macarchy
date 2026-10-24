@@ -56,6 +56,25 @@ public struct Theme: Codable, Sendable, Equatable {
 
     public static let fileName = "theme.json"
 
+    /// An opaque colour as `#rrggbb`, from any spelling a theme may use for
+    /// one: `#rrggbb`, `rrggbb` or `0xffrrggbb`. Nil for anything else,
+    /// including translucent colours and names, which not every tool reads.
+    public static func hex(_ colour: String) -> String? {
+        let value = colour.trimmingCharacters(in: .whitespaces)
+        guard
+            let match = value.firstMatch(
+                of: /^(?:#|0[xX][fF]{2})?(?<rgb>[0-9a-fA-F]{6})$/)
+        else { return nil }
+        return "#" + match.output.rgb
+    }
+
+    /// A theme colour as SketchyBar and borders read it. Themes may spell
+    /// colours as `#rrggbb`; both tools want `0xAARRGGBB`, so an opaque
+    /// alpha is added. Other values, such as translucent ones, pass through.
+    public static func argb(_ colour: String) -> String {
+        hex(colour).map { "0xff" + $0.dropFirst() } ?? colour
+    }
+
     /// Maps manifest colours to the flat keys integrations read.
     private static var colorKeys: [(WritableKeyPath<Colors, String?>, String)] {
         [
