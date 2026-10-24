@@ -32,7 +32,13 @@ Macarchy owns `~/.config/macarchy`:
 | `state/` | Scratch state for the menu bar scripts. |
 | `Macarchy.app` | A link to the installed app. |
 
-`MACARCHY_HOME` relocates everything for tests.
+`MACARCHY_HOME` relocates everything for tests. It and `MACARCHY_SEARCH_PATH`
+also isolate the run from the desktop: `DesktopIsolation` lets launchd,
+`defaults`, AppleScript, signals to running apps, `open` and the daemons run
+only as fakes under the home or the search path, and refuses the wallpaper,
+the bundled bar scripts and notifications to the running app, reporting them
+as skipped. Test processes are isolated even without either variable. A
+`MACARCHY_HOME` that is the account's own home does not isolate.
 
 ## Startup
 

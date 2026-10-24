@@ -11,7 +11,7 @@ public enum GhosttyConfig {
     public static var loadedFiles: [URL] {
         // A relocated home is a test; it must not follow the real XDG folder.
         let environment = ProcessInfo.processInfo.environment
-        let xdg = environment["MACARCHY_HOME"] == nil ? environment["XDG_CONFIG_HOME"] : nil
+        let xdg = Paths.relocatesHome(in: environment) ? nil : environment["XDG_CONFIG_HOME"]
         let base = xdg.map { URL(fileURLWithPath: $0) } ?? Paths.home.appending(path: ".config")
         let folder = base.appending(path: "ghostty")
         let support = Paths.home.appending(

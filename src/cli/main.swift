@@ -7,6 +7,14 @@ func require(_ result: CommandResult) throws {
     guard result.ok else { throw ConfigurationError(result.stderr) }
 }
 
+/// Tells the running app something. An isolated run must not reach the
+/// installed app, which would act on the real desktop.
+func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any]? = nil) {
+    guard !DesktopIsolation.isActive else { return }
+    DistributedNotificationCenter.default().postNotificationName(
+        name, object: nil, userInfo: userInfo, deliverImmediately: true)
+}
+
 let usage = """
     Usage: macarchy <command>
 
@@ -117,18 +125,14 @@ do {
         }
     case "switcher":
         // Handled by the running app; opening it first covers a quit app.
-        DistributedNotificationCenter.default().postNotificationName(
-            Notification.Name("io.github.harryrandall.macarchy.switcher"), object: nil,
-            userInfo: nil, deliverImmediately: true)
+        announce(Notification.Name("io.github.harryrandall.macarchy.switcher"))
     case "space":
         guard args.count == 2, let space = Int(args[1]), (1...99).contains(space) else {
             throw ConfigurationError("Usage: macarchy space <number>")
         }
         // Heard by the running app, which repaints the bar from what it already
         // knows; then yabai switches, which takes a moment to animate.
-        DistributedNotificationCenter.default().postNotificationName(
-            WidgetActions.spaceNotification, object: nil, userInfo: ["space": space],
-            deliverImmediately: true)
+        announce(WidgetActions.spaceNotification, ["space": space])
         let yabai = Paths.yabai
         var argv: [UnsafeMutablePointer<CChar>?] =
             [yabai, "-m", "space", "--focus", String(space)].map { strdup($0) } + [nil]
@@ -180,9 +184,7 @@ do {
                 catalogue: WidgetCatalogue().read())
             if case .dropdown(let instance) = outcome {
                 // Drawn by the running app; nothing happens if it is not running.
-                DistributedNotificationCenter.default().postNotificationName(
-                    WidgetActions.dropdownNotification, object: nil,
-                    userInfo: ["instance": instance], deliverImmediately: true)
+                announce(WidgetActions.dropdownNotification, ["instance": instance])
             }
         case ("trigger", 3):
             guard WidgetManifest.events.contains(args[2]) else {
@@ -191,9 +193,7 @@ do {
                         + WidgetManifest.events.joined(separator: ", "))
             }
             // Heard by the running app; nothing happens if it is not running.
-            DistributedNotificationCenter.default().postNotificationName(
-                WidgetActions.triggerNotification, object: nil, userInfo: ["event": args[2]],
-                deliverImmediately: true)
+            announce(WidgetActions.triggerNotification, ["event": args[2]])
         default:
             throw ConfigurationError(
                 "Usage: macarchy widget list | check <id|folder> | run | click <instance>"

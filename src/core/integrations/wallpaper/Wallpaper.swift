@@ -15,6 +15,8 @@ public enum Wallpaper {
     public enum Outcome: Sendable, Equatable {
         case allSpaces(Int)
         case currentSpaceOnly
+        /// Not changed, because this run is isolated from the desktop.
+        case skipped
     }
 
     @MainActor
@@ -22,6 +24,7 @@ public enum Wallpaper {
         guard FileManager.default.fileExists(atPath: image.path) else {
             throw ConfigurationError("Wallpaper not found: \(Paths.display(image))")
         }
+        guard !DesktopIsolation.isActive else { return .skipped }
         if let client = makeClient() {
             let spaces = allSpaceUUIDs()
             let displays = activeDisplays()

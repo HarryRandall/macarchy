@@ -20,11 +20,13 @@ mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/sk
 # Each fake records its calls. brew is there because uninstall restarts the
 # services, and SketchyBar and borders start through Homebrew. There is no
 # fake launchctl, so launchd jobs resolve to a missing file and are never reached.
+# Queries for lists answer as the real tools do when nothing is set.
 CALLS="$HOME_DIR/calls.log"
 for tool in yabai skhd sketchybar borders brew; do
   cat > "$MACARCHY_SEARCH_PATH/$tool" <<SH
 #!/bin/sh
 printf '%s\n' "$tool \$*" >>'$CALLS'
+case "\$*" in *--list*) echo '[]' ;; esac
 SH
   chmod +x "$MACARCHY_SEARCH_PATH/$tool"
 done
@@ -153,5 +155,16 @@ GENERATED="$(cat "$HOME_DIR/.config/yabai/yabairc")"
 rm "$HOME_DIR/.config/macarchy/backups/"*-yabairc
 "$CLI" uninstall >/dev/null 2>&1 && fail "uninstall succeeded with a missing backup"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$GENERATED" ] || fail "file changed despite a missing backup"
+
+# A full setup, apply and theme change in the temporary home reach only the
+# fake tools. launchd, defaults, the appearance, the wallpaper, running apps
+# and the bundled bar scripts are refused (see DesktopIsolation), so the real
+# desktop is left alone even though nothing here is a dry run.
+rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
+"$CLI" setup --replace >/dev/null || fail "isolated setup with services failed"
+"$CLI" apply || fail "isolated apply failed"
+"$CLI" theme next >/dev/null || fail "isolated theme change failed"
+grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
+"$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 
 echo "setup integration test passed"

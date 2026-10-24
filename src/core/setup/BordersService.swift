@@ -18,8 +18,9 @@ public enum BordersService {
     }
 
     /// launchctl changes reach the real login session even when tests point
-    /// `MACARCHY_HOME` elsewhere, so they never run from an isolated run.
-    static var isolated: Bool { Paths.isolated }
+    /// `MACARCHY_HOME` elsewhere, so they never run from an isolated run or a
+    /// test process.
+    static var isolated: Bool { DesktopIsolation.isActive }
 
     static var domain: String { "gui/\(getuid())" }
 

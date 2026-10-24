@@ -167,8 +167,11 @@ Debug builds also read these, and release builds ignore them:
 the last two, a fresh temporary home and fake yabai, skhd, SketchyBar, borders,
 launchctl and defaults. Macarchy's files stay in that home and its commands
 reach the fakes. Setting either `MACARCHY_HOME` or `MACARCHY_SEARCH_PATH`, even
-to an empty value, makes a run isolated (`Paths.isolated`). An isolated run
-takes launchctl and defaults only from the search path, so service restarts and
+to an empty value, makes a run isolated (`Paths.isolated`), unless the only one
+set is `MACARCHY_HOME` naming the real home. An isolated run finds daemons,
+launchctl and defaults only on the search path. `DesktopIsolation` refuses
+them, AppleScript, `pkill` and `open` outside the home and search path, and
+the wallpaper and the bundled bar scripts always. So service restarts and
 stops are recorded in `launchctl.log` in the temporary home and the Borders
 corner radius is kept in a file there, not the global setting. It never repairs
 the real sudoers rule for the scripting addition, keeps the selected pane and

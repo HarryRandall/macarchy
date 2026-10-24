@@ -15,12 +15,39 @@ public enum Paths {
     /// A development run or test, which must never reach the real login
     /// session, global defaults, sudoers or LaunchAgents. Either variable is
     /// enough, so a run that sets only one is still kept away from them. Read
-    /// on every use, because the web view tests set both after launch.
+    /// on every use, because the web view tests set both after launch. A
+    /// `MACARCHY_HOME` that is the account's own home relocates nothing, so on
+    /// its own it does not count. See also `DesktopIsolation`.
     public static var isolated: Bool { isolated(in: ProcessInfo.processInfo.environment) }
 
-    static func isolated(in environment: [String: String]) -> Bool {
-        environment["MACARCHY_HOME"] != nil || environment["MACARCHY_SEARCH_PATH"] != nil
+    static func isolated(in environment: [String: String], homes: [String] = realHomes) -> Bool {
+        environment["MACARCHY_SEARCH_PATH"] != nil || relocatesHome(in: environment, homes: homes)
     }
+
+    /// Whether `MACARCHY_HOME` names a home other than the account's own,
+    /// compared with links resolved.
+    static func relocatesHome(
+        in environment: [String: String], homes: [String] = realHomes
+    )
+        -> Bool
+    {
+        guard let home = environment["MACARCHY_HOME"] else { return false }
+        func resolved(_ path: String) -> String {
+            URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        }
+        let target = resolved(home)
+        return !homes.contains { resolved($0) == target }
+    }
+
+    /// The account's home from the user database. `NSHomeDirectory` ignores
+    /// `HOME` on macOS, but both are checked in case either is redirected.
+    static let realHomes: [String] = {
+        var homes = [NSHomeDirectory()]
+        if let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir {
+            homes.append(String(cString: directory))
+        }
+        return homes
+    }()
 
     public static var appRoot: URL { home.appending(path: ".config/macarchy") }
     public static var settings: URL { appRoot.appending(path: "settings.json") }
@@ -84,7 +111,8 @@ public enum Paths {
     /// Homebrew prefixes for Apple Silicon and Intel, in that order.
     /// `MACARCHY_SEARCH_PATH` replaces them, so tests can supply fakes and
     /// never reach the real daemons. An empty value is still an override,
-    /// with no directories at all.
+    /// with no directories at all. An isolated home without it searches
+    /// nowhere, so every daemon reads as missing rather than the real one.
     static var searchDirectories: [String] {
         searchDirectories(in: ProcessInfo.processInfo.environment)
     }
@@ -93,7 +121,7 @@ public enum Paths {
         if let override = environment["MACARCHY_SEARCH_PATH"] {
             return override.split(separator: ":").map(String.init)
         }
-        return ["/opt/homebrew/bin", "/usr/local/bin"]
+        return isolated(in: environment) ? [] : ["/opt/homebrew/bin", "/usr/local/bin"]
     }
 
     /// Finds a daemon executable without relying on the caller's PATH, which
@@ -101,7 +129,7 @@ public enum Paths {
     ///
     /// A file in `~/.config/macarchy/bin` wins, so a custom build can replace
     /// the Homebrew one without editing anything else. When nothing is found
-    /// the Apple Silicon path is returned and checks report it as missing.
+    /// the first searched path is returned and checks report it as missing.
     public static func executable(_ name: String) -> String {
         executable(name, in: ProcessInfo.processInfo.environment)
     }
@@ -114,7 +142,7 @@ public enum Paths {
             let candidate = directory + "/" + name
             if fm.isExecutableFile(atPath: candidate) { return candidate }
         }
-        let path = environment["MACARCHY_SEARCH_PATH"] == nil ? environment["PATH"] ?? "" : ""
+        let path = isolated(in: environment) ? "" : environment["PATH"] ?? ""
         for directory in path.split(separator: ":") {
             let candidate = String(directory) + "/" + name
             if fm.isExecutableFile(atPath: candidate) { return candidate }

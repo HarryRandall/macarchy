@@ -115,7 +115,8 @@ public struct Integrations: Sendable {
         let kickstart = await execute(
             Paths.launchctl,
             ["kickstart", "-k", "gui/\(getuid())/\(daemon.launchdLabel)"])
-        guard kickstart.ok else { return kickstart }
+        // A kickstart an isolated run refused has nothing to wait for.
+        guard kickstart.ok, kickstart.skipped.isEmpty else { return kickstart }
         // A daemon on its way out can still read as running for the first
         // instant after the spawn, so "running" has to hold across two reads
         // before it counts as a start.

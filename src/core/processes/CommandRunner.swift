@@ -6,11 +6,18 @@ public struct CommandResult: Sendable {
     public let status: Int32
     public let stdout: String
     public let stderr: String
+    /// Parts left out on purpose, such as a command an isolated run refused
+    /// to run. A result can succeed with parts skipped.
+    public let skipped: [String]
     public var ok: Bool { status == 0 }
     public var summary: String { ok ? stdout : stderr }
 
-    public init(command: String, status: Int32, stdout: String = "", stderr: String = "") {
+    public init(
+        command: String, status: Int32, stdout: String = "", stderr: String = "",
+        skipped: [String] = []
+    ) {
         self.command = command; self.status = status; self.stdout = stdout; self.stderr = stderr
+        self.skipped = skipped
     }
 }
 
@@ -22,6 +29,11 @@ public enum CommandRunner {
         _ executable: String, _ arguments: [String], timeout: TimeInterval = 30,
         environment: [String: String]? = nil, directory: URL? = nil
     ) async -> CommandResult {
+        if let reason = DesktopIsolation.refusal(executable, arguments) {
+            let command = ([URL(fileURLWithPath: executable).lastPathComponent] + arguments)
+                .joined(separator: " ")
+            return CommandResult(command: command, status: 0, skipped: [reason])
+        }
         let cancellation = CancellationFlag()
         let setup = Setup(environment: environment, directory: directory)
         return await withTaskCancellationHandler {
