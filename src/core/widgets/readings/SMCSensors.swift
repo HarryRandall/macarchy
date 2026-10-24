@@ -55,15 +55,18 @@ final class SMCSensors: @unchecked Sendable {
     private let lock = NSLock()
     private var connection: io_connect_t = 0
     private var keys: (cpu: [UInt32], gpu: [UInt32])?
+    /// Each sensor's last believable value, and when it was read.
+    private var last: [UInt32: (value: Double, at: Date)] = [:]
 
-    /// The average of each group's sensors that read a believable value.
+    /// The average of each group's sensors, each at its last believable value.
     func read() -> Temperatures {
         lock.lock()
         defer { lock.unlock() }
         guard open() else { return Temperatures() }
         let keys = self.keys ?? findKeys()
         self.keys = keys
-        return Temperatures(cpu: average(keys.cpu), gpu: average(keys.gpu))
+        let now = Date()
+        return Temperatures(cpu: average(keys.cpu, at: now), gpu: average(keys.gpu, at: now))
     }
 
     private func open() -> Bool {
@@ -118,18 +121,42 @@ final class SMCSensors: @unchecked Sendable {
             let name = Self.name(found.key)
             let group =
                 name.hasPrefix("Tp") || name.hasPrefix("Te") ? 1 : name.hasPrefix("Tg") ? 2 : 0
-            guard group != 0, let value = float(found.key), Self.believable(value) else { continue }
+            // Chosen by name and type, not by what they read now, which may be
+            // one of the moments their values are nonsense.
+            guard group != 0, float(found.key) != nil else { continue }
             if group == 1 { cpu.append(found.key) } else { gpu.append(found.key) }
         }
         return (cpu, gpu)
     }
 
-    private func average(_ keys: [UInt32]) -> Double? {
-        let values = keys.compactMap(float).filter(Self.believable)
+    /// Every few seconds the performance cores' sensors all report nonsense
+    /// at once, such as -4° and 0°. Averaging only the sensors left would
+    /// drop the reading by 25° and back, so a read where most sensors are
+    /// out is ignored, and each sensor counts at its last believable value.
+    private func average(_ keys: [UInt32], at now: Date) -> Double? {
+        let read = keys.map { key in (key, float(key).flatMap { Self.believable($0) ? $0 : nil }) }
+        let good = read.compactMap { key, value in value.map { (key, $0) } }
+        // Judged against the sensors that have ever worked, since some never do.
+        let working = keys.filter { last[$0] != nil }.count
+        if Self.trusted(good: good.count, working: working, of: keys.count) {
+            for (key, value) in good { last[key] = (value, now) }
+        }
+        let values = keys.compactMap { key in
+            last[key].flatMap { now.timeIntervalSince($0.at) < 30 ? $0.value : nil }
+        }
         return values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
     }
 
-    static func believable(_ value: Double) -> Bool { value > 5 && value < 125 }
+    /// Whether a read is sound enough to learn from: three in four of the
+    /// sensors that have worked gave a believable value, or, on the first
+    /// read, half of them all.
+    static func trusted(good: Int, working: Int, of total: Int) -> Bool {
+        guard good > 0 else { return false }
+        return working == 0 ? good * 2 >= total : good * 4 >= working * 3
+    }
+
+    /// A working chip is never below room temperature or above its limit.
+    static func believable(_ value: Double) -> Bool { value >= 20 && value < 125 }
 
     static func code(_ text: String) -> UInt32 {
         text.utf8.reduce(0) { $0 << 8 | UInt32($1) }

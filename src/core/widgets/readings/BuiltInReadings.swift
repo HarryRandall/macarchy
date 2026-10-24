@@ -45,6 +45,17 @@ public actor BuiltInReadings {
         expected = Expected(index: index, at: Date())
     }
 
+    private var temperatures: [String: Double] = [:]
+
+    /// A temperature eased towards each new reading, so a sensor's
+    /// momentary spike from a burst of work moves it only part of the way.
+    private func smoothed(_ reading: Double?, as name: String) -> Double? {
+        guard let reading else { return temperatures[name] }
+        let eased = temperatures[name].map { $0 + (reading - $0) * 0.5 } ?? reading
+        temperatures[name] = eased
+        return eased
+    }
+
     private func remember(_ value: Double, as name: String) -> [Double] {
         let history = Array(((histories[name] ?? []) + [value]).suffix(Self.historyLength))
         histories[name] = history
@@ -92,7 +103,7 @@ public actor BuiltInReadings {
         let loads = CoreTicks.loads(from: ticks.isEmpty ? current : ticks, to: current)
         ticks = current
         let load = loads.isEmpty ? 0 : loads.reduce(0, +) / Double(loads.count)
-        let temperature = SMCSensors.shared.read().cpu
+        let temperature = smoothed(SMCSensors.shared.read().cpu, as: "cpu")
         var sample = ReadingOutputs.CPUSample(
             load: load, cores: loads, temperature: temperature,
             history: remember(load, as: "cpu"))
@@ -105,7 +116,7 @@ public actor BuiltInReadings {
     func gpu(_ instance: WidgetInstance, now: Date) -> WidgetOutput {
         let load = GPUUsage.read() ?? 0
         return ReadingOutputs.gpu(
-            load: load, temperature: SMCSensors.shared.read().gpu,
+            load: load, temperature: smoothed(SMCSensors.shared.read().gpu, as: "gpu"),
             history: remember(load, as: "gpu"), settings: instance.settings)
     }
 

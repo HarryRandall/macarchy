@@ -22,6 +22,19 @@ struct BuiltInReadingsTests {
         #expect(ReadingFormat.warning(10, warn: 75, alarm: 95) == nil)
     }
 
+    @Test("a temperature read where most sensors report nonsense is not learnt from")
+    func sensors() {
+        #expect(!SMCSensors.believable(5.2) && !SMCSensors.believable(-4))
+        #expect(SMCSensors.believable(64.3))
+        // The performance cores' sensors all out: 16 of 64 still read.
+        #expect(!SMCSensors.trusted(good: 16, working: 64, of: 64))
+        #expect(SMCSensors.trusted(good: 61, working: 61, of: 64))
+        // The first read has nothing to go on but half of them all.
+        #expect(SMCSensors.trusted(good: 40, working: 0, of: 64))
+        #expect(!SMCSensors.trusted(good: 16, working: 0, of: 64))
+        #expect(!SMCSensors.trusted(good: 0, working: 0, of: 0))
+    }
+
     @Test("load is the busy share of ticks between two readings")
     func loads() {
         let earlier = [CoreTicks(busy: 100, total: 200), CoreTicks(busy: 0, total: 100)]
