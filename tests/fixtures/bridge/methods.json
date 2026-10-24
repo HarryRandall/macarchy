@@ -286,10 +286,10 @@
       "result": null
     }
   ],
-  "health.copyFix": [
+  "health.copyCommand": [
     {
       "params": {
-        "id": "Configuration/Setup"
+        "id": "Services/borders"
       },
       "result": null
     }
@@ -301,32 +301,50 @@
         "checkedAt": 1792570500,
         "checks": [
           {
+            "advice": null,
+            "command": null,
             "detail": "yabai 7.1.25 at /opt/homebrew/bin/yabai",
-            "fix": null,
+            "file": null,
             "group": "Dependencies",
             "id": "Dependencies/yabai",
             "status": "passed",
             "title": "yabai"
           },
           {
-            "detail": "Installed but not running",
-            "fix": "macarchy apply",
+            "advice": "Restart it from Advanced",
+            "command": "borders --start-service",
+            "detail": "Stopped",
+            "file": null,
             "group": "Services",
             "id": "Services/borders",
             "status": "warning",
             "title": "borders"
           },
           {
+            "advice": "Open Macarchy to set it up",
+            "command": null,
             "detail": "Macarchy has not been set up",
-            "fix": "Open Macarchy, or run: macarchy setup",
+            "file": null,
             "group": "Configuration",
             "id": "Configuration/Setup",
             "status": "failed",
             "title": "Setup"
           },
           {
+            "advice": "Correct the file, or restore an earlier snapshot from Advanced",
+            "command": null,
+            "detail": "settings.json is not valid JSON",
+            "file": "~/.config/macarchy/settings.json",
+            "group": "Configuration",
+            "id": "Configuration/Settings",
+            "status": "failed",
+            "title": "Settings"
+          },
+          {
+            "advice": null,
+            "command": null,
             "detail": "The sudoers rule could not be read",
-            "fix": null,
+            "file": null,
             "group": "Optional",
             "id": "Optional/Scripting addition",
             "status": "unknown",
@@ -341,6 +359,14 @@
           "settingsFolder": "~/.config/macarchy"
         }
       }
+    }
+  ],
+  "health.openFile": [
+    {
+      "params": {
+        "id": "Configuration/Settings"
+      },
+      "result": null
     }
   ],
   "health.revealSettings": [

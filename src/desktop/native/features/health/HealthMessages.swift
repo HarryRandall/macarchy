@@ -8,9 +8,16 @@ struct HealthState: Codable, Sendable {
         var title: String
         var status: String
         var detail: String
-        var fix: String?
+        /// What to do, in words. Never copied as a command.
+        var advice: String?
+        /// A shell command to paste into Terminal.
+        var command: String?
+        /// The file to correct by hand, for display; the handler opens the real one.
+        var file: String?
 
-        private enum CodingKeys: String, CodingKey { case id, group, title, status, detail, fix }
+        private enum CodingKeys: String, CodingKey {
+            case id, group, title, status, detail, advice, command, file
+        }
 
         func encode(to encoder: Encoder) throws {
             var fields = encoder.container(keyedBy: CodingKeys.self)
@@ -19,7 +26,9 @@ struct HealthState: Codable, Sendable {
             try fields.encode(title, forKey: .title)
             try fields.encode(status, forKey: .status)
             try fields.encode(detail, forKey: .detail)
-            try fields.encode(fix, forKey: .fix)
+            try fields.encode(advice, forKey: .advice)
+            try fields.encode(command, forKey: .command)
+            try fields.encode(file, forKey: .file)
         }
     }
 
@@ -39,7 +48,8 @@ struct HealthState: Codable, Sendable {
         checks = snapshot.checks.map {
             Check(
                 id: $0.id, group: $0.group.rawValue, title: $0.title,
-                status: $0.status.rawValue, detail: $0.detail, fix: $0.command ?? $0.fix)
+                status: $0.status.rawValue, detail: $0.detail, advice: $0.fix,
+                command: $0.command, file: $0.file.map(Paths.display))
         }
         let facts = snapshot.environment
         environment = Machine(
@@ -50,7 +60,7 @@ struct HealthState: Codable, Sendable {
     }
 }
 
-struct HealthFixParams: Decodable { var id: String }
+struct HealthCheckParams: Decodable { var id: String }
 
 extension BridgeEvent {
     static var healthChanged: BridgeEvent { BridgeEvent("health.changed") }

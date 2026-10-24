@@ -11,17 +11,32 @@ extension BridgeRouter {
             model.log.note("health check", "\(snapshot.checks.count) checks completed")
             return HealthState(snapshot)
         }
-        register("health.copyFix") { [weak model] (params: HealthFixParams) in
-            guard let check = latest?.checks.first(where: { $0.id == params.id }),
-                check.status != .passed, let fix = check.command ?? check.fix
-            else {
+        // Both act on the latest reading, so the page names a check, never a
+        // command or a path.
+        func problem(_ id: String) -> HealthCheck? {
+            latest?.checks.first { $0.id == id && $0.status != .passed }
+        }
+        register("health.copyCommand") { [weak model] (params: HealthCheckParams) in
+            guard let check = problem(params.id), let command = check.command else {
                 throw BridgeFailure(.invalidParams, "Check Setup health again to find this fix.")
             }
-            guard actions.copy(fix) else {
+            guard actions.copy(command) else {
                 model?.log.failure("copy fix", "The clipboard could not be written.")
-                throw BridgeFailure(.operationFailed, "The fix could not be copied. Try again.")
+                throw BridgeFailure(.operationFailed, "The command could not be copied. Try again.")
             }
             model?.log.note("copy fix", check.title)
+            return Null()
+        }
+        register("health.openFile") { [weak model] (params: HealthCheckParams) in
+            guard let check = problem(params.id), let file = check.file else {
+                throw BridgeFailure(.invalidParams, "Check Setup health again to find this file.")
+            }
+            guard actions.open(file) else {
+                model?.log.failure("open file", "\(Paths.display(file)) could not be opened.")
+                throw BridgeFailure(
+                    .operationFailed, "\(file.lastPathComponent) could not be opened.")
+            }
+            model?.log.note("open file", Paths.display(file))
             return Null()
         }
         register("health.revealSettings") { [weak model] (_: Empty) in

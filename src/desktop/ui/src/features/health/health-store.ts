@@ -6,7 +6,8 @@ export function createHealthStore(host: PageHost) {
   host.subscribe("health.changed", () => store.invalidate());
   return {
     ...store,
-    copyFix: (id: string) => store.action(() => host.request("health.copyFix", { id })),
+    copyCommand: (id: string) => store.action(() => host.request("health.copyCommand", { id })),
+    openFile: (id: string) => store.action(() => host.request("health.openFile", { id })),
     reveal: () => store.action(() => host.request("health.revealSettings")),
   };
 }

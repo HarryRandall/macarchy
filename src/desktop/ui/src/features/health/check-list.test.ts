@@ -15,7 +15,9 @@ const check = (title: string, status: Check["status"]): Check => ({
   title,
   status,
   detail: "",
-  fix: null,
+  advice: null,
+  command: null,
+  file: null,
 });
 
 describe("check list", () => {

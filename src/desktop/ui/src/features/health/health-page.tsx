@@ -1,4 +1,5 @@
-import { ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronRight, FileText, FolderOpen } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { PageHeader } from "~/components/layout/page-header";
@@ -18,6 +19,36 @@ import { historyLabels } from "./health-mock";
 import { HealthSummaryCard } from "./health-summary-card";
 import type { HealthStore } from "./health-store";
 import { StatusIcon } from "./status-icon";
+
+/**
+ * A problem's row actions: Copy for a real command and Open for a file to
+ * correct by hand. Advice in words is shown in the detail, never copied.
+ */
+function fixActions(check: Check, store: HealthStore): ReactNode {
+  if (!check.command && !check.file) return null;
+  return (
+    <div className="flex items-center gap-2">
+      {check.file ? (
+        <Button size="sm" onClick={() => void store.openFile(check.id)}>
+          <FileText aria-hidden />
+          Open {check.file.split("/").at(-1)}
+        </Button>
+      ) : null}
+      {check.command ? (
+        <CopyButton
+          size="sm"
+          text={check.command}
+          label="Copy command"
+          tooltip={check.command}
+          write={async () => {
+            if (!(await store.copyCommand(check.id)))
+              throw new Error("The command could not be copied.");
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 const time = (seconds: number) =>
   new Date(seconds * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -95,20 +126,7 @@ export function HealthPage({ store, context }: { store: HealthStore; context: Pa
                 state={refreshing ? "checking" : check.status}
                 expanded={openId === check.id}
                 onToggle={() => toggle(check.id)}
-                action={
-                  check.fix ? (
-                    <CopyButton
-                      size="sm"
-                      text={check.fix}
-                      label="Copy fix"
-                      tooltip={check.fix}
-                      write={async () => {
-                        if (!(await store.copyFix(check.id)))
-                          throw new Error("The fix could not be copied.");
-                      }}
-                    />
-                  ) : null
-                }
+                action={fixActions(check, store)}
               >
                 {detail(check)}
               </CheckRow>

@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import type { PageHost } from "~/shell/page";
 import { createHealthStore } from "./health-store";
 
-it("refreshes health after native changes and names native fix and reveal operations", async () => {
+it("refreshes health after native changes and names native command, file and reveal operations", async () => {
   const request = vi.fn<PageHost["request"]>().mockResolvedValue({ checks: [] } as never);
   let changed: (() => void) | undefined;
   const subscribe = vi.fn<PageHost["subscribe"]>().mockImplementation((_type, handler) => {
@@ -14,11 +14,13 @@ it("refreshes health after native changes and names native fix and reveal operat
   expect(request).toHaveBeenLastCalledWith("health.getState");
   changed?.();
   await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
-  await store.copyFix("Dependencies/skhd");
-  expect(request).toHaveBeenLastCalledWith("health.copyFix", { id: "Dependencies/skhd" });
+  await store.copyCommand("Dependencies/skhd");
+  expect(request).toHaveBeenLastCalledWith("health.copyCommand", { id: "Dependencies/skhd" });
+  await store.openFile("Configuration/Settings");
+  expect(request).toHaveBeenLastCalledWith("health.openFile", { id: "Configuration/Settings" });
   await store.reveal();
   expect(request).toHaveBeenLastCalledWith("health.revealSettings");
   request.mockRejectedValueOnce(new Error("Clipboard unavailable"));
-  await store.copyFix("Dependencies/skhd");
+  await store.copyCommand("Dependencies/skhd");
   expect(store.getSnapshot().error).toBe("Clipboard unavailable");
 });

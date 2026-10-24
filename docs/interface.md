@@ -241,7 +241,10 @@ they appear.
 
 Home reads `DesktopOverview` in core, without using another page's React store.
 `home.changed` and `health.changed` invalidate read-only summaries after model
-or settings changes and on window focus. A file fingerprint also detects theme,
+or settings changes and on window focus. Each health check carries its advice,
+command and file separately: the page shows advice as text, copies only a
+command (`health.copyCommand`) and opens a file to correct (`health.openFile`),
+both named by check id. A file fingerprint also detects theme,
 shortcut and snapshot changes made outside the app. Slow health reads are
 serialised and keep the previous findings visible while checking again.
 

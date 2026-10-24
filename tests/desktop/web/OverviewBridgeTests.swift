@@ -25,12 +25,14 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("health fixes are selected by check ID and native failures are reported")
+        @Test("health commands and files are selected by check ID and advice is never copied")
         func health() async throws {
             try await withHarness(tools: []) { harness in
+                try harness.write("{ not json", to: ".config/macarchy/settings.json")
                 let before = harness.settingsData
                 let router = BridgeRouter()
                 var copied: [String] = []
+                var opened: [URL] = []
                 var reveals = 0
                 router.registerHealth(
                     model: harness.model,
@@ -38,16 +40,42 @@ extension WebInterfaceTests {
                         copy: {
                             copied.append($0); return true
                         },
-                        open: { _ in false }, reveal: { reveals += 1 }))
+                        open: {
+                            opened.append($0); return true
+                        }, reveal: { reveals += 1 }))
                 let reply = try await overviewReply(router, "health.getState")
                 let value = try #require(reply["value"] as? [String: Any])
                 let checks = try #require(value["checks"] as? [[String: Any]])
-                let fix = try #require(checks.first { $0["fix"] is String })
-                let id = try #require(fix["id"] as? String)
-                let copy = try await overviewReply(router, "health.copyFix", ["id": id])
+                for check in checks {
+                    for key in ["advice", "command", "file"] {
+                        #expect(check[key] is String || check[key] is NSNull, "\(key) missing")
+                    }
+                }
+                let missing = try #require(checks.first { $0["command"] is String })
+                let id = try #require(missing["id"] as? String)
+                let copy = try await overviewReply(router, "health.copyCommand", ["id": id])
                 #expect(copy["ok"] as? Bool == true)
-                #expect(copied == [fix["fix"] as? String].compactMap { $0 })
-                let invalid = try await overviewReply(router, "health.copyFix", ["id": "arbitrary"])
+                #expect(copied == [missing["command"] as? String].compactMap { $0 })
+                #expect(copied.first?.contains("brew install") == true)
+
+                let settings = try #require(
+                    checks.first { $0["id"] as? String == "Configuration/Settings" })
+                #expect(settings["file"] as? String == "~/.config/macarchy/settings.json")
+                #expect(settings["command"] is NSNull)
+                #expect((settings["advice"] as? String)?.contains("Correct the file") == true)
+                let adviceOnly = try await overviewReply(
+                    router, "health.copyCommand", ["id": "Configuration/Settings"])
+                #expect(adviceOnly["ok"] as? Bool == false)
+                #expect(copied.count == 1)
+                let open = try await overviewReply(
+                    router, "health.openFile", ["id": "Configuration/Settings"])
+                #expect(open["ok"] as? Bool == true)
+                #expect(opened.map(\.lastPathComponent) == ["settings.json"])
+                let noFile = try await overviewReply(router, "health.openFile", ["id": id])
+                #expect(noFile["ok"] as? Bool == false)
+
+                let invalid = try await overviewReply(
+                    router, "health.copyCommand", ["id": "arbitrary"])
                 #expect(invalid["ok"] as? Bool == false)
                 _ = try await overviewReply(router, "health.revealSettings")
                 #expect(reveals == 1)

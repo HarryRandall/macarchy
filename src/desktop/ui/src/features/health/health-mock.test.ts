@@ -21,7 +21,9 @@ const check = (
   title: id,
   status,
   detail: "",
-  fix: null,
+  advice: null,
+  command: null,
+  file: null,
 });
 
 describe("health history mock", () => {

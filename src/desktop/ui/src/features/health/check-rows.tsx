@@ -23,7 +23,7 @@ const ms = (value: number) => `${value.toLocaleString("en-GB")} ms`;
 
 /**
  * A check's row. The whole row is one button that shows or hides its
- * detail; `action` sits above it, so a Copy fix press does not toggle.
+ * detail; `action` sits above it, so a Copy or Open press does not toggle.
  */
 export function CheckRow({
   check,
@@ -128,7 +128,7 @@ function StripSummary({ results }: { results: readonly Result[] }) {
   );
 }
 
-/** What a check found, how to fix it, and its fortnight. */
+/** What a check found, what to do in words and any command, and its fortnight. */
 export function CheckDetail({
   check,
   days,
@@ -149,8 +149,11 @@ export function CheckDetail({
   const average = Math.round(times.reduce((sum, value) => sum + value, 0) / times.length);
   return (
     <div className="space-y-3 pt-0.5 pr-5 pb-4 pl-12">
-      {check.fix && check.status !== "passed" ? (
-        <CodeBlock code={check.fix} label={`Fix for ${check.title}`} />
+      {check.status !== "passed" && check.advice ? (
+        <p className="text-small text-fg">{check.advice}</p>
+      ) : null}
+      {check.status !== "passed" && check.command ? (
+        <CodeBlock code={check.command} label={`Command for ${check.title}`} />
       ) : null}
       <div className="grid grid-cols-1 gap-6 @[560px]:grid-cols-2">
         <div className="min-w-0">

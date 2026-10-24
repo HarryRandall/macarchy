@@ -8,7 +8,7 @@ extension WebInterfaceTests {
     @MainActor
     @Suite("Setup health page")
     struct HealthPageTests {
-        @Test("checks, copy fix and reveal use native operations and leave settings unchanged")
+        @Test("checks, copy command and reveal use native operations and leave settings unchanged")
         func health() async throws {
             try await withHarness(tools: []) { harness in
                 let before = harness.settingsData
@@ -35,7 +35,7 @@ extension WebInterfaceTests {
                     surface,
                     """
                     [...document.querySelectorAll('button')].find(button =>
-                      button.innerText.includes('Copy fix')).click();
+                      button.innerText.includes('Copy command')).click();
                     """)
                 try await waitUntil("copied native fix") { !copied.isEmpty }
                 #expect(copied.first?.contains("brew install") == true)
@@ -55,6 +55,52 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("advice reads as text, and a broken file offers Open rather than Copy")
+        func adviceAndFile() async throws {
+            try await withHarness(tools: []) { harness in
+                try harness.write("{ not json", to: ".config/macarchy/settings.json")
+                let before = harness.settingsData
+                let (_, surface) = try harness.settingsPage(pane: .health)
+                var copied: [String] = []
+                var opened: [URL] = []
+                surface.router.registerHealth(
+                    model: harness.model,
+                    actions: DiagnosticActions(
+                        copy: {
+                            copied.append($0); return true
+                        },
+                        open: {
+                            opened.append($0); return true
+                        },
+                        reveal: {}))
+                let row = "document.querySelector('[data-check-id=\"Configuration/Settings\"]')"
+                try await waitFor(surface, "settings check", "return !!\(row);")
+                try await run(surface, "\(row).querySelector('[data-row-primary]').click();")
+                try await waitFor(
+                    surface, "advice as text",
+                    """
+                    const settings = \(row);
+                    return settings.innerText.includes('Correct the file, or restore')
+                      && !settings.querySelector('pre, code')
+                      && ![...settings.querySelectorAll('button')]
+                        .some(button => button.innerText.includes('Copy'));
+                    """)
+                try await run(
+                    surface,
+                    """
+                    [...\(row).querySelectorAll('button')]
+                      .find(button => button.innerText.includes('Open settings.json')).click();
+                    """)
+                try await waitUntil("opened settings") { !opened.isEmpty }
+                #expect(
+                    opened.map { $0.resolvingSymlinksInPath().path }
+                        == [harness.store.url.resolvingSymlinksInPath().path])
+                #expect(copied.isEmpty)
+                #expect(harness.settingsData == before)
+                #expect(await harness.desktop.writes.isEmpty)
+            }
+        }
+
         @Test("clipboard failures remain visible without changing settings")
         func failure() async throws {
             try await withHarness(tools: []) { harness in
@@ -68,7 +114,7 @@ extension WebInterfaceTests {
                     surface, "health checks", "return page.text().includes('Not installed');")
                 try await run(
                     surface,
-                    "[...document.querySelectorAll('button')].find(b => b.innerText.includes('Copy fix')).click();"
+                    "[...document.querySelectorAll('button')].find(b => b.innerText.includes('Copy command')).click();"
                 )
                 try await waitFor(
                     surface, "copy error",
