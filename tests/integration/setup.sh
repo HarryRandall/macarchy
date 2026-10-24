@@ -221,7 +221,13 @@ grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced 
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
 "$CLI" setup --replace >/dev/null || fail "isolated setup with services failed"
 "$CLI" apply >/dev/null || fail "isolated apply failed"
+# A copied theme folder whose manifest still names the original is stepped over.
+cp -R "$HOME_DIR/.config/macarchy/themes/midnight" "$HOME_DIR/.config/macarchy/themes/midnight-copy"
 "$CLI" theme next >/dev/null || fail "isolated theme change failed"
+grep -q '"currentTheme" : "turbonite"' "$HOME_DIR/.config/macarchy/settings.json" || fail "theme next did not advance"
+OUTPUT="$("$CLI" theme midnight-copy 2>&1)" && fail "mismatched theme folder applied"
+grep -q 'folder midnight-copy contains the theme midnight' <<<"$OUTPUT" || fail "mismatch not explained: $OUTPUT"
+grep -q 'may already have applied' <<<"$OUTPUT" && fail "untouched desktop reported as partly changed"
 grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 

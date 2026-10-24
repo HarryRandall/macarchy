@@ -16,27 +16,23 @@ public struct ThemeApplication: Sendable {
     public func apply(name: String) async -> CommandResult {
         do {
             return try await OperationLock.run {
-                let selected = try resolve(name)
-                let result = await applyLocked(name: selected)
-                if result.ok { return result }
-                return CommandResult(
-                    command: result.command, status: result.status, stdout: result.stdout,
-                    stderr:
-                        "Theme application did not finish; some changes may already have applied. "
-                        + result.stderr)
+                await applyLocked(name: try resolve(name))
             }
         } catch {
             return CommandResult(command: "theme", status: 1, stderr: error.localizedDescription)
         }
     }
 
-    /// Maps `next` and `prev` onto an installed theme name.
+    /// Maps `next` and `prev` onto an installed theme name. Only folders
+    /// whose manifest carries the folder's name can be applied, so a copied
+    /// folder that still names its original is stepped over, not landed on.
     private func resolve(_ name: String) throws -> String {
         guard name == "next" || name == "prev" else { return name }
         let names = try FileManager.default.contentsOfDirectory(
             at: Paths.themesDirectory, includingPropertiesForKeys: nil
         )
-        .filter { Theme.load(from: $0) != nil }.map(\.lastPathComponent).sorted()
+        .filter { Theme.load(from: $0)?.name == $0.lastPathComponent }
+        .map(\.lastPathComponent).sorted()
         guard !names.isEmpty else { throw ConfigurationError("No themes installed") }
         let current = try SettingsStore().read().currentTheme
         guard let index = names.firstIndex(where: { $0 == current }) else {
@@ -63,14 +59,7 @@ public struct ThemeApplication: Sendable {
                 _ = try Theme.read(from: directory).wallpaperURL(in: directory, selected: path)
                 if try SettingsStore().read().currentTheme == name {
                     let result = await applyLocked(name: name, wallpaper: path)
-                    guard result.ok else {
-                        return CommandResult(
-                            command: result.command, status: result.status,
-                            stdout: result.stdout,
-                            stderr:
-                                "Wallpaper application did not finish; some changes may already have applied. "
-                                + result.stderr)
-                    }
+                    guard result.ok else { return result }
                 }
                 do { try SettingsStore().update { $0.wallpapers[name] = path } } catch {
                     return CommandResult(
@@ -90,13 +79,22 @@ public struct ThemeApplication: Sendable {
     /// The theme transaction itself. Callers must hold the desktop lock.
     /// `wallpaper` overrides the saved choice for this application only.
     func applyLocked(name: String, wallpaper chosen: String? = nil) async -> CommandResult {
+        var started = false
+        func partial(_ result: CommandResult) -> CommandResult {
+            CommandResult(
+                command: result.command, status: result.status, stdout: result.stdout,
+                stderr: "\(chosen == nil ? "Theme" : "Wallpaper") application did not finish; "
+                    + "some changes may already have applied. " + result.stderr)
+        }
         do {
             guard name.range(of: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$", options: .regularExpression) != nil
             else { throw ConfigurationError("Invalid theme name") }
             let directory = Paths.themesDirectory.appending(path: name)
             let theme = try Theme.read(from: directory)
             guard theme.name == name else {
-                throw ConfigurationError("Theme folder and manifest name disagree")
+                throw ConfigurationError(
+                    "The theme folder \(name) contains the theme \(theme.name). Rename the "
+                        + "folder or the name in its theme.json so they match.")
             }
             let palette = try theme.palette(in: directory)
             let outputs = ThemeOutputs(theme: theme, ghostty: palette ?? "")
@@ -104,6 +102,9 @@ public struct ThemeApplication: Sendable {
             let wallpaper = try theme.wallpaperURL(
                 in: directory, selected: chosen ?? settings.wallpapers[name])
 
+            // Nothing has changed before this point, so earlier failures need
+            // no warning about a half-applied theme.
+            started = true
             try SnapshotStore().capture(Self.outputs, reason: "apply theme \(name)")
             let generated = Paths.generatedDirectory
             let ghostty = GhosttyConfig.colours(from: palette ?? "")
@@ -119,27 +120,28 @@ public struct ThemeApplication: Sendable {
             if Paths.isInstalled("borders"), await integrations.state(of: .borders).isRunning {
                 let borders = await integrations.borders(
                     BorderCommand.arguments(values: settings.flatValues, theme: theme))
-                guard borders.ok else { return borders }
+                guard borders.ok else { return partial(borders) }
             } else {
                 skipped.append("borders")
             }
             if Paths.isInstalled("sketchybar"), await integrations.state(of: .sketchybar).isRunning
             {
                 let result = await recolourBar(bundled: settings.bundledBar ?? true)
-                guard result.ok else { return result }
+                guard result.ok else { return partial(result) }
             } else {
                 skipped.append("menu bar")
             }
             if let failure = await effects.setAppearance(theme.dark, integrations) {
-                return failure
+                return partial(failure)
             }
             if let wallpaper { try await effects.setWallpaper(wallpaper) }
             await effects.refreshApplications(integrations)
             try SettingsStore().update { $0.currentTheme = name }
             return Self.applied(name, stopped: skipped, colours: ghostty.skipped)
         } catch {
-            return CommandResult(
+            let failure = CommandResult(
                 command: "theme \(name)", status: 1, stderr: error.localizedDescription)
+            return started ? partial(failure) : failure
         }
     }
 
