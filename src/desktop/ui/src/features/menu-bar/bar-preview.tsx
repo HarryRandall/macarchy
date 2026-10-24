@@ -133,7 +133,7 @@ export function BarPreview({
         ref={(element) => {
           parts.current[0] = element;
         }}
-        className="flex w-max items-center gap-1 justify-self-start"
+        className="flex w-max items-center gap-1.5 justify-self-start"
       >
         {zone("left")}
       </div>
@@ -141,7 +141,7 @@ export function BarPreview({
         ref={(element) => {
           parts.current[1] = element;
         }}
-        className="flex w-max items-center justify-center gap-1 px-2"
+        className="flex w-max items-center justify-center gap-1.5 px-2"
       >
         {shown("centre").length > 0 ? (
           zone("centre")
@@ -153,7 +153,7 @@ export function BarPreview({
         ref={(element) => {
           parts.current[2] = element;
         }}
-        className="flex w-max items-center gap-1 justify-self-end"
+        className="flex w-max items-center gap-1.5 justify-self-end"
       >
         {zone("right")}
       </div>

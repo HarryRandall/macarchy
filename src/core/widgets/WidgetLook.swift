@@ -52,6 +52,14 @@ public struct WidgetLook: Sendable {
     /// The bracket that draws a two-line widget's box around both items.
     public static func boxID(_ id: String) -> String { id + ".box" }
 
+    /// Points on each side of a widget, so neighbouring boxes sit twice this apart.
+    static let gap = 3
+    /// Points between a box's edge and what is inside it.
+    static let inset = 8.0
+    /// Points between a widget's icon and its text.
+    static let spacing = 6
+    static let boxHeight = 24
+
     /// How wide a character of the stacked lines' font is, in points.
     static let characterWidth = 6
 
@@ -102,12 +110,21 @@ public struct WidgetLook: Sendable {
         if isStacked(component) {
             return stackedArguments(component, manifest: manifest, style: style, icon: properties)
         }
-        properties += ["label.font=SF Pro:Semibold:\(Self.points(size))", "width=dynamic"]
-        if let left = style.paddingLeft {
-            properties.append("\(icon.isEmpty ? "label" : "icon").padding_left=\(Int(left))")
-        }
-        if let right = style.paddingRight { properties.append("label.padding_right=\(Int(right))") }
+        // Every widget is laid out the same, whatever the bar's own defaults
+        // say: the same gap between boxes and the same inset inside them.
+        let left = Int(style.paddingLeft ?? Self.inset)
+        let right = Int(style.paddingRight ?? Self.inset)
+        properties += [
+            "label.font=SF Pro:Semibold:\(Self.points(size))", "width=dynamic",
+            "padding_left=\(Self.gap)", "padding_right=\(Self.gap)",
+            "icon.padding_left=\(left)", "icon.padding_right=\(Self.spacing)",
+            "label.padding_left=\(icon.isEmpty ? left : 0)", "label.padding_right=\(right)",
+            "icon.y_offset=0", "label.y_offset=1",
+            "background.height=\(Self.boxHeight)",
+            "background.corner_radius=\(Int(style.radius ?? 5))"
+        ]
         properties += box(style)
+        if style.box == "outline" { properties.append("background.border_color=0x33ffffff") }
         if let colour = style.textColour.flatMap(colour) {
             properties.append("label.color=\(colour)")
         }
@@ -125,13 +142,13 @@ public struct WidgetLook: Sendable {
         // edge, so the two end exactly over each other.
         let column = Self.columnCharacters(manifest) * Self.characterWidth
         let font = "Menlo:Bold:10.0"
-        let right = Int(style.paddingRight ?? 8)
+        let right = Int(style.paddingRight ?? Self.inset)
         var lines = [
             "icon.font=\(font)", "label.font=\(font)", "icon.width=0", "label.width=0",
             "icon.align=right", "label.align=right", "icon.y_offset=6", "label.y_offset=-5",
             "icon.padding_left=\(column)", "icon.padding_right=-\(column)",
             "label.padding_left=\(column)", "label.padding_right=-\(column)", "padding_left=0",
-            "padding_right=\(right)", "width=\(column + 3)",
+            "padding_right=\(Self.gap)", "width=\(column + right)",
             "background.drawing=off", "script=", icon.first { $0.hasPrefix("click_script=") } ?? ""
         ]
         if let colour = style.textColour.flatMap(colour) {
@@ -139,11 +156,16 @@ public struct WidgetLook: Sendable {
         }
         let glyph =
             icon + [
-                "label.drawing=off", "background.drawing=off", "padding_left=0", "padding_right=0",
-                "icon.padding_left=\(Int(style.paddingLeft ?? 8))", "icon.padding_right=6"
+                "label.drawing=off", "background.drawing=off", "padding_left=\(Self.gap)",
+                "padding_right=0", "icon.padding_left=\(Int(style.paddingLeft ?? Self.inset))",
+                "icon.padding_right=\(Self.spacing)", "icon.y_offset=0"
             ]
         let box =
-            ["background.height=24", "background.corner_radius=\(Int(style.radius ?? 5))"]
+            [
+                "background.height=\(Self.boxHeight)",
+                "background.corner_radius=\(Int(style.radius ?? 5))",
+                "background.padding_left=0", "background.padding_right=0"
+            ]
             + box(style)
             + (style.box == "outline" ? ["background.border_color=0x33ffffff"] : [])
         return ["--set", component.id] + glyph + ["--set", Self.linesID(component.id)] + lines

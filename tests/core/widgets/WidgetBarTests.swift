@@ -154,7 +154,9 @@ struct WidgetBarTests {
             arguments[$0 + 1]
         }
         #expect(targets == ["macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"])
-        #expect(arguments.contains("width=39") && arguments.contains("label.padding_right=-36"))
+        // The column fits the widest sample, with the box's inset after it.
+        #expect(arguments.contains("width=44") && arguments.contains("label.padding_right=-36"))
+        #expect(arguments.contains("padding_left=3") && arguments.contains("padding_right=3"))
         #expect(arguments.contains("background.border_width=1"))
 
         let recorder = CallRecorder()

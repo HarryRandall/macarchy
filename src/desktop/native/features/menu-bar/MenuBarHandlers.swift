@@ -41,6 +41,18 @@ extension AppModel {
         let configuration = menuBar.applied
         let readings = Dictionary(
             menuBar.items.map { ($0.id, $0.label.value) }, uniquingKeysWith: { first, _ in first })
+        // A two-line widget keeps its first line in its lines item's icon.
+        let firstLines = Dictionary(
+            menuBar.items.map { ($0.id, $0.icon.value) }, uniquingKeysWith: { first, _ in first })
+        func reading(_ component: BarComponent) -> String {
+            if component.isCustom { return component.rendered(component.text) }
+            let lines = WidgetLook.linesID(component.id)
+            if component.isWidget, component.members.contains(lines) {
+                return (firstLines[lines] ?? "") + "\n" + (readings[lines] ?? "")
+            }
+            return component.members.filter { !$0.hasPrefix("gap.") }
+                .compactMap { readings[$0] }.filter { !$0.isEmpty }.joined(separator: " ")
+        }
         let items = configuration.components.map { component in
             MenuBarItemState(
                 id: component.id, title: component.title,
@@ -49,11 +61,7 @@ extension AppModel {
                 icon: component.icon, command: component.command, interval: component.interval,
                 widget: component.widget, settings: component.settings ?? [:],
                 style: component.style, click: component.click,
-                reading: component.isCustom
-                    ? component.rendered(component.text)
-                    : component.members.filter { !$0.hasPrefix("gap.") }
-                        .compactMap { readings[$0] }.filter { !$0.isEmpty }
-                        .joined(separator: " "))
+                reading: reading(component))
         }
         let geometry = configuration.geometry
         return MenuBarState(

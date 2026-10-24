@@ -34,8 +34,9 @@ private func waitForMenuBar(_ surface: WebSurface) async throws {
         """)
 }
 
+/// The page's Apply, which sits with its controls rather than in the top bar.
 private let applyButton = """
-    const apply = [...document.querySelectorAll("[data-slot=top-bar-actions] button")]
+    const apply = [...document.querySelectorAll("#page-content button")]
       .find((button) => button.textContent.trim() === "Apply");
     """
 
@@ -73,16 +74,17 @@ extension WebInterfaceTests {
                     surface, "the keyboard move announced",
                     """
                     return [...document.querySelectorAll("[aria-live=polite]")]
-                      .some((region) => region.textContent === "CPU, Centre zone, 1 of 1");
+                      .some((region) => region.textContent === "CPU, Left zone, 1 of 1");
                     """)
                 try await run(surface, applyButton + "apply.click();")
 
                 try await waitFor(
                     surface, "the change applied", applyButton + "return page.disabled(apply);")
                 let calls = await harness.desktop.calls(to: "sketchybar")
-                #expect(calls.contains { $0.contains("--set") && $0.contains("position=center") })
+                // The centre zone is off, so the move skips it.
+                #expect(calls.contains { $0.contains("--set") && $0.contains("position=left") })
                 let saved = try harness.store.read().barConfiguration
-                #expect(saved?.components.first { $0.id == "cpu" }?.side == "center")
+                #expect(saved?.components.first { $0.id == "cpu" }?.side == "left")
             }
         }
 
