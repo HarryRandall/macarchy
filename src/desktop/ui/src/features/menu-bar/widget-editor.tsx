@@ -70,7 +70,14 @@ export function WidgetEditor({
     widget.settings.map((setting) => [setting.key, settingOf(item, setting)]),
   );
   const body: Record<(typeof sections)[number]["id"], ReactNode> = {
-    content: <ContentSection item={item} widget={widget} onChange={onChange} />,
+    content: (
+      <ContentSection
+        item={item}
+        widget={widget}
+        onChange={onChange}
+        onOpenFile={(file) => files.open(widget.id, file)}
+      />
+    ),
     look: <LookSection item={item} widget={widget} onChange={onChange} />,
     click: (
       <ClickSection

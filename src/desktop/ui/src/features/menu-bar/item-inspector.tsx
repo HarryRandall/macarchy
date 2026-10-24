@@ -1,12 +1,14 @@
-import { Maximize2, Trash } from "lucide-react";
+import { Maximize2, MousePointerClick, Terminal, Trash } from "lucide-react";
 import { type KeyboardEvent, useId, useState } from "react";
 
 import type { WidgetInfo } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
+import { EmptyState } from "~/components/ui/empty-state";
 import { IconButton } from "~/components/ui/icon-button";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { TabPanel, Tabs } from "~/components/ui/tabs";
 import { Field, Input } from "~/components/ui/text-field";
+import { Tooltip } from "~/components/ui/tooltip";
 
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, glyphs, intervals } from "./menu-bar-items";
@@ -39,8 +41,26 @@ export interface WidgetFileActions {
 
 /** Where a widget comes from, as a badge. */
 export function OriginBadge({ widget }: { widget: WidgetInfo }) {
-  if (widget.scripted) return <Badge tone="warn">Script</Badge>;
-  return widget.origin === "user" ? <Badge tone="accent">Yours</Badge> : <Badge>Built-in</Badge>;
+  return (
+    <>
+      {widget.origin === "user" ? <Badge tone="accent">Yours</Badge> : <Badge>Built-in</Badge>}
+      {widget.scripted ? <ScriptBadge widget={widget} /> : null}
+    </>
+  );
+}
+
+/** That the widget runs a command as the person, and which, on hover. */
+export function ScriptBadge({ widget, compact }: { widget: WidgetInfo; compact?: boolean }) {
+  const what = widget.provider ?? "a command";
+  return (
+    <Tooltip content={`Runs ${what} as you, with your permissions`}>
+      <Badge tone="warn" className={compact ? "h-[18px] px-1.5 text-caption" : undefined}>
+        <Terminal aria-hidden size={10} />
+        {compact ? null : "Runs a script"}
+        <span className="sr-only">{compact ? `Runs ${what} as you` : null}</span>
+      </Badge>
+    </Tooltip>
+  );
 }
 
 /**
@@ -72,9 +92,14 @@ export function ItemInspector({
     return (
       <aside
         aria-label="Item"
-        className="grid place-items-center rounded-card border border-dashed border-hairline p-6 text-center text-detail text-fg-tertiary @min-[900px]:min-h-[220px]"
+        className="grid place-items-center rounded-card border border-dashed border-hairline @min-[900px]:min-h-[220px]"
       >
-        Pick an item in the preview or a zone to edit it.
+        <EmptyState
+          variant="plain"
+          icon={<MousePointerClick />}
+          title="Nothing picked"
+          description="Click a widget in the preview, or one in a zone, to edit it here."
+        />
       </aside>
     );
   }
@@ -109,7 +134,12 @@ export function ItemInspector({
           <Tabs tabs={tabs} value={tab} onChange={setTab} label="Widget settings" id={tabsId} />
           <TabPanel tabs={tabsId} value={tab} className="flex flex-col gap-4">
             {tab === "content" ? (
-              <ContentSection item={item} widget={widget} onChange={onChange} />
+              <ContentSection
+                item={item}
+                widget={widget}
+                onChange={onChange}
+                onOpenFile={(file) => files.open(widget.id, file)}
+              />
             ) : tab === "look" ? (
               <LookSection item={item} widget={widget} onChange={onChange} />
             ) : tab === "click" ? (

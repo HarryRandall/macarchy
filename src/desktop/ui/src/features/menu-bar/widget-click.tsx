@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Plus, Trash } from "lucide-react";
+import { ArrowDown, ArrowUp, ListPlus, Plus, Trash } from "lucide-react";
 import { useId } from "react";
 
 import type {
@@ -8,6 +8,7 @@ import type {
   WidgetSettingInfo,
 } from "~/bridge/protocol";
 import { Button } from "~/components/ui/button";
+import { EmptyState } from "~/components/ui/empty-state";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
 import { Notice } from "~/components/ui/notice";
@@ -146,6 +147,15 @@ function RowsEditor({
   return (
     <>
       <Group label={`Menu · ${rows.length} ${rows.length === 1 ? "row" : "rows"}`}>
+        {rows.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            className="py-4"
+            icon={<ListPlus />}
+            title="No rows yet"
+            description="Add a heading, a reading or an action below to fill the dropdown."
+          />
+        ) : null}
         <ul className="flex flex-col gap-1">
           {rows.map((entry, index) => (
             // oxlint-disable-next-line react/no-array-index-key -- rows have no id; their place is what is selected.

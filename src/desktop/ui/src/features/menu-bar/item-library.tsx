@@ -1,14 +1,16 @@
-import { AlertTriangle, Folder } from "lucide-react";
+import { AlertTriangle, Folder, Search } from "lucide-react";
 import { useState } from "react";
 
 import type { BarItemKind, WidgetInfo } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog } from "~/components/ui/dialog";
+import { EmptyState } from "~/components/ui/empty-state";
 import { focusRing } from "~/components/ui/focus-ring";
 import { SearchField } from "~/components/ui/search-field";
 import { cn } from "~/lib/cn";
 
+import { ScriptBadge } from "./item-inspector";
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, makeable, type Zone, zoneLabels } from "./menu-bar-items";
 import type { BarLook } from "./menu-bar-store";
@@ -195,9 +197,23 @@ export function ItemLibrary({
               }}
             />
             {shown.length === 0 ? (
-              <p className="grid flex-1 place-items-center text-detail text-fg-tertiary">
-                Nothing matches {query ? `"${query}"` : "here"}.
-              </p>
+              search ? (
+                <EmptyState
+                  variant="plain"
+                  icon={<Search />}
+                  title="No widgets match"
+                  description={`Nothing here is called "${query}".`}
+                  action={<Button onClick={() => setQuery("")}>Clear search</Button>}
+                />
+              ) : (
+                <EmptyState
+                  variant="plain"
+                  icon={<Folder />}
+                  title="No widgets of your own yet"
+                  description="Each widget is a folder with a widget.json in ~/.config/macarchy/widgets. Built-ins can be copied there from their Files tab."
+                  action={<Button onClick={onOpenFolder}>Open folder</Button>}
+                />
+              )
             ) : (
               <ul className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2.5">
                 {shown.map((entry) => (
@@ -312,7 +328,7 @@ function LibraryCard({
         {onBar ? <Badge tone="ok">On bar</Badge> : null}
         {entry.type === "broken" ? <Badge tone="warn">Needs fixing</Badge> : null}
         {entry.type === "widget" && entry.widget.scripted ? (
-          <Badge tone="warn">Script</Badge>
+          <ScriptBadge widget={entry.widget} compact />
         ) : null}
         {entry.type === "widget" && entry.widget.origin === "user" && !entry.widget.scripted ? (
           <Badge tone="accent">Yours</Badge>

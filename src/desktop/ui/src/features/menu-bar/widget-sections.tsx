@@ -1,10 +1,11 @@
-import { ExternalLink, FileText, Folder } from "lucide-react";
+import { ExternalLink, FileText, Folder, SlidersHorizontal } from "lucide-react";
 import { type ReactNode, useId } from "react";
 
 import type { WidgetInfo, WidgetSettingInfo, WidgetStyle } from "~/bridge/protocol";
 import { Button } from "~/components/ui/button";
 import { CodeBlock } from "~/components/ui/code-block";
 import { ColourField } from "~/components/ui/colour-field";
+import { EmptyState } from "~/components/ui/empty-state";
 import { focusRing } from "~/components/ui/focus-ring";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { Select } from "~/components/ui/select";
@@ -107,16 +108,29 @@ function Token({
  * Toggles without a hint are parts to show, as words to press; the rest
  * get a control each.
  */
-export function ContentSection({ item, widget, onChange }: SectionProps) {
+export function ContentSection({
+  item,
+  widget,
+  onChange,
+  onOpenFile,
+}: SectionProps & { onOpenFile: (file: string) => void }) {
   const showId = useId();
   const parts = widget.settings.filter((setting) => setting.type === "toggle" && !setting.hint);
   const rest = widget.settings.filter((setting) => !parts.includes(setting));
   if (widget.settings.length === 0) {
+    const file = widget.provider ?? "widget.json";
     return (
-      <p className="text-detail text-fg-secondary">
-        {widget.name} has no settings.
-        {widget.provider ? ` What it shows comes from ${widget.provider}.` : null}
-      </p>
+      <EmptyState
+        variant="plain"
+        icon={<SlidersHorizontal />}
+        title="Nothing to set"
+        description={
+          widget.provider
+            ? `${widget.name} shows whatever ${widget.provider} prints. Change the script to change it.`
+            : `${widget.name} has no settings in its widget.json.`
+        }
+        action={<Button onClick={() => onOpenFile(file)}>Open {file}</Button>}
+      />
     );
   }
   return (

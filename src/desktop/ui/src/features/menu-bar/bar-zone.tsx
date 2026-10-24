@@ -2,12 +2,12 @@ import { GripVertical, Plus, X } from "lucide-react";
 import { type KeyboardEvent, useId } from "react";
 
 import type { WidgetInfo } from "~/bridge/protocol";
-import { Badge } from "~/components/ui/badge";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
+import { ScriptBadge } from "./item-inspector";
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, shownText, type Zone, zoneLabels } from "./menu-bar-items";
 import { type Sample, sampleText, widgetOf } from "./widget-model";
@@ -164,11 +164,7 @@ export function BarZone({
                 >
                   {item.title}
                 </span>
-                {widget?.scripted ? (
-                  <Badge tone="warn" className="h-[18px] px-1.5 text-caption">
-                    Script
-                  </Badge>
-                ) : null}
+                {widget?.scripted ? <ScriptBadge widget={widget} compact /> : null}
                 <span className="max-w-[45%] shrink-0 truncate pl-1 font-mono text-caption text-fg-tertiary">
                   {sampleOf(item, widgets, sample)}
                 </span>
@@ -187,7 +183,7 @@ export function BarZone({
       </ul>
       {items.length === 0 ? (
         <p className="grid h-16 place-items-center px-3 text-center text-small text-fg-tertiary">
-          Empty
+          Nothing here
         </p>
       ) : null}
       <button
