@@ -13,7 +13,7 @@
     "author": { "type": "string" },
     "description": { "type": "string" },
     "icon": { "type": "string", "description": "A glyph drawn before the label, such as an SF Symbol character." },
-    "source": { "enum": ["date", "battery", "cpu"], "description": "A reading Macarchy provides. Use this or provider, not both." },
+    "source": { "enum": ["date", "battery", "cpu", "gpu", "memory", "network"], "description": "A reading Macarchy provides. Use this or provider, not both." },
     "provider": { "type": "string", "pattern": "^[^./][^/]*$", "description": "An executable file in the folder. It prints JSON, or plain text to set only the label." },
     "label": { "type": "string", "description": "What the bar shows, with readings and settings in braces." },
     "settings": {

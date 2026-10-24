@@ -12,7 +12,7 @@ public struct WidgetManifest: Codable, Equatable, Sendable {
     public static let fileName = "widget.json"
 
     /// Readings Macarchy provides itself, for widgets that need no script.
-    public static let sources = ["date", "battery", "cpu"]
+    public static let sources = ["date", "battery", "cpu", "gpu", "memory", "network"]
     /// System changes a widget can ask to be updated on, as well as its interval.
     public static let events = [
         "system_woke", "power_source_changed", "timezone_changed", "space_changed",

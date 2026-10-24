@@ -27,7 +27,7 @@ not used in its place.
 | `schema` | `1`. |
 | `id`, `name`, `version` | Lower-case id, a name up to 40 characters, and `1.0.0`-style version. |
 | `author`, `description`, `icon` | Optional. `icon` is a glyph, such as an SF Symbol character. |
-| `source` | A reading Macarchy provides: `date`, `battery` or `cpu`. |
+| `source` | A reading Macarchy takes itself, with nothing installed: `date`, `cpu`, `gpu`, `memory`, `network` or `battery`. Temperatures come from the SMC, as Stats and macmon read them. A widget with a `seconds` setting that is on updates every second. |
 | `provider` | A script in the folder. A widget has a source or a provider, or neither. |
 | `label` | What the bar shows, with readings and settings in braces. |
 | `settings` | Things a person can change, each drawn as a control in the editor: `text`, `number`, `toggle`, `choice`, `colour` or `format`. |

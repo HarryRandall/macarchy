@@ -4,30 +4,86 @@
   "name": "Battery",
   "version": "1.0.0",
   "author": "Macarchy",
-  "description": "Charge and power source, with Energy Mode and the apps using significant energy.",
+  "description": "Charge and power source, with time remaining and the battery's condition.",
   "icon": "􀛨",
   "source": "battery",
   "label": "{percent}",
   "settings": {
-    "showPercent": { "type": "toggle", "label": "Show percentage", "default": true },
-    "lowAt": { "type": "number", "label": "Red below", "default": 10, "min": 1, "max": 50, "unit": "%" }
+    "showPercent": {
+      "type": "toggle",
+      "label": "Show percentage",
+      "default": true
+    },
+    "lowAt": {
+      "type": "number",
+      "label": "Red below",
+      "default": 10,
+      "min": 1,
+      "max": 50,
+      "unit": "%"
+    }
   },
-  "style": { "box": "none", "size": 13 },
-  "update": { "every": "1m", "events": ["system_woke", "power_source_changed"] },
-  "click": {
-    "dropdown": [
-      { "type": "heading", "label": "Battery", "value": "{percent}" },
-      { "type": "text", "label": "Power Source: {source}" },
-      { "type": "text", "label": "{state}" },
-      { "type": "divider" },
-      { "type": "heading", "label": "Energy Mode" },
-      { "type": "choice", "value": "{energyMode}", "options": ["Automatic", "Low Power", "High Power"] },
-      { "type": "divider" },
-      { "type": "heading", "label": "Using Significant Energy" },
-      { "type": "apps", "value": "{energyApps}" },
-      { "type": "divider" },
-      { "type": "action", "label": "Battery Settings…", "open": "x-apple.systempreferences:com.apple.Battery-Settings.extension" }
+  "style": {
+    "box": "outline",
+    "size": 12
+  },
+  "update": {
+    "every": "1m",
+    "events": [
+      "system_woke",
+      "power_source_changed"
     ]
   },
-  "samples": { "widest": "100%", "unavailable": "--" }
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "Battery",
+        "value": "{percent}"
+      },
+      {
+        "type": "text",
+        "label": "Power Source: {source}"
+      },
+      {
+        "type": "text",
+        "label": "{state}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "reading",
+        "label": "{remainingLabel}",
+        "value": "{remaining}"
+      },
+      {
+        "type": "reading",
+        "label": "Condition",
+        "value": "{health}"
+      },
+      {
+        "type": "reading",
+        "label": "Cycle count",
+        "value": "{cycles}"
+      },
+      {
+        "type": "reading",
+        "label": "Low Power Mode",
+        "value": "{lowPower}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Battery Settings…",
+        "open": "x-apple.systempreferences:com.apple.Battery-Settings.extension"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "100%",
+    "unavailable": "--"
+  }
 }

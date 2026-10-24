@@ -10,9 +10,8 @@ import Foundation
 public actor WidgetHost {
     /// A reading Macarchy provides itself, by `source` name.
     public typealias Source = @Sendable (WidgetInstance, Date) async -> WidgetOutput?
-    /// The readings named in `WidgetManifest.sources`. Each one is added
-    /// here with the built-in widget that uses it.
-    public static let builtInSources: [String: Source] = [:]
+    /// The readings named in `WidgetManifest.sources`.
+    public static var builtInSources: [String: Source] { BuiltInReadings.sources }
     /// Where the host reads the bar and the widgets from.
     public typealias Load = @Sendable () -> (BarConfiguration?, WidgetCatalogue.Snapshot)
 
@@ -146,7 +145,7 @@ public actor WidgetHost {
                 problems[instance.id] = failure.message
             case nil: break
             }
-            due[instance.id] = Self.next(after: now, every: instance.manifest.update?.every)
+            due[instance.id] = Self.next(after: now, every: instance.every)
             for (item, properties) in Self.items(
                 instance, output: lastGood[instance.id], look: look)
             where sent[item] != properties {

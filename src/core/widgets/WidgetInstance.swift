@@ -15,6 +15,12 @@ public struct WidgetInstance: Equatable, Sendable {
     /// What a click does: the component's own, or else the widget's.
     public let click: WidgetClick?
 
+    /// How often it updates. A widget with a `seconds` setting that is on
+    /// updates every second, as a clock showing seconds must.
+    public var every: String? {
+        settings["seconds"] == .bool(true) ? "second" : manifest.update?.every
+    }
+
     public init(
         id: String, manifest: WidgetManifest, directory: URL,
         settings: [String: SettingValue], visible: Bool,

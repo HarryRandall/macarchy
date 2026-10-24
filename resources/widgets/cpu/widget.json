@@ -9,29 +9,93 @@
   "source": "cpu",
   "label": "{load}\n{temperature}",
   "settings": {
-    "layout": { "type": "choice", "label": "Layout", "options": ["stacked", "single", "graph"], "default": "stacked" },
-    "fixedWidth": { "type": "toggle", "label": "Fixed width", "default": true, "hint": "Sized to the widest sample, so neighbours never shift" },
-    "warnLoad": { "type": "number", "label": "Amber above", "default": 75, "min": 1, "max": 100, "unit": "%" },
-    "warnTemperature": { "type": "number", "label": "Amber above", "default": 80, "min": 30, "max": 110, "unit": "°" }
+    "warnLoad": {
+      "type": "number",
+      "label": "Amber above",
+      "default": 75,
+      "min": 1,
+      "max": 100,
+      "unit": "%",
+      "hint": "Load turns amber above this, and red above 95%"
+    },
+    "warnTemperature": {
+      "type": "number",
+      "label": "Hot above",
+      "default": 80,
+      "min": 30,
+      "max": 110,
+      "unit": "°",
+      "hint": "Temperature turns amber above this, and red above 95°"
+    }
   },
-  "style": { "box": "outline", "size": 12 },
-  "update": { "every": "2s", "events": ["system_woke"] },
-  "click": {
-    "dropdown": [
-      { "type": "heading", "label": "CPU", "value": "{load.short}" },
-      { "type": "text", "label": "{chip} · {cores.performance} performance, {cores.efficiency} efficiency" },
-      { "type": "graph", "value": "{history}" },
-      { "type": "divider" },
-      { "type": "heading", "label": "Cores" },
-      { "type": "cores", "value": "{cores}" },
-      { "type": "divider" },
-      { "type": "reading", "label": "Temperature", "value": "{temperature}" },
-      { "type": "divider" },
-      { "type": "heading", "label": "Using the most CPU" },
-      { "type": "apps", "value": "{top}" },
-      { "type": "divider" },
-      { "type": "action", "label": "Open Activity Monitor…", "open": "Activity Monitor" }
+  "style": {
+    "box": "outline",
+    "size": 12,
+    "lines": 2
+  },
+  "update": {
+    "every": "2s",
+    "events": [
+      "system_woke"
     ]
   },
-  "samples": { "widest": "100.0%\n99.9°", "unavailable": "--\n--" }
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "CPU",
+        "value": "{load.short}"
+      },
+      {
+        "type": "text",
+        "label": "{chip} · {cores.performance} performance, {cores.efficiency} efficiency"
+      },
+      {
+        "type": "graph",
+        "value": "{history}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "heading",
+        "label": "Cores"
+      },
+      {
+        "type": "cores",
+        "value": "{cores}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "reading",
+        "label": "Temperature",
+        "value": "{temperature}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "heading",
+        "label": "Using the most CPU"
+      },
+      {
+        "type": "apps",
+        "value": "{top}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Open Activity Monitor…",
+        "open": "Activity Monitor"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "100.0%\n99.9°",
+    "unavailable": "--\n--"
+  }
 }

@@ -3,6 +3,9 @@ import Testing
 
 @testable import Macarchy
 
+/// The widgets Macarchy ships, each a folder in `resources/widgets`.
+private let builtInWidgets = ["clock", "cpu", "battery", "gpu", "memory", "network"]
+
 @Suite("Widget manifests")
 struct WidgetManifestTests {
     static let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -29,7 +32,7 @@ struct WidgetManifestTests {
         """
     }
 
-    @Test("every built-in widget passes its own check", arguments: ["clock", "cpu", "battery"])
+    @Test("every built-in widget passes its own check", arguments: builtInWidgets)
     func builtIns(id: String) throws {
         let check = WidgetManifest.check(folder: Self.builtIn.appending(path: id))
         #expect(check.problems.isEmpty, "\(check.problems)")
@@ -115,7 +118,7 @@ struct WidgetManifestTests {
         #expect(
             messages(manifest("  \"source\": \"weather\""))
                 == [
-                    "source \"weather\" is not a reading Macarchy provides; use one of date, battery, cpu"
+                    "source \"weather\" is not a reading Macarchy provides; use one of date, battery, cpu, gpu, memory, network"
                 ])
         #expect(
             messages(manifest("  \"source\": \"date\",\n  \"provider\": \"provider.sh\""))

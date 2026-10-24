@@ -9,30 +9,133 @@
   "source": "date",
   "label": "{date}",
   "settings": {
-    "weekday": { "type": "toggle", "label": "Weekday", "default": true },
-    "day": { "type": "toggle", "label": "Day", "default": true },
-    "month": { "type": "toggle", "label": "Month", "default": true },
-    "year": { "type": "toggle", "label": "Year", "default": false },
-    "time": { "type": "toggle", "label": "Time", "default": true },
-    "twentyFourHour": { "type": "toggle", "label": "24-hour clock", "default": false },
-    "leadingZero": { "type": "toggle", "label": "Leading zero", "default": true, "hint": "03:41 rather than 3:41" },
-    "seconds": { "type": "toggle", "label": "Seconds", "default": false, "hint": "Updates every second instead of on the minute" },
-    "order": { "type": "choice", "label": "Date order", "options": ["day-month", "month-day"], "default": "day-month" },
-    "timeZone": { "type": "text", "label": "Time zone", "default": "", "hint": "Empty for this Mac's time zone, or a name such as Europe/London" },
-    "format": { "type": "format", "label": "Format", "default": "", "hint": "strftime codes. Empty to build it from the options above" }
+    "weekday": {
+      "type": "toggle",
+      "label": "Weekday",
+      "default": true
+    },
+    "day": {
+      "type": "toggle",
+      "label": "Day",
+      "default": true
+    },
+    "month": {
+      "type": "toggle",
+      "label": "Month",
+      "default": true
+    },
+    "year": {
+      "type": "toggle",
+      "label": "Year",
+      "default": false
+    },
+    "time": {
+      "type": "toggle",
+      "label": "Time",
+      "default": true
+    },
+    "twentyFourHour": {
+      "type": "toggle",
+      "label": "24-hour clock",
+      "default": false
+    },
+    "leadingZero": {
+      "type": "toggle",
+      "label": "Leading zero",
+      "default": true,
+      "hint": "03:41 rather than 3:41"
+    },
+    "seconds": {
+      "type": "toggle",
+      "label": "Seconds",
+      "default": false,
+      "hint": "Updates every second instead of on the minute"
+    },
+    "order": {
+      "type": "choice",
+      "label": "Date order",
+      "options": [
+        "day-month",
+        "month-day"
+      ],
+      "default": "day-month"
+    },
+    "timeZone": {
+      "type": "text",
+      "label": "Time zone",
+      "default": "",
+      "hint": "Empty for this Mac's time zone, or a name such as Europe/London"
+    },
+    "format": {
+      "type": "format",
+      "label": "Format",
+      "default": "",
+      "hint": "strftime codes. Empty to build it from the options above"
+    }
   },
-  "style": { "box": "none", "size": 13 },
-  "update": { "every": "minute", "events": ["system_woke", "timezone_changed"] },
-  "click": {
-    "dropdown": [
-      { "type": "heading", "label": "{weekday.long} {day} {month.long}" },
-      { "type": "reading", "label": "Here", "value": "{time}" },
-      { "type": "reading", "label": "London", "value": "{time:Europe/London}" },
-      { "type": "divider" },
-      { "type": "toggle", "label": "24-hour clock", "setting": "twentyFourHour" },
-      { "type": "action", "label": "Open Calendar", "open": "Calendar" },
-      { "type": "action", "label": "Date & Time Settings…", "open": "x-apple.systempreferences:com.apple.Date-Time-Settings.extension" }
+  "style": {
+    "box": "outline",
+    "size": 12
+  },
+  "update": {
+    "every": "minute",
+    "events": [
+      "system_woke",
+      "timezone_changed"
     ]
   },
-  "samples": { "widest": "Wed 30 Sep 12:59 PM", "unavailable": "--" }
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "{weekday.long} {day} {month.long}",
+        "value": "{year}"
+      },
+      {
+        "type": "reading",
+        "label": "Here",
+        "value": "{time}"
+      },
+      {
+        "type": "reading",
+        "label": "London",
+        "value": "{time:Europe/London}"
+      },
+      {
+        "type": "reading",
+        "label": "New York",
+        "value": "{time:America/New_York}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "toggle",
+        "label": "24-hour clock",
+        "setting": "twentyFourHour"
+      },
+      {
+        "type": "toggle",
+        "label": "Show seconds",
+        "setting": "seconds"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Open Calendar",
+        "open": "Calendar"
+      },
+      {
+        "type": "action",
+        "label": "Date & Time Settings…",
+        "open": "x-apple.systempreferences:com.apple.Date-Time-Settings.extension"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "Wed 30 Sep 12:59 PM",
+    "unavailable": "--"
+  }
 }
