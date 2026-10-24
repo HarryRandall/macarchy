@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 
 @testable import Macarchy
@@ -80,6 +81,26 @@ struct SnapshotStoreTests {
             _ = try store.capture([target], reason: "v\(index)")
         }
         #expect(store.list().count == 3)
+    }
+
+    /// Captures run under different locks, or none, so the app and CLI can
+    /// prune the same oldest snapshot at once. That must not fail either write.
+    @Test("concurrent captures prune without failing each other")
+    func concurrentPruning() throws {
+        let root = try sandbox()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let target = root.appending(path: "settings.env")
+        try "VERSION=1\n".write(to: target, atomically: true, encoding: .utf8)
+        let store = SnapshotStore(root: root.appending(path: "snapshots"), keep: 2)
+        let failures = Mutex(0)
+        DispatchQueue.concurrentPerform(iterations: 64) { _ in
+            do { try store.capture([target], reason: "concurrent") } catch {
+                failures.withLock { $0 += 1 }
+            }
+        }
+        #expect(failures.withLock { $0 } == 0)
+        #expect(store.list().count == 2)
     }
 
     @Test("a capture of only missing files is a no-op, not a failure")

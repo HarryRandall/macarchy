@@ -156,11 +156,19 @@ public struct SnapshotStore: Sendable {
         }
     }
 
+    /// Captures run under different locks, or none, so the app and CLI can
+    /// prune at the same moment. Pruning takes its own lock, and an entry that
+    /// is already gone counts as pruned, so neither caller's write fails.
     public func prune() throws {
-        let all = list()
-        guard all.count > keep else { return }
-        for snapshot in all.dropFirst(keep) {
-            try FileManager.default.removeItem(at: snapshot.url)
+        let fm = FileManager.default
+        try FileLock.withLock(root.appending(path: ".prune")) {
+            for snapshot in list().dropFirst(keep) {
+                do {
+                    try fm.removeItem(at: snapshot.url)
+                } catch {
+                    if fm.fileExists(atPath: snapshot.url.path) { throw error }
+                }
+            }
         }
     }
 }
