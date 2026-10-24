@@ -255,6 +255,11 @@ const boxOptions = [
   { value: "fill" as const, label: "Fill" },
 ];
 
+const layoutOptions = [
+  { value: "stacked" as const, label: "Stacked" },
+  { value: "side" as const, label: "Side by side" },
+];
+
 const colourChoices = [
   { value: "text", label: "Text" },
   { value: "accent", label: "Accent" },
@@ -328,6 +333,18 @@ export function LookSection({ item, widget, onChange }: SectionProps) {
           />
         </Group>
       </div>
+      {widget.style?.lines === 2 || widget.label?.includes("\n") ? (
+        <Group label="Layout">
+          <SegmentedControl
+            label="Layout"
+            size="sm"
+            value={style.lines === 2 ? "stacked" : "side"}
+            options={layoutOptions}
+            onValueChange={(layout) => set({ lines: layout === "stacked" ? 2 : 1 })}
+            fill
+          />
+        </Group>
+      ) : null}
       <ColourChoiceRow
         title="Text colour"
         value={style.textColour}
@@ -498,7 +515,8 @@ export function FilesSection({
       ) : null}
       {duplicated ? (
         <p role="status" className="text-small text-fg-secondary">
-          Copied to <span className="font-mono">{duplicated}</span>. Add it from Add widget.
+          Copied to <span className="font-mono">{duplicated}</span>. This item now uses the copy;
+          Apply to keep it.
         </p>
       ) : null}
     </div>

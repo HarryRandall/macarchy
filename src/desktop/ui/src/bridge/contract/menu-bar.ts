@@ -157,6 +157,8 @@ export interface MenuBarState {
   bar: MenuBarSettings;
   /** Every widget that can go on the bar, built-in and the person's own. */
   widgets: WidgetInfo[];
+  /** Widget folders that could not be read, by folder name, with what is wrong. */
+  widgetProblems: { folder: string; problems: string[] }[];
   /** Why the bar could not be read, such as SketchyBar not running. */
   unavailableReason: string | null;
 }
@@ -166,7 +168,7 @@ export interface MenuBarMethods {
   "menuBar.getState": { params: Record<string, never>; result: MenuBarState };
   /**
    * Makes the bar match: the order and zones of `items`, each item's
-   * visibility, widget items' settings and edits, and the bar settings.
+   * visibility, widget items' widget, settings and edits, and the bar settings.
    * Made items and widgets not listed are removed; the bar's own items
    * cannot be. Rejects when the change does not finish, or a widget item's
    * edits do not suit its widget.

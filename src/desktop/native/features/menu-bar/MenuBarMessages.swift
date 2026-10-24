@@ -54,6 +54,8 @@ struct MenuBarState: Codable, Sendable, Equatable {
     var bar: MenuBarSettings
     /// Every widget that can go on the bar, built-in and the person's own.
     var widgets: [WidgetInfo]
+    /// Widget folders that could not be read, so the page can say why.
+    var widgetProblems: [WidgetFolderProblems]
     /// Why the bar could not be read, such as SketchyBar not running.
     var unavailableReason: String?
 }
@@ -90,6 +92,13 @@ struct WidgetInfo: Codable, Sendable, Equatable {
     var click: WidgetClick?
     var update: WidgetUpdate?
     var samples: WidgetSamples?
+}
+
+/// A widget folder that could not be used, by folder name, with what is wrong.
+struct WidgetFolderProblems: Codable, Sendable, Equatable {
+    var folder: String
+    /// Each with its line in `widget.json` when there is one.
+    var problems: [String]
 }
 
 /// One of a widget's settings, with its name, in the order written.
@@ -186,13 +195,16 @@ extension MenuBarItemEdit {
 }
 
 extension MenuBarState {
-    private enum CodingKeys: String, CodingKey { case items, bar, widgets, unavailableReason }
+    private enum CodingKeys: String, CodingKey {
+        case items, bar, widgets, widgetProblems, unavailableReason
+    }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(items, forKey: .items)
         try container.encode(bar, forKey: .bar)
         try container.encode(widgets, forKey: .widgets)
+        try container.encode(widgetProblems, forKey: .widgetProblems)
         try container.encode(unavailableReason, forKey: .unavailableReason)
     }
 }

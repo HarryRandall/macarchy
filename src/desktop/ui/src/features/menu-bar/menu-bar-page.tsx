@@ -226,13 +226,18 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   const files: WidgetFileActions = {
     reveal: (widget) => void store.reveal(widget),
     open: (widget, file) => void store.openFile(widget, file),
-    duplicate: (widget) =>
+    // The item being edited moves to the copy, so the next edit is to the person's own.
+    duplicate: (widget) => {
+      const target = fullEditor ?? selected;
       void store.duplicate(widget).then((copy) => {
+        if (!copy) return;
+        if (target) patch(target, { widget: copy });
         const folder = store
           .getSnapshot()
           .state?.widgets.find((entry) => entry.id === copy)?.folder;
         setDuplicated(folder ?? null);
-      }),
+      });
+    },
     duplicated,
   };
 
@@ -469,6 +474,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
         widgets={widgets}
         counts={widgetCounts(items)}
         hidden={items.filter((entry) => entry.kind === null && !entry.visible)}
+        broken={state.widgetProblems}
         look={paint}
         onAddWidget={(widget, zone) => add(newWidgetItem(widget, zone, items))}
         onMake={(kind, zone) => add(newItem(kind, zone))}

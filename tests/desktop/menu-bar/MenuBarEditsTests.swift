@@ -42,11 +42,17 @@ struct MenuBarEditsTests {
         manifest.style = WidgetStyle()
         manifest.style?.lines = 2
         manifest.click = WidgetClick(dropdown: [WidgetMenuRow(type: "divider")])
+        var copy = manifest
+        copy.id = "clock-copy"
+        copy.style?.lines = 1
         return WidgetCatalogue.Snapshot(
             entries: [
                 .init(
                     id: "clock", directory: URL(fileURLWithPath: "/widgets/clock"),
-                    manifest: manifest, origin: .builtIn)
+                    manifest: manifest, origin: .builtIn),
+                .init(
+                    id: "clock-copy", directory: URL(fileURLWithPath: "/mine/clock-copy"),
+                    manifest: copy, origin: .user)
             ], problems: [:])
     }()
 
@@ -132,6 +138,22 @@ struct MenuBarEditsTests {
         let again = try configuration(MenuBarApplyParams(items: [item], bar: bar))
         let edited = try #require(again.components.first { $0.id == "macarchy.clock" })
         #expect(edited.click == nil && edited.settings == ["seconds": .bool(true)])
+    }
+
+    @Test("a widget item can move to a copy of its widget, taking the copy's shape")
+    func switchesWidget() throws {
+        let item = edit(
+            "macarchy.clock", "Clock", zone: "right", kind: "widget", widget: "clock")
+        let first = try configuration(MenuBarApplyParams(items: [item], bar: bar))
+        var moved = edit(
+            "macarchy.clock", "Clock", zone: "right", kind: "widget", widget: "clock-copy")
+        moved.settings = ["seconds": .bool(true)]
+        let result = try MenuBarEdits.configuration(
+            from: MenuBarApplyParams(items: [moved], bar: bar), over: first,
+            catalogue: catalogue)
+        let clock = try #require(result.components.first { $0.id == "macarchy.clock" })
+        #expect(clock.widget == "clock-copy" && clock.settings == ["seconds": .bool(true)])
+        #expect(clock.members == ["macarchy.clock"] && clock.brackets.isEmpty)
     }
 
     @Test("a widget item must name a widget there is, with settings it takes")

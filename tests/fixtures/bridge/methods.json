@@ -580,6 +580,14 @@
           }
         ],
         "unavailableReason": null,
+        "widgetProblems": [
+          {
+            "folder": "weather",
+            "problems": [
+              "Line 3: id is missing"
+            ]
+          }
+        ],
         "widgets": [
           {
             "author": "Macarchy",
@@ -767,6 +775,14 @@
             }
           ],
           "unavailableReason": null,
+          "widgetProblems": [
+            {
+              "folder": "weather",
+              "problems": [
+                "Line 3: id is missing"
+              ]
+            }
+          ],
           "widgets": [
             {
               "author": "Macarchy",
@@ -953,6 +969,14 @@
           }
         ],
         "unavailableReason": null,
+        "widgetProblems": [
+          {
+            "folder": "weather",
+            "problems": [
+              "Line 3: id is missing"
+            ]
+          }
+        ],
         "widgets": [
           {
             "author": "Macarchy",
@@ -1079,6 +1103,7 @@
         },
         "items": [],
         "unavailableReason": "sketchybar is not running.",
+        "widgetProblems": [],
         "widgets": []
       }
     }

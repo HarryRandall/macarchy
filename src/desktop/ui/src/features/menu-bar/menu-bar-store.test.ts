@@ -76,6 +76,7 @@ const bar: MenuBarState = {
   items: [],
   bar: { height: 35, position: "top", padding: 10 },
   widgets: [],
+  widgetProblems: [],
   unavailableReason: null,
 };
 

@@ -16,7 +16,11 @@ import { WidgetChip } from "./widget-preview";
 
 type Category = "all" | "builtIn" | "user" | "make" | "hidden";
 
-/** One thing the library can add: a widget, a made item or one of the bar's own that is hidden. */
+/**
+ * One thing the library can add: a widget, a made item or one of the bar's
+ * own that is hidden. A widget folder that could not be read is listed too,
+ * with why, so it does not just go missing.
+ */
 type Entry =
   | { type: "widget"; key: string; widget: WidgetInfo }
   | {
@@ -26,7 +30,8 @@ type Entry =
       name: string;
       detail: string;
     }
-  | { type: "hidden"; key: string; item: BarItem };
+  | { type: "hidden"; key: string; item: BarItem }
+  | { type: "broken"; key: string; folder: string; problems: string[] };
 
 const sampleItem = (widget: WidgetInfo): BarItem => ({
   id: `sample.${widget.id}`,
@@ -48,12 +53,14 @@ const sampleItem = (widget: WidgetInfo): BarItem => ({
 function nameOf(entry: Entry): string {
   if (entry.type === "widget") return entry.widget.name;
   if (entry.type === "make") return entry.name;
+  if (entry.type === "broken") return entry.folder;
   return entry.item.title;
 }
 
 function detailOf(entry: Entry): string {
   if (entry.type === "widget") return entry.widget.description ?? "";
   if (entry.type === "make") return entry.detail;
+  if (entry.type === "broken") return entry.problems.join(" · ");
   return `Hidden in the ${zoneLabels[entry.item.zone].toLowerCase()} zone`;
 }
 
@@ -67,6 +74,7 @@ export function ItemLibrary({
   widgets,
   counts,
   hidden,
+  broken,
   look,
   onAddWidget,
   onMake,
@@ -80,6 +88,8 @@ export function ItemLibrary({
   counts: Map<string, number>;
   /** The bar's own items that are hidden, to show again. */
   hidden: BarItem[];
+  /** Widget folders that could not be read, with what is wrong. */
+  broken: readonly { folder: string; problems: string[] }[];
   look: BarLook;
   onAddWidget: (widget: WidgetInfo, zone: Zone) => void;
   onMake: (kind: Exclude<BarItemKind, "widget">, zone: Zone) => void;
@@ -98,10 +108,12 @@ export function ItemLibrary({
     ...widgets.map((widget): Entry => ({ type: "widget", key: `widget:${widget.id}`, widget })),
     ...makeable.map((made): Entry => ({ type: "make", key: `make:${made.kind}`, ...made })),
     ...hidden.map((item): Entry => ({ type: "hidden", key: `hidden:${item.id}`, item })),
+    ...broken.map((entry): Entry => ({ type: "broken", key: `broken:${entry.folder}`, ...entry })),
   ];
   const inCategory = (entry: Entry, name: Category) => {
     if (name === "all") return true;
     if (name === "make" || name === "hidden") return entry.type === name;
+    if (entry.type === "broken") return name === "user";
     return entry.type === "widget" && entry.widget.origin === name;
   };
   const categories: { id: Category; name: string }[] = [
@@ -121,7 +133,7 @@ export function ItemLibrary({
   const onBar = selected?.type === "widget" ? (counts.get(selected.widget.id) ?? 0) : 0;
 
   const add = (entry: Entry | null) => {
-    if (!entry) return;
+    if (!entry || entry.type === "broken") return;
     if (entry.type === "widget") onAddWidget(entry.widget, shownZone);
     else if (entry.type === "make") onMake(entry.kind, shownZone);
     else onShow(entry.item.id, shownZone);
@@ -225,13 +237,19 @@ export function ItemLibrary({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!selected} onClick={() => add(selected)}>
+          <Button
+            variant="primary"
+            disabled={!selected || selected.type === "broken"}
+            onClick={() => add(selected)}
+          >
             {selected
-              ? selected.type === "hidden"
-                ? `Show ${nameOf(selected)} here`
-                : onBar > 0
-                  ? "Add another"
-                  : `Add ${nameOf(selected)}`
+              ? selected.type === "broken"
+                ? "Fix it to add it"
+                : selected.type === "hidden"
+                  ? `Show ${nameOf(selected)} here`
+                  : onBar > 0
+                    ? "Add another"
+                    : `Add ${nameOf(selected)}`
               : "Add"}
           </Button>
         </Dialog.Footer>
@@ -278,6 +296,8 @@ function LibraryCard({
             sample="widest"
             look={look}
           />
+        ) : entry.type === "broken" ? (
+          <AlertTriangle aria-hidden size={16} className="text-warning" />
         ) : (
           <ItemIcon
             item={entry.type === "make" ? { id: entry.kind, kind: entry.kind } : entry.item}
@@ -290,6 +310,7 @@ function LibraryCard({
           {nameOf(entry)}
         </span>
         {onBar ? <Badge tone="ok">On bar</Badge> : null}
+        {entry.type === "broken" ? <Badge tone="warn">Needs fixing</Badge> : null}
         {entry.type === "widget" && entry.widget.scripted ? (
           <Badge tone="warn">Script</Badge>
         ) : null}

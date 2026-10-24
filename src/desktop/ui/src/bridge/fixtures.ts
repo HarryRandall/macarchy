@@ -301,6 +301,7 @@ const menuBar: MenuBarState = {
   items: [clock, uptime, cpuWidget],
   bar: { height: 35, position: "top", padding: 10 },
   widgets: [clockInfo, uptimeInfo],
+  widgetProblems: [{ folder: "weather", problems: ["Line 3: id is missing"] }],
   unavailableReason: null,
 };
 
@@ -308,6 +309,7 @@ const menuBarStopped: MenuBarState = {
   items: [],
   bar: { height: 35, position: "top", padding: 10 },
   widgets: [],
+  widgetProblems: [],
   unavailableReason: "sketchybar is not running.",
 };
 

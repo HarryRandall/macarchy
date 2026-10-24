@@ -218,6 +218,12 @@ export function createMenuBarMock(options: { stopped: boolean }) {
     ],
     bar: { height: 35, position: "top", padding: 10 },
     widgets,
+    widgetProblems: [
+      {
+        folder: "weather",
+        problems: ["Line 4: version should look like 1.0.0", "provider.sh is not executable"],
+      },
+    ],
     unavailableReason: options.stopped ? "sketchybar is not running." : null,
   };
   const readings = new Map(state.items.map((item) => [item.id, item.reading]));

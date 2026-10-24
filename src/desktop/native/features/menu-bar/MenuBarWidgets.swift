@@ -53,6 +53,18 @@ enum MenuBarWidgets {
         catalogue.read().entries.map(info)
     }
 
+    /// Folders the catalogue could not use, sorted by name.
+    static func problems(_ catalogue: WidgetCatalogue = WidgetCatalogue()) -> [WidgetFolderProblems]
+    {
+        catalogue.read().problems.sorted { $0.key < $1.key }.map { folder, problems in
+            WidgetFolderProblems(
+                folder: folder,
+                problems: problems.map { problem in
+                    problem.line.map { "Line \($0): \(problem.message)" } ?? problem.message
+                })
+        }
+    }
+
     static func info(_ entry: WidgetCatalogue.Entry) -> WidgetInfo {
         let manifest = entry.manifest
         let text =

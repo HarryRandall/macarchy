@@ -62,7 +62,8 @@ extension AppModel {
                 height: Int(Double(geometry["height"] ?? "") ?? 35),
                 position: geometry["position"] == "bottom" ? "bottom" : "top",
                 padding: Int(Double(geometry["padding_left"] ?? "") ?? 10)),
-            widgets: MenuBarWidgets.info(), unavailableReason: menuBar.error)
+            widgets: MenuBarWidgets.info(), widgetProblems: MenuBarWidgets.problems(),
+            unavailableReason: menuBar.error)
     }
 }
 
@@ -142,16 +143,18 @@ enum MenuBarEdits {
         return WidgetLook(manifests: manifests).normalised(configuration)
     }
 
-    /// A widget item's settings and its edits to the widget's look and
-    /// click, checked against the widget. Edits that change nothing are
-    /// dropped, so the item follows the widget if it changes.
+    /// A widget item's widget, its settings and its edits to the widget's
+    /// look and click, checked against the widget. The widget can change, as
+    /// when the item moves to a copy of a built-in. Edits that change
+    /// nothing are dropped, so the item follows the widget if it changes.
     static func widgetEdits(
         _ item: MenuBarItemEdit, into component: inout BarComponent,
         catalogue: WidgetCatalogue.Snapshot
     ) throws {
-        guard let id = component.widget, item.widget == id, let entry = catalogue.entry(id) else {
+        guard let id = item.widget, let entry = catalogue.entry(id) else {
             throw BridgeFailure(.invalidParams, "There is no widget called \(item.widget ?? "").")
         }
+        component.widget = id
         let manifest = entry.manifest
         let problems =
             manifest.problems(settings: item.settings)
