@@ -46,6 +46,13 @@ struct WindowRulesTests {
             try CustomWindowRule(app: "Finder", title: "[").validate()
         }
         #expect(throws: ConfigurationError.self) { try CustomWindowRule(app: " ").validate() }
+        // ICU-only syntax that yabai's POSIX extended regex rejects.
+        for pattern in ["(?i)copy", "Copy(?= of)"] {
+            #expect(throws: ConfigurationError.self) {
+                try CustomWindowRule(app: "Finder", title: pattern).validate()
+            }
+        }
+        try CustomWindowRule(app: "Finder", title: "^Copy [[:digit:]]+$").validate()
         let rule = CustomWindowRule(app: "Finder")
         var settings = SettingsDocument()
         settings.windowRules = [rule, rule]

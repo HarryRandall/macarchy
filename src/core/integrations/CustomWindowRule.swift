@@ -22,11 +22,19 @@ public struct CustomWindowRule: Codable, Sendable, Equatable, Identifiable {
         guard !title.contains("\n"), !title.contains("\0") else {
             throw ConfigurationError("Window title must be a single-line pattern")
         }
-        if !title.isEmpty {
-            do { _ = try NSRegularExpression(pattern: title) } catch {
-                throw ConfigurationError("Invalid window title pattern")
-            }
+        if !title.isEmpty, !Self.compilesAsExtendedRegex(title) {
+            throw ConfigurationError(
+                "Invalid window title pattern. Use a POSIX extended regular expression.")
         }
+    }
+
+    /// yabai compiles rule patterns with the system `regcomp` and `REG_EXTENDED`,
+    /// so validating the same way accepts exactly what yabai will accept.
+    static func compilesAsExtendedRegex(_ pattern: String) -> Bool {
+        var regex = regex_t()
+        guard regcomp(&regex, pattern, REG_EXTENDED | REG_NOSUB) == 0 else { return false }
+        regfree(&regex)
+        return true
     }
 
     public var arguments: [String] {
