@@ -11,6 +11,8 @@ export interface ShortcutBinding {
   modes: string[];
   /** The mode a `; mode` binding switches to; it runs no command. */
   activatesMode: string | null;
+  /** Commented out by Disable; skhd does not see it until it is enabled. */
+  disabled: boolean;
 }
 export interface ShortcutChord {
   modifiers: string[];
@@ -40,6 +42,10 @@ export interface ShortcutsMethods {
     result: ShortcutMutation;
   };
   "shortcuts.disable": {
+    params: { id: number; revision: string };
+    result: ShortcutMutation;
+  };
+  "shortcuts.enable": {
     params: { id: number; revision: string };
     result: ShortcutMutation;
   };

@@ -100,7 +100,7 @@ export function createShortcutsStore(host: PageHost) {
     load,
     refresh: load,
     edit(binding: ShortcutBinding) {
-      if (!snapshot.state || snapshot.busy) return;
+      if (!snapshot.state || snapshot.busy || binding.disabled) return;
       validationVersion++;
       set({
         error: null,
@@ -165,6 +165,12 @@ export function createShortcutsStore(host: PageHost) {
       return mutate(() =>
         host.request("shortcuts.disable", { id: draft.binding.id, revision: draft.revision }),
       );
+    },
+    /** Enables a binding Disable commented out, against the revision on screen. */
+    enable(binding: ShortcutBinding) {
+      const revision = snapshot.state?.revision;
+      if (!revision || !binding.disabled) return Promise.resolve(false);
+      return mutate(() => host.request("shortcuts.enable", { id: binding.id, revision }));
     },
     async reset(revision: string) {
       if (!(await mutate(() => host.request("shortcuts.reset", { revision }))))

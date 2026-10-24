@@ -210,7 +210,7 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("disable preserves the block as comments and reports a failed reload visibly")
+        @Test("disable keeps the block as comments, Enable restores it, and failed reloads show")
         func disableAndReloadFailure() async throws {
             try await withHarness(tools: ["skhd"]) { harness in
                 try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
@@ -230,10 +230,22 @@ extension WebInterfaceTests {
                     surface, "the partial application warning",
                     #"return page.text().includes('Shortcuts were saved, but skhd could not restart');"#
                 )
-                #expect(try SkhdShortcuts().read().bindings.count == 3)
+                #expect(try SkhdShortcuts().read().bindings.count { !$0.isDisabled } == 3)
                 #expect(
                     try String(contentsOf: Setup.skhdrc, encoding: .utf8).contains(
                         "#   \"Finder\" : echo finder"))
+                try await waitFor(
+                    surface, "the disabled row with Enable",
+                    #"return page.text().includes('4 shortcuts, 1 disabled') && !!document.querySelector('[data-shortcut-id="8"] button[aria-label^="Enable shortcut"]');"#
+                )
+                try await shortcutClick(surface, "Enable")
+                try await waitUntil("the enabled block in skhdrc") {
+                    (try? String(contentsOf: Setup.skhdrc, encoding: .utf8)) == shortcutsFixture
+                }
+                #expect(
+                    SnapshotStore().list().contains {
+                        SnapshotStore().reason(for: $0) == "shortcut enabled"
+                    })
             }
         }
 

@@ -92,11 +92,13 @@ function sharesMode(a: ShortcutBinding, b: ShortcutBinding): boolean {
 export function findConflicts(bindings: readonly ShortcutBinding[]): Map<number, string> {
   const conflicts = new Map<number, string>();
   const byChord = new Map<string, ShortcutBinding[]>();
-  for (const binding of bindings) {
+  // A disabled binding is not seen by skhd, so it holds no chord.
+  const active = bindings.filter((binding) => !binding.disabled);
+  for (const binding of active) {
     const chord = chordKey(binding.modifiers, binding.key);
     byChord.set(chord, [...(byChord.get(chord) ?? []), binding]);
   }
-  for (const binding of bindings) {
+  for (const binding of active) {
     const chord = chordKey(binding.modifiers, binding.key);
     const system = systemChords[chord];
     const other = byChord

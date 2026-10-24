@@ -196,7 +196,7 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
         </Dialog.Body>
         <Dialog.Footer
           leading={
-            <Tooltip content="Comment this shortcut out, keeping it in the file">
+            <Tooltip content="Comment this shortcut out, keeping it in the file to enable later">
               <Button
                 size="sm"
                 variant="ghost"

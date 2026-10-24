@@ -23,6 +23,7 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
     appOverrides: [],
     modes: [],
     activatesMode: null,
+    disabled: false,
     ...patch,
   };
 }
@@ -94,6 +95,12 @@ describe("conflicts", () => {
     expect(conflicts.get(2)).toBe('Same keys as "Launch"');
     expect(conflicts.get(3)).toBe("macOS uses ⌘ Space for Spotlight");
     expect(conflicts.has(4)).toBe(false);
+  });
+
+  it("lets a disabled binding hold no chord", () => {
+    const live = binding({ command: "echo live" });
+    const off = binding({ id: 2, command: "echo off", disabled: true });
+    expect(findConflicts([live, off]).size).toBe(0);
   });
 
   it("compares chords only within the same skhd mode", () => {

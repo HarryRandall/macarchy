@@ -20,6 +20,8 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public internal(set) var modes: [String] = []
     /// The mode a `; mode` binding switches to. It runs no command.
     public internal(set) var activatesMode: String?
+    /// Commented out by `SkhdConfig.disable`; skhd does not see it.
+    public internal(set) var isDisabled = false
 
     /// Where the binding works: skhd puts a binding with no mode in `default`.
     public var activeModes: Set<String> { modes.isEmpty ? ["default"] : Set(modes) }

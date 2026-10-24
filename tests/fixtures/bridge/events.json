@@ -215,6 +215,7 @@
               "↩"
             ],
             "command": "open -na Ghostty",
+            "disabled": false,
             "id": 1,
             "key": "return",
             "modes": [],

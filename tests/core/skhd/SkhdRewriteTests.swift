@@ -121,7 +121,9 @@ struct SkhdRewriteTests {
             disabled
                 == "# cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi")
         let remaining = SkhdConfig.parse(disabled)
-        #expect(remaining.map(\.key) == ["h"])
+        #expect(remaining.map(\.key) == ["w", "h"])
+        #expect(remaining.map(\.isDisabled) == [true, false])
+        #expect(remaining.first?.appOverrides.map(\.app) == ["Messages"])
     }
 
     @Test("edits refuse a file that changed since it was read")
@@ -155,8 +157,9 @@ struct SkhdRewriteTests {
         let disabled = try #require(SkhdConfig.disable(text, binding: binding))
         #expect(
             disabled == ["# " + first, "# " + second, "cmd - h : echo hi"].joined(separator: "\n"))
-        #expect(SkhdConfig.parse(disabled).map(\.key) == ["h"])
+        #expect(SkhdConfig.parse(disabled).filter { !$0.isDisabled }.map(\.key) == ["h"])
         #expect(SkhdConfig.disable(text, line: 0) == disabled)
+        #expect(SkhdConfig.parse(disabled).first?.endLine == 1)
 
         let rebound = try #require(
             SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "x"))

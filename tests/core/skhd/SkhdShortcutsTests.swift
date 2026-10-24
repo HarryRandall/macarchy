@@ -104,7 +104,7 @@ struct SkhdShortcutsTests {
         #expect(snapshots.list().isEmpty)
     }
 
-    @Test("disable comments out the whole block; symlinks retain their target")
+    @Test("disable comments out the whole block, enable restores it; symlinks retain their target")
     func disableBlock() async throws {
         let files = try fixture()
         let (root, config) = (files.root, files.config)
@@ -119,9 +119,25 @@ struct SkhdShortcutsTests {
         _ = try await shortcuts.disable(id: 0, revision: shortcuts.read().revision)
         #expect(
             try FileManager.default.destinationOfSymbolicLink(atPath: config.path) == target.path)
-        #expect(try shortcuts.read().bindings.count == 1)
+        let disabled = try shortcuts.read()
+        #expect(disabled.bindings.map(\.isDisabled) == [true, false])
         #expect(
             try String(contentsOf: target, encoding: .utf8).hasPrefix("# alt - p [\n# \"Finder\""))
+        await #expect(throws: (any Error).self) {
+            try await shortcuts.rebind(
+                id: 0, revision: disabled.revision, chord: .init(modifiers: ["cmd"], key: "k"))
+        }
+        await #expect(throws: (any Error).self) {
+            try await shortcuts.disable(id: 0, revision: disabled.revision)
+        }
+        await #expect(throws: (any Error).self) {
+            try await shortcuts.enable(id: 4, revision: disabled.revision)
+        }
+        _ = try await shortcuts.enable(id: 0, revision: disabled.revision)
+        #expect(try String(contentsOf: target, encoding: .utf8) == text)
+        #expect(
+            try FileManager.default.destinationOfSymbolicLink(atPath: config.path) == target.path)
+        #expect(snapshots.list().map { snapshots.reason(for: $0) }.contains("shortcut enabled"))
     }
 
     @Test("only an explicit reset installs defaults, after snapshotting the custom file")

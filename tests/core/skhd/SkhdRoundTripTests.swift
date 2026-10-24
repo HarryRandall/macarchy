@@ -60,19 +60,23 @@ struct SkhdRoundTripTests {
 
     static var lines: [String] { fixture.components(separatedBy: "\n") }
 
+    /// The shortcuts skhd sees; the fixture also holds one the page disabled.
+    static var live: [SkhdBinding] { SkhdConfig.parse(fixture).filter { !$0.isDisabled } }
+
     @Test("parses every shortcut in the fixture once")
     func parsesFixture() {
         let bindings = SkhdConfig.parse(Self.fixture)
         #expect(
             bindings.map(\.key) == [
-                "left", "right", "0x18", "0x1B", "x", "y", "q", "w", "play", "r", "escape", "h",
+                "left", "up", "right", "0x18", "0x1B", "x", "y", "q", "w", "play", "r", "escape",
+                "h",
                 "h"
             ])
     }
 
     @Test("rebinding a shortcut to its own chord leaves the file byte for byte")
     func identityRebind() throws {
-        for binding in SkhdConfig.parse(Self.fixture) {
+        for binding in Self.live {
             let rewritten = SkhdConfig.rebind(
                 Self.fixture, binding: binding, modifiers: binding.modifiers, key: binding.key)
             #expect(rewritten == Self.fixture, "line \(binding.id)")
@@ -82,7 +86,7 @@ struct SkhdRoundTripTests {
     @Test("rebinding changes only the first line of the shortcut")
     func rebindTouchesOneLine() throws {
         let before = SkhdConfig.parse(Self.fixture)
-        for binding in before {
+        for binding in Self.live {
             let rewritten = try #require(
                 SkhdConfig.rebind(Self.fixture, binding: binding, modifiers: ["hyper"], key: "z"))
             let lines = rewritten.components(separatedBy: "\n")
@@ -106,7 +110,7 @@ struct SkhdRoundTripTests {
     @Test("disabling comments out exactly the shortcut's lines")
     func disableTouchesItsLines() throws {
         let before = SkhdConfig.parse(Self.fixture)
-        for binding in before {
+        for binding in Self.live {
             let disabled = try #require(SkhdConfig.disable(Self.fixture, binding: binding))
             let lines = disabled.components(separatedBy: "\n")
             #expect(lines.count == Self.lines.count)
@@ -120,19 +124,51 @@ struct SkhdRoundTripTests {
             // disabled binding's comment must not become a heading.
             func shape(_ b: SkhdBinding) -> String {
                 "\(b.id) \(b.section ?? "-") \(b.modes) \(b.modifiers) \(b.key) \(b.command) "
-                    + "\(b.appOverrides) \(b.activatesMode ?? "-")"
+                    + "\(b.appOverrides) \(b.activatesMode ?? "-") \(b.endLine)"
             }
+            let after = SkhdConfig.parse(disabled)
+            #expect(after.map(shape) == before.map(shape))
             #expect(
-                SkhdConfig.parse(disabled).map(shape)
-                    == before.filter { $0.id != binding.id }.map(shape))
+                Set(after.filter(\.isDisabled).map(\.id))
+                    == Set(before.filter(\.isDisabled).map(\.id)).union([binding.id]))
         }
     }
 
-    @Test("a disabled binding is skipped, not read as a heading")
+    /// Enable removes exactly what Disable wrote, so the pair is a no-op.
+    @Test("disabling then enabling gives back the original bytes")
+    func disableThenEnable() throws {
+        for binding in Self.live {
+            let disabled = try #require(SkhdConfig.disable(Self.fixture, binding: binding))
+            let parsed = try #require(SkhdConfig.parse(disabled).first { $0.id == binding.id })
+            #expect(parsed.isDisabled)
+            #expect(
+                SkhdConfig.enable(disabled, binding: parsed) == Self.fixture, "line \(binding.id)")
+        }
+    }
+
+    @Test("a disabled binding in the file enables, and edits refuse it")
+    func enableFromFile() throws {
+        let up = try #require(SkhdConfig.parse(Self.fixture).first { $0.key == "up" })
+        #expect(up.isDisabled)
+        #expect(SkhdConfig.disable(Self.fixture, binding: up) == nil)
+        #expect(SkhdConfig.rebind(Self.fixture, binding: up, modifiers: ["alt"], key: "u") == nil)
+        let enabled = try #require(SkhdConfig.enable(Self.fixture, binding: up))
+        #expect(
+            enabled
+                == Self.fixture.replacingOccurrences(
+                    of: "# ctrl + alt - up", with: "ctrl + alt - up"))
+        #expect(SkhdConfig.enable(enabled, binding: up) == nil)
+    }
+
+    @Test("a disabled binding is listed in its section, not read as a heading")
     func disabledBindingIsNotAHeading() throws {
         let bindings = SkhdConfig.parse(Self.fixture)
         let right = try #require(bindings.first { $0.key == "right" })
-        #expect(right.section == "Focus windows")
-        #expect(!bindings.contains { $0.key == "up" })
+        let up = try #require(bindings.first { $0.key == "up" })
+        #expect(right.section == "Focus windows" && up.section == "Focus windows")
+        #expect(up.isDisabled && !right.isDisabled)
+        #expect(
+            SkhdConfig.conflict(in: bindings, modifiers: ["ctrl", "alt"], key: "up", excluding: nil)
+                == nil)
     }
 }

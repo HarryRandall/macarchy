@@ -77,8 +77,9 @@ struct SkhdConfigTests {
         let first = try #require(SkhdConfig.disable(text, binding: parsed[0]))
         let block = try #require(SkhdConfig.disable(first, binding: parsed[2]))
         let after = SkhdConfig.parse(block)
-        #expect(after.map(\.key) == ["right"])
-        #expect(after.first?.section == "Focus windows")
+        #expect(after.map(\.key) == ["left", "right", "w"])
+        #expect(after.map(\.isDisabled) == [true, false, true])
+        #expect(after.allSatisfy { $0.section == "Focus windows" })
     }
 
     @Test("prose comments that look a little like bindings stay headings")

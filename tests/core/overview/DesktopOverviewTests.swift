@@ -15,7 +15,7 @@ struct DesktopOverviewTests {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appending(path: "resources/themes")
         let shortcuts = root.appending(path: "skhdrc")
-        try "ctrl - a : echo a\nctrl - b : echo b\n".write(
+        try "ctrl - a : echo a\nctrl - b : echo b\n# disabled: ctrl - c : echo c\n".write(
             to: shortcuts, atomically: true, encoding: .utf8)
         let before = try Data(contentsOf: store.url)
         let backend = Integrations { path, arguments in

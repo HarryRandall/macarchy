@@ -25,9 +25,16 @@ public enum SkhdConfig {
 
             if line.isEmpty { pendingComment = []; continue }
 
-            // A binding the page disabled is not a heading for the next one.
-            if let disabled = disabledEnd(lines, from: index) {
-                end = disabled
+            // A binding the page disabled is listed as disabled. It is not a
+            // heading, and a heading above it names its section as usual.
+            if let disabled = disabledBinding(
+                lines, from: index,
+                section: pendingComment.isEmpty ? section : pendingComment.joined(separator: " "))
+            {
+                section = disabled.section
+                pendingComment = []
+                bindings.append(disabled)
+                end = disabled.endLine
                 continue
             }
 
@@ -58,20 +65,27 @@ public enum SkhdConfig {
         return bindings
     }
 
-    /// The last line of a binding that `disable` commented out, when the
-    /// comment at `start` is one.
+    /// The binding that `disable` commented out, when the comment at `start`
+    /// is one.
     ///
     /// Disabling writes `# ` before every line of a binding, so removing that
     /// from the run of comments must give back a binding whose chord skhd could
     /// read. A prose comment such as `# Note: x` stays a heading.
-    static func disabledEnd(_ lines: [String], from start: Int) -> Int? {
+    static func disabledBinding(
+        _ lines: [String], from start: Int, section: String?
+    ) -> SkhdBinding? {
         let run = Array(
             lines[start...].prefix { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) })
         guard !run.isEmpty else { return nil }
-        let (binding, last) = parseBinding(
-            run, from: 0, through: logicalEnd(run, from: 0), section: nil)
-        guard let binding, isChord(binding) else { return nil }
-        return start + last
+        let (parsed, last) = parseBinding(
+            run, from: 0, through: logicalEnd(run, from: 0), section: section)
+        guard let parsed, isChord(parsed) else { return nil }
+        return SkhdBinding(
+            id: start, endLine: start + last, source: Array(lines[start...(start + last)]),
+            modifiers: parsed.modifiers, key: parsed.key, command: parsed.command,
+            section: section, passthrough: parsed.passthrough,
+            appOverrides: parsed.appOverrides, modes: parsed.modes,
+            activatesMode: parsed.activatesMode, isDisabled: true)
     }
 
     /// Whether a parsed binding names modifiers and a key skhd knows. A bare
@@ -288,7 +302,8 @@ extension SkhdConfig {
     /// Another binding using this chord in a mode `binding` works in, if there
     /// is one. Without `binding` the chord is checked in the default mode. The
     /// same chord can mean different things in different modes, and a mode
-    /// switch occupies its chord like any other binding.
+    /// switch occupies its chord like any other binding. A disabled binding
+    /// occupies nothing.
     public static func conflict(
         in bindings: [SkhdBinding], modifiers: some Sequence<String>, key: String,
         excluding binding: SkhdBinding?
@@ -297,7 +312,7 @@ extension SkhdConfig {
         let modifiers = SkhdKey.normalised(modifiers: modifiers)
         let modes = binding?.activeModes ?? ["default"]
         return bindings.first {
-            $0.id != binding?.id
+            $0.id != binding?.id && !$0.isDisabled
                 && !$0.activeModes.isDisjoint(with: modes)
                 && SkhdKey.normalised($0.key) == key
                 && SkhdKey.normalised(modifiers: $0.modifiers) == modifiers
@@ -350,7 +365,7 @@ extension SkhdConfig {
     public static func rebind(
         _ text: String, binding: SkhdBinding, modifiers: [String], key: String
     ) -> String? {
-        guard matches(text, binding) else { return nil }
+        guard !binding.isDisabled, matches(text, binding) else { return nil }
         return rebind(text, line: binding.id, modifiers: modifiers, key: key)
     }
 
@@ -373,10 +388,22 @@ extension SkhdConfig {
     /// and closing bracket or a continued command's later lines, which would
     /// otherwise stay live or break parsing.
     public static func disable(_ text: String, binding: SkhdBinding) -> String? {
-        guard matches(text, binding) else { return nil }
+        guard !binding.isDisabled, matches(text, binding) else { return nil }
         var lines = text.components(separatedBy: "\n")
         for index in binding.id...binding.endLine {
             lines[index] = "# " + lines[index]
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Undoes `disable`: removes the `# ` it wrote before each of the
+    /// binding's lines, and nothing else, so the original bytes come back.
+    public static func enable(_ text: String, binding: SkhdBinding) -> String? {
+        guard binding.isDisabled, matches(text, binding) else { return nil }
+        var lines = text.components(separatedBy: "\n")
+        for index in binding.id...binding.endLine {
+            guard lines[index].hasPrefix("# ") else { return nil }
+            lines[index] = String(lines[index].dropFirst(2))
         }
         return lines.joined(separator: "\n")
     }

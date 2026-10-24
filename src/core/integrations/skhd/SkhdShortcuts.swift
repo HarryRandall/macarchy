@@ -93,6 +93,9 @@ public struct SkhdShortcuts: Sendable {
                 throw ConfigurationError(
                     "This shortcut no longer exists. Refresh shortcuts and try again.")
             }
+            guard !binding.isDisabled else {
+                throw ConfigurationError("Enable this shortcut before changing its keys.")
+            }
             guard
                 SkhdConfig.conflict(
                     in: bindings, modifiers: chord.modifiers, key: chord.key, excluding: binding)
@@ -110,7 +113,23 @@ public struct SkhdShortcuts: Sendable {
             guard let binding = SkhdConfig.parse(text).first(where: { $0.id == id }) else {
                 return nil
             }
+            guard !binding.isDisabled else {
+                throw ConfigurationError("This shortcut is already disabled.")
+            }
             return SkhdConfig.disable(text, binding: binding)
+        }
+    }
+
+    /// Undoes `disable` exactly, through the same snapshot, write and restart.
+    public func enable(id: Int, revision: String) async throws -> CommandResult {
+        try await write(revision: revision, reason: "shortcut enabled") { text in
+            guard let binding = SkhdConfig.parse(text).first(where: { $0.id == id }) else {
+                return nil
+            }
+            guard binding.isDisabled else {
+                throw ConfigurationError("This shortcut is already enabled.")
+            }
+            return SkhdConfig.enable(text, binding: binding)
         }
     }
 

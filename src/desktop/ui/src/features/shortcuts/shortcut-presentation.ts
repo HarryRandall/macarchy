@@ -47,7 +47,7 @@ function actionLabel(binding: ShortcutBinding, all: ShortcutBinding[]): string {
 export interface ShortcutFilters {
   search: string;
   modifiers: string[];
-  scope: "all" | "global" | "perApp";
+  scope: "all" | "global" | "perApp" | "disabled";
   section: string;
 }
 export const emptyFilters: ShortcutFilters = {
@@ -56,11 +56,18 @@ export const emptyFilters: ShortcutFilters = {
   scope: "all",
   section: "",
 };
+/** Disabled bindings are listed too, but only under All and their own scope. */
+function inScope(binding: ShortcutBinding, scope: ShortcutFilters["scope"]): boolean {
+  if (scope === "all") return true;
+  if (scope === "disabled") return binding.disabled;
+  return !binding.disabled && (scope === "perApp") === !!binding.appOverrides.length;
+}
+
 export function filterBindings(all: ShortcutBinding[], filters: ShortcutFilters) {
   const query = filters.search.trim().toLowerCase();
   return all.filter(
     (binding) =>
-      (filters.scope === "all" || (filters.scope === "perApp") === !!binding.appOverrides.length) &&
+      inScope(binding, filters.scope) &&
       (!filters.section || binding.section === filters.section) &&
       filters.modifiers.every((wanted) =>
         binding.modifiers.some((value) => value.endsWith(wanted)),
