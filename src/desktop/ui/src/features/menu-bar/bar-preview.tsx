@@ -71,8 +71,9 @@ export function BarPreview({
         aria-pressed={item.id === active}
         onClick={() => onSelect(item.id)}
         className={cn(
-          "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
-          item.kind === "widget" ? "px-0.5" : "border border-white/20 px-1.5",
+          "flex h-6 shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
+          // A widget's chip is its box, so boxes sit the bar's 6pt apart.
+          item.kind !== "widget" && "border border-white/20 px-1.5",
           focus && focus !== item.id && "opacity-35",
           // Samples are a widget's; the bar's own items show what they show now.
           !focus && sample !== "live" && item.kind !== "widget" && "opacity-40",

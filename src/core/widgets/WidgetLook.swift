@@ -51,9 +51,22 @@ public struct WidgetLook: Sendable {
     public static func linesID(_ id: String) -> String { id + ".lines" }
     /// The bracket that draws a two-line widget's box around both items.
     public static func boxID(_ id: String) -> String { id + ".box" }
+    /// The empty item left of a two-line widget's box. SketchyBar draws a
+    /// bracket over its outer items' padding, so the gap needs its own item.
+    public static func gapID(_ id: String) -> String { id + ".gap" }
 
-    /// Points on each side of a widget, so neighbouring boxes sit twice this apart.
-    static let gap = 3
+    /// A two-line widget's items, left to right.
+    public static func stackedMembers(_ id: String) -> [String] {
+        [gapID(id), id, linesID(id)]
+    }
+
+    /// The items a widget's box goes around: all but its gap.
+    public static func boxed(_ component: BarComponent) -> [String] {
+        component.members.filter { $0 != gapID(component.id) }
+    }
+
+    /// Points left of each widget's box, so neighbouring boxes sit this far apart.
+    static let gap = 6
     /// Points between a box's edge and what is inside it.
     static let inset = 8.0
     /// Points between a widget's icon and its text.
@@ -83,7 +96,7 @@ public struct WidgetLook: Sendable {
         for index in result.components.indices where result.components[index].isWidget {
             let id = result.components[index].id
             let stacked = isStacked(result.components[index])
-            result.components[index].members = stacked ? [id, Self.linesID(id)] : [id]
+            result.components[index].members = stacked ? Self.stackedMembers(id) : [id]
             result.components[index].brackets = stacked ? [Self.boxID(id)] : []
         }
         return result
@@ -116,8 +129,8 @@ public struct WidgetLook: Sendable {
         let right = Int(style.paddingRight ?? Self.inset)
         properties += [
             "label.font=SF Pro:Semibold:\(Self.points(size))", "width=dynamic",
-            "padding_left=\(Self.gap)", "padding_right=\(Self.gap)",
-            "icon.padding_left=\(left)", "icon.padding_right=\(Self.spacing)",
+            "padding_left=\(Self.gap)", "padding_right=0", "icon.padding_left=\(left)",
+            "icon.padding_right=\(Self.spacing)",
             "label.padding_left=\(icon.isEmpty ? left : 0)", "label.padding_right=\(right)",
             "icon.y_offset=0", "label.y_offset=1",
             "background.height=\(Self.boxHeight)",
@@ -131,9 +144,9 @@ public struct WidgetLook: Sendable {
         return ["--set", component.id] + properties
     }
 
-    /// An icon item, a lines item whose icon and label hold the two lines,
-    /// right-aligned in a column as wide as the widest sample, and a box
-    /// around them both, as the bar's stacked readings have always been drawn.
+    /// An empty gap item, an icon item, a lines item whose icon and label
+    /// hold the two lines, right-aligned in a column as wide as the widest
+    /// sample, and a box around the icon and lines.
     private func stackedArguments(
         _ component: BarComponent, manifest: WidgetManifest, style: WidgetStyle, icon: [String]
     ) -> [String] {
@@ -152,7 +165,7 @@ public struct WidgetLook: Sendable {
             "label.width=0", "icon.align=right", "label.align=right", "icon.y_offset=6",
             "label.y_offset=-5", "icon.padding_left=0", "icon.padding_right=\(right)",
             "label.padding_left=0", "label.padding_right=\(right)", "padding_left=0",
-            "padding_right=\(Self.gap)", "width=dynamic", "background.drawing=off", "script=",
+            "padding_right=0", "width=dynamic", "background.drawing=off", "script=",
             icon.first { $0.hasPrefix("click_script=") } ?? ""
         ]
         if let colour = style.textColour.flatMap(colour) {
@@ -160,7 +173,7 @@ public struct WidgetLook: Sendable {
         }
         let glyph =
             icon + [
-                "label.drawing=off", "background.drawing=off", "padding_left=\(Self.gap)",
+                "label.drawing=off", "background.drawing=off", "padding_left=0",
                 "padding_right=0", "icon.padding_left=\(Int(style.paddingLeft ?? Self.inset))",
                 "icon.padding_right=\(Self.spacing)", "icon.y_offset=0"
             ]
@@ -172,8 +185,16 @@ public struct WidgetLook: Sendable {
             ]
             + box(style)
             + (style.box == "outline" ? ["background.border_color=0x33ffffff"] : [])
-        return ["--set", component.id] + glyph + ["--set", Self.linesID(component.id)] + lines
-            + ["--set", Self.boxID(component.id)] + box
+            // SketchyBar may hand a click to the bracket rather than the item
+            // under it, so the box clicks the same as the widget's items.
+            + [icon.first { $0.hasPrefix("click_script=") } ?? "click_script="]
+        let gap = [
+            "width=\(Self.gap)", "icon.drawing=off", "label.drawing=off", "background.drawing=off",
+            "padding_left=0", "padding_right=0", "script=", "click_script="
+        ]
+        return ["--set", Self.gapID(component.id)] + gap + ["--set", component.id] + glyph
+            + ["--set", Self.linesID(component.id)] + lines + ["--set", Self.boxID(component.id)]
+            + box
     }
 
     private func box(_ style: WidgetStyle) -> [String] {

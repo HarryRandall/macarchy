@@ -53,7 +53,12 @@ enum MenuBarComponents {
         // with, since its items may not be on the bar yet, and nothing
         // discovery finds among them becomes a component of its own.
         let owned = Set(
-            configuration.components.filter(\.ownsItem).flatMap { $0.members + $0.brackets })
+            configuration.components.filter(\.ownsItem).flatMap { component in
+                component.members + component.brackets
+                    + (component.isWidget
+                        ? WidgetLook.stackedMembers(component.id) + [WidgetLook.boxID(component.id)]
+                        : [])
+            })
         configuration.components = configuration.components.compactMap { stored in
             if stored.isWidget { return stored }
             guard let current = live[stored.id] else { return stored.isCustom ? stored : nil }

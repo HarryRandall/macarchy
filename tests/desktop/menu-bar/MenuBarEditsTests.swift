@@ -130,7 +130,7 @@ struct MenuBarEditsTests {
         let result = try configuration(MenuBarApplyParams(items: [item], bar: bar))
         let clock = try #require(result.components.first { $0.id == "macarchy.clock" })
         #expect(clock.widget == "clock" && clock.kind == nil && clock.settings == nil)
-        #expect(clock.members == ["macarchy.clock", "macarchy.clock.lines"])
+        #expect(clock.members == ["macarchy.clock.gap", "macarchy.clock", "macarchy.clock.lines"])
         #expect(clock.brackets == ["macarchy.clock.box"])
         #expect(clock.click == WidgetClick(open: "Calendar"))
         try result.validate()

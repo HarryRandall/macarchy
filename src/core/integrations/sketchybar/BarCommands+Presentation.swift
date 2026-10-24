@@ -19,7 +19,9 @@ extension BarCommands {
                     edits[member, default: [:]]["position"] = component.side
                 }
             }
-            if old?.visible != component.visible {
+            // A widget just added stays hidden until the widget host, which
+            // restarts when the bar is saved, shows it with its first reading.
+            if old?.visible != component.visible && !(component.isWidget && old == nil) {
                 for member in component.members + component.brackets {
                     let drawing = component.visible && (component.drawing[member] ?? true)
                     edits[member, default: [:]]["drawing"] = drawing ? "on" : "off"

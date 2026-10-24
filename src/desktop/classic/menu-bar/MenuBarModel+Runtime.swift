@@ -12,23 +12,10 @@ extension MenuBarModel {
         where component.isCustom && !actual.contains(component.id) {
             try await send(BarCommands.customArguments(component))
         }
-        for component in configuration.components where component.hasBoxLayout {
-            for member in component.members
-            where member.hasPrefix("gap.") && !actual.contains(member) {
-                try await send([
-                    "--add", "item", member, component.side, "--set", member, "icon.drawing=off",
-                    "label.drawing=off"
-                ])
-            }
-        }
-        for component in configuration.components where component.isWidget {
-            for member in component.members where !actual.contains(member) {
-                try await send(["--add", "item", member, component.side])
-            }
-            for bracket in component.brackets where !actual.contains(bracket) {
-                try await send(["--add", "bracket", bracket] + component.members)
-            }
-        }
+        // Widgets' and box layouts' items, added hidden in one call.
+        let missing = configuration.components.filter { $0.isWidget || $0.hasBoxLayout }
+            .flatMap { BarCommands.addArguments($0, existing: actual) }
+        if !missing.isEmpty { try await send(missing) }
         // Items Macarchy added that are no longer wanted, brackets first so
         // none is left holding an item that has gone.
         let owned = { (configuration: BarConfiguration) in

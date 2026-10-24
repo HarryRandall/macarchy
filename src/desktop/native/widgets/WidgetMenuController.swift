@@ -14,14 +14,26 @@ final class WidgetMenuController {
     private let model = WidgetMenuModel()
     private var panel: NSPanel?
     private var openID: String?
-    /// The widget whose dropdown a click outside just closed, and when. The
-    /// same click reaches the bar and asks to open it again, which it ignores.
-    private var lastClosed: (id: String, at: Date)?
+    /// The widget whose dropdown a click on its own box just closed. The
+    /// bar passes the same click on a moment later, and that one is ignored.
+    private var swallow: (id: String, at: Date)?
     private var monitors: [Any] = []
     /// Where each widget's item was last seen, so a dropdown opens without
     /// waiting to ask SketchyBar. Checked again after it opens.
     private var frames: [String: NSRect] = [:]
+    /// Each widget's box and its usual background, so a click turns it grey
+    /// at once.
+    private var boxes: [String: WidgetBox] = [:]
     private var refresher: Task<Void, Never>?
+    /// The latest click asking for a dropdown; an earlier one still looking
+    /// up its rows gives way to it.
+    private var request = 0
+    /// The widget whose box is grey, and the box with its usual background.
+    private var highlighted: (id: String, box: WidgetBox)?
+    /// Highlighting and putting back, one after the other, so a quick close
+    /// cannot leave a widget grey.
+    private var highlighting: Task<Void, Never>?
+    static let highlightColour = "0x33ffffff"
     private var observers: [NSObjectProtocol] = []
 
     private var host: WidgetHost { WidgetHostController.shared.host }
@@ -47,7 +59,7 @@ final class WidgetMenuController {
                 NSWorkspace.shared.notificationCenter.addObserver(
                     forName: name, object: nil, queue: .main
                 ) { _ in
-                    MainActor.assumeIsolated { WidgetMenuController.shared.close(byClick: true) }
+                    MainActor.assumeIsolated { WidgetMenuController.shared.close() }
                 })
         }
         model.pick = { [weak self] row, option in self?.pick(row, option: option) }
@@ -58,26 +70,45 @@ final class WidgetMenuController {
     /// Learns where every widget sits, so the first dropdown opens quickly too.
     private func warmFrames() async {
         await host.reload()
+        await learnFrames()
+    }
+
+    /// Where every widget sits now, for opening under it and for telling a
+    /// click on a widget from a click elsewhere. Hidden ones are skipped.
+    private func learnFrames() async {
         for instance in await host.instances {
-            if let frame = await Self.frame(of: instance.id) { frames[instance.id] = frame }
+            guard let box = await WidgetBox.find(instance.id) else { continue }
+            if let frame = box.frame { frames[instance.id] = frame }
+            // A grey box would be learnt as its usual look.
+            if highlighted?.id != instance.id { boxes[instance.id] = box }
         }
     }
 
     func toggle(_ id: String) {
-        if openID == id { return close() }
-        if let lastClosed, lastClosed.id == id, Date().timeIntervalSince(lastClosed.at) < 0.8 {
+        if let swallow, swallow.id == id, Date().timeIntervalSince(swallow.at) < 2 {
+            self.swallow = nil
             return
         }
-        Task { await open(id) }
+        swallow = nil
+        if openID == id { return close() }
+        request += 1
+        let request = request
+        // Grey first, before the rows are worked out, so the click shows at once.
+        queue { await $0.highlight(id) }
+        Task { await open(id, request: request) }
     }
 
-    private func open(_ id: String) async {
-        guard let items = await host.menu(for: id), !items.isEmpty else { return }
+    private func open(_ id: String, request: Int) async {
+        let items = await host.menu(for: id) ?? []
         let cached = frames[id]
         var found = cached
-        if found == nil { found = await Self.frame(of: id) }
-        guard let item = found else { return }
-        close()
+        if found == nil && !items.isEmpty { found = await WidgetBox.find(id)?.frame }
+        guard request == self.request else { return }
+        guard let item = found, !items.isEmpty else {
+            // Nothing to show after all, so the box goes back.
+            return queue { await $0.unhighlight() }
+        }
+        hide()
         model.items = items
         let panel = panel ?? makePanel()
         place(panel, under: item)
@@ -86,25 +117,40 @@ final class WidgetMenuController {
         watchClicks(outside: panel)
         if cached != nil {
             // The bar may have moved since; follow it if so.
-            if let current = await Self.frame(of: id), current != item, openID == id {
+            if let current = await WidgetBox.find(id)?.frame, current != item, openID == id {
                 frames[id] = current
                 place(panel, under: current)
             }
         } else {
             frames[id] = item
         }
+        // Another dropdown may have opened while this one looked for its
+        // item; its refresher must be the only one, or the two widgets'
+        // rows would take turns in the panel.
+        guard openID == id else { return }
+        refresher?.cancel()
+        Task { await learnFrames() }
         // Readings such as a clock keep moving while the dropdown is open.
         refresher = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                guard let self, let items = await self.host.menu(for: id) else { return }
+                guard let self, self.openID == id, let items = await self.host.menu(for: id),
+                    self.openID == id
+                else { return }
                 self.model.items = items
             }
         }
     }
 
-    func close(byClick: Bool = false) {
-        if let openID, byClick { lastClosed = (openID, Date()) }
+    func close() {
+        // A dropdown still being worked out should not appear after this.
+        request += 1
+        queue { await $0.unhighlight() }
+        hide()
+    }
+
+    /// Takes the dropdown away, leaving the grey box to whoever comes next.
+    private func hide() {
         openID = nil
         refresher?.cancel()
         refresher = nil
@@ -126,7 +172,9 @@ final class WidgetMenuController {
         if let global = NSEvent.addGlobalMonitorForEvents(
             matching: mask,
             handler: { _ in
-                MainActor.assumeIsolated { WidgetMenuController.shared.close(byClick: true) }
+                MainActor.assumeIsolated {
+                    WidgetMenuController.shared.clicked(at: NSEvent.mouseLocation)
+                }
             })
         {
             monitors.append(global)
@@ -136,7 +184,7 @@ final class WidgetMenuController {
             handler: { event in
                 MainActor.assumeIsolated {
                     if event.window !== WidgetMenuController.shared.panel {
-                        WidgetMenuController.shared.close(byClick: true)
+                        WidgetMenuController.shared.close()
                     }
                 }
                 return event
@@ -144,6 +192,21 @@ final class WidgetMenuController {
         {
             monitors.append(local)
         }
+    }
+
+    /// A click in another app or on the bar while a dropdown is open. On
+    /// the open widget it closes the dropdown at once; on another widget it
+    /// leaves the dropdown for the bar's click to switch, so nothing flashes;
+    /// anywhere else it closes.
+    private func clicked(at point: NSPoint) {
+        guard let openID else { return }
+        if let hit = frames.first(where: { $0.value.contains(point) })?.key {
+            guard hit == openID else { return }
+            close()
+            swallow = (hit, Date())
+            return
+        }
+        close()
     }
 
     private func pick(_ row: Int, option: String?) {
@@ -175,22 +238,31 @@ final class WidgetMenuController {
 
     // MARK: - Placement
 
-    /// Where SketchyBar drew the widget's item, in screen coordinates.
-    private static func frame(of id: String) async -> NSRect? {
-        let result = await Integrations().sketchybar(["--query", id])
-        guard result.ok, let data = result.stdout.data(using: .utf8),
-            let item = try? JSONDecoder().decode(QueriedItem.self, from: data),
-            let (display, rect) = item.boundingRects.min(by: { $0.key < $1.key })
-        else { return nil }
-        let number = Int(display.split(separator: "-").last ?? "") ?? 1
-        let screens = NSScreen.screens
-        let screen = screens.indices.contains(number - 1) ? screens[number - 1] : NSScreen.main
-        guard let screen, rect.origin.count == 2, rect.size.count == 2 else { return nil }
-        // SketchyBar measures from the top-left of its display.
-        return NSRect(
-            x: screen.frame.minX + rect.origin[0],
-            y: screen.frame.maxY - rect.origin[1] - rect.size[1],
-            width: rect.size[0], height: rect.size[1])
+    private func queue(_ step: @escaping @MainActor (WidgetMenuController) async -> Void) {
+        let previous = highlighting
+        highlighting = Task { [weak self] in
+            await previous?.value
+            if let self { await step(self) }
+        }
+    }
+
+    /// Draws the widget's box grey, as a menu bar item looks while its menu
+    /// is open, and puts back any other.
+    private func highlight(_ id: String) async {
+        guard highlighted?.id != id else { return }
+        await unhighlight()
+        var box = boxes[id]
+        if box == nil { box = await WidgetBox.find(id) }
+        guard let box else { return }
+        boxes[id] = box
+        highlighted = (id, box)
+        await WidgetBox.paint(box.name, .init(drawing: "on", colour: Self.highlightColour))
+    }
+
+    private func unhighlight() async {
+        guard let (_, box) = highlighted else { return }
+        highlighted = nil
+        await WidgetBox.paint(box.name, box.background)
     }
 
     /// Just under the item, lined up with its left edge, or its right edge
@@ -203,16 +275,6 @@ final class WidgetMenuController {
         var x = item.midX > bounds.midX ? item.maxX - size.width : item.minX
         x = min(max(x, bounds.minX + 8), bounds.maxX - size.width - 8)
         return NSRect(x: x, y: item.minY - 6 - size.height, width: size.width, height: size.height)
-    }
-
-    private struct QueriedItem: Decodable {
-        struct Rect: Decodable {
-            let origin: [Double]
-            let size: [Double]
-        }
-        let boundingRects: [String: Rect]
-
-        enum CodingKeys: String, CodingKey { case boundingRects = "bounding_rects" }
     }
 }
 

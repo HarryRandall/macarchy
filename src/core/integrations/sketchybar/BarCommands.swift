@@ -11,20 +11,11 @@ public enum BarCommands {
         let widgets = widgets ?? (hasWidgets ? WidgetLook.current() : WidgetLook())
         let configuration = widgets.normalised(configuration)
         try configuration.validate()
-        for component in configuration.components where component.ownsItem {
-            try await addMissingItems(component, integrations: integrations)
-        }
-        for component in configuration.components where component.hasBoxLayout {
-            for member in component.members where member.hasPrefix("gap.") {
-                let query = await integrations.sketchybar(["--query", member])
-                if !query.ok {
-                    let result = await integrations.sketchybar([
-                        "--add", "item", member, component.side, "--set", member,
-                        "icon.drawing=off", "label.drawing=off"
-                    ])
-                    guard result.ok else { throw ConfigurationError(result.summary) }
-                }
-            }
+        let existing = await items(integrations: integrations)
+        let missing = configuration.components.flatMap { addArguments($0, existing: existing) }
+        if !missing.isEmpty {
+            let result = await integrations.sketchybar(missing)
+            guard result.ok else { throw ConfigurationError(result.summary) }
         }
         let arguments = settings(configuration, startup: true, widgets: widgets)
         if !arguments.isEmpty {
@@ -33,21 +24,50 @@ public enum BarCommands {
         }
     }
 
-    /// Adds the items Macarchy owns for a component that the bar does not
-    /// have yet, then a widget's bracket, which can only group items that exist.
-    private static func addMissingItems(
-        _ component: BarComponent, integrations: Integrations
-    ) async throws {
-        var missing: [[String]] = component.members.map { ["--add", "item", $0, component.side] }
+    /// The names of every item and bracket on the bar, or none when the bar
+    /// cannot be read.
+    static func items(integrations: Integrations) async -> Set<String> {
+        struct Bar: Decodable { let items: [String] }
+        let result = await integrations.sketchybar(["--query", "bar"])
+        guard result.ok, let data = result.stdout.data(using: .utf8),
+            let bar = try? JSONDecoder().decode(Bar.self, from: data)
+        else { return [] }
+        return Set(bar.items)
+    }
+
+    /// Adds what the bar does not have yet of the items Macarchy owns for a
+    /// component, hidden, so nothing shows half drawn: its items, a widget's
+    /// bracket after them, since a bracket can only group items that exist,
+    /// and a box layout's gaps. Everything goes in one call, and the bar
+    /// shows the lot together once the items are set up.
+    public static func addArguments(
+        _ component: BarComponent, existing: Set<String>
+    ) -> [String] {
+        var arguments: [String] = []
+        if component.ownsItem {
+            for member in component.members where !existing.contains(member) {
+                arguments += [
+                    "--add", "item", member, component.side, "--set", member, "drawing=off"
+                ]
+            }
+        }
         if component.isWidget {
-            missing += component.brackets.map { ["--add", "bracket", $0] + component.members }
+            for bracket in component.brackets where !existing.contains(bracket) {
+                arguments +=
+                    ["--add", "bracket", bracket] + WidgetLook.boxed(component)
+                    + ["--set", bracket, "drawing=off"]
+            }
         }
-        for arguments in missing {
-            let name = arguments[2]
-            guard !(await integrations.sketchybar(["--query", name])).ok else { continue }
-            let result = await integrations.sketchybar(arguments)
-            guard result.ok else { throw ConfigurationError(result.summary) }
+        if component.hasBoxLayout {
+            for member in component.members
+            where member.hasPrefix("gap.") && !existing.contains(member) {
+                arguments += [
+                    "--add", "item", member, component.side, "--set", member, "icon.drawing=off",
+                    "label.drawing=off"
+                ]
+            }
         }
+        return arguments
     }
 
     public static func customArguments(_ component: BarComponent) -> [String] {
@@ -72,14 +92,18 @@ public enum BarCommands {
                 + configuration.geometry.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
         }
         for component in configuration.components {
+            // At startup the widget host shows a widget with its first
+            // reading, so its items appear together rather than empty.
+            let shownByHost = startup && component.isWidget && component.visible
             for member in component.members {
                 args += ["--set", member, "position=\(component.side)"]
-                if component.id != "workspaces" || !startup || !component.visible {
+                if !shownByHost && (component.id != "workspaces" || !startup || !component.visible)
+                {
                     let drawing = component.visible && (component.drawing[member] ?? true)
                     args.append("drawing=\(drawing ? "on" : "off")")
                 }
             }
-            for bracket in component.brackets {
+            for bracket in component.brackets where !shownByHost {
                 args += ["--set", bracket, "drawing=\(component.visible ? "on" : "off")"]
             }
             if component.id == "workspaces" {

@@ -27,8 +27,11 @@ struct BarReplayTests {
                 await recorder.execute(args)
             })
         let calls = await recorder.recorded()
-        #expect(calls[0] == ["--query", "macarchy.test"])
-        #expect(calls[1] == ["--add", "item", "macarchy.test", "right"])
+        #expect(calls[0] == ["--query", "bar"])
+        #expect(
+            calls[1] == [
+                "--add", "item", "macarchy.test", "right", "--set", "macarchy.test", "drawing=off"
+            ])
         #expect(calls[2].contains("label=\(component.text)"))
     }
 

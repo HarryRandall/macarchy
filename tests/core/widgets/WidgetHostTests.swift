@@ -217,9 +217,13 @@ struct WidgetHostTests {
         var output = WidgetOutput(label: "87.5%\n78.3°")
         output.lineColours = ["#fbbf24", nil]
         let items = WidgetHost.items(instance, output: output, look: WidgetLook(text: "0xffdacbe6"))
-        #expect(items.map(\.item) == ["macarchy.cpu", "macarchy.cpu.lines"])
         #expect(
-            items[1].properties
+            items.map(\.item) == [
+                "macarchy.cpu.gap", "macarchy.cpu", "macarchy.cpu.lines", "macarchy.cpu.box"
+            ])
+        #expect(items[0].properties == ["drawing=on"] && items[3].properties == ["drawing=on"])
+        #expect(
+            items[2].properties
                 == [
                     "icon=87.5%", "label=78.3°", "icon.color=0xfffbbf24",
                     "label.color=0xffdacbe6", "drawing=on"

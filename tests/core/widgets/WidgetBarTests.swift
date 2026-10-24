@@ -118,7 +118,7 @@ struct WidgetBarTests {
         #expect((widgetColour ?? 0) < (override ?? 0))
     }
 
-    @Test("startup adds a widget's item when the bar does not have it")
+    @Test("startup adds a widget's item hidden, for the host to show with its first reading")
     func replay() async throws {
         let recorder = CallRecorder()
         var configuration = BarConfiguration()
@@ -130,12 +130,15 @@ struct WidgetBarTests {
             },
             widgets: WidgetLook(manifests: ["clock": widget()]))
         let calls = await recorder.arguments()
-        #expect(calls[0] == ["--query", "macarchy.clock"])
-        #expect(calls[1] == ["--add", "item", "macarchy.clock", "right"])
-        #expect(calls[2].contains("icon=􀧞"))
+        #expect(calls[0] == ["--query", "bar"])
+        #expect(
+            calls[1] == [
+                "--add", "item", "macarchy.clock", "right", "--set", "macarchy.clock", "drawing=off"
+            ])
+        #expect(calls[2].contains("icon=􀧞") && !calls[2].contains("drawing=on"))
     }
 
-    @Test("a two-line widget is an icon, a lines item and a box around them")
+    @Test("a two-line widget is a gap, an icon, a lines item and a box around the last two")
     func stacked() async throws {
         var style = WidgetStyle()
         style.lines = 2
@@ -146,18 +149,26 @@ struct WidgetBarTests {
         var configuration = BarConfiguration()
         configuration.components = [instance()]
         let normalised = look.normalised(configuration)
-        #expect(normalised.components[0].members == ["macarchy.clock", "macarchy.clock.lines"])
+        #expect(
+            normalised.components[0].members == [
+                "macarchy.clock.gap", "macarchy.clock", "macarchy.clock.lines"
+            ])
         #expect(normalised.components[0].brackets == ["macarchy.clock.box"])
         try normalised.validate()
         let arguments = look.arguments(for: normalised.components[0])
         let targets = arguments.indices.filter { arguments[$0] == "--set" }.map {
             arguments[$0 + 1]
         }
-        #expect(targets == ["macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"])
+        #expect(
+            targets == [
+                "macarchy.clock.gap", "macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"
+            ])
         // The column fits the widest sample, with the box's inset after it.
         #expect(arguments.contains("icon.width=44") && arguments.contains("label.padding_right=8"))
         #expect(!arguments.contains { $0.contains("padding") && $0.contains("=-") })
-        #expect(arguments.contains("padding_left=3") && arguments.contains("padding_right=3"))
+        // The gap is its own item: a bracket would draw over its items' padding.
+        #expect(arguments.contains("width=6"))
+        #expect(!arguments.contains("padding_left=6") && !arguments.contains("padding_right=6"))
         #expect(arguments.contains("background.border_width=1"))
 
         let recorder = CallRecorder()
@@ -168,11 +179,18 @@ struct WidgetBarTests {
             },
             widgets: look)
         let calls = await recorder.arguments()
-        #expect(calls.contains(["--add", "item", "macarchy.clock.lines", "right"]))
+        // Every item is added hidden in one call, the box around only the
+        // icon and the lines.
         #expect(
-            calls.contains([
-                "--add", "bracket", "macarchy.clock.box", "macarchy.clock", "macarchy.clock.lines"
-            ]))
+            calls[1]
+                == [
+                    "--add", "item", "macarchy.clock.gap", "right", "--set", "macarchy.clock.gap",
+                    "drawing=off", "--add", "item", "macarchy.clock", "right", "--set",
+                    "macarchy.clock", "drawing=off", "--add", "item", "macarchy.clock.lines",
+                    "right", "--set", "macarchy.clock.lines", "drawing=off", "--add", "bracket",
+                    "macarchy.clock.box", "macarchy.clock", "macarchy.clock.lines", "--set",
+                    "macarchy.clock.box", "drawing=off"
+                ])
     }
 
     @Test("a widget's items must be the shape its layout needs")
@@ -182,6 +200,10 @@ struct WidgetBarTests {
         var configuration = BarConfiguration()
         configuration.components = [component]
         #expect(throws: ConfigurationError.self) { try configuration.validate() }
+        // A two-line widget saved before it had a gap item still reads.
+        configuration.components[0].members = ["macarchy.clock", "macarchy.clock.lines"]
+        configuration.components[0].brackets = ["macarchy.clock.box"]
+        #expect(throws: Never.self) { try configuration.validate() }
     }
 
     @Test("a widget item's id must be safe to put in its click command")

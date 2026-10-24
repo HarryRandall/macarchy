@@ -2,7 +2,8 @@ import Foundation
 
 extension WidgetHost {
     /// What each of the widget's items is set to for an output: its one
-    /// item, or a two-line widget's icon and lines. Colours fall back to the
+    /// item, or a two-line widget's icon and lines, with its gap and box
+    /// shown or hidden alongside, so the whole widget appears at once. Colours fall back to the
     /// widget's style and then the theme's text colour, so a reading that
     /// stops warning goes back to normal.
     static func items(
@@ -43,7 +44,9 @@ extension WidgetHost {
         if let first = colour(0) { lines.append("icon.color=\(first)") }
         if let second = colour(1) { lines.append("label.color=\(second)") }
         return [
-            (instance.id, icon + [drawing]), (WidgetLook.linesID(instance.id), lines + [drawing])
+            (WidgetLook.gapID(instance.id), [drawing]), (instance.id, icon + [drawing]),
+            (WidgetLook.linesID(instance.id), lines + [drawing]),
+            (WidgetLook.boxID(instance.id), [drawing])
         ]
     }
 

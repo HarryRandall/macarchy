@@ -66,13 +66,19 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
 
     /// A widget component names a widget, is one item of its own whose id is
     /// safe in a click command, and keeps settings under sensible names.
+    /// A two-line widget's items, or the shape saved before it had a gap
+    /// item, which `WidgetLook.normalised` brings up to date.
+    private static func stackedShapes(_ id: String) -> [[String]] {
+        [WidgetLook.stackedMembers(id), [id, WidgetLook.linesID(id)]]
+    }
+
     private func validateWidgets() throws {
         for component in components where component.isWidget {
             guard let widget = component.widget,
                 widget.range(of: "^[a-z0-9][a-z0-9-]{0,39}$", options: .regularExpression) != nil,
                 component.kind == nil,
                 component.members == [component.id] && component.brackets.isEmpty
-                    || component.members == [component.id, WidgetLook.linesID(component.id)]
+                    || Self.stackedShapes(component.id).contains(component.members)
                         && component.brackets == [WidgetLook.boxID(component.id)],
                 component.id.range(of: "^[A-Za-z0-9._-]{1,64}$", options: .regularExpression)
                     != nil,

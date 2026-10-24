@@ -51,13 +51,15 @@ export function WidgetChip({
   const text = sampleText(item, widget, sample);
   const lines = sampleLines(text, style);
   const size = Math.max(9, (style.size ?? 12) - 1);
+  // The bar's own numbers (WidgetLook): a 24pt box, 8pt inside each edge
+  // and 6pt between the icon and the text.
   return (
     <span
-      className={cn("flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap", className)}
+      className={cn("flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap", className)}
       style={{
         ...boxStyle(style, look),
-        paddingLeft: Math.min(style.paddingLeft ?? 6, 14),
-        paddingRight: Math.min(style.paddingRight ?? 6, 14),
+        paddingLeft: Math.min(style.paddingLeft ?? 8, 14),
+        paddingRight: Math.min(style.paddingRight ?? 8, 14),
         color: paintOf(style.textColour, look),
       }}
     >
