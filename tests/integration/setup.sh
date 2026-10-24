@@ -32,6 +32,17 @@ SH
 done
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
+status() { "$@" >/dev/null 2>&1; echo $?; }
+
+# Help and mistyped arguments never run the command.
+"$CLI" setup --help | grep -q 'Usage: macarchy setup' || fail "setup --help shows no usage"
+[ -e "$HOME_DIR/.config/macarchy" ] && fail "setup --help ran setup"
+[ "$(status "$CLI" setup --replce)" = 2 ] || fail "unknown setup option accepted"
+[ "$(status "$CLI" setup --keep --replace)" = 2 ] || fail "conflicting setup options accepted"
+[ "$(status "$CLI" rules togle)" = 2 ] || fail "unknown rules argument accepted"
+[ "$(status "$CLI" space 0)" = 2 ] || fail "out-of-range Space accepted"
+[ "$(status "$CLI" widget clik x)" = 2 ] || fail "unknown widget command accepted"
+[ -e "$HOME_DIR/.config/macarchy" ] && fail "a rejected command changed files"
 
 # An existing hand-written setup, to be adopted rather than lost.
 cat > "$HOME_DIR/.config/yabai/yabairc" <<'RC'
@@ -60,6 +71,9 @@ printf '%s\n' '# >>> macarchy:keep items' 'sketchybar --add item mine left' '# <
   'sketchybar --add item after right' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
 
 "$CLI" setup --keep --no-apply >/dev/null
+
+"$CLI" uninstall --help >/dev/null
+grep -q 'startup yabai' "$HOME_DIR/.config/yabai/yabairc" || fail "uninstall --help uninstalled"
 
 BAR="$HOME_DIR/.config/sketchybar/sketchybarrc"
 grep -q 'add item after right' "$BAR" || fail "content after a nested region lost"
@@ -206,7 +220,7 @@ grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced 
 # desktop is left alone even though nothing here is a dry run.
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
 "$CLI" setup --replace >/dev/null || fail "isolated setup with services failed"
-"$CLI" apply || fail "isolated apply failed"
+"$CLI" apply >/dev/null || fail "isolated apply failed"
 "$CLI" theme next >/dev/null || fail "isolated theme change failed"
 grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
