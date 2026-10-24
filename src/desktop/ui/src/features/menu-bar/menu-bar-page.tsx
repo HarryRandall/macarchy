@@ -1,14 +1,16 @@
 import { Check, RotateCcw } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import type { MenuBarSettings, MenuBarState } from "~/bridge/protocol";
 import { PageHeader } from "~/components/layout/page-header";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardRows, Row } from "~/components/ui/card";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Notice } from "~/components/ui/notice";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { Switch } from "~/components/ui/switch";
+import { Tooltip } from "~/components/ui/tooltip";
 import { ValueSlider } from "~/components/ui/value-slider";
 import { cn } from "~/lib/cn";
 import { useStore } from "~/lib/store";
@@ -16,17 +18,19 @@ import type { PageContext } from "~/shell/page";
 
 import { BarPreview } from "./bar-preview";
 import { BarZone, type DropTarget, type KeyMove } from "./bar-zone";
-import { ItemInspector, type WidgetFileActions } from "./item-inspector";
+import { type InspectorTab, ItemInspector, type WidgetFileActions } from "./item-inspector";
 import { ItemLibrary } from "./item-library";
 import {
   addItem,
   type BarItem,
+  changedNames,
   editsOf,
   moveItem,
   newItem,
   newWidgetItem,
   patchItem,
   problemWith,
+  putBack,
   removeItem,
   sameBar,
   sameItems,
@@ -69,17 +73,14 @@ const draftOf = (state: MenuBarState): Draft => ({
 const edited = (draft: Draft) =>
   !sameItems(draft.items, draft.base.items) || !sameBar(draft.bar, draft.base.bar);
 
-/** How many items differ from the bar, for the badge by Apply. */
-function changeCount(draft: Draft): number {
-  const before = new Map(draft.base.items.map((item) => [item.id, item]));
-  let count = sameBar(draft.bar, draft.base.bar) ? 0 : 1;
-  for (const item of draft.items) {
-    const old = before.get(item.id);
-    if (!old || !sameItems([item], [old])) count++;
-    before.delete(item.id);
-  }
-  return count + before.size;
+/** What differs from the bar, by name, for the badge by Apply. */
+function changeList(draft: Draft): string[] {
+  const names = changedNames(draft.base.items, draft.items);
+  return sameBar(draft.bar, draft.base.bar) ? names : [...names, "Bar settings"];
 }
+
+/** A Revert that throws away this many changes asks first. */
+const confirmRevertAt = 3;
 
 /**
  * The bar editor. Edits stay in the page until Apply, which makes SketchyBar
@@ -100,6 +101,11 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<DropTarget>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
+  /** The items before the last Remove, offered back for a few seconds. */
+  const [undo, setUndo] = useState<{ items: BarItem[]; title: string } | null>(null);
+  const [confirmingRevert, setConfirmingRevert] = useState(false);
+  const [applied, setApplied] = useState(false);
   const heightId = useId();
   const paddingId = useId();
   const moveHintId = useId();
@@ -112,6 +118,18 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   if (state && draft?.base !== state && (!draft || !edited(draft))) setDraft(draftOf(state));
 
   const items = draft?.items ?? noItems;
+
+  // The Undo offer and the Applied note each fade after a few seconds.
+  useEffect(() => {
+    if (!undo) return;
+    const timer = setTimeout(() => setUndo(null), 8000);
+    return () => clearTimeout(timer);
+  }, [undo]);
+  useEffect(() => {
+    if (!applied) return;
+    const timer = setTimeout(() => setApplied(false), 3000);
+    return () => clearTimeout(timer);
+  }, [applied]);
 
   useLayoutEffect(() => {
     const id = refocus.current;
@@ -143,6 +161,8 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
 
   const widgets = state.widgets;
   const unavailable = state.unavailableReason;
+  // Keyboard moves only reach a centre that is switched on.
+  const openZones = zones.filter((zone) => zone !== "centre" || draft.bar.centre);
   const changed = edited(draft);
   const problem =
     items
@@ -161,6 +181,8 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
 
   const reset = () => {
     setDraft(draftOf(state));
+    setUndo(null);
+    setConfirmingRevert(false);
     store.dismissError();
   };
 
@@ -168,6 +190,8 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     if (await store.apply(editsOf(draft.items), draft.bar)) {
       const next = store.getSnapshot().state;
       if (next) setDraft(draftOf(next));
+      setUndo(null);
+      setApplied(true);
     }
   };
 
@@ -178,13 +202,15 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   };
 
   const show = (id: string, zone: Zone) => {
-    setItems((current) => patchItem(moveItem(current, id, zone), id, { visible: true }));
+    setItems((current) => putBack(current, id, zone));
     select(id);
   };
 
   // One way off the bar. The bar's own items cannot be deleted, so they are
   // hidden, and Add a widget offers them back.
   const remove = (id: string) => {
+    const title = items.find((entry) => entry.id === id)?.title ?? "Item";
+    setUndo({ items, title });
     setItems((current) =>
       current.find((entry) => entry.id === id)?.kind === null
         ? patchItem(current, id, { visible: false })
@@ -219,7 +245,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     const next =
       move.kind === "step"
         ? stepItem(items, id, move.direction)
-        : shiftZone(items, id, move.direction);
+        : shiftZone(items, id, move.direction, openZones);
     if (next === items) return;
     refocus.current = id;
     setItems(() => next);
@@ -249,20 +275,51 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     duplicated,
   };
 
-  const count = changeCount(draft);
+  const changes = changeList(draft);
+  const count = changes.length;
+  const onBar = new Map(draft.base.items.map((item) => [item.id, item]));
+  const changedIds = new Set(
+    items
+      .filter((item) => {
+        const was = onBar.get(item.id);
+        return !was || !sameItems([item], [was]);
+      })
+      .map((item) => item.id),
+  );
   const header = <PageHeader title="Menu Bar" />;
 
   // The page's own actions, beside its controls: the top bar keeps only the window's.
   const applyBar = (
     <div className="ml-auto flex items-center gap-2">
-      {changed ? (
-        <Badge tone="accent">
-          {count} {count === 1 ? "change" : "changes"}
-        </Badge>
+      {applied && !changed ? (
+        <span role="status" className="flex items-center gap-1 text-small text-fg-secondary">
+          <Check aria-hidden size={12} /> Applied
+        </span>
       ) : null}
-      <Button size="sm" variant="ghost" disabled={!changed || snapshot.applying} onClick={reset}>
+      {changed ? (
+        <Tooltip content={changes.join(", ")}>
+          <Badge tone="accent" tabIndex={0}>
+            {count} {count === 1 ? "change" : "changes"}
+          </Badge>
+        </Tooltip>
+      ) : null}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={!changed || snapshot.applying}
+        onClick={() => (count >= confirmRevertAt ? setConfirmingRevert(true) : reset())}
+      >
         <RotateCcw aria-hidden size={12} /> Revert
       </Button>
+      <ConfirmDialog
+        open={confirmingRevert}
+        onOpenChange={setConfirmingRevert}
+        title={`Throw away ${count} changes?`}
+        description={changes.join(", ")}
+        confirmLabel="Revert"
+        tone="danger"
+        onConfirm={reset}
+      />
       <Button
         size="sm"
         variant="primary"
@@ -292,6 +349,25 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             <Notice.Title>Could not change the bar</Notice.Title>
             <Notice.Description>{snapshot.error}</Notice.Description>
           </Notice.Header>
+        </Notice.Root>
+      ) : null}
+      {undo ? (
+        <Notice.Root variant="info">
+          <Notice.Header onDismiss={() => setUndo(null)}>
+            <Notice.Description>{undo.title} taken off the bar.</Notice.Description>
+          </Notice.Header>
+          <Notice.Actions>
+            <Button
+              size="sm"
+              onClick={() => {
+                const before = undo.items;
+                setItems(() => before);
+                setUndo(null);
+              }}
+            >
+              Undo
+            </Button>
+          </Notice.Actions>
         </Notice.Root>
       ) : null}
       {changed && problem ? (
@@ -351,12 +427,6 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             options={viewOptions}
             onValueChange={setView}
           />
-          <SegmentedControl
-            label="Sample values"
-            value={sample}
-            options={sampleOptions}
-            onValueChange={setSample}
-          />
           {applyBar}
         </div>
         <BarPreview
@@ -370,6 +440,16 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             select(id);
             setView("widgets");
           }}
+          below={
+            <SegmentedControl
+              label="Sample values"
+              size="sm"
+              value={sample}
+              options={sampleOptions}
+              onValueChange={setSample}
+              className="self-end"
+            />
+          }
         />
       </div>
 
@@ -397,6 +477,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                   widgets={widgets}
                   sample={sample}
                   selected={selected}
+                  changed={changedIds}
                   dragging={dragging}
                   over={over}
                   moveHintId={moveHintId}
@@ -420,8 +501,9 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
               files={files}
               selectedRow={selectedRow}
               onSelectRow={setSelectedRow}
+              tab={inspectorTab}
+              onTab={setInspectorTab}
               onChange={(change) => current && patch(current.id, change)}
-              onRemove={() => current && remove(current.id)}
               onOpenEditor={() => current && setFullEditor(current.id)}
             />
           </div>

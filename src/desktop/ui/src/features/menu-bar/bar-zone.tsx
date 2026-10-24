@@ -4,13 +4,12 @@ import { type KeyboardEvent, useId } from "react";
 import type { WidgetInfo } from "~/bridge/protocol";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
-import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
 import { ScriptBadge } from "./item-inspector";
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, shownText, type Zone, zoneLabels } from "./menu-bar-items";
-import { type Sample, sampleText, widgetOf } from "./widget-model";
+import { readable, type Sample, sampleText, widgetOf } from "./widget-model";
 
 /** What a key on an item's handle asks for: a step within its zone, or to the next zone. */
 export type KeyMove = { kind: "step" | "zone"; direction: -1 | 1 };
@@ -27,10 +26,13 @@ export type DropTarget = { item: string } | { zone: Zone } | null;
 
 /** What a row says the item shows, at the preview's sample. */
 function sampleOf(item: BarItem, widgets: readonly WidgetInfo[], sample: Sample): string {
-  if (item.kind === "widget") {
-    return sampleText(item, widgetOf(item, widgets), sample).replace(/\n/g, " ");
-  }
-  return item.kind === "spacer" ? "" : shownText(item);
+  const text =
+    item.kind === "widget"
+      ? sampleText(item, widgetOf(item, widgets), sample)
+      : item.kind === "spacer"
+        ? ""
+        : shownText(item);
+  return readable(text);
 }
 
 export function BarZone({
@@ -39,6 +41,7 @@ export function BarZone({
   widgets,
   sample,
   selected,
+  changed,
   dragging,
   over,
   moveHintId,
@@ -56,6 +59,8 @@ export function BarZone({
   widgets: readonly WidgetInfo[];
   sample: Sample;
   selected: string | null;
+  /** Items that differ from the bar, marked until Apply or Revert. */
+  changed: ReadonlySet<string>;
   dragging: string | null;
   over: DropTarget;
   moveHintId: string;
@@ -84,7 +89,7 @@ export function BarZone({
         zoneOver ? "border-accent" : "border-hairline",
       )}
     >
-      <div className="mb-1.5 flex items-center px-1.5 pt-0.5 text-meta font-medium text-fg-tertiary">
+      <div className="mb-1.5 flex items-center px-1.5 pt-0.5 text-meta font-medium text-fg-secondary">
         <h3 id={headingId} className="flex-1">
           {zoneLabels[zone]}
         </h3>
@@ -119,26 +124,24 @@ export function BarZone({
                 targeted && "translate-y-0.5 border-t-2 border-t-accent",
               )}
             >
-              <Tooltip content="Drag, or use the arrow keys, to move" describe={false}>
-                <button
-                  type="button"
-                  aria-label={`Move ${item.title}`}
-                  aria-describedby={moveHintId}
-                  data-move-handle={item.id}
-                  onKeyDown={(event: KeyboardEvent) => {
-                    const move = moveKeys[event.key];
-                    if (!move) return;
-                    event.preventDefault();
-                    onKeyMove(item.id, move);
-                  }}
-                  className={cn(
-                    "grid h-6 w-4 shrink-0 place-items-center rounded-small text-fg-tertiary",
-                    focusRing,
-                  )}
-                >
-                  <GripVertical aria-hidden size={13} />
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                aria-label={`Move ${item.title}`}
+                aria-describedby={moveHintId}
+                data-move-handle={item.id}
+                onKeyDown={(event: KeyboardEvent) => {
+                  const move = moveKeys[event.key];
+                  if (!move) return;
+                  event.preventDefault();
+                  onKeyMove(item.id, move);
+                }}
+                className={cn(
+                  "grid h-6 w-4 shrink-0 place-items-center rounded-small text-fg-secondary",
+                  focusRing,
+                )}
+              >
+                <GripVertical aria-hidden size={13} />
+              </button>
               <button
                 type="button"
                 aria-pressed={picked}
@@ -151,21 +154,21 @@ export function BarZone({
                 <span
                   className={cn(
                     "grid size-6 shrink-0 place-items-center rounded-[6px] border border-hairline bg-side",
-                    item.visible ? "text-fg-secondary" : "text-fg-tertiary",
+                    "text-fg-secondary",
                   )}
                 >
                   <ItemIcon item={item} size={12} />
                 </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-detail font-medium",
-                    item.visible ? "text-fg" : "text-fg-tertiary",
-                  )}
-                >
+                <span className="min-w-0 flex-1 truncate text-detail font-medium text-fg">
                   {item.title}
                 </span>
+                {changed.has(item.id) ? (
+                  <span className="size-1.5 shrink-0 rounded-full bg-accent">
+                    <span className="sr-only">, changed</span>
+                  </span>
+                ) : null}
                 {widget?.scripted ? <ScriptBadge widget={widget} compact /> : null}
-                <span className="max-w-[45%] shrink-0 truncate pl-1 font-mono text-caption text-fg-tertiary">
+                <span className="max-w-[45%] shrink-0 truncate pl-1 font-mono text-caption text-fg-secondary">
                   {sampleOf(item, widgets, sample)}
                 </span>
               </button>
@@ -182,7 +185,7 @@ export function BarZone({
         })}
       </ul>
       {items.length === 0 ? (
-        <p className="grid h-16 place-items-center px-3 text-center text-small text-fg-tertiary">
+        <p className="grid h-16 place-items-center px-3 text-center text-small text-fg-secondary">
           Nothing here
         </p>
       ) : null}

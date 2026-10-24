@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   addItem,
+  changedNames,
+  putBack,
   type BarItem,
   editsOf,
   moveItem,
@@ -88,6 +90,32 @@ describe("shiftZone", () => {
   it("stops at the outer zones", () => {
     expect(shiftZone(bar, "a", -1)).toBe(bar);
     expect(shiftZone(bar, "d", 1)).toBe(bar);
+  });
+
+  it("skips a centre that is switched off", () => {
+    const open: Zone[] = ["left", "right"];
+    expect(order(shiftZone(bar, "b", 1, open))).toContain("right:b");
+    expect(order(shiftZone(bar, "c", -1, open))).toContain("left:c");
+  });
+});
+
+describe("putBack", () => {
+  it("returns an item to where it was in its own zone, or to the end of another", () => {
+    const off = patchItem(bar, "a", { visible: false });
+    expect(order(putBack(off, "a", "left"))).toEqual(order(bar));
+    expect(putBack(off, "a", "left").find((entry) => entry.id === "a")?.visible).toBe(true);
+    expect(order(putBack(off, "a", "right")).at(-1)).toBe("right:a");
+  });
+});
+
+describe("changedNames", () => {
+  it("names edited, added and removed items", () => {
+    const after = [
+      ...patchItem(bar, "a", { title: "Renamed" }).filter((entry) => entry.id !== "d"),
+      item("e", "left"),
+    ];
+    expect(changedNames(bar, after)).toEqual(["Renamed", "e", "d"]);
+    expect(changedNames(bar, bar)).toEqual([]);
   });
 });
 

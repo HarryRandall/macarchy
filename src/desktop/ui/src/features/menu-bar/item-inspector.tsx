@@ -1,5 +1,5 @@
-import { Maximize2, MousePointerClick, Terminal, Trash } from "lucide-react";
-import { type KeyboardEvent, useId, useState } from "react";
+import { Maximize2, MousePointerClick, Terminal } from "lucide-react";
+import { type KeyboardEvent, useId } from "react";
 
 import type { WidgetInfo } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
@@ -7,28 +7,23 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { IconButton } from "~/components/ui/icon-button";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { TabPanel, Tabs } from "~/components/ui/tabs";
-import { Field, Input } from "~/components/ui/text-field";
+import { Input } from "~/components/ui/text-field";
 import { Tooltip } from "~/components/ui/tooltip";
 
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, glyphs, intervals } from "./menu-bar-items";
 import { ClickSection } from "./widget-click";
 import { widgetOf } from "./widget-model";
-import {
-  ContentSection,
-  FilesSection,
-  Group,
-  LookSection,
-  UpdatesSection,
-} from "./widget-sections";
+import { AboutSection, ContentSection, ControlRow, Group, LookSection } from "./widget-sections";
 
-export type InspectorTab = "content" | "look" | "click" | "files";
+export type InspectorTab = "content" | "look" | "click" | "about";
 
-const tabs = [
+/** The same sections, in the same order, as the full editor. */
+export const inspectorTabs = [
   { id: "content" as const, label: "Content" },
   { id: "look" as const, label: "Look" },
   { id: "click" as const, label: "Click" },
-  { id: "files" as const, label: "Files" },
+  { id: "about" as const, label: "About" },
 ];
 
 export interface WidgetFileActions {
@@ -66,27 +61,30 @@ export function ScriptBadge({ widget, compact }: { widget: WidgetInfo; compact?:
 /**
  * The selected item's settings beside the zones. A widget gets its sections
  * in tabs and a way into the full editor; a made item gets its fields.
+ * Taking an item off the bar is the × on its row, so it is not repeated here.
  */
 export function ItemInspector({
   item,
   widgets,
   files,
+  tab,
+  onTab,
   selectedRow,
   onSelectRow,
   onChange,
-  onRemove,
   onOpenEditor,
 }: {
   item: BarItem | null;
   widgets: readonly WidgetInfo[];
   files: WidgetFileActions;
+  /** Kept by the page, so coming back from the full editor finds the same tab. */
+  tab: InspectorTab;
+  onTab: (tab: InspectorTab) => void;
   selectedRow: number | null;
   onSelectRow: (index: number | null) => void;
   onChange: (patch: Partial<BarItem>) => void;
-  onRemove: () => void;
   onOpenEditor: () => void;
 }) {
-  const [tab, setTab] = useState<InspectorTab>("content");
   const tabsId = useId();
   if (!item) {
     return (
@@ -113,25 +111,26 @@ export function ItemInspector({
         <span className="grid size-9 shrink-0 place-items-center rounded-tile border border-hairline bg-side text-fg-secondary">
           <ItemIcon item={item} size={15} />
         </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-card-title text-fg">{item.title}</span>
-            {widget ? <OriginBadge widget={widget} /> : null}
-          </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate text-card-title text-fg">{item.title}</span>
+          {widget ? <OriginBadge widget={widget} /> : null}
         </div>
         {widget ? (
           <IconButton label="Open full editor" onClick={onOpenEditor}>
             <Maximize2 aria-hidden />
           </IconButton>
         ) : null}
-        <IconButton label="Remove from the bar" tone="danger" onClick={onRemove}>
-          <Trash aria-hidden />
-        </IconButton>
       </div>
 
       {widget ? (
         <>
-          <Tabs tabs={tabs} value={tab} onChange={setTab} label="Widget settings" id={tabsId} />
+          <Tabs
+            tabs={inspectorTabs}
+            value={tab}
+            onChange={onTab}
+            label="Widget settings"
+            id={tabsId}
+          />
           <TabPanel tabs={tabsId} value={tab} className="flex flex-col gap-4">
             {tab === "content" ? (
               <ContentSection
@@ -143,20 +142,16 @@ export function ItemInspector({
             ) : tab === "look" ? (
               <LookSection item={item} widget={widget} onChange={onChange} />
             ) : tab === "click" ? (
-              <>
-                <ClickSection
-                  item={item}
-                  widget={widget}
-                  onChange={onChange}
-                  selectedRow={selectedRow}
-                  onSelectRow={onSelectRow}
-                />
-                <Group label="Updates">
-                  <UpdatesSection widget={widget} />
-                </Group>
-              </>
+              <ClickSection
+                item={item}
+                widget={widget}
+                onChange={onChange}
+                selectedRow={selectedRow}
+                onSelectRow={onSelectRow}
+                preview
+              />
             ) : (
-              <FilesSection
+              <AboutSection
                 widget={widget}
                 onReveal={() => files.reveal(widget.id)}
                 onOpen={(file) => files.open(widget.id, file)}
@@ -183,7 +178,7 @@ function stopEnter(event: KeyboardEvent) {
   if (event.key === "Enter") (event.currentTarget as HTMLInputElement).blur();
 }
 
-/** A made item's own fields: its name, and what it shows. */
+/** A made item's own fields, or the name of one of the bar's own. */
 function ItemFields({
   item,
   onChange,
@@ -192,60 +187,70 @@ function ItemFields({
   onChange: (patch: Partial<BarItem>) => void;
 }) {
   const glyphLabelId = useId();
-
   return (
     <div className="flex flex-col gap-3">
-      <Field.Root>
-        <Field.Label className="text-small text-fg-secondary">Name</Field.Label>
-        <Input
-          size="sm"
-          value={item.title}
-          onChange={(event) => onChange({ title: event.currentTarget.value })}
-          onKeyDown={stopEnter}
-        />
-      </Field.Root>
-      {item.kind === "text" ? (
-        <Field.Root>
-          <Field.Label className="text-small text-fg-secondary">Text</Field.Label>
+      <ControlRow
+        title="Name"
+        control={
           <Input
+            aria-label="Name"
             size="sm"
-            value={item.text}
-            onChange={(event) => onChange({ text: event.currentTarget.value })}
+            className="w-44"
+            value={item.title}
+            onChange={(event) => onChange({ title: event.currentTarget.value })}
             onKeyDown={stopEnter}
           />
-        </Field.Root>
+        }
+      />
+      {item.kind === "text" ? (
+        <ControlRow
+          title="Text"
+          control={
+            <Input
+              aria-label="Text"
+              size="sm"
+              className="w-44"
+              value={item.text}
+              onChange={(event) => onChange({ text: event.currentTarget.value })}
+              onKeyDown={stopEnter}
+            />
+          }
+        />
       ) : null}
       {item.kind === "command" ? (
         <>
-          <Field.Root>
-            <Field.Label className="text-small text-fg-secondary">Command</Field.Label>
-            <Input
-              size="sm"
-              variant="mono"
-              value={item.command ?? ""}
-              placeholder="uptime | cut -d, -f1"
-              onChange={(event) => onChange({ command: event.currentTarget.value })}
-              onKeyDown={stopEnter}
-            />
-            <Field.Description className="text-caption text-fg-tertiary">
-              Runs in sh; what it prints becomes the label
-            </Field.Description>
-          </Field.Root>
-          <SegmentedControl
-            label="Update every"
-            size="sm"
-            value={String(item.interval ?? 30)}
-            options={intervals}
-            onValueChange={(value) => onChange({ interval: Number(value) })}
-            className="self-start"
+          <ControlRow
+            title="Command"
+            help="Runs in sh; what it prints becomes the label"
+            control={
+              <Input
+                aria-label="Command"
+                size="sm"
+                variant="mono"
+                className="w-44"
+                value={item.command ?? ""}
+                placeholder="uptime | cut -d, -f1"
+                onChange={(event) => onChange({ command: event.currentTarget.value })}
+                onKeyDown={stopEnter}
+              />
+            }
+          />
+          <ControlRow
+            title="Update every"
+            control={
+              <SegmentedControl
+                label="Update every"
+                size="sm"
+                value={String(item.interval ?? 30)}
+                options={intervals}
+                onValueChange={(value) => onChange({ interval: Number(value) })}
+              />
+            }
           />
         </>
       ) : null}
       {item.kind === "text" || item.kind === "command" ? (
-        <div className="flex flex-col gap-1.5">
-          <span id={glyphLabelId} className="text-small text-fg-secondary">
-            Glyph
-          </span>
+        <Group label="Glyph" labelId={glyphLabelId} stacked>
           <div role="group" aria-labelledby={glyphLabelId} className="flex flex-wrap gap-1">
             {glyphs.map((glyph) => (
               <IconButton
@@ -261,7 +266,7 @@ function ItemFields({
               </IconButton>
             ))}
           </div>
-        </div>
+        </Group>
       ) : null}
     </div>
   );

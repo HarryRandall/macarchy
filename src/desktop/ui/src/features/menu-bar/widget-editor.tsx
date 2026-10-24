@@ -2,7 +2,6 @@ import { ChevronLeft } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 
 import type { MenuBarSettings, WidgetInfo } from "~/bridge/protocol";
-import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
@@ -16,14 +15,14 @@ import type { BarLook } from "./menu-bar-store";
 import { ClickSection } from "./widget-click";
 import { clickOf, type Sample, sampleOptions, settingOf } from "./widget-model";
 import { MenuPreview, WidgetChip } from "./widget-preview";
-import { ContentSection, FilesSection, LookSection, UpdatesSection } from "./widget-sections";
+import { AboutSection, ContentSection, LookSection } from "./widget-sections";
 
+/** The inspector's tabs, as sections down one page. */
 const sections = [
   { id: "content", title: "Content" },
   { id: "look", title: "Look" },
   { id: "click", title: "Click" },
-  { id: "updates", title: "Updates" },
-  { id: "files", title: "Files" },
+  { id: "about", title: "About" },
 ] as const;
 
 /**
@@ -88,9 +87,8 @@ export function WidgetEditor({
         onSelectRow={onSelectRow}
       />
     ),
-    updates: <UpdatesSection widget={widget} />,
-    files: (
-      <FilesSection
+    about: (
+      <AboutSection
         widget={widget}
         onReveal={() => files.reveal(widget.id)}
         onOpen={(file) => files.open(widget.id, file)}
@@ -106,17 +104,6 @@ export function WidgetEditor({
         <IconButton label="Back to Menu Bar" onClick={onBack}>
           <ChevronLeft aria-hidden />
         </IconButton>
-        <Button
-          size="inline"
-          variant="ghost"
-          onClick={onBack}
-          className="text-detail text-fg-secondary"
-        >
-          Menu Bar
-        </Button>
-        <span aria-hidden className="text-detail text-fg-tertiary">
-          /
-        </span>
         <h2 className="text-card-title text-fg">{item.title}</h2>
         <OriginBadge widget={widget} />
         {actions}
@@ -168,7 +155,7 @@ export function WidgetEditor({
             }
           />
           <div className="flex flex-col gap-2">
-            <span className="text-label text-fg-tertiary uppercase">Samples</span>
+            <span className="text-label text-fg-secondary uppercase">Samples</span>
             <div className="grid grid-cols-3 gap-3">
               {sampleOptions.map((option) => (
                 <figure key={option.value} className="m-0 flex flex-col gap-1.5">
@@ -178,7 +165,7 @@ export function WidgetEditor({
                   >
                     <WidgetChip item={item} widget={widget} sample={option.value} look={look} />
                   </div>
-                  <figcaption className="text-small text-fg-tertiary">{option.label}</figcaption>
+                  <figcaption className="text-small text-fg-secondary">{option.label}</figcaption>
                 </figure>
               ))}
             </div>

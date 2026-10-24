@@ -62,7 +62,10 @@ function nameOf(entry: Entry): string {
 function detailOf(entry: Entry): string {
   if (entry.type === "widget") return entry.widget.description ?? "";
   if (entry.type === "make") return entry.detail;
-  if (entry.type === "broken") return entry.problems.join(" · ");
+  if (entry.type === "broken") {
+    const count = entry.problems.length;
+    return `Can't be read: ${count} ${count === 1 ? "problem" : "problems"} in widget.json`;
+  }
   return `Taken off the ${zoneLabels[entry.item.zone].toLowerCase()} zone`;
 }
 
@@ -106,10 +109,11 @@ export function ItemLibrary({
   if (zone !== null && zone !== last) setLast(zone);
   const shownZone = zone ?? last;
 
+  // What was taken off comes first: it is the likeliest thing to want back.
   const entries: Entry[] = [
+    ...hidden.map((item): Entry => ({ type: "hidden", key: `hidden:${item.id}`, item })),
     ...widgets.map((widget): Entry => ({ type: "widget", key: `widget:${widget.id}`, widget })),
     ...makeable.map((made): Entry => ({ type: "make", key: `make:${made.kind}`, ...made })),
-    ...hidden.map((item): Entry => ({ type: "hidden", key: `hidden:${item.id}`, item })),
     ...broken.map((entry): Entry => ({ type: "broken", key: `broken:${entry.folder}`, ...entry })),
   ];
   const inCategory = (entry: Entry, name: Category) => {
@@ -120,10 +124,10 @@ export function ItemLibrary({
   };
   const categories: { id: Category; name: string }[] = [
     { id: "all", name: "All" },
+    ...(hidden.length > 0 ? [{ id: "hidden" as const, name: "Taken off your bar" }] : []),
     { id: "builtIn", name: "Built-in" },
     { id: "user", name: "Yours" },
     { id: "make", name: "Make an item" },
-    ...(hidden.length > 0 ? [{ id: "hidden" as const, name: "Taken off your bar" }] : []),
   ];
   const search = query.trim().toLowerCase();
   const shown = entries.filter(
@@ -131,7 +135,11 @@ export function ItemLibrary({
       inCategory(entry, category) &&
       (!search || `${nameOf(entry)} ${detailOf(entry)}`.toLowerCase().includes(search)),
   );
-  const selected = shown.find((entry) => entry.key === picked) ?? shown[0] ?? null;
+  // Nothing is picked for the person that is already on the bar or cannot be added.
+  const addable = (entry: Entry) =>
+    entry.type !== "broken" && (entry.type !== "widget" || !counts.get(entry.widget.id));
+  const selected =
+    shown.find((entry) => entry.key === picked) ?? shown.find(addable) ?? shown[0] ?? null;
   const onBar = selected?.type === "widget" ? (counts.get(selected.widget.id) ?? 0) : 0;
 
   const add = (entry: Entry | null) => {
@@ -180,7 +188,7 @@ export function ItemLibrary({
               </button>
             ))}
             <div className="flex-1" />
-            <p className="px-2 pb-2 text-caption text-fg-tertiary">
+            <p className="px-2 pb-2 text-caption text-fg-secondary">
               Your widgets live in <span className="font-mono">~/.config/macarchy/widgets</span>
             </p>
             <Button size="sm" onClick={onOpenFolder}>
@@ -244,11 +252,7 @@ export function ItemLibrary({
           }
         >
           <span className="mr-auto max-w-[460px] truncate pl-2 text-small text-fg-secondary">
-            {selected
-              ? onBar > 0
-                ? `${nameOf(selected)} is already on the bar. Adding it again makes a second copy.`
-                : detailOf(selected)
-              : null}
+            {selected?.type === "broken" ? selected.problems.join(" · ") : null}
           </span>
           <Button variant="ghost" onClick={onClose}>
             Cancel
@@ -302,6 +306,7 @@ function LibraryCard({
       )}
     >
       <span
+        aria-hidden
         className="flex h-12 items-center justify-center overflow-hidden rounded-control"
         style={{ background: look.background, color: look.foreground }}
       >
@@ -334,7 +339,7 @@ function LibraryCard({
           <Badge tone="accent">Yours</Badge>
         ) : null}
       </span>
-      <span className="line-clamp-2 min-h-[2lh] text-small text-fg-tertiary">
+      <span className="line-clamp-2 min-h-[2lh] text-small text-fg-secondary">
         {detailOf(entry)}
       </span>
     </button>

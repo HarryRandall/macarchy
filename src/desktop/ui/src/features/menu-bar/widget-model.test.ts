@@ -9,6 +9,7 @@ import {
   clickOf,
   fill,
   humanise,
+  readable,
   lookOf,
   moveRow,
   retype,
@@ -115,6 +116,10 @@ describe("words", () => {
 
   it("make ids readable", () => {
     expect(humanise("day-month")).toBe("Day month");
+  });
+
+  it("drop the symbol characters a screen reader would garble", () => {
+    expect(readable("\u{10088B} 84%\n52°")).toBe("84% 52°");
   });
 });
 

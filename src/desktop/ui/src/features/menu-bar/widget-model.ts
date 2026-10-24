@@ -134,6 +134,18 @@ export function sampleLines(text: string, style: WidgetStyle): [string, string] 
   return [first, second];
 }
 
+/**
+ * Text as it can be read out: line breaks become spaces and the private-use
+ * characters SF Symbols draw with are dropped, since a screen reader would
+ * say them as gibberish.
+ */
+export function readable(text: string): string {
+  return text
+    .replace(/[\uE000-\uF8FF]|[\u{F0000}-\u{10FFFF}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** `day-month` as `Day month`, for options written as ids. */
 export function humanise(option: string): string {
   const words = option.replace(/[-_]/g, " ");

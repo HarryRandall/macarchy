@@ -125,12 +125,43 @@ export function stepItem(items: BarItem[], id: string, direction: -1 | 1): BarIt
   return moveItem(items, id, item.zone, zone[target + 1]?.id);
 }
 
-/** To the end of the neighbouring zone, for the keyboard; nothing past either edge. */
-export function shiftZone(items: BarItem[], id: string, direction: -1 | 1): BarItem[] {
+/**
+ * To the end of the neighbouring zone, for the keyboard; nothing past either
+ * edge. Only `open` zones count, so a centre that is switched off is skipped.
+ */
+export function shiftZone(
+  items: BarItem[],
+  id: string,
+  direction: -1 | 1,
+  open: readonly Zone[] = zones,
+): BarItem[] {
   const item = items.find((entry) => entry.id === id);
   if (!item) return items;
-  const zone = zones[zones.indexOf(item.zone) + direction];
+  const index = zones.indexOf(item.zone);
+  const zone = (direction === 1 ? zones.slice(index + 1) : zones.slice(0, index).toReversed()).find(
+    (candidate) => open.includes(candidate),
+  );
   return zone ? moveItem(items, id, zone) : items;
+}
+
+/** Puts an item taken off the bar back: where it was in its own zone, or at the end of another. */
+export function putBack(items: BarItem[], id: string, zone: Zone): BarItem[] {
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return items;
+  const placed = item.zone === zone ? items : moveItem(items, id, zone);
+  return patchItem(placed, id, { visible: true });
+}
+
+/** The names of the items that differ from `before`, removed ones included. */
+export function changedNames(before: BarItem[], after: BarItem[]): string[] {
+  const old = new Map(before.map((item) => [item.id, item]));
+  const names: string[] = [];
+  for (const item of after) {
+    const was = old.get(item.id);
+    if (!was || !sameItems([item], [was])) names.push(item.title);
+    old.delete(item.id);
+  }
+  return [...names, ...[...old.values()].map((item) => item.title)];
 }
 
 export function addItem(items: BarItem[], item: BarItem): BarItem[] {

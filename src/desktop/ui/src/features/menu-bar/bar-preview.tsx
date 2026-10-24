@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 import { focusRing } from "~/components/ui/focus-ring";
 import { cn } from "~/lib/cn";
@@ -40,6 +40,15 @@ export function BarPreview({
   /** Drawn under the bar, over the wallpaper, such as a dropdown. */
   below?: ReactNode;
 }) {
+  const frame = useRef<HTMLDivElement>(null);
+  // A bar wider than the page scrolls; keep the picked item in view.
+  useEffect(() => {
+    frame.current
+      ?.querySelector<HTMLElement>('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs when a different item is picked.
+  }, [active]);
+
   const shown = (name: Zone) => items.filter((item) => item.zone === name && item.visible);
   const zone = (name: Zone) =>
     shown(name).map((item) => (
@@ -53,6 +62,8 @@ export function BarPreview({
           "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
           item.kind === "widget" ? "px-0.5" : "px-1.5",
           focus && focus !== item.id && "opacity-35",
+          // Samples are a widget's; the bar's own items show what they show now.
+          !focus && sample !== "live" && item.kind !== "widget" && "opacity-40",
           focusRing,
         )}
         style={{
@@ -94,7 +105,7 @@ export function BarPreview({
 
   const strip = (
     <div
-      className="grid grid-cols-[1fr_auto_1fr] font-mono text-[11px] transition-[height,padding] motion-reduce:transition-none"
+      className="grid min-w-max grid-cols-[1fr_auto_1fr] font-mono text-[11px] transition-[height,padding] motion-reduce:transition-none"
       style={{
         height: bar.height,
         paddingInline: bar.padding,
@@ -103,7 +114,7 @@ export function BarPreview({
         borderTop: bar.position === "bottom" ? "1px solid rgba(255,255,255,0.06)" : undefined,
       }}
     >
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">{zone("left")}</div>
+      <div className="flex items-center gap-1">{zone("left")}</div>
       <div className="flex items-center justify-center gap-1 px-2">
         {shown("centre").length > 0 ? (
           zone("centre")
@@ -111,14 +122,13 @@ export function BarPreview({
           <span aria-hidden className="block h-full w-[132px] rounded-b-[9px] bg-black" />
         ) : null}
       </div>
-      <div className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">
-        {zone("right")}
-      </div>
+      <div className="flex items-center justify-end gap-1">{zone("right")}</div>
     </div>
   );
 
   return (
     <div
+      ref={frame}
       role="group"
       aria-label="Menu bar preview"
       className="flex flex-col overflow-hidden rounded-card border border-hairline bg-cover bg-center"
@@ -129,11 +139,12 @@ export function BarPreview({
           : `linear-gradient(160deg, color-mix(in srgb, ${look.accent} 25%, ${look.background}), ${look.background} 70%)`,
       }}
     >
-      {bar.position === "top" ? strip : null}
+      {/* A bar wider than the page scrolls rather than losing its ends. */}
+      {bar.position === "top" ? <div className="overflow-x-auto">{strip}</div> : null}
       <div className={cn("flex justify-end px-3", below ? "min-h-[72px] py-2" : "h-[72px]")}>
         {below}
       </div>
-      {bar.position === "bottom" ? strip : null}
+      {bar.position === "bottom" ? <div className="overflow-x-auto">{strip}</div> : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ListPlus, Plus, Trash } from "lucide-react";
+import { ArrowDown, ArrowUp, ListPlus, Plus, X } from "lucide-react";
 import { useId } from "react";
 
 import type {
@@ -22,14 +22,17 @@ import {
   clickFor,
   clickMode,
   clickOf,
+  fill,
   moveRow,
   newRow,
   retype,
   rowTypeName,
   rowTypes,
+  settingOf,
   withClick,
 } from "./widget-model";
-import { Group, type SectionProps } from "./widget-sections";
+import { MenuPreview } from "./widget-preview";
+import { ControlRow, CustomNote, Group, type SectionProps } from "./widget-sections";
 
 const modes = [
   { value: "none" as const, label: "Nothing" },
@@ -39,8 +42,10 @@ const modes = [
 ];
 
 /**
- * What clicking the widget does. Changing it changes this item only; the
- * widget's own click comes back with "Use the widget's click".
+ * What clicking the widget does. Changing it changes this copy only, and
+ * says so; Reset brings back the widget's own click. With `preview`, the
+ * dropdown is drawn here as well, for the inspector, where the bar preview
+ * may be out of view.
  */
 export function ClickSection({
   item,
@@ -48,83 +53,96 @@ export function ClickSection({
   onChange,
   selectedRow,
   onSelectRow,
+  preview = false,
 }: SectionProps & {
   /** The dropdown row being edited, shared with the preview. */
   selectedRow: number | null;
   onSelectRow: (index: number | null) => void;
+  preview?: boolean;
 }) {
   const click = clickOf(item, widget);
   const mode = clickMode(click);
   const set = (next: WidgetClick | null) => onChange(withClick(widget, next));
+  const settings = Object.fromEntries(
+    widget.settings.map((setting) => [setting.key, settingOf(item, setting)]),
+  );
   return (
-    <div className="flex flex-col gap-4">
-      <Group label="When clicked">
-        <SegmentedControl
-          label="When clicked"
-          size="sm"
-          value={mode}
-          options={modes}
-          onValueChange={(next: ClickMode) => {
-            set(clickFor(next, click));
-            onSelectRow(next === "dropdown" ? 0 : null);
-          }}
-          fill
-        />
-      </Group>
-      {mode === "app" ? (
-        <Group label="App or link" hint="An app's name, such as Calendar, or a URL.">
-          <Input
-            aria-label="App or link"
-            size="sm"
-            value={click?.open ?? ""}
-            placeholder="Calendar"
-            onChange={(event) => set({ open: event.currentTarget.value })}
-          />
-        </Group>
-      ) : null}
-      {mode === "command" ? (
-        <Group label="Command">
-          <Input
-            aria-label="Command"
-            size="sm"
-            variant="mono"
-            value={click?.run ?? ""}
-            placeholder="open -a Calendar"
-            onChange={(event) => set({ run: event.currentTarget.value })}
-          />
-          <Notice.Root variant="warning">
-            <Notice.Description>
-              Runs as you, with your permissions, from the widget&apos;s folder.
-            </Notice.Description>
-          </Notice.Root>
-        </Group>
-      ) : null}
-      {mode === "dropdown" ? (
-        <RowsEditor
-          rows={click?.dropdown ?? []}
-          settings={widget.settings}
-          selected={selectedRow}
-          onSelect={onSelectRow}
-          onRows={(dropdown) => set({ dropdown })}
-        />
-      ) : null}
+    <div className="flex flex-col gap-3">
       {item.click ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="self-start"
-          onClick={() => {
+        <CustomNote
+          onReset={() => {
             onChange({ click: null });
             onSelectRow(null);
           }}
-        >
-          Use the widget&apos;s click
-        </Button>
+        />
+      ) : null}
+      <ControlRow
+        title="When clicked"
+        control={
+          <SegmentedControl
+            label="When clicked"
+            size="sm"
+            value={mode}
+            options={modes}
+            onValueChange={(next: ClickMode) => {
+              set(clickFor(next, click));
+              onSelectRow(next === "dropdown" ? 0 : null);
+            }}
+          />
+        }
+      />
+      {mode === "app" ? (
+        <TextRow
+          label="Opens"
+          value={click?.open ?? ""}
+          placeholder="Calendar, or a URL"
+          onValue={(open) => set({ open })}
+        />
+      ) : null}
+      {mode === "command" ? (
+        <>
+          <TextRow
+            label="Runs"
+            mono
+            value={click?.run ?? ""}
+            placeholder="open -a Calendar"
+            onValue={(run) => set({ run })}
+          />
+          <Notice.Root variant="warning">
+            <Notice.Description>Runs as you, with your permissions.</Notice.Description>
+          </Notice.Root>
+        </>
+      ) : null}
+      {mode === "dropdown" ? (
+        <>
+          {preview && click?.dropdown ? (
+            <div className="flex justify-center rounded-control bg-[rgb(20_20_22)] p-3">
+              <MenuPreview
+                rows={click.dropdown}
+                settings={settings}
+                selected={selectedRow}
+                onSelect={onSelectRow}
+              />
+            </div>
+          ) : null}
+          <RowsEditor
+            rows={click?.dropdown ?? []}
+            settings={widget.settings}
+            selected={selectedRow}
+            onSelect={onSelectRow}
+            onRows={(dropdown) => set({ dropdown })}
+          />
+        </>
       ) : null}
     </div>
   );
 }
 
+function rowName(row: WidgetMenuRow): string {
+  return row.type === "divider" ? "divider" : fill(row.label) || rowTypeName(row.type);
+}
+
+/** The rows, with the one being edited opened in place under it. */
 function RowsEditor({
   rows,
   settings,
@@ -139,31 +157,29 @@ function RowsEditor({
   onRows: (rows: WidgetMenuRow[]) => void;
 }) {
   const addId = useId();
-  const row = selected !== null ? rows[selected] : undefined;
-  const update = (patch: Partial<WidgetMenuRow>) => {
-    if (selected === null || !row) return;
-    onRows(rows.map((entry, index) => (index === selected ? { ...entry, ...patch } : entry)));
-  };
+  const update = (index: number, patch: Partial<WidgetMenuRow>) =>
+    onRows(rows.map((entry, other) => (other === index ? { ...entry, ...patch } : entry)));
   return (
-    <>
-      <Group label={`Menu · ${rows.length} ${rows.length === 1 ? "row" : "rows"}`}>
-        {rows.length === 0 ? (
-          <EmptyState
-            variant="plain"
-            className="py-4"
-            icon={<ListPlus />}
-            title="No rows yet"
-            description="Add a heading, a reading or an action below to fill the dropdown."
-          />
-        ) : null}
-        <ul className="flex flex-col gap-1">
-          {rows.map((entry, index) => (
-            // oxlint-disable-next-line react/no-array-index-key -- rows have no id; their place is what is selected.
-            <li key={index} className="flex items-center gap-1">
+    <Group label={`Rows · ${rows.length}`} stacked>
+      {rows.length === 0 ? (
+        <EmptyState
+          variant="plain"
+          className="py-4"
+          icon={<ListPlus />}
+          title="No rows yet"
+          description="Add a heading, a reading or an action below to fill the dropdown."
+        />
+      ) : null}
+      <ul className="flex flex-col gap-1">
+        {rows.map((entry, index) => (
+          // oxlint-disable-next-line react/no-array-index-key -- rows have no id; their place is what is selected.
+          <li key={index} className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 aria-pressed={selected === index}
-                onClick={() => onSelect(index)}
+                aria-label={`${rowTypeName(entry.type)} row: ${rowName(entry)}`}
+                onClick={() => onSelect(selected === index ? null : index)}
                 className={cn(
                   "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-control border px-2 text-left transition-colors",
                   selected === index
@@ -172,70 +188,67 @@ function RowsEditor({
                   focusRing,
                 )}
               >
-                <span className="w-16 shrink-0 text-caption font-semibold tracking-wide text-fg-tertiary uppercase">
+                <span className="w-16 shrink-0 text-caption font-semibold tracking-wide text-fg-secondary uppercase">
                   {rowTypeName(entry.type)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-detail text-fg">
                   {entry.type === "divider" ? "Line" : entry.label}
                 </span>
-                <span className="max-w-[40%] truncate font-mono text-small text-fg-tertiary">
+                <span className="max-w-[40%] truncate font-mono text-small text-fg-secondary">
                   {entry.value ?? entry.open ?? entry.run ?? entry.setting ?? ""}
                 </span>
               </button>
               <IconButton
-                label={`Remove row ${index + 1}`}
+                label={`Remove ${rowName(entry)} row`}
                 size="sm"
-                tone="danger"
                 onClick={() => {
                   onRows(rows.filter((_, other) => other !== index));
                   onSelect(null);
                 }}
               >
-                <Trash aria-hidden />
+                <X aria-hidden />
               </IconButton>
-            </li>
-          ))}
-        </ul>
-        <div role="group" aria-labelledby={addId} className="flex flex-wrap items-center gap-1.5">
-          <span id={addId} className="text-small text-fg-tertiary">
-            Add
-          </span>
-          {rowTypes.map(({ type, name }) => (
-            <Button
-              key={type}
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                onRows([...rows, newRow(type, settings)]);
-                onSelect(rows.length);
-              }}
-            >
-              <Plus aria-hidden size={11} /> {name}
-            </Button>
-          ))}
-        </div>
-      </Group>
-      {row && selected !== null ? (
-        <RowEditor
-          row={row}
-          index={selected}
-          count={rows.length}
-          settings={settings}
-          onChange={update}
-          onType={(type) =>
-            onRows(
-              rows.map((entry, index) =>
-                index === selected ? retype(entry, type, settings) : entry,
-              ),
-            )
-          }
-          onMove={(by) => {
-            onRows(moveRow(rows, selected, by));
-            onSelect(selected + by);
-          }}
-        />
-      ) : null}
-    </>
+            </div>
+            {selected === index ? (
+              <RowEditor
+                row={entry}
+                index={index}
+                count={rows.length}
+                settings={settings}
+                onChange={(patch) => update(index, patch)}
+                onType={(type) =>
+                  onRows(
+                    rows.map((row, other) => (other === index ? retype(row, type, settings) : row)),
+                  )
+                }
+                onMove={(by) => {
+                  onRows(moveRow(rows, index, by));
+                  onSelect(index + by);
+                }}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <div role="group" aria-labelledby={addId} className="flex flex-wrap items-center gap-1">
+        <span id={addId} className="pr-1 text-small text-fg-secondary">
+          Add
+        </span>
+        {rowTypes.map(({ type, name }) => (
+          <Button
+            key={type}
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              onRows([...rows, newRow(type, settings)]);
+              onSelect(rows.length);
+            }}
+          >
+            <Plus aria-hidden size={11} /> {name}
+          </Button>
+        ))}
+      </div>
+    </Group>
   );
 }
 
@@ -263,66 +276,74 @@ function RowEditor({
     .filter((setting) => setting.type === (row.type === "toggle" ? "toggle" : "choice"))
     .map((setting) => ({ value: setting.key, label: setting.label }));
   return (
-    <div className="flex flex-col gap-3 rounded-control border border-hairline bg-side p-3">
-      <div className="flex items-center gap-2">
-        <span className="flex-1 text-label text-fg-tertiary uppercase">Row {index + 1}</span>
-        <IconButton label="Move up" size="sm" disabled={index === 0} onClick={() => onMove(-1)}>
-          <ArrowUp aria-hidden />
-        </IconButton>
-        <IconButton
-          label="Move down"
-          size="sm"
-          disabled={index === count - 1}
-          onClick={() => onMove(1)}
-        >
-          <ArrowDown aria-hidden />
-        </IconButton>
-      </div>
-      {editable ? (
-        <Select
-          label="Row type"
-          size="sm"
-          value={row.type}
-          options={typeOptions}
-          onValueChange={onType}
-        />
-      ) : (
-        <p className="text-small text-fg-tertiary">
-          A {rowTypeName(row.type).toLowerCase()} row, drawn from what the widget reads.
-        </p>
-      )}
+    <div className="ml-2 flex flex-col gap-2 rounded-control border border-hairline bg-side p-3">
+      <ControlRow
+        title="Type"
+        control={
+          <span className="flex items-center gap-1">
+            {editable ? (
+              <Select
+                label="Row type"
+                size="sm"
+                value={row.type}
+                options={typeOptions}
+                onValueChange={onType}
+              />
+            ) : (
+              <span className="text-detail text-fg-secondary">{rowTypeName(row.type)}</span>
+            )}
+            <IconButton label="Move up" size="sm" disabled={index === 0} onClick={() => onMove(-1)}>
+              <ArrowUp aria-hidden />
+            </IconButton>
+            <IconButton
+              label="Move down"
+              size="sm"
+              disabled={index === count - 1}
+              onClick={() => onMove(1)}
+            >
+              <ArrowDown aria-hidden />
+            </IconButton>
+          </span>
+        }
+      />
       {row.type !== "divider" ? (
-        <Field label="Label" value={row.label ?? ""} onValue={(label) => onChange({ label })} />
+        <TextRow label="Label" value={row.label ?? ""} onValue={(label) => onChange({ label })} />
       ) : null}
       {row.type === "heading" || row.type === "reading" ? (
-        <Field
+        <TextRow
           label={row.type === "heading" ? "Right side" : "Value"}
           mono
           value={row.value ?? ""}
-          hint="Readings in braces, such as {time} or {time:Europe/London}."
+          placeholder="{time}"
+          help="Readings go in braces, such as {time} or {time:Europe/London}"
           onValue={(value) => onChange({ value: value || undefined })}
         />
       ) : null}
       {row.type === "action" ? <ActionFields row={row} onChange={onChange} /> : null}
       {row.type === "toggle" || row.type === "choice" ? (
         settingOptions.length > 0 ? (
-          <Select
-            label="Setting"
-            size="sm"
-            value={row.setting ?? settingOptions[0]?.value ?? ""}
-            options={settingOptions}
-            onValueChange={(setting) =>
-              onChange({
-                setting,
-                options:
-                  row.type === "choice"
-                    ? settings.find((entry) => entry.key === setting)?.options
-                    : undefined,
-              })
+          <ControlRow
+            title="Setting"
+            control={
+              <Select
+                label="Setting"
+                size="sm"
+                value={row.setting ?? settingOptions[0]?.value ?? ""}
+                options={settingOptions}
+                onValueChange={(setting) =>
+                  onChange({
+                    setting,
+                    options:
+                      row.type === "choice"
+                        ? settings.find((entry) => entry.key === setting)?.options
+                        : undefined,
+                  })
+                }
+              />
             }
           />
         ) : (
-          <p className="text-small text-fg-tertiary">
+          <p className="text-small text-fg-secondary">
             This widget has no {row.type === "toggle" ? "toggle" : "choice"} setting to change.
           </p>
         )
@@ -341,60 +362,69 @@ function ActionFields({
   const runs = row.run !== undefined;
   return (
     <>
-      <SegmentedControl
-        label="The action"
-        size="sm"
-        value={runs ? "run" : "open"}
-        options={[
-          { value: "open", label: "Opens" },
-          { value: "run", label: "Runs" },
-        ]}
-        onValueChange={(next) =>
-          onChange(
-            next === "run"
-              ? { run: row.open ?? "", open: undefined }
-              : { open: row.run ?? "", run: undefined },
-          )
+      <ControlRow
+        title="Does"
+        control={
+          <SegmentedControl
+            label="The action"
+            size="sm"
+            value={runs ? "run" : "open"}
+            options={[
+              { value: "open", label: "Opens" },
+              { value: "run", label: "Runs" },
+            ]}
+            onValueChange={(next) =>
+              onChange(
+                next === "run"
+                  ? { run: row.open ?? "", open: undefined }
+                  : { open: row.run ?? "", run: undefined },
+              )
+            }
+          />
         }
-        fill
       />
-      <Field
+      <TextRow
         label={runs ? "Command" : "App or link"}
         mono={runs}
         value={(runs ? row.run : row.open) ?? ""}
-        hint={
-          runs
-            ? "Runs as you when picked."
-            : "An app's name, or a URL such as a System Settings page."
-        }
+        placeholder={runs ? "open -a Calendar" : "Calendar, or a URL"}
+        help={runs ? "Runs as you when picked" : undefined}
         onValue={(value) => onChange(runs ? { run: value } : { open: value })}
       />
     </>
   );
 }
 
-function Field({
+function TextRow({
   label,
   value,
-  hint,
+  placeholder,
+  help,
   mono,
   onValue,
 }: {
   label: string;
   value: string;
-  hint?: string;
+  placeholder?: string;
+  help?: string;
   mono?: boolean;
   onValue: (value: string) => void;
 }) {
   return (
-    <Group label={label} hint={hint}>
-      <Input
-        aria-label={label}
-        size="sm"
-        variant={mono ? "mono" : undefined}
-        value={value}
-        onChange={(event) => onValue(event.currentTarget.value)}
-      />
-    </Group>
+    <ControlRow
+      title={label}
+      help={help}
+      control={
+        <Input
+          aria-label={label}
+          size="sm"
+          className="w-44"
+          variant={mono ? "mono" : undefined}
+          placeholder={placeholder}
+          value={value}
+          onChange={(event) => onValue(event.currentTarget.value)}
+        />
+      }
+    />
   );
 }
