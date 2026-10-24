@@ -199,7 +199,7 @@ export function ItemLibrary({
                 Nothing matches {query ? `"${query}"` : "here"}.
               </p>
             ) : (
-              <ul className="grid grid-cols-3 gap-2.5">
+              <ul className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2.5">
                 {shown.map((entry) => (
                   <li key={entry.key}>
                     <LibraryCard

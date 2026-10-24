@@ -81,7 +81,7 @@ export function BarZone({
       }}
       onDrop={() => onDrop(zoneOver ? { zone } : null)}
       className={cn(
-        "flex min-h-[220px] min-w-0 flex-col rounded-card border bg-side p-2 transition-colors",
+        "flex min-h-[120px] min-w-0 flex-col rounded-card border bg-side p-2 transition-colors @min-[480px]:min-h-[220px]",
         zoneOver ? "border-accent" : "border-hairline",
       )}
     >

@@ -48,6 +48,7 @@ final class MenuBarModel {
     private var interactionStart: BarConfiguration?
     private var undoStack: [BarConfiguration] = []
     private var pending: Task<Void, Never>?
+    @ObservationIgnored private var hydration: Task<Void, Never>?
     let backend: Integrations
     let log: CommandLog
     let configurationStore: BarConfigurationStore
@@ -123,8 +124,21 @@ final class MenuBarModel {
         } catch { observationError = error.localizedDescription }
     }
 
+    /// Reads the bar afresh. A read already under way is waited for rather
+    /// than skipped, so a caller never gets the empty bar from before it.
     func hydrate() async {
-        guard !isHydrating, !isApplying, !hasChanges else { return }
+        if let hydration {
+            await hydration.value
+            return
+        }
+        guard !isApplying, !hasChanges else { return }
+        let task = Task { await readBar() }
+        hydration = task
+        await task.value
+        hydration = nil
+    }
+
+    private func readBar() async {
         isHydrating = true
         error = nil
         defer { isHydrating = false }

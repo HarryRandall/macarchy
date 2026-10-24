@@ -80,4 +80,27 @@ struct MenuBarMergeTests {
         #expect(merged.components.count == 1)
         #expect(merged.components.first?.format == "{value}%")
     }
+
+    @Test("a widget keeps its saved shape, and its items never become components of their own")
+    func keepsWidgets() {
+        var cpu = BarComponent(
+            id: "macarchy.cpu", title: "CPU", side: "right",
+            members: ["macarchy.cpu", "macarchy.cpu.lines"], brackets: ["macarchy.cpu.box"])
+        cpu.widget = "cpu"
+        var clock = BarComponent(
+            id: "macarchy.clock", title: "Clock", side: "right", members: ["macarchy.clock"])
+        clock.widget = "clock"
+        var saved = BarConfiguration()
+        saved.components = [cpu, clock]
+        // The bar shows the CPU widget's box as a bracket group, and has not
+        // added the clock yet.
+        let box = BarComponent(
+            id: "macarchy.cpu.box", title: "Box", side: "right",
+            members: ["macarchy.cpu", "macarchy.cpu.lines"], brackets: ["macarchy.cpu.box"])
+        let calendar = BarComponent(
+            id: "calendar", title: "Calendar", side: "right", members: ["calendar"])
+        let merged = MenuBarComponents.merge(saved, discovered: [box, calendar], geometry: [:])
+        #expect(merged.components.map(\.id) == ["macarchy.cpu", "macarchy.clock", "calendar"])
+        #expect(merged.components[0] == cpu && merged.components[1] == clock)
+    }
 }

@@ -32,6 +32,20 @@ struct MenuBarModelTests {
         #expect(model.draft.components.first { $0.id == id }?.kind == "text")
     }
 
+    @Test("a read asked for while another is under way waits for it instead of returning nothing")
+    func concurrentHydrate() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = MenuBarModel(
+            backend: MenuBarTestBackend().integration, log: CommandLog(),
+            configurationStore: BarConfigurationStore(directory: root))
+        let first = Task { await model.hydrate() }
+        await Task.yield()
+        await model.hydrate()
+        #expect(!model.applied.components.isEmpty)
+        await first.value
+    }
+
     @Test("failed Apply keeps the draft and does not save it as successfully applied")
     func failureAndRetry() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)

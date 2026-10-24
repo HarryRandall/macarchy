@@ -308,7 +308,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   const editingWidget = editing ? widgetOf(editing, widgets) : null;
   if (editing && editingWidget) {
     return (
-      <>
+      <div className="@container flex flex-col gap-4">
         {header}
         {notices}
         <WidgetEditor
@@ -326,19 +326,19 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
           onChange={(change) => patch(editing.id, change)}
           onBack={() => setFullEditor(null)}
         />
-      </>
+      </div>
     );
   }
 
   const current = items.find((item) => item.id === selected) ?? null;
 
   return (
-    <>
+    <div className="@container flex flex-col gap-4">
       {header}
       {notices}
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <SegmentedControl
             label="Menu Bar view"
             value={view}
@@ -370,7 +370,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
       </div>
 
       {view === "widgets" ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-4">
+        <div className="grid grid-cols-1 items-start gap-4 @min-[900px]:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex min-w-0 flex-col gap-2">
             <p id={moveHintId} className="sr-only">
               Up and Down arrows reorder within a zone; Left and Right move to the next zone.
@@ -378,7 +378,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             <p aria-live="polite" className="sr-only">
               {announcement}
             </p>
-            <div ref={zonesRef} className="grid grid-cols-3 gap-3">
+            <div ref={zonesRef} className="grid grid-cols-1 gap-3 @min-[480px]:grid-cols-3">
               {zones.map((zone) => (
                 <BarZone
                   key={zone}
@@ -405,7 +405,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
               Drag to reorder, or between zones. Order matches the bar, left to right.
             </p>
           </div>
-          <div className="sticky top-0">
+          <div className="@min-[900px]:sticky @min-[900px]:top-0">
             <ItemInspector
               key={current?.id ?? "none"}
               item={current}
@@ -482,6 +482,6 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
         onOpenFolder={() => void store.reveal(null)}
         onClose={() => setAdding(null)}
       />
-    </>
+    </div>
   );
 }

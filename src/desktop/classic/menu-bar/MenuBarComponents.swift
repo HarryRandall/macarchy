@@ -49,7 +49,13 @@ enum MenuBarComponents {
         // fields one by one meant each new one was silently dropped on the
         // next hydrate, so the direction is inverted: start from what was
         // saved, and take only the live facts from discovery.
+        // Items Macarchy adds itself. A widget keeps the shape it was saved
+        // with, since its items may not be on the bar yet, and nothing
+        // discovery finds among them becomes a component of its own.
+        let owned = Set(
+            configuration.components.filter(\.ownsItem).flatMap { $0.members + $0.brackets })
         configuration.components = configuration.components.compactMap { stored in
+            if stored.isWidget { return stored }
             guard let current = live[stored.id] else { return stored.isCustom ? stored : nil }
             var merged = stored
             merged.members = current.members
@@ -64,7 +70,9 @@ enum MenuBarComponents {
             return merged
         }
         let known = Set(configuration.components.map(\.id))
-        configuration.components += discovered.filter { !known.contains($0.id) }
+        configuration.components += discovered.filter {
+            !known.contains($0.id) && !Set($0.members + $0.brackets).isSubset(of: owned)
+        }
         configuration.geometry = geometry
         return configuration
     }

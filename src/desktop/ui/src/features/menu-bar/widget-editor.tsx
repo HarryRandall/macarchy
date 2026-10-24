@@ -114,8 +114,11 @@ export function WidgetEditor({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_440px] items-start gap-5">
-        <section aria-label="Preview" className="sticky top-0 flex flex-col gap-4">
+      <div className="grid grid-cols-1 items-start gap-5 @min-[900px]:grid-cols-[minmax(0,1fr)_420px]">
+        <section
+          aria-label="Preview"
+          className="flex flex-col gap-4 @min-[900px]:sticky @min-[900px]:top-0"
+        >
           <div className="flex items-center gap-3">
             <span className="flex-1 text-label text-fg-tertiary uppercase">Preview</span>
             <SegmentedControl
