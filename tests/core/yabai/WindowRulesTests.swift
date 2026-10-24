@@ -161,6 +161,39 @@ struct WindowRulesTests {
         #expect(await spy.calls.allSatisfy { $0.contains("--list") })
     }
 
+    @Test("a stopped yabai is reported as changing nothing, not as a failed rollback")
+    func yabaiStopped() async throws {
+        let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }
+        let store = SettingsStore(url: root.appending(path: "settings.json"))
+        try store.update { $0.floatingApps = ["Messages"] }
+        let before = try Data(contentsOf: store.url)
+        let spy = RuleSpy(list: "[]", failListAfter: 0)
+        let integrations = Integrations(execute: spy.run)
+        let edits: [@Sendable () async throws -> Void] = [
+            {
+                try await WindowRules.commit(store: store, integrations: integrations) {
+                    $0 + ["Finder"]
+                }
+            },
+            {
+                try await WindowRules.commitCustom(
+                    [CustomWindowRule(app: "Finder")], store: store, integrations: integrations)
+            },
+            { try await WindowRules.toggle(store: store, integrations: integrations) }
+        ]
+        for edit in edits {
+            do {
+                try await edit()
+                Issue.record("Expected failure")
+            } catch {
+                #expect(error.localizedDescription.contains("so nothing was changed"))
+                #expect(!error.localizedDescription.contains("Restoring the previous rules"))
+            }
+        }
+        #expect(try Data(contentsOf: store.url) == before)
+        #expect(await spy.calls.allSatisfy { $0.contains("--list") })
+    }
+
     @Test("a failed toggle replays the previous rules and toggles the window back")
     func toggleRollback() async throws {
         let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }

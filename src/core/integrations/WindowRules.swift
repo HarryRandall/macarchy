@@ -17,9 +17,7 @@ public enum WindowRules {
         changed: inout Bool
     ) async throws {
         for rule in customRules { try rule.validate() }
-        let response = await integrations.yabaiRules()
-        guard response.ok else { throw ConfigurationError(response.summary) }
-        let owned = try liveRules(response).filter {
+        let owned = try await liveRules(integrations).filter {
             ownedFloatingApp($0) != nil || $0.label?.hasPrefix("macarchy_custom_") == true
         }
         for index in owned.compactMap(\.index).sorted(by: >) {
@@ -73,6 +71,20 @@ extension WindowRules {
         "^\(NSRegularExpression.escapedPattern(for: app))$"
     }
 
+    /// yabai's current rules. Every edit lists them before changing anything,
+    /// so a stopped or missing yabai is reported plainly as changing nothing
+    /// rather than as a failed edit.
+    private static func liveRules(_ integrations: Integrations) async throws -> [LiveRule] {
+        let response = await integrations.yabaiRules()
+        guard response.ok else {
+            let detail = response.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw ConfigurationError(
+                "yabai is not running or could not list its rules, so nothing was changed."
+                    + (detail.isEmpty ? "" : " \(detail)"))
+        }
+        return try liveRules(response)
+    }
+
     static func liveRules(_ response: CommandResult) throws -> [LiveRule] {
         do {
             return try JSONDecoder().decode([LiveRule].self, from: Data(response.stdout.utf8))
@@ -116,9 +128,7 @@ extension WindowRules {
     private static func floatingApps(
         saved: [String], integrations: Integrations
     ) async throws -> [String] {
-        let response = await integrations.yabaiRules()
-        guard response.ok else { throw ConfigurationError(response.summary) }
-        return floatingApps(saved: saved, live: try liveRules(response))
+        floatingApps(saved: saved, live: try await liveRules(integrations))
     }
 
     /// Applies the new rules, then saves them. If either fails, the previous
