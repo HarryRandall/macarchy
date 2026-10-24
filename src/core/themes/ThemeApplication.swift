@@ -149,7 +149,8 @@ public struct ThemeApplication: Sendable {
             try SettingsStore().update { $0.currentTheme = name }
             let note = skipped.isEmpty ? "" : " (not running: \(skipped.joined(separator: ", ")))"
             return CommandResult(
-                command: "theme \(name)", status: 0, stdout: "Applied \(name)\(note)")
+                command: "theme \(name)", status: 0, stdout: "Applied \(name)\(note)",
+                skipped: skipped)
         } catch {
             return CommandResult(
                 command: "theme \(name)", status: 1, stderr: error.localizedDescription)

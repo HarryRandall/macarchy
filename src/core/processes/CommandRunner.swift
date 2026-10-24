@@ -6,11 +6,29 @@ public struct CommandResult: Sendable, Codable {
     public let status: Int32
     public let stdout: String
     public let stderr: String
+    /// Optional parts an operation left out, such as a stopped service. A
+    /// result can succeed with parts skipped; callers report that as partial.
+    public let skipped: [String]
     public var ok: Bool { status == 0 }
     public var summary: String { ok ? stdout : stderr }
 
-    public init(command: String, status: Int32, stdout: String = "", stderr: String = "") {
+    public init(
+        command: String, status: Int32, stdout: String = "", stderr: String = "",
+        skipped: [String] = []
+    ) {
         self.command = command; self.status = status; self.stdout = stdout; self.stderr = stderr
+        self.skipped = skipped
+    }
+
+    /// Results are shared between processes through request files, and a
+    /// build from before `skipped` existed writes none.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        command = try container.decode(String.self, forKey: .command)
+        status = try container.decode(Int32.self, forKey: .status)
+        stdout = try container.decode(String.self, forKey: .stdout)
+        stderr = try container.decode(String.self, forKey: .stderr)
+        skipped = try container.decodeIfPresent([String].self, forKey: .skipped) ?? []
     }
 }
 

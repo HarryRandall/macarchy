@@ -4,6 +4,16 @@ import Testing
 @testable import Macarchy
 
 struct CommandRunnerTests {
+    @Test func resultsWithoutSkippedPartsStillDecode() throws {
+        let older = Data(#"{"command":"theme","status":0,"stdout":"Applied","stderr":""}"#.utf8)
+        let result = try JSONDecoder().decode(CommandResult.self, from: older)
+        #expect(result.ok && result.skipped.isEmpty)
+        let partial = CommandResult(command: "theme", status: 0, skipped: ["borders"])
+        let decoded = try JSONDecoder().decode(
+            CommandResult.self, from: JSONEncoder().encode(partial))
+        #expect(decoded.skipped == ["borders"])
+    }
+
     @Test func drainsLargeStderrWithoutDeadlock() async {
         let result = await CommandRunner.run(
             "/bin/bash", ["-c", "printf ready; head -c 200000 /dev/zero >&2"], timeout: 3)
