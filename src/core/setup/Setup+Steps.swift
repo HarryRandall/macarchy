@@ -48,7 +48,18 @@ extension Setup {
         try text.write(to: url, atomically: true, encoding: .utf8)
     }
 
-    static func check(_ outcome: GeneratedFile.Outcome) throws {
-        if case .failed(let message) = outcome { throw ConfigurationError(message) }
+    /// Stops setup when a startup file could not be written, and reports
+    /// edits made outside its keep region that the new file replaced.
+    static func check(_ outcome: GeneratedFile.Outcome, _ name: String) throws -> [String] {
+        switch outcome {
+        case .failed(let message): throw ConfigurationError(message)
+        case .writtenOverDrift(let snapshot):
+            let saved = snapshot.map { "snapshot \($0)" } ?? "a snapshot"
+            return [
+                "Replaced edits to \(name) made outside its keep region; "
+                    + "your edited copy is saved as \(saved)"
+            ]
+        case .unchanged, .written: return []
+        }
     }
 }

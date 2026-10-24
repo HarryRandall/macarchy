@@ -190,7 +190,7 @@ public enum Setup {
             }
         }
         try backups.save([yabairc])
-        try check(StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
+        report += try check(StartupConfiguration().generateYabaiRC(adopting: yabaiKept), "yabairc")
 
         // skhd: the file stays the person's; Macarchy only seeds it.
         let shortcuts = skhdrc
@@ -216,10 +216,11 @@ public enum Setup {
             }
         }
         try backups.save([sketchybarrc])
-        try check(StartupConfiguration().generateSketchybarRC(adopting: barKept))
+        report += try check(
+            StartupConfiguration().generateSketchybarRC(adopting: barKept), "sketchybarrc")
 
         try backups.save([StartupConfiguration.bordersrc.url])
-        try check(StartupConfiguration().generateBordersRC())
+        report += try check(StartupConfiguration().generateBordersRC(), "bordersrc")
         if Paths.isInstalled("borders") { try BordersService.install(backups: backups) }
 
         if ghosttyWanted {

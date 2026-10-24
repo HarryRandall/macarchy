@@ -98,6 +98,14 @@ cp "$HOME_DIR/.config/yabai/yabairc" "$HOME_DIR/before"
 cmp -s "$HOME_DIR/before" "$HOME_DIR/.config/yabai/yabairc" || fail "second setup changed yabairc"
 grep -Eqs -- '--start-service|services start' "$CALLS" && fail "--no-apply started a service"
 
+# Edits outside the keep region are replaced on the next setup, and said so.
+printf 'echo edited\n' >> "$HOME_DIR/.config/yabai/yabairc"
+OUTPUT="$("$CLI" setup --keep --no-apply)"
+grep -q 'Replaced edits to yabairc made outside its keep region; your edited copy is saved as snapshot' <<<"$OUTPUT" \
+  || fail "replaced edits not reported: $OUTPUT"
+grep -q 'echo edited' "$HOME_DIR/.config/yabai/yabairc" && fail "edit outside the keep region kept"
+grep -rq 'echo edited' "$HOME_DIR/.config/macarchy/snapshots" || fail "edited yabairc not snapshotted"
+
 "$CLI" uninstall >/dev/null
 grep -qx 'yabai --start-service' "$CALLS" || fail "uninstall did not start yabai"
 grep -qx 'brew services start sketchybar' "$CALLS" || fail "uninstall did not start SketchyBar"
