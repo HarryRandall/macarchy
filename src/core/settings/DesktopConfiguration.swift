@@ -12,32 +12,39 @@ public enum DesktopConfiguration {
         let restartsShortcuts = store.originalPaths(of: snapshot).contains {
             $0.hasSuffix("/skhdrc") || $0.hasSuffix("/.skhdrc")
         }
-        try await store.restoreLocked(snapshot)
-        try await apply(integrations: integrations)
-        if restartsShortcuts, Paths.isInstalled("skhd") {
-            let result = await integrations.restart(.skhd)
-            guard result.ok else { throw ConfigurationError(result.summary) }
+        // One lock across restoring and reapplying, so a concurrent change
+        // cannot land between them and be applied over a half-restored state.
+        try await OperationLock.run {
+            try store.restore(snapshot)
+            try await applyLocked(integrations: integrations)
+            if restartsShortcuts, Paths.isInstalled("skhd") {
+                let result = await integrations.restart(.skhd)
+                guard result.ok else { throw ConfigurationError(result.summary) }
+            }
         }
     }
 
     /// Reapplies every saved setting under one desktop lock, skipping tools
     /// that are not installed rather than failing halfway.
     public static func apply(integrations: Integrations = Integrations()) async throws {
-        try await OperationLock.run {
-            let settings = try SettingsStore().read()
-            if let name = settings.currentTheme {
-                let result = await ThemeApplication(integrations: integrations).applyLocked(
-                    name: name)
-                guard result.ok else { throw ConfigurationError(result.stderr) }
-            }
-            if Paths.isInstalled("yabai") {
-                try await Startup.apply("yabai", integrations: integrations)
-            }
-            if Paths.isInstalled("sketchybar") {
-                try await Startup.apply("sketchybar", integrations: integrations)
-            }
-            try await Startup.applyCorners(integrations: integrations)
+        try await OperationLock.run { try await applyLocked(integrations: integrations) }
+    }
+
+    /// The body of `apply`; the caller must hold the desktop lock.
+    static func applyLocked(integrations: Integrations) async throws {
+        let settings = try SettingsStore().read()
+        if let name = settings.currentTheme {
+            let result = await ThemeApplication(integrations: integrations).applyLocked(
+                name: name)
+            guard result.ok else { throw ConfigurationError(result.stderr) }
         }
+        if Paths.isInstalled("yabai") {
+            try await Startup.apply("yabai", integrations: integrations)
+        }
+        if Paths.isInstalled("sketchybar") {
+            try await Startup.apply("sketchybar", integrations: integrations)
+        }
+        try await Startup.applyCorners(integrations: integrations)
     }
 }
 
