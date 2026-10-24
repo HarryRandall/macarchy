@@ -90,11 +90,17 @@ public struct WidgetLook: Sendable {
     }
 
     /// The bar with each widget component made of the items its widget
-    /// needs: one item, or a two-line widget's icon, lines and box.
+    /// needs: one item, a two-line widget's icon, lines and box, or a row's
+    /// items and box.
     public func normalised(_ configuration: BarConfiguration) -> BarConfiguration {
         var result = configuration
         for index in result.components.indices where result.components[index].isWidget {
             let id = result.components[index].id
+            if let slots = rowSlots(result.components[index]) {
+                result.components[index].members = Self.rowMembers(id, count: slots)
+                result.components[index].brackets = [Self.boxID(id)]
+                continue
+            }
             let stacked = isStacked(result.components[index])
             result.components[index].members = stacked ? Self.stackedMembers(id) : [id]
             result.components[index].brackets = stacked ? [Self.boxID(id)] : []
@@ -119,6 +125,10 @@ public struct WidgetLook: Sendable {
         ]
         if let colour = style.iconColour.flatMap(colour) {
             properties.append("icon.color=\(colour)")
+        }
+        if let slots = rowSlots(component) {
+            return rowArguments(
+                component, manifest: manifest, style: style, slots: slots, click: click)
         }
         if isStacked(component) {
             return stackedArguments(component, manifest: manifest, style: style, icon: properties)

@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "id": "spaces",
+  "name": "Spaces",
+  "version": "1.0.0",
+  "author": "Macarchy",
+  "description": "Your Spaces, each with the apps open on it. Click one to go there.",
+  "source": "spaces",
+  "settings": {
+    "design": {
+      "type": "choice",
+      "label": "Boxes",
+      "options": ["current", "every", "together", "none"],
+      "default": "current",
+      "hint": "A box around the current Space, every Space, all of them together, or none"
+    },
+    "show": {
+      "type": "choice",
+      "label": "Show",
+      "options": ["numbers-and-icons", "numbers", "icons"],
+      "default": "numbers-and-icons"
+    },
+    "maxIcons": {
+      "type": "number",
+      "label": "Most app icons",
+      "default": 0,
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "hint": "After this many, a Space shows how many more, such as +7. 0 shows them all"
+    },
+    "hideEmpty": {
+      "type": "toggle",
+      "label": "Hide empty Spaces",
+      "default": false,
+      "hint": "The Space you are on always shows"
+    },
+    "names": {
+      "type": "text",
+      "label": "Names",
+      "default": "",
+      "hint": "In order, separated by commas, such as Web, Code, Chat. Blank ones keep their number"
+    },
+    "activeColour": {
+      "type": "colour",
+      "label": "Current Space",
+      "default": "accent"
+    },
+    "colour": {
+      "type": "colour",
+      "label": "Other Spaces",
+      "default": "text"
+    }
+  },
+  "style": {
+    "row": 10,
+    "size": 12,
+    "radius": 5
+  },
+  "update": {
+    "every": "10s",
+    "events": ["system_woke", "space_changed", "windows_changed", "display_changed"]
+  },
+  "samples": {
+    "widest": "1 :safari: :code: :claude:",
+    "unavailable": "1 —"
+  }
+}

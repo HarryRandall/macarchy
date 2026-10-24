@@ -140,6 +140,15 @@ export function sampleLines(text: string, style: WidgetStyle): [string, string] 
  * say them as gibberish.
  */
 export function readable(text: string): string {
+  // A row's live reading has a line per item with tab-separated fields;
+  // its items' names say enough.
+  if (text.includes("\t")) {
+    return text
+      .split("\n")
+      .map((line) => line.split("\t")[0])
+      .filter(Boolean)
+      .join(" ");
+  }
   return text
     .replace(/[\uE000-\uF8FF]|[\u{F0000}-\u{10FFFF}]/gu, "")
     .replace(/\s+/g, " ")
@@ -159,6 +168,7 @@ const eventNames: Record<string, string> = {
   space_changed: "Space changes",
   front_app_switched: "App switches",
   display_changed: "Display changes",
+  windows_changed: "Window changes",
 };
 
 export function eventName(event: string): string {

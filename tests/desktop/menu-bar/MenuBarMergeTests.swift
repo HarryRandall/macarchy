@@ -103,4 +103,18 @@ struct MenuBarMergeTests {
         #expect(merged.components.map(\.id) == ["macarchy.cpu", "macarchy.clock", "calendar"])
         #expect(merged.components[0] == cpu && merged.components[1] == clock)
     }
+
+    @Test("a row widget saved in short form still owns its items and box")
+    func keepsRows() {
+        var spaces = BarComponent(
+            id: "macarchy.spaces", title: "Spaces", side: "left", members: ["macarchy.spaces"])
+        spaces.widget = "spaces"
+        var saved = BarConfiguration()
+        saved.components = [spaces]
+        let box = BarComponent(
+            id: "macarchy.spaces.box", title: "Box", side: "left",
+            members: ["macarchy.spaces.1", "macarchy.spaces.2"], brackets: ["macarchy.spaces.box"])
+        let merged = MenuBarComponents.merge(saved, discovered: [box], geometry: [:])
+        #expect(merged.components.map(\.id) == ["macarchy.spaces"])
+    }
 }

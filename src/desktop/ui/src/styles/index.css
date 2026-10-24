@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* The glyphs SketchyBar draws for apps on the bar, so previews match it. */
+@font-face {
+  font-family: "sketchybar-app-font";
+  src: url("../assets/fonts/sketchybar-app-font.ttf") format("truetype");
+  font-display: block;
+}
+
 /*
  * Colour, type and motion tokens for the Studio design (see the mockup in
  * components/gallery/options/studio). Components use the role names below,

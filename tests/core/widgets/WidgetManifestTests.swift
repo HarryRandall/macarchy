@@ -118,7 +118,7 @@ struct WidgetManifestTests {
         #expect(
             messages(manifest("  \"source\": \"weather\""))
                 == [
-                    "source \"weather\" is not a reading Macarchy provides; use one of date, battery, cpu, gpu, memory, network"
+                    "source \"weather\" is not a reading Macarchy provides; use one of date, battery, cpu, gpu, memory, network, spaces"
                 ])
         #expect(
             messages(manifest("  \"source\": \"date\",\n  \"provider\": \"provider.sh\""))
@@ -144,7 +144,7 @@ struct WidgetManifestTests {
                 == [
                     "order.default should be one of a, b",
                     "size.default should be at most 10",
-                    "tint.default should be a colour such as #a5b4fc",
+                    "tint.default should be text, accent, muted or a colour such as #a5b4fc",
                     "options only applies to choice settings",
                     "setting names start with a lower-case letter and use only letters and numbers",
                     "what.type should be one of text, number, toggle, choice, colour, format"

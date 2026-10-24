@@ -12,11 +12,11 @@ public struct WidgetManifest: Codable, Equatable, Sendable {
     public static let fileName = "widget.json"
 
     /// Readings Macarchy provides itself, for widgets that need no script.
-    public static let sources = ["date", "battery", "cpu", "gpu", "memory", "network"]
+    public static let sources = ["date", "battery", "cpu", "gpu", "memory", "network", "spaces"]
     /// System changes a widget can ask to be updated on, as well as its interval.
     public static let events = [
         "system_woke", "power_source_changed", "timezone_changed", "space_changed",
-        "front_app_switched", "display_changed"
+        "front_app_switched", "display_changed", "windows_changed"
     ]
     /// Needs a widget can declare, shown before it is added. Nothing enforces them.
     public static let permissions = ["network"]
@@ -108,6 +108,8 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
     public static let boxes = ["none", "outline", "fill"]
     /// Colours a style can name instead of a hex value, which follow the theme.
     public static let themeColours = ["text", "accent", "muted"]
+    /// The most items a row can draw.
+    public static let rowLimit = 16
 
     public var box: String?
     public var size: Double?
@@ -119,9 +121,12 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
     /// 2 stacks the label's two lines in a fixed-width box beside the icon,
     /// as CPU load over temperature. The label's lines are split at `\n`.
     public var lines: Int?
+    /// Draws a row of up to this many items instead of one, one for each
+    /// entry in the output's `items`, as Spaces draws one per Space.
+    public var row: Int?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case box, size, iconColour, textColour, radius, paddingLeft, paddingRight, lines
+        case box, size, iconColour, textColour, radius, paddingLeft, paddingRight, lines, row
     }
 
     public init() {}
@@ -138,6 +143,7 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
         merged.paddingLeft = paddingLeft ?? base.paddingLeft
         merged.paddingRight = paddingRight ?? base.paddingRight
         merged.lines = lines ?? base.lines
+        merged.row = row ?? base.row
         return merged
     }
 }

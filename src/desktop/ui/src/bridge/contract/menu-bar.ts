@@ -26,6 +26,8 @@ export interface WidgetStyle {
   paddingRight?: number;
   /** 2 stacks the label's two lines beside the icon. */
   lines?: 1 | 2;
+  /** Draws a row of up to this many items, as Spaces draws one per Space. */
+  row?: number;
 }
 
 export type WidgetRowType =

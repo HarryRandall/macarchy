@@ -120,6 +120,7 @@ describe("words", () => {
 
   it("drop the symbol characters a screen reader would garble", () => {
     expect(readable("\u{10088B} 84%\n52°")).toBe("84% 52°");
+    expect(readable("1\t:safari:\t1\n2\t—\t0")).toBe("1 2");
   });
 });
 

@@ -79,8 +79,11 @@ final class WidgetMenuController {
         for instance in await host.instances {
             guard let box = await WidgetBox.find(instance.id) else { continue }
             if let frame = box.frame { frames[instance.id] = frame }
-            // A grey box would be learnt as its usual look.
-            if highlighted?.id != instance.id { boxes[instance.id] = box }
+            // A box read while grey, even one being put back, would be learnt
+            // as its usual look and then put back grey.
+            if highlighted?.id != instance.id && box.background.colour != Self.highlightColour {
+                boxes[instance.id] = box
+            }
         }
     }
 
@@ -253,7 +256,13 @@ final class WidgetMenuController {
         await unhighlight()
         var box = boxes[id]
         if box == nil { box = await WidgetBox.find(id) }
-        guard let box else { return }
+        guard var box else { return }
+        if box.background.colour == Self.highlightColour {
+            // Read while grey, so its usual look is not known: no box.
+            box = WidgetBox(
+                name: box.name, frame: box.frame,
+                background: .init(drawing: box.background.drawing, colour: "0x00000000"))
+        }
         boxes[id] = box
         highlighted = (id, box)
         await WidgetBox.paint(box.name, .init(drawing: "on", colour: Self.highlightColour))

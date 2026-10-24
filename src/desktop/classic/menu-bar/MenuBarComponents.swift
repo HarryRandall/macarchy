@@ -75,8 +75,14 @@ enum MenuBarComponents {
             return merged
         }
         let known = Set(configuration.components.map(\.id))
+        // Every item a widget draws is named after it, such as a row's
+        // `macarchy.spaces.3` or its `macarchy.spaces.box`.
+        let widgets = configuration.components.filter(\.isWidget).map(\.id)
+        func ownedItem(_ name: String) -> Bool {
+            owned.contains(name) || widgets.contains { name.hasPrefix($0 + ".") }
+        }
         configuration.components += discovered.filter {
-            !known.contains($0.id) && !Set($0.members + $0.brackets).isSubset(of: owned)
+            !known.contains($0.id) && !($0.members + $0.brackets).allSatisfy(ownedItem)
         }
         configuration.geometry = geometry
         return configuration

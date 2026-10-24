@@ -267,16 +267,11 @@ function SettingControl({
       );
     case "colour":
       return (
-        <ControlRow
+        <ColourChoiceRow
           title={setting.label}
           help={help}
-          control={
-            <ColourField
-              label={setting.label}
-              value={typeof value === "string" ? value : "#ffffff"}
-              onValueChange={onValue}
-            />
-          }
+          value={typeof value === "string" ? value : undefined}
+          onValue={onValue}
         />
       );
     default:
@@ -322,10 +317,12 @@ type ColourChoice = (typeof colourChoices)[number]["value"];
 
 function ColourChoiceRow({
   title,
+  help,
   value,
   onValue,
 }: {
   title: string;
+  help?: string;
   value: string | undefined;
   onValue: (value: string) => void;
 }) {
@@ -339,6 +336,7 @@ function ColourChoiceRow({
     <>
       <ControlRow
         title={title}
+        help={help}
         control={
           <SegmentedControl
             label={title}

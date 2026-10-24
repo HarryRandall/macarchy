@@ -9,6 +9,14 @@ public enum WidgetActions {
     /// The notification the app answers by opening a widget's dropdown.
     public static let dropdownNotification = Notification.Name(
         "io.github.harryrandall.macarchy.widget.dropdown")
+    /// The notification the app answers by updating the widgets that asked
+    /// to hear about an event, such as the bar seeing windows change.
+    public static let triggerNotification = Notification.Name(
+        "io.github.harryrandall.macarchy.widget.trigger")
+    /// Posted by `macarchy space` just before it asks yabai for a Space, so
+    /// the bar can show the new Space while macOS is still switching.
+    public static let spaceNotification = Notification.Name(
+        "io.github.harryrandall.macarchy.space")
     public static let openTool = "/usr/bin/open"
 
     public enum Outcome: Equatable, Sendable {

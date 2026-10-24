@@ -6,7 +6,15 @@ import { cn } from "~/lib/cn";
 
 import type { BarItem } from "./menu-bar-items";
 import type { BarLook } from "./menu-bar-store";
-import { fill, humanise, lookOf, type Sample, sampleLines, sampleText } from "./widget-model";
+import {
+  fill,
+  humanise,
+  lookOf,
+  type Sample,
+  sampleLines,
+  sampleText,
+  settingOf,
+} from "./widget-model";
 
 /** A style colour as the bar draws it: the theme's text, accent or muted, or a hex. */
 export function paintOf(colour: string | undefined, look: BarLook): string {
@@ -48,6 +56,11 @@ export function WidgetChip({
   className?: string;
 }) {
   const style = lookOf(item, widget);
+  if (style.row) {
+    return (
+      <RowChip item={item} widget={widget} sample={sample} look={look} className={className} />
+    );
+  }
   const text = sampleText(item, widget, sample);
   const lines = sampleLines(text, style);
   const size = Math.max(9, (style.size ?? 12) - 1);
@@ -82,6 +95,131 @@ export function WidgetChip({
           {text.replace(/\n/g, " ")}
         </span>
       )}
+    </span>
+  );
+}
+
+/** One item of a row as the bar shows it. */
+interface RowEntry {
+  icon: string;
+  label: string;
+  current: boolean;
+}
+
+/**
+ * The live row from the bar, one line per showing item: its icon, its label
+ * and whether it is the current one, separated by tabs.
+ */
+function liveEntries(reading: string): RowEntry[] {
+  return reading
+    .split("\n")
+    .filter((line) => line.includes("\t"))
+    .map((line) => {
+      const [icon = "", label = "", current = "0"] = line.split("\t");
+      return { icon, label, current: current === "1" };
+    });
+}
+
+/**
+ * A made-up row from the widget's samples and settings, for the Widest and
+ * Unavailable previews and before the bar has the widget: four Spaces, the
+ * first one current with the sample's apps.
+ */
+function sampleEntries(
+  widget: WidgetInfo | null,
+  sample: Sample,
+  value: (key: string) => unknown,
+): RowEntry[] {
+  const text =
+    (sample === "unavailable" ? widget?.samples?.unavailable : widget?.samples?.widest) ?? "1 —";
+  const glyphs = text
+    .split(" ")
+    .slice(1)
+    .filter((part) => part.startsWith(":"));
+  const show = String(value("show") ?? "numbers-and-icons");
+  const most = Number(value("maxIcons") ?? 0);
+  const names = String(value("names") ?? "")
+    .split(",")
+    .map((name) => name.trim());
+  const hideEmpty = value("hideEmpty") === true;
+  const entries: RowEntry[] = [];
+  [glyphs, glyphs.slice(0, 1), [], []].forEach((list, index) => {
+    if (hideEmpty && list.length === 0 && index > 0) return;
+    const shown = most > 0 ? list.slice(0, most) : list;
+    // A space before a dash and two before apps, as the bar writes them.
+    const strip = list.length === 0 ? " —" : `  ${shown.join(" ")}`;
+    const more = list.length > shown.length ? ` +${list.length - shown.length}` : "";
+    entries.push({
+      icon: show === "icons" ? "" : names[index] || String(index + 1),
+      label: show === "numbers" ? "" : strip + more,
+      current: index === 0,
+    });
+  });
+  return entries;
+}
+
+/**
+ * A row widget as the bar draws it, as Spaces: each item's number, then the
+ * apps' glyphs, with boxes and colours from its settings.
+ */
+function RowChip({
+  item,
+  widget,
+  sample,
+  look,
+  className,
+}: {
+  item: BarItem;
+  widget: WidgetInfo | null;
+  sample: Sample;
+  look: BarLook;
+  className?: string;
+}) {
+  const value = (key: string) => {
+    const setting = widget?.settings.find((candidate) => candidate.key === key);
+    return setting ? settingOf(item, setting) : undefined;
+  };
+  const live = sample === "live" ? liveEntries(item.reading) : [];
+  const entries = live.length > 0 ? live : sampleEntries(widget, sample, value);
+  const design = String(value("design") ?? "current");
+  const active = paintOf(String(value("activeColour") ?? "accent"), look);
+  const other = paintOf(String(value("colour") ?? "text"), look);
+  const outline = "1px solid rgba(255,255,255,0.2)";
+  const radius = lookOf(item, widget).radius ?? 5;
+  return (
+    <span
+      className={cn("flex h-6 shrink-0 items-center whitespace-nowrap", className)}
+      style={{ border: design === "together" ? outline : undefined, borderRadius: radius }}
+    >
+      {entries.map((entry, index) => {
+        const boxed =
+          entry.current && design !== "none"
+            ? {
+                background: `color-mix(in srgb, ${active} 10%, transparent)`,
+                border: design === "together" ? undefined : `1px solid ${active}`,
+              }
+            : design === "every"
+              ? { border: outline }
+              : {};
+        return (
+          <span
+            key={index}
+            className="mr-[5px] ml-[2px] flex h-6 items-center gap-1 pr-2.5 pl-2.5"
+            style={{ ...boxed, borderRadius: radius, color: entry.current ? active : other }}
+          >
+            {entry.icon ? <span className="text-[12px] font-semibold">{entry.icon}</span> : null}
+            {entry.label ? (
+              <span
+                aria-hidden
+                className="text-[13px] whitespace-pre"
+                style={{ fontFamily: "sketchybar-app-font" }}
+              >
+                {entry.label}
+              </span>
+            ) : null}
+          </span>
+        );
+      })}
     </span>
   );
 }

@@ -25,11 +25,15 @@ let usage = """
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
       rules [toggle]              Reapply window rules, or float/tile the focused window.
       bar toggle                  Show or hide the menu bar.
+      space <number>              Go to a Space, telling the bar first so it shows the
+                                  new Space before macOS has switched.
       widget list                 List the bar widgets that can be added.
       widget check <id|folder>    Check a widget's files and say what to fix.
       widget run                  Keep the bar's widgets updated until Control-C, as the
                                   app does. For trying widgets without the app.
       widget click <instance>     Run by the bar when a widget is clicked.
+      widget trigger <event>      Run by the bar to update the widgets that listen for
+                                  an event, such as windows_changed.
       switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
       startup yabai|sketchybar|borders   Run by the startup files at login.
@@ -116,6 +120,20 @@ do {
         DistributedNotificationCenter.default().postNotificationName(
             Notification.Name("io.github.harryrandall.macarchy.switcher"), object: nil,
             userInfo: nil, deliverImmediately: true)
+    case "space":
+        guard args.count == 2, let space = Int(args[1]), (1...99).contains(space) else {
+            throw ConfigurationError("Usage: macarchy space <number>")
+        }
+        // Heard by the running app, which repaints the bar from what it already
+        // knows; then yabai switches, which takes a moment to animate.
+        DistributedNotificationCenter.default().postNotificationName(
+            WidgetActions.spaceNotification, object: nil, userInfo: ["space": space],
+            deliverImmediately: true)
+        let yabai = Paths.yabai
+        var argv: [UnsafeMutablePointer<CChar>?] =
+            [yabai, "-m", "space", "--focus", String(space)].map { strdup($0) } + [nil]
+        execv(yabai, &argv)
+        throw ConfigurationError("yabai could not be started")
     case "bar":
         guard args.dropFirst().first == "toggle" else { throw ConfigurationError(usage) }
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))
@@ -166,9 +184,20 @@ do {
                     WidgetActions.dropdownNotification, object: nil,
                     userInfo: ["instance": instance], deliverImmediately: true)
             }
+        case ("trigger", 3):
+            guard WidgetManifest.events.contains(args[2]) else {
+                throw ConfigurationError(
+                    "There is no widget event called \(args[2]). Events: "
+                        + WidgetManifest.events.joined(separator: ", "))
+            }
+            // Heard by the running app; nothing happens if it is not running.
+            DistributedNotificationCenter.default().postNotificationName(
+                WidgetActions.triggerNotification, object: nil, userInfo: ["event": args[2]],
+                deliverImmediately: true)
         default:
             throw ConfigurationError(
-                "Usage: macarchy widget list | check <id|folder> | run | click <instance>")
+                "Usage: macarchy widget list | check <id|folder> | run | click <instance>"
+                    + " | trigger <event>")
         }
     case "restore":
         guard args.count >= 2 else {

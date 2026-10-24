@@ -187,6 +187,56 @@ export const mockWidgets: WidgetInfo[] = [
     samples: { widest: "100%", unavailable: "--" },
   },
   {
+    id: "spaces",
+    name: "Spaces",
+    description: "Your Spaces, each with the apps open on it. Click one to go there.",
+    author: "Macarchy",
+    version: "1.0.0",
+    origin: "builtIn",
+    scripted: false,
+    folder: `${resources}/spaces`,
+    files: ["app-icons.json", "widget.json"],
+    manifest: manifest({ id: "spaces", name: "Spaces", version: "1.0.0", source: "spaces" }),
+    source: "spaces",
+    settings: [
+      {
+        key: "design",
+        type: "choice",
+        label: "Boxes",
+        options: ["current", "every", "together", "none"],
+        default: "current",
+        hint: "A box around the current Space, every Space, all of them together, or none",
+      },
+      {
+        key: "show",
+        type: "choice",
+        label: "Show",
+        options: ["numbers-and-icons", "numbers", "icons"],
+        default: "numbers-and-icons",
+      },
+      {
+        key: "maxIcons",
+        type: "number",
+        label: "Most app icons",
+        default: 0,
+        min: 0,
+        max: 10,
+        step: 1,
+        hint: "After this many, a Space shows how many more, such as +7. 0 shows them all",
+      },
+      { key: "hideEmpty", type: "toggle", label: "Hide empty Spaces", default: false },
+      { key: "names", type: "text", label: "Names", default: "" },
+      { key: "activeColour", type: "colour", label: "Current Space", default: "accent" },
+      { key: "colour", type: "colour", label: "Other Spaces", default: "text" },
+    ],
+    style: { row: 10, size: 12, radius: 5 },
+    update: {
+      every: "10s",
+      events: ["system_woke", "space_changed", "windows_changed", "display_changed"],
+    },
+    samples: { widest: "1 :safari: :code: :claude:", unavailable: "1 —" },
+  },
+  {
     id: "uptime",
     name: "Uptime",
     description: "How long since this Mac started.",
@@ -209,7 +259,14 @@ export function createMenuBarMock(options: { stopped: boolean }) {
   let widgets = mockWidgets;
   let state: MenuBarState = {
     items: [
-      builtIn("workspaces", "Workspaces", "left", ""),
+      {
+        ...widgetItem(
+          "spaces",
+          "Spaces",
+          "1\t:firefox: :code:\t1\n2\t:claude:\t0\n3\t—\t0\n4\t:spotify: :slack: :notes: :mail:\t0",
+        ),
+        zone: "left",
+      },
       builtIn("front_app", "Front App", "left", "Ghostty"),
       builtIn("memory", "Memory", "right", "61%"),
       widgetItem("cpu", "CPU", "12.0%\n52.4°"),

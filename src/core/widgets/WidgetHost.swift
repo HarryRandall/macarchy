@@ -31,6 +31,8 @@ public actor WidgetHost {
     private var sent: [String: [String]] = [:]
     private var loop: Task<Void, Never>?
     private var components: [String: BarComponent] = [:]
+    /// Each widget's latest update, which its next one waits for.
+    private var running: [String: Task<Void, Never>] = [:]
 
     public init(
         integrations: Integrations = Integrations(), runner: WidgetProviderRunner = .init(),
@@ -115,9 +117,24 @@ public actor WidgetHost {
         return await refresh(Set(ids.map(\.id)), now: now)
     }
 
-    /// Works out the given widgets now, whether or not they are due.
+    /// Works out the given widgets now, whether or not they are due. A
+    /// widget's updates run one after another, so a slow one cannot land
+    /// after a newer one and put back what it read, as a Space switch half
+    /// seen; different widgets do not wait for each other.
     @discardableResult
     public func refresh(_ ids: Set<String>? = nil, now: Date = Date()) async -> CommandResult? {
+        let targets = instances.filter { $0.visible && (ids?.contains($0.id) ?? true) }.map(\.id)
+        let earlier = Set(targets.compactMap { running[$0] })
+        let next = Task {
+            for task in earlier { await task.value }
+            return await self.work(ids, now: now)
+        }
+        let done = Task { _ = await next.value }
+        for id in targets { running[id] = done }
+        return await next.value
+    }
+
+    private func work(_ ids: Set<String>?, now: Date) async -> CommandResult? {
         let targets = instances.filter { $0.visible && (ids?.contains($0.id) ?? true) }
         let runner = self.runner
         let sources = self.sources

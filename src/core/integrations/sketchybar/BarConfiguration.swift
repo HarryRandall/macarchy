@@ -72,13 +72,21 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
         [WidgetLook.stackedMembers(id), [id, WidgetLook.linesID(id)]]
     }
 
+    /// A row's items: the widget's id followed by 1, 2, 3 and so on.
+    private static func isRow(_ component: BarComponent) -> Bool {
+        (1...WidgetStyle.rowLimit).contains(component.members.count)
+            && component.members
+                == WidgetLook.rowMembers(component.id, count: component.members.count)
+    }
+
     private func validateWidgets() throws {
         for component in components where component.isWidget {
             guard let widget = component.widget,
                 widget.range(of: "^[a-z0-9][a-z0-9-]{0,39}$", options: .regularExpression) != nil,
                 component.kind == nil,
                 component.members == [component.id] && component.brackets.isEmpty
-                    || Self.stackedShapes(component.id).contains(component.members)
+                    || (Self.stackedShapes(component.id).contains(component.members)
+                        || Self.isRow(component))
                         && component.brackets == [WidgetLook.boxID(component.id)],
                 component.id.range(of: "^[A-Za-z0-9._-]{1,64}$", options: .regularExpression)
                     != nil,

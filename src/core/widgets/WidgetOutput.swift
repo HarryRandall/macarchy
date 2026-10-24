@@ -20,6 +20,17 @@ public struct WidgetOutput: Equatable, Sendable {
     public var values: [String: String] = [:]
     /// Dropdown rows that replace the manifest's, for lists that change.
     public var rows: [WidgetMenuRow]?
+    /// For a widget drawn as a row: one entry for each item, in order. An
+    /// entry's label, icon, colours and `drawing` apply to its item; on the
+    /// widget's own output, `background` and `border` draw a box around the row.
+    public var items: [WidgetOutput]?
+    /// A colour drawn faintly behind the item, as `#rrggbb`, `#rrggbbaa` or a
+    /// theme colour.
+    public var background: String?
+    /// A colour for a thin border around the item.
+    public var border: String?
+    /// The display the item shows on, counting from 1; every display when unset.
+    public var display: Int?
 
     public init(label: String? = nil, values: [String: String] = [:]) {
         self.label = label
@@ -41,6 +52,10 @@ public struct WidgetOutput: Equatable, Sendable {
             output.drawing = decoded.drawing
             output.values = (decoded.values ?? [:]).mapValues(\.string)
             output.rows = decoded.rows
+            output.items = decoded.items?.map(\.output)
+            output.background = decoded.background
+            output.border = decoded.border
+            output.display = decoded.display
             return output
         }
         let label = trimmed.split(whereSeparator: \.isNewline)
@@ -63,6 +78,23 @@ public struct WidgetOutput: Equatable, Sendable {
         var drawing: Bool?
         var values: [String: SettingValue]?
         var rows: [WidgetMenuRow]?
+        var items: [Printed]?
+        var background: String?
+        var border: String?
+        var display: Int?
+
+        /// An entry of `items`, which takes the fields that apply to one item.
+        var output: WidgetOutput {
+            var output = WidgetOutput(label: label)
+            output.icon = icon
+            output.colour = colour ?? color
+            output.iconColour = iconColour ?? iconColor
+            output.drawing = drawing
+            output.background = background
+            output.border = border
+            output.display = display
+            return output
+        }
     }
 }
 

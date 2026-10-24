@@ -15,7 +15,8 @@ public actor BuiltInReadings {
         "gpu": { instance, now in await shared.gpu(instance, now: now) },
         "memory": { instance, now in await shared.memory(instance, now: now) },
         "network": { instance, now in await shared.network(instance, now: now) },
-        "battery": { instance, _ in await shared.battery(instance) }
+        "battery": { instance, _ in await shared.battery(instance) },
+        "spaces": { instance, _ in await shared.spaces(instance) }
     ]
 
     /// Points kept for each graph: a minute at the usual two seconds.
@@ -25,6 +26,24 @@ public actor BuiltInReadings {
     private var counters: (reading: NetworkCounters, at: Date)?
     private var histories: [String: [Double]] = [:]
     private var processes: (list: TopProcesses, at: Date)?
+    /// Each Spaces widget folder's icon map, read once.
+    private var icons: [URL: AppIcons] = [:]
+    /// The Spaces and windows last read, for showing a switch straight away.
+    private var lastSpaces: SpacesReading?
+    /// The Space `macarchy space` is going to, when it asked, and whether
+    /// it has been drawn yet.
+    private struct Expected {
+        var index: Int
+        var at: Date
+        var shown = false
+    }
+    private var expected: Expected?
+
+    /// The Space about to be shown, which the next update draws as current
+    /// from what was last read, without waiting on yabai or macOS.
+    public func expect(space index: Int) {
+        expected = Expected(index: index, at: Date())
+    }
 
     private func remember(_ value: Double, as name: String) -> [Double] {
         let history = Array(((histories[name] ?? []) + [value]).suffix(Self.historyLength))
@@ -39,6 +58,33 @@ public actor BuiltInReadings {
         let list = await TopProcesses.read()
         processes = (list, now)
         return list
+    }
+
+    func spaces(_ instance: WidgetInstance) async -> WidgetOutput? {
+        guard let reading = await spacesReading() else { return nil }
+        let map = icons[instance.directory] ?? AppIcons.load(from: instance.directory)
+        icons[instance.directory] = map
+        return ReadingOutputs.spaces(
+            reading, icons: map, slots: instance.style.row ?? 10, settings: instance.settings)
+    }
+
+    /// The first update after `expect` draws from the last reading; later
+    /// ones read afresh, keeping the expected Space current until macOS
+    /// says it is, or a moment has passed and it evidently did not switch.
+    private func spacesReading() async -> SpacesReading? {
+        if let target = expected, Date().timeIntervalSince(target.at) > 1.5 { expected = nil }
+        if let target = expected, !target.shown, let last = lastSpaces {
+            expected?.shown = true
+            return last.showing(target.index)
+        }
+        guard let reading = await SpacesReading.read() else { return nil }
+        lastSpaces = reading
+        guard let target = expected else { return reading }
+        if reading.spaces.contains(where: { $0.index == target.index && $0.visible }) {
+            expected = nil
+            return reading
+        }
+        return reading.showing(target.index)
     }
 
     func cpu(_ instance: WidgetInstance, now: Date) async -> WidgetOutput {

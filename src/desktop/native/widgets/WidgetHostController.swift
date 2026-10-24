@@ -36,6 +36,48 @@ final class WidgetHostController {
             .default, NSApplication.didChangeScreenParametersNotification, event: "display_changed")
         watchPower()
         watchFiles()
+        watchTriggers()
+    }
+
+    /// Events the bar passes on through `macarchy widget trigger`. Windows
+    /// can change many times in a moment, so a burst becomes one update.
+    private func watchTriggers() {
+        let token = DistributedNotificationCenter.default().addObserver(
+            forName: WidgetActions.triggerNotification, object: nil, queue: .main
+        ) { notification in
+            guard let event = notification.userInfo?["event"] as? String else { return }
+            MainActor.assumeIsolated { WidgetHostController.shared.coalesce(event) }
+        }
+        observers.append((DistributedNotificationCenter.default(), token))
+        let space = DistributedNotificationCenter.default().addObserver(
+            forName: WidgetActions.spaceNotification, object: nil, queue: .main
+        ) { notification in
+            guard let index = notification.userInfo?["space"] as? Int else { return }
+            MainActor.assumeIsolated { WidgetHostController.shared.going(to: index) }
+        }
+        observers.append((DistributedNotificationCenter.default(), space))
+    }
+
+    /// A Space is about to be shown: draw it as current now, then look
+    /// again once macOS has had time to switch, in case it did not.
+    private func going(to space: Int) {
+        Task {
+            await BuiltInReadings.shared.expect(space: space)
+            await host.trigger("space_changed")
+            try? await Task.sleep(for: .seconds(1.6))
+            await host.trigger("space_changed")
+        }
+    }
+
+    private var pending: Set<String> = []
+
+    private func coalesce(_ event: String) {
+        guard pending.insert(event).inserted else { return }
+        Task {
+            try? await Task.sleep(for: .milliseconds(60))
+            pending.remove(event)
+            await host.trigger(event)
+        }
     }
 
     private func observe(_ center: NotificationCenter, _ name: Notification.Name, event: String) {

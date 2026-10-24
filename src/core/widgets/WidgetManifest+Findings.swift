@@ -165,8 +165,9 @@ extension WidgetSetting {
                 ? nil : "should be one of \((options ?? []).joined(separator: ", "))"
         case ("choice", _): return "should be one of its options, in quotes"
         case ("colour", .text(let text)):
-            return text.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
-                ? nil : "should be a colour such as #a5b4fc"
+            return WidgetStyle.themeColours.contains(text)
+                || text.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+                ? nil : "should be text, accent, muted or a colour such as #a5b4fc"
         case ("format", .text(let text)): return templateProblem(text)
         case ("text", .text): return nil
         default: return "should be text in quotes"
@@ -203,6 +204,10 @@ extension WidgetStyle {
         range(paddingLeft, "paddingLeft", 0...40)
         range(paddingRight, "paddingRight", 0...40)
         if let lines, !(1...2).contains(lines) { add("lines", "style.lines should be 1 or 2") }
+        if let row, !(1...Self.rowLimit).contains(row) {
+            add("row", "style.row should be from 1 to \(Self.rowLimit)")
+        }
+        if row != nil && lines == 2 { add("row", "style.row and style.lines cannot both be set") }
         for (field, colour) in [("iconColour", iconColour), ("textColour", textColour)] {
             if let colour, !Self.themeColours.contains(colour),
                 !colour.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")

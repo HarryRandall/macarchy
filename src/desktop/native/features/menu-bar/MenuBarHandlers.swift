@@ -44,10 +44,29 @@ extension AppModel {
         // A two-line widget keeps its first line in its lines item's icon.
         let firstLines = Dictionary(
             menuBar.items.map { ($0.id, $0.icon.value) }, uniquingKeysWith: { first, _ in first })
+        let bar = Dictionary(
+            menuBar.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        // The items each widget draws, whatever shape it was saved in.
+        let drawn = Dictionary(
+            WidgetLook.current().normalised(configuration).components.filter(\.isWidget)
+                .map { ($0.id, $0.members) },
+            uniquingKeysWith: { first, _ in first })
         func reading(_ component: BarComponent) -> String {
             if component.isCustom { return component.rendered(component.text) }
+            // A row: each showing item's icon, label and whether it is tinted
+            // as the current one, a line each, separated by tabs.
+            let members = drawn[component.id] ?? component.members
+            if component.isWidget, members.first == WidgetLook.rowID(component.id, 1) {
+                return members.compactMap { bar[$0] }.filter(\.drawing).map { item in
+                    let tinted =
+                        item.background.drawing
+                        && !["0x0", "0x00000000"].contains(item.background.color ?? "0x0")
+                    return [item.icon.value, item.label.value, tinted ? "1" : "0"]
+                        .joined(separator: "\t")
+                }.joined(separator: "\n")
+            }
             let lines = WidgetLook.linesID(component.id)
-            if component.isWidget, component.members.contains(lines) {
+            if component.isWidget, members.contains(lines) {
                 return (firstLines[lines] ?? "") + "\n" + (readings[lines] ?? "")
             }
             return component.members.filter { !$0.hasPrefix("gap.") }
