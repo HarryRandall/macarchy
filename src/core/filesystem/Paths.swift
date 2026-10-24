@@ -43,6 +43,23 @@ public enum Paths {
     /// correct if the account is renamed or restored onto another Mac.
     public static let cliInShell = "\"$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy\""
 
+    // MARK: - Fixed locations
+
+    /// The shortcuts file skhd reads: `~/.config/skhd/skhdrc`, or an older
+    /// `~/.skhdrc` when only that exists. skhd is started by its own
+    /// LaunchAgent without `-c`, so this is its search order. Setup, the
+    /// Shortcuts page and Home all use it, so a dotfile is edited in place
+    /// rather than shadowed or replaced.
+    public static var skhdrc: URL { skhdrc(home: home) }
+
+    static func skhdrc(home: URL) -> URL {
+        let primary = home.appending(path: ".config/skhd/skhdrc")
+        let dotfile = home.appending(path: ".skhdrc")
+        let fm = FileManager.default
+        return !fm.fileExists(atPath: primary.path) && fm.fileExists(atPath: dotfile.path)
+            ? dotfile : primary
+    }
+
     // MARK: - Bundled resources
 
     /// Themes, the starter bar and default shortcuts shipped with the app.

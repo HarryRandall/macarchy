@@ -60,7 +60,8 @@ public struct SkhdShortcuts: Sendable {
         self.defaultsURL = defaultsURL
     }
 
-    public var configURL: URL { (config ?? Setup.skhdrc).resolvingSymlinksInPath() }
+    /// The file skhd reads, through a link to the person's own copy.
+    public var configURL: URL { (config ?? Paths.skhdrc).resolvingSymlinksInPath() }
 
     public func read() throws -> ShortcutsSnapshot {
         let url = configURL
