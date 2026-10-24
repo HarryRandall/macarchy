@@ -121,16 +121,39 @@ public struct SkhdShortcuts: Sendable {
     }
 
     /// Undoes `disable` exactly, through the same snapshot, write and restart.
+    /// A disabled binding holds no chord, so another may have taken its keys
+    /// since; enabling then would leave two live bindings on one chord.
     public func enable(id: Int, revision: String) async throws -> CommandResult {
         try await write(revision: revision, reason: "shortcut enabled") { text in
-            guard let binding = SkhdConfig.parse(text).first(where: { $0.id == id }) else {
+            let bindings = SkhdConfig.parse(text)
+            guard let binding = bindings.first(where: { $0.id == id }) else {
                 return nil
             }
             guard binding.isDisabled else {
                 throw ConfigurationError("This shortcut is already enabled.")
             }
+            if let clash = SkhdConfig.conflict(
+                in: bindings, modifiers: binding.modifiers, key: binding.key, excluding: binding)
+            {
+                throw ConfigurationError(
+                    "\(binding.keyCaps.joined()) is now used by \(Self.name(of: clash, in: bindings))."
+                        + " Change the keys of one of them before enabling this shortcut.")
+            }
             return SkhdConfig.enable(text, binding: binding)
         }
+    }
+
+    /// A binding as a person would know it: its own skhdrc heading, the mode
+    /// it switches to, or else its command.
+    static func name(of binding: SkhdBinding, in bindings: [SkhdBinding]) -> String {
+        if let section = binding.section,
+            bindings.filter({ $0.section == section }).count == 1
+        {
+            return "\"\(section)\""
+        }
+        if let mode = binding.activatesMode { return "the switch to \(mode) mode" }
+        if !binding.command.isEmpty { return "\"\(binding.command)\"" }
+        return "another shortcut"
     }
 
     /// Only an explicitly confirmed reset may replace the person's commands.

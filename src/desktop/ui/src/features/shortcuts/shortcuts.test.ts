@@ -274,6 +274,10 @@ describe("shortcuts store", () => {
     expect(await store.enable(initial.bindings[0]!)).toBe(false);
     expect(await store.enable(off)).toBe(true);
     expect(send).toHaveBeenLastCalledWith("shortcuts.enable", { id: 2, revision: "one" });
+    const clash = 'ctrl + alt - h is now used by "Open notes".';
+    send.mockRejectedValueOnce(new Error(clash));
+    expect(await store.enable(off)).toBe(false);
+    expect(store.getSnapshot()).toMatchObject({ error: clash, busy: false });
   });
   it("clears a transient read error on fresh state but keeps a failed edit", async () => {
     const { store, initial, send, emit, unavailable } = fixture();

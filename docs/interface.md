@@ -287,7 +287,9 @@ core. Its named bridge operations are `shortcuts.getState`, `shortcuts.validate`
 `shortcuts.openConfiguration`. Opening and refreshing never seed the file.
 Writes check the loaded revision, snapshot the original, preserve custom lines
 and restart skhd. A failed restart is reported separately from a successful save.
-Only an explicitly confirmed reset replaces commands with bundled defaults.
+Only an explicitly confirmed reset replaces commands with bundled defaults. A
+disabled binding holds no chord, so Enable refuses one whose keys another live
+binding in the same mode has taken since, naming that binding.
 
 The focused React recorder captures keydown events. Swift validates the chord
 and renders its skhd spelling and key caps. macOS may intercept system shortcuts
