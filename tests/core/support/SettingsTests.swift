@@ -74,4 +74,20 @@ struct SettingsTests {
         }
         #expect(try store.read().layout.count == 12)
     }
+
+    /// Double reads hex, so colours used to be saved as decimal numbers.
+    @Test func hexColoursStayHex() throws {
+        var document = SettingsDocument()
+        let adopted = StartupConfiguration.adoptYabai(
+            "yabai -m config insert_feedback_color 0xffd75f5f\n")
+        document.mergeFlat(adopted.values)
+        document.mergeFlat(["YABAI_WINDOW_GAP": "12", "YABAI_TOP_PADDING": "1e3"])
+        #expect(document.layout["insert_feedback_color"] == .text("0xffd75f5f"))
+        #expect(document.flatValues["YABAI_INSERT_FEEDBACK_COLOR"] == "0xffd75f5f")
+        #expect(document.layout["window_gap"] == .number(12))
+        #expect(document.layout["top_padding"] == .text("1e3"))
+        // A colour an earlier version saved as decimal is handed back in hex.
+        document.layout["insert_feedback_color"] = .number(4_292_304_735)
+        #expect(document.flatValues["YABAI_INSERT_FEEDBACK_COLOR"] == "0xffd75f5f")
+    }
 }

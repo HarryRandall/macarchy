@@ -99,6 +99,13 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
                 let name = prefix + key.uppercased()
                 if case .bool(let flag) = value, name != "BORDERS_VISIBLE" {
                     result[name] = flag ? "on" : "off"
+                } else if name.hasSuffix("_COLOR"), case .number(let number) = value,
+                    number.rounded() == number, (0...0xFFFF_FFFF).contains(number)
+                {
+                    // Earlier versions saved hex colours such as 0xffd75f5f
+                    // as decimal numbers, which the daemons do not read as
+                    // colours. Hand them back in hex.
+                    result[name] = String(format: "0x%08x", UInt32(number))
                 } else {
                     result[name] = value.string
                 }
@@ -107,12 +114,18 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         return result
     }
 
+    static func isPlainDecimal(_ raw: String) -> Bool {
+        raw.range(of: #"^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)$"#, options: .regularExpression) != nil
+    }
+
     public mutating func mergeFlat(_ values: [String: String]) {
         for (key, raw) in values {
             let value: SettingValue
             if ["true", "false", "on", "off"].contains(raw) {
                 value = .bool(raw == "true" || raw == "on")
-            } else if let number = Double(raw), number.isFinite {
+            } else if Self.isPlainDecimal(raw), let number = Double(raw), number.isFinite {
+                // Double also reads hex and exponents, which would turn a
+                // colour such as 0xffd75f5f into a decimal number.
                 value = .number(number)
             } else {
                 value = .text(raw)
