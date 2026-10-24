@@ -69,10 +69,15 @@ public struct SnapshotStore: Sendable {
     }
 
     /// Copies each existing file into a new snapshot directory. Missing files
-    /// are skipped rather than failing the whole snapshot — a file that does
-    /// not exist yet has nothing worth preserving.
+    /// are skipped rather than failing the whole snapshot: a file that does
+    /// not exist yet has nothing worth preserving. The pruning that follows
+    /// never removes the snapshot named by `sparing`.
     @discardableResult
-    public func capture(_ sources: [URL], reason: String) throws -> Snapshot? {
+    public func capture(
+        _ sources: [URL], reason: String, sparing: String? = nil
+    )
+        throws -> Snapshot?
+    {
         let fm = FileManager.default
         let present = sources.filter { fm.fileExists(atPath: $0.path) }
         guard !present.isEmpty else { return nil }
@@ -93,7 +98,7 @@ public struct SnapshotStore: Sendable {
 
         let meta = try JSONEncoder().encode(Meta(reason: reason, paths: mapping))
         try meta.write(to: directory.appending(path: ".meta.json"), options: .atomic)
-        try prune()
+        try prune(sparing: sparing.map { [$0] } ?? [])
         return Snapshot(id: id, url: directory, files: copied, created: .now)
     }
 
@@ -144,7 +149,11 @@ public struct SnapshotStore: Sendable {
             let attributes = try fm.attributesOfItem(atPath: source.path)
             return (URL(fileURLWithPath: original), data, attributes[.posixPermissions])
         }
-        try capture(contents.map { $0.0 }, reason: "before restoring \(snapshot.id)")
+        // Spare the snapshot being restored, so restoring the oldest one keeps
+        // it for a follow-up `restore <id> --apply`. The store holds one extra
+        // snapshot until the next capture prunes it.
+        try capture(
+            contents.map { $0.0 }, reason: "before restoring \(snapshot.id)", sparing: snapshot.id)
         for (destination, data, permissions) in contents {
             try fm.createDirectory(
                 at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -159,10 +168,11 @@ public struct SnapshotStore: Sendable {
     /// Captures run under different locks, or none, so the app and CLI can
     /// prune at the same moment. Pruning takes its own lock, and an entry that
     /// is already gone counts as pruned, so neither caller's write fails.
-    public func prune() throws {
+    /// Snapshots named in `sparing` are kept even when they are past the limit.
+    public func prune(sparing: Set<String> = []) throws {
         let fm = FileManager.default
         try FileLock.withLock(root.appending(path: ".prune")) {
-            for snapshot in list().dropFirst(keep) {
+            for snapshot in list().dropFirst(keep) where !sparing.contains(snapshot.id) {
                 do {
                     try fm.removeItem(at: snapshot.url)
                 } catch {

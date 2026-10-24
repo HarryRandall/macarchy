@@ -83,6 +83,40 @@ struct SnapshotStoreTests {
         #expect(store.list().count == 3)
     }
 
+    /// `macarchy restore <id>` suggests `restore <id> --apply` next, so the
+    /// snapshot it restored must outlast the prune its own restore triggers.
+    @Test("restoring the oldest snapshot at the limit keeps it for a second restore")
+    func restoredSnapshotSurvivesItsOwnPrune() throws {
+        let root = try sandbox()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let target = root.appending(path: "settings.env")
+        let store = SnapshotStore(root: root.appending(path: "snapshots"), keep: 3)
+        var captured: [SnapshotStore.Snapshot] = []
+        for index in 0..<3 {
+            try "VERSION=\(index)\n".write(to: target, atomically: true, encoding: .utf8)
+            captured.append(try #require(try store.capture([target], reason: "v\(index)")))
+        }
+        try "VERSION=3\n".write(to: target, atomically: true, encoding: .utf8)
+        let oldest = try #require(captured.first)
+        #expect(store.list().last?.id == oldest.id)
+
+        try store.restore(oldest)
+        let afterFirst = store.list()
+        #expect(afterFirst.contains { $0.id == oldest.id })
+        #expect(
+            store.reason(for: try #require(afterFirst.first)) == "before restoring \(oldest.id)")
+
+        let again = try #require(afterFirst.first { $0.id == oldest.id })
+        try store.restore(again)
+        #expect(try String(contentsOf: target, encoding: .utf8) == "VERSION=0\n")
+
+        // The spared snapshot goes at the next ordinary capture.
+        _ = try store.capture([target], reason: "later")
+        #expect(store.list().count == 3)
+        #expect(!store.list().contains { $0.id == oldest.id })
+    }
+
     /// Captures run under different locks, or none, so the app and CLI can
     /// prune the same oldest snapshot at once. That must not fail either write.
     @Test("concurrent captures prune without failing each other")
