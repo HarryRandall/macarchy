@@ -11,6 +11,15 @@ import Testing
 struct SkhdRoundTripTests {
     static let fixture = """
         # Macarchy shortcuts, edited by hand.
+        .shell "/bin/dash"
+        .load "/Users/me/.config/skhd/extra"
+
+        # Leave terminals alone
+        .blacklist [ "kitty" "terminal" ]
+        .blacklist [
+            "Screen Sharing"
+            "my [app]"
+        ]
 
         # Focus windows
         ctrl + alt - left : yabai -m window --focus west

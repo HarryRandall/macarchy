@@ -31,6 +31,14 @@ public enum SkhdConfig {
                 continue
             }
 
+            // Options such as `.blacklist [ … ]`, `.load` and `.shell` set up
+            // skhd itself. They are not shortcuts and are left as written.
+            if line.hasPrefix(".") {
+                pendingComment = []
+                end = optionEnd(lines, from: index)
+                continue
+            }
+
             // A comment block directly above a binding names the section.
             if !pendingComment.isEmpty {
                 section = pendingComment.joined(separator: " ")
@@ -60,6 +68,31 @@ public enum SkhdConfig {
             end += 1
         }
         return end
+    }
+
+    /// The last line of the option starting at `start`: the line holding the
+    /// `]` that closes a list such as `.blacklist [`, or the option's own line.
+    /// An unclosed list runs to the end, as skhd would reject it anyway.
+    static func optionEnd(_ lines: [String], from start: Int) -> Int {
+        guard let open = unquoted("[", in: lines[start]) else { return start }
+        if unquoted("]", in: String(lines[start][open...])) != nil { return start }
+        var end = start + 1
+        while end < lines.count {
+            if unquoted("]", in: lines[end]) != nil { return end }
+            end += 1
+        }
+        return lines.count - 1
+    }
+
+    /// The first `character` outside double quotes, so an application named
+    /// with a bracket cannot end a list early.
+    private static func unquoted(_ character: Character, in line: String) -> String.Index? {
+        var quoted = false
+        for index in line.indices {
+            if line[index] == "\"" { quoted.toggle() }
+            if !quoted, line[index] == character { return index }
+        }
+        return nil
     }
 
     /// One logical line as skhd hands it to the shell: each escaped line break

@@ -177,6 +177,41 @@ struct SkhdRewriteTests {
         #expect(binding.appOverrides.map(\.app) == ["Firefox"])
     }
 
+    /// `.blacklist` lists applications skhd ignores. Read as a per-app block,
+    /// a one-line list swallowed every shortcut down to the next `]`, and a
+    /// multi-line list became a shortcut whose rebind rewrote `.blacklist`.
+    @Test("a one-line blacklist is left alone and hides nothing")
+    func oneLineIgnoreList() {
+        let text = """
+            .blacklist [ "kitty" "terminal" ]
+            alt - h : yabai -m window --focus west
+            alt - l : yabai -m window --focus east
+            cmd - n [
+                "Safari" : echo safari
+                * : echo other
+            ]
+            """
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h", "l", "n"])
+        #expect(parsed.last?.appOverrides.map(\.app) == ["Safari", "*"])
+    }
+
+    @Test("a multi-line blacklist is not a shortcut")
+    func multiLineIgnoreList() {
+        let text = ".blacklist [\n  \"kitty\"\n  \"my [app]\"\n]\nalt - h : echo"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h"])
+        #expect(parsed.first?.id == 4)
+    }
+
+    @Test("other options are not shortcuts and do not name a section")
+    func otherOptions() {
+        let text = "# Load more\n.load \"extra: skhdrc\"\n.shell \"/bin/dash\"\nalt - h : echo"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h"])
+        #expect(parsed.first?.section == nil)
+    }
+
     @Test("an unterminated block is not offered for editing")
     func unterminatedBlock() {
         #expect(SkhdConfig.parse("cmd - w [\n    * : echo").isEmpty)
