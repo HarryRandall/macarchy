@@ -13,7 +13,7 @@ extension BridgeRouter {
         }
         register("health.copyFix") { [weak model] (params: HealthFixParams) in
             guard let check = latest?.checks.first(where: { $0.id == params.id }),
-                check.status != .passed, let fix = check.fix
+                check.status != .passed, let fix = check.command ?? check.fix
             else {
                 throw BridgeFailure(.invalidParams, "Check Setup health again to find this fix.")
             }

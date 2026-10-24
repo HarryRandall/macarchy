@@ -17,20 +17,26 @@ public struct HealthCheck: Sendable, Identifiable, Equatable {
     public let title: String
     public let status: Status
     public let detail: String
-    /// A command or action that fixes it, when there is one.
+    /// What to do about it, in words, when that is not a command.
     public let fix: String?
+    /// A shell command that fixes it, ready to paste into Terminal.
+    public let command: String?
+    /// The file to open when the fix is to correct it by hand.
+    public let file: URL?
 
     public var id: String { group.rawValue + "/" + title }
 
     public init(
         _ group: Group, _ title: String, _ status: Status, _ detail: String = "",
-        fix: String? = nil
+        fix: String? = nil, command: String? = nil, file: URL? = nil
     ) {
         self.group = group
         self.title = title
         self.status = status
         self.detail = detail
         self.fix = fix
+        self.command = command
+        self.file = file
     }
 }
 
@@ -63,7 +69,10 @@ public enum Doctor {
                 var line = "  \(mark) \(check.title)"
                 if !check.detail.isEmpty { line += ": \(check.detail)" }
                 lines.append(line)
-                if let fix = check.fix, check.status != .passed { lines.append("       \(fix)") }
+                if check.status != .passed {
+                    if let fix = check.fix { lines.append("       \(fix)") }
+                    if let command = check.command { lines.append("       Run: \(command)") }
+                }
             }
         }
         let failures = results.filter { $0.status == .failed }.count
@@ -82,7 +91,7 @@ public enum Doctor {
                         URL(fileURLWithPath: daemon.executable)))
                 : HealthCheck(
                     .dependencies, daemon.displayName, .failed, "Not installed",
-                    fix: daemon.installCommand)
+                    command: daemon.installCommand)
         }
         // The bundled bar's Space labels read yabai's JSON through jq.
         if (try? SettingsStore().read().bundledBar) ?? true != false {
@@ -91,7 +100,7 @@ public enum Doctor {
                     ? HealthCheck(.dependencies, "jq", .passed)
                     : HealthCheck(
                         .dependencies, "jq", .warning, "Space labels in the bar need it",
-                        fix: "brew install jq"))
+                        command: "brew install jq"))
         }
         return results
     }
@@ -103,7 +112,7 @@ public enum Doctor {
                 results.append(
                     HealthCheck(
                         .services, daemon.displayName, .failed, "Not set to start at login",
-                        fix: daemon.startCommand))
+                        command: daemon.startCommand))
                 continue
             }
             let state = await integrations.state(of: daemon)
@@ -122,20 +131,32 @@ public enum Doctor {
                     results.append(
                         HealthCheck(
                             .services, daemon.displayName, .failed, "Stopped",
-                            fix: "Restart it from Advanced, or run: \(daemon.startCommand)"))
+                            fix: "Restart it from Advanced", command: daemon.startCommand))
                 }
             }
         }
         if Paths.isInstalled("yabai") {
-            let signals = await integrations.execute(Paths.yabai, ["-m", "signal", "--list"])
-            let registered = signals.ok && signals.stdout.contains("macarchy_window_created")
+            let registered = await windowSignalsRegistered(integrations: integrations)
             results.append(
                 HealthCheck(
                     .services, "Window signals", registered ? .passed : .warning,
                     registered ? "" : "Floating rules apply to new windows after a restart",
-                    fix: "Restart yabai"))
+                    fix: "Restart yabai from Advanced"))
         }
         return results
+    }
+
+    /// Whether the signals `macarchy startup yabai` registers are loaded.
+    /// Reading them back is the only way to know they took: a failed
+    /// registration leaves no trace. Health and Advanced both use this.
+    public static func windowSignalsRegistered(integrations: Integrations) async -> Bool {
+        let result = await integrations.execute(Paths.yabai, ["-m", "signal", "--list"])
+        guard result.ok,
+            let signals = try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))
+                as? [[String: Any]]
+        else { return false }
+        let labels = Set(signals.compactMap { $0["label"] as? String })
+        return labels.isSuperset(of: ["macarchy_window_created", "macarchy_refocus_destroyed"])
     }
 
     static func configurationChecks(integrations: Integrations) async -> [HealthCheck] {
@@ -145,7 +166,7 @@ public enum Doctor {
             return [
                 HealthCheck(
                     .configuration, "Setup", .failed, "Macarchy has not been set up",
-                    fix: "Open Macarchy, or run: macarchy setup")
+                    fix: "Open Macarchy to set it up", command: setupCommand)
             ]
         }
         let linked = fm.fileExists(
@@ -157,21 +178,33 @@ public enum Doctor {
                 fix: "Open Macarchy once to repair it"))
         do {
             let settings = try SettingsStore().read()
-            if let name = settings.currentTheme {
-                let directory = Paths.themesDirectory.appending(path: name)
-                let theme = try Theme.read(from: directory)
-                _ = try theme.wallpaperURL(in: directory, selected: settings.wallpapers[name])
-                results.append(HealthCheck(.configuration, "Theme", .passed, name))
-            } else {
-                results.append(
-                    HealthCheck(.configuration, "Theme", .warning, "No theme chosen yet"))
-            }
+            results.append(themeCheck(settings))
         } catch {
             results.append(
-                HealthCheck(.configuration, "Settings", .failed, error.localizedDescription))
+                HealthCheck(
+                    .configuration, "Settings", .failed, error.localizedDescription,
+                    fix: "Correct the file, or restore an earlier snapshot from Advanced",
+                    file: Paths.settings))
         }
         results += await startupFileChecks(integrations: integrations)
         return results
+    }
+
+    /// A broken theme is reported as the theme, not as unreadable settings.
+    static func themeCheck(_ settings: SettingsDocument) -> HealthCheck {
+        guard let name = settings.currentTheme else {
+            return HealthCheck(.configuration, "Theme", .warning, "No theme chosen yet")
+        }
+        let directory = Paths.themesDirectory.appending(path: name)
+        do {
+            let theme = try Theme.read(from: directory)
+            _ = try theme.wallpaperURL(in: directory, selected: settings.wallpapers[name])
+            return HealthCheck(.configuration, "Theme", .passed, name)
+        } catch {
+            return HealthCheck(
+                .configuration, "Theme", .failed, error.localizedDescription,
+                fix: "Fix the theme, or apply another from Themes")
+        }
     }
 
     /// After setup each installed tool needs its startup file, and launchd
@@ -190,7 +223,7 @@ public enum Doctor {
                 results.append(
                     HealthCheck(
                         .configuration, name, .failed, "Missing, so \(tool) starts unconfigured",
-                        fix: "Run setup again"))
+                        fix: "Run setup again", command: setupCommand))
                 continue
             }
             guard fm.isExecutableFile(atPath: file.url.path) else {
@@ -198,7 +231,7 @@ public enum Doctor {
                     HealthCheck(
                         .configuration, name, .failed,
                         "Not executable, so it will not run at login",
-                        fix: "Run setup again, which repairs it"))
+                        fix: "Run setup again, which repairs it", command: setupCommand))
                 continue
             }
             let syntax = await integrations.execute("/bin/bash", ["-n", file.url.path])
@@ -211,7 +244,8 @@ public enum Doctor {
                     HealthCheck(
                         .configuration, name, .failed,
                         "Syntax error" + (line.map { " on \($0)" } ?? ""),
-                        fix: "Open \(Paths.display(file.url)) and fix it, or regenerate it"))
+                        fix: "Open \(Paths.display(file.url)) and fix it, or regenerate it",
+                        file: file.url))
             } else if file.hasDrifted {
                 results.append(
                     HealthCheck(
@@ -224,6 +258,9 @@ public enum Doctor {
         return results
     }
 
+    /// The CLI is inside the app bundle and not on PATH, so commands name it in full.
+    static let setupCommand = "\(Paths.cliInShell) setup --keep"
+
     static func optionalChecks() -> [HealthCheck] {
         var results: [HealthCheck] = []
         if Setup.ghosttyWanted {
@@ -233,7 +270,7 @@ public enum Doctor {
                     ? HealthCheck(.optional, "Ghostty theme", .passed)
                     : HealthCheck(
                         .optional, "Ghostty theme", .warning, "Ghostty is not following the theme",
-                        fix: "Run setup again to add the include line"))
+                        fix: "Run setup again to add the include line", command: setupCommand))
         }
         if Paths.isInstalled("yabai") {
             let addition = ScriptingAddition.status()

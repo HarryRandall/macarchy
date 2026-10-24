@@ -36,13 +36,7 @@ public struct AdvancedConfiguration: Sendable {
     }
 
     public func wakeHelpersRegistered() async -> Bool {
-        let result = await integrations.execute(Paths.yabai, ["-m", "signal", "--list"])
-        guard result.ok,
-            let signals = try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))
-                as? [[String: Any]]
-        else { return false }
-        let labels = Set(signals.compactMap { $0["label"] as? String })
-        return labels.isSuperset(of: ["macarchy_window_created", "macarchy_refocus_destroyed"])
+        await Doctor.windowSignalsRegistered(integrations: integrations)
     }
 
     public func repairScriptingAddition() async -> CommandResult {
