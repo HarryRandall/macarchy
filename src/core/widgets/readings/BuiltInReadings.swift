@@ -92,9 +92,11 @@ public actor BuiltInReadings {
         let loads = CoreTicks.loads(from: ticks.isEmpty ? current : ticks, to: current)
         ticks = current
         let load = loads.isEmpty ? 0 : loads.reduce(0, +) / Double(loads.count)
-        let sample = ReadingOutputs.CPUSample(
-            load: load, cores: loads, temperature: SMCSensors.shared.read().cpu,
+        let temperature = SMCSensors.shared.read().cpu
+        var sample = ReadingOutputs.CPUSample(
+            load: load, cores: loads, temperature: temperature,
             history: remember(load, as: "cpu"))
+        if let temperature { sample.temperatures = remember(temperature, as: "cpu.temperature") }
         return ReadingOutputs.cpu(
             sample, processor: .current,
             top: await topProcesses(now: now), settings: instance.settings)

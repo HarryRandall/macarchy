@@ -56,6 +56,12 @@ export interface WidgetMenuRow {
   options?: string[];
   /** SF Symbol names, one per option. */
   icons?: string[];
+  /** For a graph: the reading drawn large in its corner, which makes it a card. */
+  current?: string;
+  /** For a graph: `accent`, `temperature` or a hex colour. */
+  colour?: string;
+  /** For a graph: `%` or `°`, which also sets its scale. */
+  unit?: "%" | "°";
 }
 
 /** What a click does: one of the three. */

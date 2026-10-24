@@ -9,6 +9,8 @@ enum ReadingOutputs {
         var cores: [Double]
         var temperature: Double?
         var history: [Double]
+        /// The die temperature over the same minute.
+        var temperatures: [Double] = []
     }
 
     static func number(
@@ -39,6 +41,7 @@ enum ReadingOutputs {
                 "load.short": ReadingFormat.wholePercent(load),
                 "temperature": ReadingFormat.degrees(temperature),
                 "history": ReadingFormat.history(history),
+                "temperatures": ReadingFormat.history(sample.temperatures),
                 "cores": list(performance) + "|" + list(efficiency),
                 "cores.performance": String(processor.performance),
                 "cores.efficiency": String(processor.efficiency),

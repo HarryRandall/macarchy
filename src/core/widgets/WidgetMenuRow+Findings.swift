@@ -21,7 +21,9 @@ extension WidgetMenuRow {
     private var needsLabel: [Note] { hasLabel ? [] : [("label", "needs a label")] }
 
     private func templateNotes() -> [Note] {
-        let templates: [(field: String, text: String?)] = [("label", label), ("value", value)]
+        let templates: [(field: String, text: String?)] = [
+            ("label", label), ("value", value), ("current", current)
+        ]
         return templates.compactMap { field, text -> Note? in
             guard let text, let problem = templateProblem(text) else { return nil }
             return (field, "\(field) \(problem)")
@@ -72,6 +74,19 @@ extension WidgetMenuRow {
         }
         if !["toggle", "choice"].contains(type), setting != nil {
             notes.append(("setting", "can only change a setting if it is a toggle or choice"))
+        }
+        for (field, present) in [("current", current), ("colour", colour), ("unit", unit)]
+        where present != nil && type != "graph" {
+            notes.append((field, "can only have a \(field) if it is a graph"))
+        }
+        if let colour, !Self.graphColours.contains(colour),
+            !colour.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+        {
+            notes.append(
+                ("colour", "colour should be accent, temperature or a colour such as #a5b4fc"))
+        }
+        if let unit, !["%", "°"].contains(unit) {
+            notes.append(("unit", "unit should be % or °"))
         }
         return notes
     }

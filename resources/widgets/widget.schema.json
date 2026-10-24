@@ -97,7 +97,10 @@
         "open": { "type": "string" },
         "setting": { "type": "string" },
         "options": { "type": "array", "items": { "type": "string" } },
-        "icons": { "type": "array", "items": { "type": "string" }, "description": "SF Symbol names, one per option." }
+        "icons": { "type": "array", "items": { "type": "string" }, "description": "SF Symbol names, one per option." },
+        "current": { "type": "string", "description": "For a graph: the reading drawn large in its corner, which makes it a card. Card graphs one after another sit side by side." },
+        "colour": { "type": "string", "pattern": "^(accent|temperature|#([0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$", "description": "For a graph: accent, temperature (coloured by how hot each moment was) or a hex colour." },
+        "unit": { "enum": ["%", "°"], "description": "For a graph: what its numbers are in, which also sets its scale." }
       }
     }
   }

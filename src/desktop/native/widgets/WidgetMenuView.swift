@@ -23,7 +23,13 @@ struct WidgetMenuView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(model.items) { item in row(item) }
+            ForEach(Self.blocks(model.items), id: \.first?.id) { block in
+                if block.count > 1 || block.first.map(Self.isCard) == true {
+                    MenuCards(items: block, pointer: model.pointer)
+                } else if let item = block.first {
+                    row(item)
+                }
+            }
         }
         .padding(.horizontal, 6).padding(.vertical, 8)
         .frame(width: Self.width)
@@ -35,6 +41,27 @@ struct WidgetMenuView: View {
         )
         .font(.system(size: 13))
         .coordinateSpace(name: Self.space)
+    }
+
+    /// A graph with a reading in its corner is a card.
+    static func isCard(_ item: WidgetMenuItem) -> Bool {
+        item.type == "graph" && !item.current.isEmpty
+    }
+
+    /// The rows in order, with up to two cards in a row grouped to sit side
+    /// by side.
+    static func blocks(_ items: [WidgetMenuItem]) -> [[WidgetMenuItem]] {
+        var blocks: [[WidgetMenuItem]] = []
+        for item in items {
+            if isCard(item), let last = blocks.last, last.count == 1, let first = last.first,
+                isCard(first)
+            {
+                blocks[blocks.count - 1].append(item)
+            } else {
+                blocks.append([item])
+            }
+        }
+        return blocks
     }
 
     @ViewBuilder
@@ -72,9 +99,10 @@ struct WidgetMenuView: View {
             MenuGraph(
                 caption: item.label, points: MenuValues.numbers(item.value), pointer: model.pointer)
         case "cores":
-            MenuCores(groups: MenuValues.groups(item.value), pointer: model.pointer)
+            MenuCores(
+                caption: item.label, groups: MenuValues.groups(item.value), pointer: model.pointer)
         case "apps":
-            MenuApps(apps: MenuValues.apps(item.value))
+            MenuApps(apps: MenuValues.apps(item.value), pointer: model.pointer)
         default:
             HStack {
                 Text(item.label)

@@ -226,9 +226,21 @@ public struct WidgetMenuRow: Codable, Equatable, Sendable {
     /// SF Symbol names, one per option, drawn in round tiles as macOS does
     /// for Energy Mode.
     public var icons: [String]?
+    /// For a graph: the reading drawn large in its corner, which makes it a
+    /// card. Card graphs one after another sit side by side.
+    public var current: String?
+    /// For a graph: `accent`, `temperature`, which colours the line and the
+    /// fill under it by how hot each moment was, or a hex colour.
+    public var colour: String?
+    /// For a graph: what its numbers are in, `%` or `°`, which also sets
+    /// its scale: 0 to 100 for `%`, 40° to 100° for `°`.
+    public var unit: String?
+
+    /// Colours a graph row can take besides a hex value.
+    public static let graphColours = ["accent", "temperature"]
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case type, label, value, run, open, setting, options, icons
+        case type, label, value, run, open, setting, options, icons, current, colour, unit
     }
 
     public init(type: String, label: String? = nil, value: String? = nil) {

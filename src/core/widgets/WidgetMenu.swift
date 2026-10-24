@@ -17,6 +17,12 @@ public struct WidgetMenuItem: Equatable, Sendable, Identifiable {
     /// False for rows that only show something, and for choices that reflect
     /// a reading rather than a setting.
     public let enabled: Bool
+    /// A card graph's large reading, colour and unit.
+    public var current = ""
+    public var colour = "accent"
+    public var unit = "%"
+    /// Seconds between a graph's points, for saying how long ago one was.
+    public var interval: Double = 2
 }
 
 /// Builds a widget's dropdown and carries out what picking a row means.
@@ -50,12 +56,31 @@ public enum WidgetMenu {
                     options: options, icons: row.icons ?? [], selected: current?.string ?? value,
                     enabled: setting != nil)
             default:
-                return WidgetMenuItem(
+                var item = WidgetMenuItem(
                     id: index, type: row.type, label: label, value: value, checked: false,
                     options: [], icons: [], selected: nil,
                     enabled: row.type == "action" && (row.open != nil || row.run != nil))
+                item.current = WidgetTemplate.render(row.current ?? "", values: values)
+                item.colour = row.colour ?? "accent"
+                item.unit = row.unit ?? "%"
+                item.interval = Double(
+                    WidgetUpdate(every: instance.every ?? "2s").seconds ?? 2)
+                return item
             }
         }
+    }
+
+    /// How many cells a row of cores holds: even rows of at most eight, or
+    /// the other group's width when a long single row splits into two of it,
+    /// so the groups line up.
+    public static func coreColumns(_ count: Int, other: Int) -> Int {
+        guard count > 0 else { return 1 }
+        let rows = (count + 7) / 8
+        let columns = (count + rows - 1) / rows
+        if rows == 1, columns > 6, other > 0, count % other == 0, count / other == 2 {
+            return other
+        }
+        return columns
     }
 
     /// What picking a row does.

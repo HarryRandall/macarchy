@@ -106,67 +106,6 @@ struct MenuGraph: View {
     }
 }
 
-/// Use per core, as bars: performance cores, then efficiency cores.
-/// Pointing at a bar names the core and its use.
-struct MenuCores: View {
-    let groups: [[Double]]
-    let pointer: CGPoint?
-    private let height: CGFloat = 30
-    @State private var frames: [Int: CGRect] = [:]
-
-    /// The bar under the pointer, as group and position.
-    private var hovered: (group: Int, index: Int)? {
-        guard let pointer,
-            let key = frames.first(where: { $0.value.insetBy(dx: -1.5, dy: 0).contains(pointer) })?
-                .key
-        else { return nil }
-        return (key / 1000, key % 1000)
-    }
-
-    var body: some View {
-        let hovered = self.hovered
-        VStack(spacing: 3) {
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(Array(groups.enumerated()), id: \.offset) { group, values in
-                    ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                        let lit = hovered.map { $0 == (group, index) } ?? false
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(group == 0 ? Color.accentColor : Color.teal)
-                            .brightness(lit ? 0.15 : 0)
-                            .opacity(hovered == nil || lit ? 1 : 0.55)
-                            .frame(height: max(2, height * min(value, 100) / 100))
-                            .frame(maxWidth: .infinity, maxHeight: height, alignment: .bottom)
-                            .onGeometryChange(for: CGRect.self) {
-                                $0.frame(in: .named(WidgetMenuView.space))
-                            } action: {
-                                frames[group * 1000 + index] = $0
-                            }
-                    }
-                    if group < groups.count - 1 { Spacer().frame(width: 6) }
-                }
-            }
-            .frame(height: height, alignment: .bottom)
-            HStack {
-                if let hovered, groups.indices.contains(hovered.group),
-                    groups[hovered.group].indices.contains(hovered.index)
-                {
-                    Text(
-                        "\(hovered.group == 0 ? "Performance" : "Efficiency") core \(hovered.index + 1)"
-                    )
-                    Spacer()
-                    Text(MenuGraph.format(groups[hovered.group][hovered.index])).monospacedDigit()
-                } else if groups.count > 1 {
-                    Text("Performance")
-                    Spacer()
-                    Text("Efficiency")
-                }
-            }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 10).padding(.vertical, 2)
-    }
-}
-
 /// A small dark label for a value under the pointer.
 struct MenuTooltip: View {
     let text: String
@@ -180,12 +119,16 @@ struct MenuTooltip: View {
     }
 }
 
-/// Apps with their icons, such as the ones using the most CPU.
+/// Apps with their icons, such as the ones using the most CPU. The row
+/// under the pointer is lightly highlighted.
 struct MenuApps: View {
     let apps: [(name: String, value: String)]
+    let pointer: CGPoint?
+    @State private var frames: [Int: CGRect] = [:]
 
     var body: some View {
-        ForEach(Array(apps.enumerated()), id: \.offset) { _, app in
+        ForEach(Array(apps.enumerated()), id: \.offset) { index, app in
+            let lit = pointer.map { frames[index]?.contains($0) == true } ?? false
             HStack(spacing: 8) {
                 Image(nsImage: AppIcons.icon(named: app.name))
                     .resizable().frame(width: 18, height: 18)
@@ -194,6 +137,15 @@ struct MenuApps: View {
                 Text(app.value).foregroundStyle(.secondary).monospacedDigit()
             }
             .padding(.horizontal, 10).frame(height: 26)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(.primary.opacity(lit ? 0.08 : 0))
+            )
+            .onGeometryChange(for: CGRect.self) {
+                $0.frame(in: .named(WidgetMenuView.space))
+            } action: {
+                frames[index] = $0
+            }
         }
     }
 }

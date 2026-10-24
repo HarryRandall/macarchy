@@ -4,7 +4,7 @@
   "name": "CPU",
   "version": "1.0.0",
   "author": "Macarchy",
-  "description": "Load and temperature, with per-core use and the busiest apps in its dropdown.",
+  "description": "Load and temperature over the last minute, per-core use and the busiest apps in its dropdown.",
   "icon": "􀧓",
   "source": "cpu",
   "label": "{load}\n{temperature}",
@@ -44,34 +44,29 @@
       {
         "type": "heading",
         "label": "CPU",
-        "value": "{load.short}"
-      },
-      {
-        "type": "text",
-        "label": "{chip} · {cores.performance} performance, {cores.efficiency} efficiency"
+        "value": "{chip}"
       },
       {
         "type": "graph",
-        "value": "{history}"
+        "label": "Load",
+        "value": "{history}",
+        "current": "{load.short}"
+      },
+      {
+        "type": "graph",
+        "label": "Temp",
+        "value": "{temperatures}",
+        "current": "{temperature}",
+        "colour": "temperature",
+        "unit": "°"
       },
       {
         "type": "divider"
-      },
-      {
-        "type": "heading",
-        "label": "Cores"
       },
       {
         "type": "cores",
+        "label": "Cores",
         "value": "{cores}"
-      },
-      {
-        "type": "divider"
-      },
-      {
-        "type": "reading",
-        "label": "Temperature",
-        "value": "{temperature}"
       },
       {
         "type": "divider"
