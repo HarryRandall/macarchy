@@ -5,7 +5,7 @@ extension BridgeRouter {
     func registerShortcuts(model: AppModel) {
         register("shortcuts.getState") { [weak model] (_: Empty) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            return try model.readShortcuts()
+            return try await model.readShortcuts()
         }
         register("shortcuts.validate") { [weak model] (params: ShortcutValidateParams) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
@@ -55,12 +55,14 @@ extension BridgeRouter {
 }
 
 extension AppModel {
-    func readShortcuts() throws -> ShortcutsState {
-        do { return ShortcutsState(try SkhdShortcuts(integrations: backend).read()) } catch {
+    func readShortcuts() async throws -> ShortcutsState {
+        let snapshot: ShortcutsSnapshot
+        do { snapshot = try SkhdShortcuts(integrations: backend).read() } catch {
             log.failure("read shortcuts", error.localizedDescription)
             throw BridgeFailure(
                 .operationFailed, "Your shortcuts could not be read: \(error.localizedDescription)")
         }
+        return ShortcutsState(snapshot, desktops: await backend.desktopCount())
     }
 
     func changeShortcut(
@@ -70,7 +72,7 @@ extension AppModel {
             let result = try await operation()
             log.record(result)
             shortcuts.reload()
-            let state = try readShortcuts()
+            let state = try await readShortcuts()
             StateBroadcast.shared.shortcutsWritten(state)
             return ShortcutMutation(
                 state: state, warning: result.ok ? result.stdout : result.stderr)

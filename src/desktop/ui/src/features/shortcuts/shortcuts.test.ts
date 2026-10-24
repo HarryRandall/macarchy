@@ -25,7 +25,7 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
   };
 }
 function fixture() {
-  const initial: ShortcutsState = { revision: "one", bindings: [binding()] };
+  const initial: ShortcutsState = { revision: "one", bindings: [binding()], desktops: 3 };
   const send = vi.fn<(method: string, params: unknown) => Promise<unknown>>(async (method) => {
     if (method === "shortcuts.getState") return initial;
     if (method === "shortcuts.validate")
@@ -89,12 +89,19 @@ describe("shortcut presentation", () => {
       expect(shortcutLabel(custom, [custom])).toBe(command);
     }
   });
-  it("preserves workspace, swap, media and per-app labels", () => {
+  it("preserves desktop, swap, media and per-app labels", () => {
     for (const [command, expected] of [
       ["yabai -m window --swap north; yabai -m window --focus north", "Swap up and follow"],
-      ["yabai -m space --focus 20", "Switch to workspace 20"],
-      ["yabai -m window --space 2", "Move to workspace 2"],
-      ["yabai -m window --space 3; yabai -m space --focus 3", "Move to workspace 3 and follow"],
+      ["yabai -m space --focus 20", "Go to desktop 20"],
+      ["yabai -m window --space 2", "Move window to desktop 2"],
+      [
+        "yabai -m window --space 3; yabai -m space --focus 3",
+        "Move window to desktop 3 and follow",
+      ],
+      [
+        "yabai -m window --space 3 && yabai -m space --focus 3",
+        "Move window to desktop 3 and follow",
+      ],
       [
         "/usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application \"Spotify\" to playpause'",
         "Play or pause Spotify",

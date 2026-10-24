@@ -47,7 +47,9 @@ final class StateBroadcast {
         observe()
         watchSettings()
         homeFiles.start { [weak self] in self?.publishOverview() }
-        shortcutsBroadcast.start { [weak self] event in self?.settings()?.send(event) }
+        shortcutsBroadcast.start(
+            integrations: model.backend, watched: { [weak self] in self?.settings() != nil },
+            send: { [weak self] event in self?.settings()?.send(event) })
         logBroadcast.start(model.log) { [weak self] in self?.settings()?.send(.shellLogChanged) }
     }
 

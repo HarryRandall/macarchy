@@ -224,6 +224,7 @@
             "section": "Open a terminal"
           }
         ],
+        "desktops": null,
         "revision": "7d793037a0760186"
       },
       "type": "shortcuts.changed"

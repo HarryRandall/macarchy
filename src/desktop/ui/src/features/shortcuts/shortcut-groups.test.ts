@@ -5,7 +5,10 @@ import type { ShortcutBinding } from "~/bridge/protocol";
 import {
   chordKey,
   findConflicts,
+  foldRuns,
   groupByCategory,
+  missingDesktop,
+  runSummary,
   shortcutCategory,
   shortcutTitle,
 } from "./shortcut-groups";
@@ -68,6 +71,82 @@ describe("shortcut titles", () => {
     expect(shortcutTitle(left, [left, shrink])).toEqual({ title: "Focus left", command: null });
     const bare = binding({ command: "echo bare" });
     expect(shortcutTitle(bare, [bare])).toEqual({ title: "echo bare", command: "echo bare" });
+  });
+});
+
+/** The bundled skhdrc's numbered desktop bindings, from `firstId`. */
+function numbered(firstId: number, modifiers: string[], command: (n: number) => string) {
+  return Array.from({ length: 9 }, (_, index) =>
+    binding({
+      id: firstId + index,
+      modifiers,
+      key: String(index + 1),
+      caps: [...modifiers.map((m) => ({ ctrl: "⌃", alt: "⌥", shift: "⇧" })[m]!), `${index + 1}`],
+      section: "Desktops",
+      command: command(index + 1),
+    }),
+  );
+}
+const go = numbered(10, ["ctrl", "alt"], (n) => `yabai -m space --focus ${n}`);
+const follow = numbered(
+  20,
+  ["ctrl", "alt", "shift"],
+  (n) => `yabai -m window --space ${n} && yabai -m space --focus ${n}`,
+);
+
+describe("numbered runs", () => {
+  it("folds each run into one item where its first binding was", () => {
+    const left = binding({ id: 1, command: "yabai -m window --focus west" });
+    const items = foldRuns([left, ...go, ...follow]);
+    expect(items.map((item) => item.kind)).toEqual(["binding", "run", "run"]);
+    const [, goRun, followRun] = items;
+    expect(goRun).toMatchObject({ kind: "run", numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
+    expect(followRun).toMatchObject({ kind: "run", bindings: follow });
+  });
+
+  it("names a run by its range and shows the keys once", () => {
+    const all = [...go, ...follow];
+    const [goRun, followRun] = foldRuns(all);
+    if (goRun?.kind !== "run" || followRun?.kind !== "run") throw new Error("expected runs");
+    expect(runSummary(goRun, all)).toEqual({
+      title: "Go to desktop 1–9",
+      caps: ["⌃", "⌥", "1…9"],
+    });
+    expect(runSummary(followRun, all)).toEqual({
+      title: "Move window to desktop 1–9 and follow",
+      caps: ["⌃", "⌥", "⇧", "1…9"],
+    });
+  });
+
+  it("lists a broken run's numbers and sorts by key", () => {
+    const some = [go[4]!, go[0]!, go[1]!];
+    const [run] = foldRuns(some);
+    if (run?.kind !== "run") throw new Error("expected a run");
+    expect(run.numbers).toEqual([1, 2, 5]);
+    expect(runSummary(run, some)).toEqual({
+      title: "Go to desktop 1, 2, 5",
+      caps: ["⌃", "⌥", "1,2,5"],
+    });
+  });
+
+  it("keeps bindings apart unless the modifiers and command differ only by the number", () => {
+    const otherModifiers = binding({ ...go[1]!, id: 40, modifiers: ["cmd"] });
+    const otherCommand = binding({ id: 41, key: "3", command: "yabai -m space --focus 3; echo" });
+    const notTheKey = binding({ id: 42, key: "4", command: "yabai -m space --focus 5" });
+    const fraction = binding({ id: 43, key: "0", command: "yabai -m window --ratio rel:0.05" });
+    const items = foldRuns([go[0]!, otherModifiers, otherCommand, notTheKey, fraction]);
+    expect(items.every((item) => item.kind === "binding")).toBe(true);
+    expect(foldRuns([go[0]!])).toEqual([{ kind: "binding", binding: go[0] }]);
+  });
+});
+
+describe("missing desktops", () => {
+  it("marks bindings for desktops past the count, and nothing while it is unknown", () => {
+    expect(go.map((item) => missingDesktop(item, 3))).toEqual([null, null, null, 4, 5, 6, 7, 8, 9]);
+    expect(missingDesktop(follow[3]!, 3)).toBe(4);
+    expect(missingDesktop(follow[3]!, 4)).toBeNull();
+    expect(go.some((item) => missingDesktop(item, null) !== null)).toBe(false);
+    expect(missingDesktop(binding({ command: "yabai -m space --focus next" }), 1)).toBeNull();
   });
 });
 

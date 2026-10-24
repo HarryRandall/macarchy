@@ -244,8 +244,10 @@ extension WebInterfaceTests {
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 let broadcast = ShortcutsBroadcast()
-                broadcast.written(try harness.model.readShortcuts())
-                broadcast.start { [weak surface] in surface?.send($0) }
+                broadcast.written(try await harness.model.readShortcuts())
+                broadcast.start(integrations: harness.model.backend) { [weak surface] in
+                    surface?.send($0)
+                }
                 try await editFirstShortcut(surface)
                 try await recordShortcut(surface)
                 try harness.write(

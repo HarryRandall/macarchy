@@ -8,7 +8,7 @@ import { KbdGroup } from "~/components/ui/kbd";
 import { cn } from "~/lib/cn";
 
 import { ShortcutDetails } from "./shortcut-editor";
-import { shortcutTitle } from "./shortcut-groups";
+import { missingDesktop, runSummary, type ShortcutItem, shortcutTitle } from "./shortcut-groups";
 
 /**
  * One binding: its action, badges and keys. The whole row opens the editor;
@@ -18,12 +18,15 @@ export function ShortcutRow({
   binding,
   all,
   conflict,
+  desktops = null,
   disabled,
   onEdit,
 }: {
   binding: ShortcutBinding;
   all: readonly ShortcutBinding[];
   conflict?: string;
+  /** How many desktops exist, so a binding for one that does not is dimmed. */
+  desktops?: number | null;
   disabled?: boolean;
   onEdit: () => void;
 }) {
@@ -31,14 +34,22 @@ export function ShortcutRow({
   const detailsId = useId();
   const { title, command } = shortcutTitle(binding, all);
   const mono = title === binding.command;
+  const missing = missingDesktop(binding, desktops);
+  const note = missing === null ? null : `No desktop ${missing} yet`;
   const name = [
     `Edit shortcut: ${title}, ${binding.caps.join(" ")}`,
+    note,
     conflict ? `conflict: ${conflict}` : null,
   ]
     .filter(Boolean)
     .join(", ");
   return (
-    <div data-row="" data-shortcut-id={binding.id} className="group/row">
+    <div
+      data-row=""
+      data-shortcut-id={binding.id}
+      data-missing-desktop={missing ?? undefined}
+      className="group/row"
+    >
       <div
         className={cn(
           "relative flex min-h-[46px] min-w-0 items-center gap-2 py-2 pr-2 pl-4 transition-colors duration-150 hover:bg-hover",
@@ -56,7 +67,13 @@ export function ShortcutRow({
         >
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex min-w-0 items-center gap-2">
-              <span className={cn("truncate text-fg", mono ? "font-mono text-mono" : "text-body")}>
+              <span
+                className={cn(
+                  "truncate",
+                  note ? "text-fg-tertiary" : "text-fg",
+                  mono ? "font-mono text-mono" : "text-body",
+                )}
+              >
                 {title}
               </span>
               {binding.appOverrides.length ? <Badge>Per app</Badge> : null}
@@ -72,6 +89,7 @@ export function ShortcutRow({
                 {command}
               </span>
             ) : null}
+            {note ? <span className="mt-0.5 text-caption text-fg-tertiary">{note}</span> : null}
           </span>
           <span
             aria-hidden
@@ -79,7 +97,11 @@ export function ShortcutRow({
           >
             Click to edit
           </span>
-          <KbdGroup variant="key" keys={binding.caps} className="shrink-0" />
+          <KbdGroup
+            variant="key"
+            keys={binding.caps}
+            className={cn("shrink-0", note && "opacity-50")}
+          />
         </button>
         <IconButton
           size="sm"
@@ -101,6 +123,110 @@ export function ShortcutRow({
           className="flex flex-col gap-2 border-t border-hairline bg-side px-4 py-3"
         >
           <ShortcutDetails binding={binding} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A numbered run, such as "Go to desktop 1–9", as one row. The row opens the
+ * run in place, where each binding is its own row to edit.
+ */
+export function ShortcutRunRow({
+  run,
+  all,
+  conflicts,
+  desktops,
+  disabled,
+  onEdit,
+}: {
+  run: Extract<ShortcutItem, { kind: "run" }>;
+  all: readonly ShortcutBinding[];
+  conflicts: ReadonlyMap<number, string>;
+  desktops: number | null;
+  disabled?: boolean;
+  onEdit: (binding: ShortcutBinding) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const listId = useId();
+  const { title, caps } = runSummary(run, all);
+  const count = run.bindings.length;
+  const conflicted = run.bindings.some((binding) => conflicts.has(binding.id));
+  const missing = run.bindings.filter(
+    (binding) => missingDesktop(binding, desktops) !== null,
+  ).length;
+  const caption =
+    missing === 0
+      ? `${count} shortcuts`
+      : `${count} shortcuts, ${missing} for desktops you do not have yet`;
+  const name = [
+    `${expanded ? "Hide" : "Show"} ${count} shortcuts: ${title}, ${caps.join(" ")}`,
+    missing ? `${missing} for desktops you do not have yet` : null,
+    conflicted ? "has a conflict" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    // Not `group/row`, which would show every nested row's "Click to edit" at once.
+    <div data-row="" data-shortcut-run={run.numbers.join(",")}>
+      <div
+        className={cn(
+          "relative flex min-h-[46px] min-w-0 items-center gap-2 py-2 pr-2 pl-4 transition-colors duration-150 hover:bg-hover",
+          "has-[[data-row-primary]:focus-visible]:ring-2 has-[[data-row-primary]:focus-visible]:ring-accent has-[[data-row-primary]:focus-visible]:ring-inset",
+        )}
+      >
+        <button
+          type="button"
+          data-row-primary
+          aria-label={name}
+          aria-expanded={expanded}
+          aria-controls={expanded ? listId : undefined}
+          onClick={() => setExpanded(!expanded)}
+          className="flex min-w-0 flex-1 items-center gap-4 text-left outline-none after:absolute after:inset-0 after:rounded-[inherit]"
+        >
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-body text-fg">{title}</span>
+              {conflicted ? (
+                <Badge tone="warn">
+                  <TriangleAlert aria-hidden className="size-3" />
+                  Conflict
+                </Badge>
+              ) : null}
+            </span>
+            <span className="mt-0.5 truncate text-caption text-fg-tertiary">{caption}</span>
+          </span>
+          <KbdGroup variant="key" keys={caps} className="shrink-0" />
+          {/* The whole row is the toggle, so the chevron only shows its state. */}
+          <span
+            aria-hidden
+            className="grid size-6 shrink-0 place-items-center text-fg-secondary [&_svg]:size-[13px]"
+          >
+            <ChevronDown
+              className={cn("transition-transform duration-150", expanded && "rotate-180")}
+            />
+          </span>
+        </button>
+      </div>
+      {expanded ? (
+        <div
+          id={listId}
+          role="group"
+          aria-label={title}
+          className="border-t border-hairline bg-side pl-4 [&>[data-row]+[data-row]]:border-t [&>[data-row]+[data-row]]:border-hairline"
+        >
+          {run.bindings.map((binding) => (
+            <ShortcutRow
+              key={binding.id}
+              binding={binding}
+              all={all}
+              conflict={conflicts.get(binding.id)}
+              desktops={desktops}
+              disabled={disabled}
+              onEdit={() => onEdit(binding)}
+            />
+          ))}
         </div>
       ) : null}
     </div>

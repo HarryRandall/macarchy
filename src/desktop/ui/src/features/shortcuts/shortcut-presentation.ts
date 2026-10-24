@@ -15,10 +15,11 @@ export function shortcutLabel(binding: ShortcutBinding, all: ShortcutBinding[]):
       return `Swap ${title} and follow`;
   }
   for (let index = 1; index <= 20; index++) {
-    if (command === `yabai -m space --focus ${index}`) return `Switch to workspace ${index}`;
-    if (command === `yabai -m window --space ${index}`) return `Move to workspace ${index}`;
-    if (command === `yabai -m window --space ${index}; yabai -m space --focus ${index}`)
-      return `Move to workspace ${index} and follow`;
+    if (command === `yabai -m space --focus ${index}`) return `Go to desktop ${index}`;
+    if (command === `yabai -m window --space ${index}`) return `Move window to desktop ${index}`;
+    for (const then of ["; ", " && "])
+      if (command === `yabai -m window --space ${index}${then}yabai -m space --focus ${index}`)
+        return `Move window to desktop ${index} and follow`;
   }
   for (const [action, title] of [
     ["playpause", "Play or pause Spotify"],

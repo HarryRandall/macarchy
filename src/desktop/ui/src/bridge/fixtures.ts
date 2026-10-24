@@ -610,11 +610,13 @@ const focusBinding: ShortcutBinding = {
 const shortcuts: ShortcutsState = {
   revision: "5d41402abc4b2a76",
   bindings: [terminalBinding, focusBinding],
+  desktops: 3,
 };
 
 const shortcutsAfterEdit: ShortcutsState = {
   revision: "7d793037a0760186",
   bindings: [terminalBinding],
+  desktops: null,
 };
 
 export const methodFixtures: MethodFixtures = {
