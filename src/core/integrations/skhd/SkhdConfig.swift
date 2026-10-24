@@ -25,6 +25,12 @@ public enum SkhdConfig {
 
             if line.isEmpty { pendingComment = []; continue }
 
+            // A binding the page disabled is not a heading for the next one.
+            if let disabled = disabledEnd(lines, from: index) {
+                end = disabled
+                continue
+            }
+
             if line.hasPrefix("#") {
                 let body = line.dropFirst().trimmingCharacters(in: .whitespaces)
                 if !body.isEmpty { pendingComment.append(body) }
@@ -50,6 +56,40 @@ public enum SkhdConfig {
             if let parsed { bindings.append(parsed) }
         }
         return bindings
+    }
+
+    /// The last line of a binding that `disable` commented out, when the
+    /// comment at `start` is one.
+    ///
+    /// Disabling writes `# ` before every line of a binding, so removing that
+    /// from the run of comments must give back a binding whose chord skhd could
+    /// read. A prose comment such as `# Note: x` stays a heading.
+    static func disabledEnd(_ lines: [String], from start: Int) -> Int? {
+        let run = Array(
+            lines[start...].prefix { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) })
+        guard !run.isEmpty else { return nil }
+        let (binding, last) = parseBinding(
+            run, from: 0, through: logicalEnd(run, from: 0), section: nil)
+        guard let binding, isChord(binding) else { return nil }
+        return start + last
+    }
+
+    /// Whether a parsed binding names modifiers and a key skhd knows. A bare
+    /// letter or digit counts only with a modifier or mode, as one on its own
+    /// is more likely the start of a sentence.
+    private static func isChord(_ binding: SkhdBinding) -> Bool {
+        let modifiers: Set<String> = [
+            "fn", "cmd", "lcmd", "rcmd", "alt", "lalt", "ralt", "shift", "lshift", "rshift",
+            "ctrl", "lctrl", "rctrl", "hyper", "meh"
+        ]
+        guard binding.modifiers.allSatisfy({ modifiers.contains($0.lowercased()) }) else {
+            return false
+        }
+        let key = binding.key.lowercased()
+        if SkhdKey.named[key] != nil || SkhdBinding.keyGlyphs[key] != nil { return true }
+        if key.hasPrefix("0x"), UInt16(key.dropFirst(2), radix: 16) != nil { return true }
+        let plain = key.count == 1 && key.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) }
+        return plain && (!binding.modifiers.isEmpty || !binding.modes.isEmpty)
     }
 
     /// The last physical line of the logical line that starts at `start`.

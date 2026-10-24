@@ -60,4 +60,32 @@ struct SkhdConfigTests {
         let bindings = SkhdConfig.parse("cmd + ctrl - 0x18 : theme-switch next")
         #expect(bindings[0].keyCaps.last == "=")
     }
+
+    /// Disabling writes `# ` before the binding. That comment used to join
+    /// the heading above, renaming the section of every shortcut below it.
+    @Test("disabling keeps the section of the shortcuts below")
+    func disableKeepsSections() throws {
+        let text = """
+            # Focus windows
+            ctrl + alt - left : yabai -m window --focus west
+            ctrl + alt - right : yabai -m window --focus east
+            cmd - w [
+                * : echo close
+            ]
+            """
+        let parsed = SkhdConfig.parse(text)
+        let first = try #require(SkhdConfig.disable(text, binding: parsed[0]))
+        let block = try #require(SkhdConfig.disable(first, binding: parsed[2]))
+        let after = SkhdConfig.parse(block)
+        #expect(after.map(\.key) == ["right"])
+        #expect(after.first?.section == "Focus windows")
+    }
+
+    @Test("prose comments that look a little like bindings stay headings")
+    func proseComments() {
+        let text = "# Note: keep these together\n# Move - then: follow\nalt - h : echo"
+        #expect(
+            SkhdConfig.parse(text).first?.section
+                == "Note: keep these together Move - then: follow")
+    }
 }

@@ -23,6 +23,7 @@ struct SkhdRoundTripTests {
 
         # Focus windows
         ctrl + alt - left : yabai -m window --focus west
+        # ctrl + alt - up : yabai -m window --focus north
         ctrl + alt - right : yabai -m window --focus east
 
         # Grow and shrink, by keycode
@@ -115,14 +116,23 @@ struct SkhdRoundTripTests {
                     ? "# " + Self.lines[index] : Self.lines[index]
                 #expect(lines[index] == expected, "line \(index)")
             }
-            // Section names can shift when a comment joins the one above, so
-            // compare what each remaining shortcut is.
+            // Every other shortcut is unchanged, section included: the
+            // disabled binding's comment must not become a heading.
             func shape(_ b: SkhdBinding) -> String {
-                "\(b.id) \(b.modes) \(b.modifiers) \(b.key) \(b.command) \(b.appOverrides)"
+                "\(b.id) \(b.section ?? "-") \(b.modes) \(b.modifiers) \(b.key) \(b.command) "
+                    + "\(b.appOverrides) \(b.activatesMode ?? "-")"
             }
             #expect(
                 SkhdConfig.parse(disabled).map(shape)
                     == before.filter { $0.id != binding.id }.map(shape))
         }
+    }
+
+    @Test("a disabled binding is skipped, not read as a heading")
+    func disabledBindingIsNotAHeading() throws {
+        let bindings = SkhdConfig.parse(Self.fixture)
+        let right = try #require(bindings.first { $0.key == "right" })
+        #expect(right.section == "Focus windows")
+        #expect(!bindings.contains { $0.key == "up" })
     }
 }
