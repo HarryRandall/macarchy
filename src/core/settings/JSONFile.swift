@@ -10,7 +10,7 @@ enum JSONFile {
         let file = Paths.display(url)
         let data: Data
         do { data = try Data(contentsOf: url) } catch {
-            throw ConfigurationError("\(file) could not be read: \(error.localizedDescription)")
+            throw ConfigurationError(ReadFailure.describe(error, at: url))
         }
         do {
             return try JSONDecoder().decode(type, from: data)
@@ -32,11 +32,12 @@ enum JSONFile {
                 let reason =
                     (context.underlyingError as NSError?)?
                     .userInfo[NSDebugDescriptionErrorKey] as? String
-                return "\(file) is not valid JSON" + (reason.map { ": \($0)" } ?? ".")
+                return "\(file) is not valid JSON"
+                    + (reason.map { ": " + ReadFailure.sentence($0) } ?? ".")
             }
             return "\(file): \(path(context.codingPath)) is invalid: \(context.debugDescription)"
         @unknown default:
-            return "\(file) could not be read: \(error.localizedDescription)"
+            return "\(file) could not be read: \(ReadFailure.sentence(error.localizedDescription))"
         }
     }
 
