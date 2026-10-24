@@ -9,6 +9,7 @@ import {
   MemoryStick,
   MoveHorizontal,
   PanelTop,
+  Puzzle,
   Terminal,
   Type,
   Volume2,
@@ -32,13 +33,19 @@ const builtIn: Record<string, LucideIcon> = {
   volume: Volume2,
 };
 
-const made: Record<NonNullable<BarItem["kind"]>, LucideIcon> = {
+const made: Record<Exclude<NonNullable<BarItem["kind"]>, "widget">, LucideIcon> = {
   text: Type,
   spacer: MoveHorizontal,
   command: Terminal,
 };
 
-export function iconFor(item: Pick<BarItem, "id" | "kind">): LucideIcon {
+/** Built-in widgets by id; the person's own are a puzzle piece. */
+const widgets: Record<string, LucideIcon> = { clock: Clock, cpu: Cpu, battery: BatteryMedium };
+
+type IconItem = Pick<BarItem, "id" | "kind"> & { widget?: string | null };
+
+export function iconFor(item: IconItem): LucideIcon {
+  if (item.kind === "widget") return widgets[item.widget ?? ""] ?? Puzzle;
   return item.kind ? made[item.kind] : (builtIn[item.id] ?? PanelTop);
 }
 
@@ -49,7 +56,7 @@ export function ItemIcon({
   className,
   style,
 }: {
-  item: Pick<BarItem, "id" | "kind">;
+  item: IconItem;
   size: number;
   className?: string;
   style?: CSSProperties;

@@ -21,15 +21,29 @@ extension MenuBarModel {
                 ])
             }
         }
-        let removed = applied.components.filter { component in
-            component.isCustom && !configuration.components.contains { $0.id == component.id }
+        for component in configuration.components where component.isWidget {
+            for member in component.members where !actual.contains(member) {
+                try await send(["--add", "item", member, component.side])
+            }
+            for bracket in component.brackets where !actual.contains(bracket) {
+                try await send(["--add", "bracket", bracket] + component.members)
+            }
         }
-        for component in removed where actual.contains(component.id) {
-            try await send(["--remove", component.id])
+        // Items Macarchy added that are no longer wanted, brackets first so
+        // none is left holding an item that has gone.
+        let owned = { (configuration: BarConfiguration) in
+            configuration.components.filter(\.ownsItem)
+        }
+        let kept = Set(owned(configuration).flatMap { $0.members + $0.brackets })
+        let removed =
+            owned(applied).flatMap(\.brackets) + owned(applied).flatMap(\.members)
+        for item in removed where !kept.contains(item) && actual.contains(item) {
+            try await send(["--remove", item])
         }
         let arguments = BarCommands.changes(
             configuration, from: applied,
-            baseline: Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.editableSettings) }))
+            baseline: Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.editableSettings) }),
+            widgets: WidgetLook.current())
         if !arguments.isEmpty { try await send(arguments) }
     }
 

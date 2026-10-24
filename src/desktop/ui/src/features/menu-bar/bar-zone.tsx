@@ -1,17 +1,16 @@
-import { EyeOff, GripVertical, Pencil, Plus, Trash } from "lucide-react";
-import { type KeyboardEvent, useEffect, useId, useRef } from "react";
+import { Eye, EyeOff, GripVertical, Plus } from "lucide-react";
+import { type KeyboardEvent, useId } from "react";
 
-import { Button } from "~/components/ui/button";
+import type { WidgetInfo } from "~/bridge/protocol";
+import { Badge } from "~/components/ui/badge";
 import { focusRing } from "~/components/ui/focus-ring";
 import { IconButton } from "~/components/ui/icon-button";
-import { SegmentedControl } from "~/components/ui/segmented-control";
-import { Switch } from "~/components/ui/switch";
-import { Field, Input } from "~/components/ui/text-field";
 import { Tooltip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
 import { ItemIcon } from "./menu-bar-icon";
-import { type BarItem, glyphs, intervals, type Zone, zoneLabels } from "./menu-bar-items";
+import { type BarItem, shownText, type Zone, zoneLabels } from "./menu-bar-items";
+import { type Sample, sampleText, widgetOf } from "./widget-model";
 
 /** What a key on an item's handle asks for: a step within its zone, or to the next zone. */
 export type KeyMove = { kind: "step" | "zone"; direction: -1 | 1 };
@@ -26,16 +25,26 @@ const moveKeys: Record<string, KeyMove> = {
 /** A drop target: an item to land before, or a zone's end. */
 export type DropTarget = { item: string } | { zone: Zone } | null;
 
+/** What a row says the item shows, at the preview's sample. */
+function sampleOf(item: BarItem, widgets: readonly WidgetInfo[], sample: Sample): string {
+  if (!item.visible) return "Hidden";
+  if (item.kind === "widget") {
+    return sampleText(item, widgetOf(item, widgets), sample).replace(/\n/g, " ");
+  }
+  return item.kind === "spacer" ? "" : shownText(item);
+}
+
 export function BarZone({
   zone,
   items,
-  editing,
+  widgets,
+  sample,
+  selected,
   dragging,
   over,
   moveHintId,
-  onEdit,
-  onPatch,
-  onRemove,
+  onSelect,
+  onVisible,
   onAdd,
   onKeyMove,
   onDragStart,
@@ -45,13 +54,14 @@ export function BarZone({
 }: {
   zone: Zone;
   items: BarItem[];
-  editing: string | null;
+  widgets: readonly WidgetInfo[];
+  sample: Sample;
+  selected: string | null;
   dragging: string | null;
   over: DropTarget;
   moveHintId: string;
-  onEdit: (id: string | null) => void;
-  onPatch: (id: string, patch: Partial<BarItem>) => void;
-  onRemove: (id: string) => void;
+  onSelect: (id: string) => void;
+  onVisible: (id: string, visible: boolean) => void;
   onAdd: (zone: Zone) => void;
   onKeyMove: (id: string, move: KeyMove) => void;
   onDragStart: (id: string) => void;
@@ -83,14 +93,15 @@ export function BarZone({
       </div>
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
-          const open = editing === item.id;
+          const picked = selected === item.id;
           const targeted =
             over !== null && "item" in over && over.item === item.id && dragging !== item.id;
+          const widget = widgetOf(item, widgets);
           return (
             // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- dragging is a pointer shortcut; the move handle does the same by keyboard.
             <li
               key={item.id}
-              draggable={!open}
+              draggable
               onDragStart={() => onDragStart(item.id)}
               onDragEnd={onDragEnd}
               onDragOver={(event) => {
@@ -103,96 +114,80 @@ export function BarZone({
                 onDrop({ item: item.id });
               }}
               className={cn(
-                "rounded-control border bg-card shadow-card transition-all motion-reduce:transition-none",
-                open ? "border-accent ring-[3px] ring-accent-soft" : "border-hairline",
+                "flex h-10 cursor-grab items-center gap-1 rounded-control border bg-card pr-1 pl-0.5 shadow-card transition-all active:cursor-grabbing motion-reduce:transition-none",
+                picked ? "border-accent ring-[3px] ring-accent-soft" : "border-hairline",
                 dragging === item.id && "opacity-40",
                 targeted && "translate-y-0.5 border-t-2 border-t-accent",
               )}
             >
-              <div
+              <Tooltip content="Drag, or use the arrow keys, to move" describe={false}>
+                <button
+                  type="button"
+                  aria-label={`Move ${item.title}`}
+                  aria-describedby={moveHintId}
+                  data-move-handle={item.id}
+                  onKeyDown={(event: KeyboardEvent) => {
+                    const move = moveKeys[event.key];
+                    if (!move) return;
+                    event.preventDefault();
+                    onKeyMove(item.id, move);
+                  }}
+                  className={cn(
+                    "grid h-6 w-4 shrink-0 place-items-center rounded-small text-fg-tertiary",
+                    focusRing,
+                  )}
+                >
+                  <GripVertical aria-hidden size={13} />
+                </button>
+              </Tooltip>
+              <button
+                type="button"
+                aria-pressed={picked}
+                onClick={() => onSelect(item.id)}
                 className={cn(
-                  "flex h-9 items-center gap-2 pr-1.5 pl-1",
-                  !open && "cursor-grab active:cursor-grabbing",
+                  "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-small px-1 text-left",
+                  focusRing,
                 )}
               >
-                <Tooltip content="Drag, or use the arrow keys, to move" describe={false}>
-                  <button
-                    type="button"
-                    aria-label={`Move ${item.title}`}
-                    aria-describedby={moveHintId}
-                    data-move-handle={item.id}
-                    onKeyDown={(event: KeyboardEvent) => {
-                      const move = moveKeys[event.key];
-                      if (!move) return;
-                      event.preventDefault();
-                      onKeyMove(item.id, move);
-                    }}
-                    className={cn(
-                      "grid h-6 w-4 shrink-0 place-items-center rounded-small text-fg-tertiary",
-                      focusRing,
-                    )}
-                  >
-                    <GripVertical aria-hidden size={13} />
-                  </button>
-                </Tooltip>
-                <ItemIcon
-                  item={item}
-                  size={13}
-                  className={cn(
-                    "shrink-0",
-                    item.visible ? "text-fg-secondary" : "text-fg-tertiary",
-                  )}
-                />
                 <span
                   className={cn(
-                    "min-w-0 flex-1 truncate text-detail font-medium",
+                    "grid size-6 shrink-0 place-items-center rounded-[6px] border border-hairline bg-side",
+                    item.visible ? "text-fg-secondary" : "text-fg-tertiary",
+                  )}
+                >
+                  <ItemIcon item={item} size={12} />
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 shrink truncate text-detail font-medium",
                     item.visible ? "text-fg" : "text-fg-tertiary",
                   )}
                 >
                   {item.title}
                 </span>
-                {!item.visible ? (
-                  <Tooltip content="Hidden">
-                    <span className="shrink-0 text-fg-tertiary">
-                      <EyeOff aria-hidden size={12} />
-                      <span className="sr-only">Hidden</span>
-                    </span>
-                  </Tooltip>
+                {widget?.scripted ? (
+                  <Badge tone="warn" className="h-[18px] px-1.5 text-caption">
+                    Script
+                  </Badge>
                 ) : null}
-                <IconButton
-                  label={`Edit ${item.title}`}
-                  size="sm"
-                  pressed={open}
-                  aria-expanded={open}
-                  onClick={() => onEdit(open ? null : item.id)}
-                >
-                  <Pencil aria-hidden />
-                </IconButton>
-                {item.kind ? (
-                  <IconButton
-                    label={`Remove ${item.title}`}
-                    size="sm"
-                    tone="danger"
-                    onClick={() => onRemove(item.id)}
-                  >
-                    <Trash aria-hidden />
-                  </IconButton>
-                ) : null}
-              </div>
-              {open ? (
-                <ItemEditor
-                  item={item}
-                  onChange={(patch) => onPatch(item.id, patch)}
-                  onDone={() => onEdit(null)}
-                />
-              ) : null}
+                <span className="ml-auto min-w-0 truncate pl-1 font-mono text-caption text-fg-tertiary">
+                  {sampleOf(item, widgets, sample)}
+                </span>
+              </button>
+              <IconButton
+                label={item.visible ? `Hide ${item.title}` : `Show ${item.title}`}
+                size="sm"
+                onClick={() => onVisible(item.id, !item.visible)}
+              >
+                {item.visible ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+              </IconButton>
             </li>
           );
         })}
       </ul>
       {items.length === 0 ? (
         <p className="grid h-16 place-items-center px-3 text-center text-small text-fg-tertiary">
-          Empty
+          {zone === "centre" ? "For displays without a notch" : "Empty"}
         </p>
       ) : null}
       <button
@@ -204,115 +199,9 @@ export function BarZone({
           items.length > 0 && "mt-2",
         )}
       >
-        <Plus aria-hidden size={13} /> Add item
+        <Plus aria-hidden size={13} /> Add widget
         <span className="sr-only"> to the {zoneLabels[zone].toLowerCase()} zone</span>
       </button>
     </section>
-  );
-}
-
-function ItemEditor({
-  item,
-  onChange,
-  onDone,
-}: {
-  item: BarItem;
-  onChange: (patch: Partial<BarItem>) => void;
-  onDone: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const glyphLabelId = useId();
-  const onEnter = (event: KeyboardEvent) => {
-    if (event.key === "Enter") onDone();
-  };
-  useEffect(() => {
-    ref.current?.querySelector("input")?.focus();
-  }, []);
-
-  return (
-    <div ref={ref} className="flex flex-col gap-2.5 border-t border-hairline px-3 pt-2.5 pb-3">
-      <Field.Root>
-        <Field.Label className="text-small text-fg-secondary">Name</Field.Label>
-        <Input
-          size="sm"
-          value={item.title}
-          onChange={(event) => onChange({ title: event.currentTarget.value })}
-          onKeyDown={onEnter}
-        />
-      </Field.Root>
-      {item.kind === "text" ? (
-        <Field.Root>
-          <Field.Label className="text-small text-fg-secondary">Text</Field.Label>
-          <Input
-            size="sm"
-            value={item.text}
-            onChange={(event) => onChange({ text: event.currentTarget.value })}
-            onKeyDown={onEnter}
-          />
-        </Field.Root>
-      ) : null}
-      {item.kind === "command" ? (
-        <>
-          <Field.Root>
-            <Field.Label className="text-small text-fg-secondary">Command</Field.Label>
-            <Input
-              size="sm"
-              variant="mono"
-              value={item.command ?? ""}
-              placeholder="uptime | cut -d, -f1"
-              onChange={(event) => onChange({ command: event.currentTarget.value })}
-              onKeyDown={onEnter}
-            />
-            <Field.Description className="text-caption text-fg-tertiary">
-              Runs in sh; what it prints becomes the label
-            </Field.Description>
-          </Field.Root>
-          <SegmentedControl
-            label="Update every"
-            size="sm"
-            value={String(item.interval ?? 30)}
-            options={intervals}
-            onValueChange={(value) => onChange({ interval: Number(value) })}
-            className="self-start"
-          />
-        </>
-      ) : null}
-      {item.kind === "text" || item.kind === "command" ? (
-        <div className="flex flex-col gap-1.5">
-          <span id={glyphLabelId} className="text-small text-fg-secondary">
-            Glyph
-          </span>
-          <div role="group" aria-labelledby={glyphLabelId} className="flex flex-wrap gap-1">
-            {glyphs.map((glyph) => (
-              <IconButton
-                key={glyph || "none"}
-                label={glyph ? `Glyph ${glyph}` : "No glyph"}
-                size="sm"
-                pressed={item.icon === glyph}
-                onClick={() => onChange({ icon: glyph })}
-              >
-                <span aria-hidden className="text-detail">
-                  {glyph || "–"}
-                </span>
-              </IconButton>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      <div className="flex items-center gap-2 pt-0.5">
-        <Switch
-          size="sm"
-          aria-label="Visible"
-          checked={item.visible}
-          onCheckedChange={(checked) => onChange({ visible: checked })}
-        />
-        <span aria-hidden className="flex-1 text-small text-fg-secondary">
-          Visible
-        </span>
-        <Button size="sm" onClick={onDone}>
-          Done
-        </Button>
-      </div>
-    </div>
   );
 }

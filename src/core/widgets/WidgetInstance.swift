@@ -10,6 +10,24 @@ public struct WidgetInstance: Equatable, Sendable {
     /// The manifest's defaults with the component's saved values over them.
     public let settings: [String: SettingValue]
     public let visible: Bool
+    /// The widget's style with the component's edits over it.
+    public let style: WidgetStyle
+    /// What a click does: the component's own, or else the widget's.
+    public let click: WidgetClick?
+
+    public init(
+        id: String, manifest: WidgetManifest, directory: URL,
+        settings: [String: SettingValue], visible: Bool,
+        style: WidgetStyle? = nil, click: WidgetClick? = nil
+    ) {
+        self.id = id
+        self.manifest = manifest
+        self.directory = directory
+        self.settings = settings
+        self.visible = visible
+        self.style = (style ?? WidgetStyle()).over(manifest.style)
+        self.click = click ?? manifest.click
+    }
 
     /// Every widget component that can run, and why each of the others cannot.
     public static func resolve(
@@ -37,7 +55,8 @@ public struct WidgetInstance: Equatable, Sendable {
             instances.append(
                 WidgetInstance(
                     id: component.id, manifest: entry.manifest, directory: entry.directory,
-                    settings: settings, visible: component.visible))
+                    settings: settings, visible: component.visible, style: component.style,
+                    click: component.click))
         }
         return (instances, problems)
     }

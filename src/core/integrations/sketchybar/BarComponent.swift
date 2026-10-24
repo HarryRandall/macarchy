@@ -58,8 +58,10 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
     public var widget: String?
     /// Values for the widget's settings that differ from its defaults.
     public var settings: [String: SettingValue]?
-    /// Dropdown rows that replace the widget's own, when edited.
-    public var menu: [WidgetMenuRow]?
+    /// The widget's look with these fields changed, when edited.
+    public var style: WidgetStyle?
+    /// What a click does instead of what the widget says, when edited.
+    public var click: WidgetClick?
 
     public init(
         id: String, title: String, side: String, members: [String],
@@ -119,7 +121,8 @@ public struct BarComponent: Codable, Equatable, Identifiable, Sendable {
         interval = try container.decodeIfPresent(Int.self, forKey: .interval)
         widget = try container.decodeIfPresent(String.self, forKey: .widget)
         settings = try container.decodeIfPresent([String: SettingValue].self, forKey: .settings)
-        menu = try container.decodeIfPresent([WidgetMenuRow].self, forKey: .menu)
+        style = try container.decodeIfPresent(WidgetStyle.self, forKey: .style)
+        click = try container.decodeIfPresent(WidgetClick.self, forKey: .click)
     }
 
     /// Whether the component shows a widget rather than a native item or a made one.

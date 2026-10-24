@@ -40,9 +40,7 @@ public enum WidgetActions {
                 resolved.problems[instanceID]
                     ?? "There is no widget called \(instanceID) on the bar")
         }
-        let component = configuration?.components.first { $0.id == instanceID }
-        if component?.menu != nil { return .dropdown(instanceID) }
-        guard let click = instance.manifest.click else { return .nothing }
+        guard let click = instance.click else { return .nothing }
         if click.dropdown != nil { return .dropdown(instanceID) }
         if let target = click.open {
             try await open(target, execute: execute)

@@ -132,6 +132,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerThemes(model: model)
         surface.router.registerShortcuts(model: model)
         surface.router.registerMenuBar(model: model)
+        surface.router.registerMenuBarWidgets(model: model)
     }
 
     /// The window paints its own ground before the page has drawn, and while

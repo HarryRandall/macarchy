@@ -10,7 +10,7 @@ extension WidgetHost {
     )
         -> [(item: String, properties: [String])]
     {
-        let style = instance.manifest.style ?? WidgetStyle()
+        let style = instance.style
         let text =
             output?.colour.flatMap(WidgetColour.sketchybar)
             ?? style.textColour.flatMap(look.colour) ?? look.text

@@ -19,6 +19,7 @@ import {
 } from "~/components/layout/page-chrome";
 import { Notice } from "~/components/ui/notice";
 import { copyText } from "~/lib/clipboard";
+import { cn } from "~/lib/cn";
 import { useStore } from "~/lib/store";
 
 import { AboutDialog } from "./about-dialog";
@@ -100,6 +101,7 @@ export function SettingsShell({
   logsRequest,
   health,
   changelog,
+  wide = false,
   children,
 }: {
   shell: ShellStore;
@@ -116,6 +118,8 @@ export function SettingsShell({
   logsRequest: Signal;
   health: { issues: number | null; model: string | null };
   changelog: { fresh: boolean; dismissed: boolean; onDismiss: () => void };
+  /** The page asks for more width than the reading column. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -438,7 +442,13 @@ export function SettingsShell({
             tabIndex={-1}
             className="min-h-0 flex-1 overflow-y-auto outline-none [scrollbar-gutter:stable_both-edges]"
           >
-            <div key={route} className="mx-auto flex max-w-[900px] flex-col gap-4 px-8 pt-7 pb-10">
+            <div
+              key={route}
+              className={cn(
+                "mx-auto flex flex-col gap-4 px-8 pt-7 pb-10",
+                wide ? "max-w-[1240px]" : "max-w-[900px]",
+              )}
+            >
               {snapshot.error ? (
                 <Notice.Root variant="error">
                   <Notice.Header onDismiss={() => shell.dismissError()}>

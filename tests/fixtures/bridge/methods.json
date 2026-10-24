@@ -457,26 +457,62 @@
         },
         "items": [
           {
+            "click": null,
             "command": null,
             "icon": "",
             "id": "calendar",
             "interval": null,
             "kind": null,
+            "settings": {},
+            "style": null,
             "text": "",
             "title": "Clock",
             "visible": false,
+            "widget": null,
             "zone": "right"
           },
           {
+            "click": null,
             "command": null,
             "icon": "",
             "id": "macarchy.note-2",
             "interval": null,
             "kind": "text",
+            "settings": {},
+            "style": null,
             "text": "Hello",
             "title": "Text",
             "visible": true,
+            "widget": null,
             "zone": "left"
+          },
+          {
+            "click": {
+              "dropdown": [
+                {
+                  "label": "Hi",
+                  "type": "text"
+                }
+              ]
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.clock",
+            "interval": null,
+            "kind": "widget",
+            "settings": {
+              "order": "month-day",
+              "seconds": true
+            },
+            "style": {
+              "paddingLeft": 4,
+              "textColour": "accent"
+            },
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "widget": "clock",
+            "zone": "right"
           }
         ]
       },
@@ -488,31 +524,365 @@
         },
         "items": [
           {
+            "click": null,
             "command": null,
             "icon": "",
             "id": "calendar",
             "interval": null,
             "kind": null,
             "reading": "Thu 23 Oct 14:05",
+            "settings": {},
+            "style": null,
             "text": "",
             "title": "Clock",
             "visible": true,
+            "widget": null,
             "zone": "right"
           },
           {
+            "click": null,
             "command": "uptime | cut -d, -f1",
             "icon": "↑",
             "id": "macarchy.uptime-1",
             "interval": 60,
             "kind": "command",
             "reading": "",
+            "settings": {},
+            "style": null,
             "text": "",
             "title": "Uptime",
             "visible": true,
+            "widget": null,
             "zone": "centre"
+          },
+          {
+            "click": {
+              "open": "Activity Monitor"
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.cpu",
+            "interval": null,
+            "kind": "widget",
+            "reading": "12.0%",
+            "settings": {
+              "temperature": false
+            },
+            "style": {
+              "box": "fill",
+              "radius": 6
+            },
+            "text": "",
+            "title": "CPU",
+            "visible": true,
+            "widget": "cpu",
+            "zone": "right"
           }
         ],
-        "unavailableReason": null
+        "unavailableReason": null,
+        "widgets": [
+          {
+            "author": "Macarchy",
+            "click": {
+              "dropdown": [
+                {
+                  "label": "{weekday.long} {day}",
+                  "type": "heading"
+                },
+                {
+                  "label": "London",
+                  "type": "reading",
+                  "value": "{time:Europe/London}"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "label": "Seconds",
+                  "setting": "seconds",
+                  "type": "toggle"
+                },
+                {
+                  "label": "Order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "setting": "order",
+                  "type": "choice"
+                },
+                {
+                  "label": "Open Calendar",
+                  "open": "Calendar",
+                  "type": "action"
+                }
+              ]
+            },
+            "description": "The date and time, in any format.",
+            "files": [
+              "widget.json"
+            ],
+            "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+            "icon": "􀧞",
+            "id": "clock",
+            "label": "{date}",
+            "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+            "name": "Clock",
+            "origin": "builtIn",
+            "samples": {
+              "unavailable": "--",
+              "widest": "Wed 30 Sep 12:59 PM"
+            },
+            "scripted": false,
+            "settings": [
+              {
+                "default": false,
+                "hint": "Every second",
+                "key": "seconds",
+                "label": "Seconds",
+                "type": "toggle"
+              },
+              {
+                "default": "day-month",
+                "key": "order",
+                "label": "Date order",
+                "options": [
+                  "day-month",
+                  "month-day"
+                ],
+                "type": "choice"
+              },
+              {
+                "key": "size",
+                "label": "Size",
+                "max": 9,
+                "min": 1,
+                "step": 1,
+                "type": "number",
+                "unit": "pt"
+              }
+            ],
+            "source": "date",
+            "style": {
+              "box": "none",
+              "size": 13
+            },
+            "update": {
+              "events": [
+                "system_woke"
+              ],
+              "every": "minute"
+            },
+            "version": "1.0.0"
+          },
+          {
+            "files": [
+              "provider.sh",
+              "widget.json"
+            ],
+            "folder": "~/.config/macarchy/widgets/uptime",
+            "id": "uptime",
+            "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+            "name": "Uptime",
+            "origin": "user",
+            "provider": "provider.sh",
+            "scripted": true,
+            "settings": [],
+            "update": {
+              "every": "1m"
+            },
+            "version": "0.1.0"
+          }
+        ]
+      }
+    }
+  ],
+  "menuBar.duplicateWidget": [
+    {
+      "params": {
+        "widget": "clock"
+      },
+      "result": {
+        "state": {
+          "bar": {
+            "height": 35,
+            "padding": 10,
+            "position": "top"
+          },
+          "items": [
+            {
+              "click": null,
+              "command": null,
+              "icon": "",
+              "id": "calendar",
+              "interval": null,
+              "kind": null,
+              "reading": "Thu 23 Oct 14:05",
+              "settings": {},
+              "style": null,
+              "text": "",
+              "title": "Clock",
+              "visible": true,
+              "widget": null,
+              "zone": "right"
+            },
+            {
+              "click": null,
+              "command": "uptime | cut -d, -f1",
+              "icon": "↑",
+              "id": "macarchy.uptime-1",
+              "interval": 60,
+              "kind": "command",
+              "reading": "",
+              "settings": {},
+              "style": null,
+              "text": "",
+              "title": "Uptime",
+              "visible": true,
+              "widget": null,
+              "zone": "centre"
+            },
+            {
+              "click": {
+                "open": "Activity Monitor"
+              },
+              "command": null,
+              "icon": "",
+              "id": "macarchy.cpu",
+              "interval": null,
+              "kind": "widget",
+              "reading": "12.0%",
+              "settings": {
+                "temperature": false
+              },
+              "style": {
+                "box": "fill",
+                "radius": 6
+              },
+              "text": "",
+              "title": "CPU",
+              "visible": true,
+              "widget": "cpu",
+              "zone": "right"
+            }
+          ],
+          "unavailableReason": null,
+          "widgets": [
+            {
+              "author": "Macarchy",
+              "click": {
+                "dropdown": [
+                  {
+                    "label": "{weekday.long} {day}",
+                    "type": "heading"
+                  },
+                  {
+                    "label": "London",
+                    "type": "reading",
+                    "value": "{time:Europe/London}"
+                  },
+                  {
+                    "type": "divider"
+                  },
+                  {
+                    "label": "Seconds",
+                    "setting": "seconds",
+                    "type": "toggle"
+                  },
+                  {
+                    "label": "Order",
+                    "options": [
+                      "day-month",
+                      "month-day"
+                    ],
+                    "setting": "order",
+                    "type": "choice"
+                  },
+                  {
+                    "label": "Open Calendar",
+                    "open": "Calendar",
+                    "type": "action"
+                  }
+                ]
+              },
+              "description": "The date and time, in any format.",
+              "files": [
+                "widget.json"
+              ],
+              "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+              "icon": "􀧞",
+              "id": "clock",
+              "label": "{date}",
+              "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+              "name": "Clock",
+              "origin": "builtIn",
+              "samples": {
+                "unavailable": "--",
+                "widest": "Wed 30 Sep 12:59 PM"
+              },
+              "scripted": false,
+              "settings": [
+                {
+                  "default": false,
+                  "hint": "Every second",
+                  "key": "seconds",
+                  "label": "Seconds",
+                  "type": "toggle"
+                },
+                {
+                  "default": "day-month",
+                  "key": "order",
+                  "label": "Date order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "type": "choice"
+                },
+                {
+                  "key": "size",
+                  "label": "Size",
+                  "max": 9,
+                  "min": 1,
+                  "step": 1,
+                  "type": "number",
+                  "unit": "pt"
+                }
+              ],
+              "source": "date",
+              "style": {
+                "box": "none",
+                "size": 13
+              },
+              "update": {
+                "events": [
+                  "system_woke"
+                ],
+                "every": "minute"
+              },
+              "version": "1.0.0"
+            },
+            {
+              "files": [
+                "provider.sh",
+                "widget.json"
+              ],
+              "folder": "~/.config/macarchy/widgets/uptime",
+              "id": "uptime",
+              "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+              "name": "Uptime",
+              "origin": "user",
+              "provider": "provider.sh",
+              "scripted": true,
+              "settings": [],
+              "update": {
+                "every": "1m"
+              },
+              "version": "0.1.0"
+            }
+          ]
+        },
+        "widget": "clock-copy"
       }
     }
   ],
@@ -527,31 +897,176 @@
         },
         "items": [
           {
+            "click": null,
             "command": null,
             "icon": "",
             "id": "calendar",
             "interval": null,
             "kind": null,
             "reading": "Thu 23 Oct 14:05",
+            "settings": {},
+            "style": null,
             "text": "",
             "title": "Clock",
             "visible": true,
+            "widget": null,
             "zone": "right"
           },
           {
+            "click": null,
             "command": "uptime | cut -d, -f1",
             "icon": "↑",
             "id": "macarchy.uptime-1",
             "interval": 60,
             "kind": "command",
             "reading": "",
+            "settings": {},
+            "style": null,
             "text": "",
             "title": "Uptime",
             "visible": true,
+            "widget": null,
             "zone": "centre"
+          },
+          {
+            "click": {
+              "open": "Activity Monitor"
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.cpu",
+            "interval": null,
+            "kind": "widget",
+            "reading": "12.0%",
+            "settings": {
+              "temperature": false
+            },
+            "style": {
+              "box": "fill",
+              "radius": 6
+            },
+            "text": "",
+            "title": "CPU",
+            "visible": true,
+            "widget": "cpu",
+            "zone": "right"
           }
         ],
-        "unavailableReason": null
+        "unavailableReason": null,
+        "widgets": [
+          {
+            "author": "Macarchy",
+            "click": {
+              "dropdown": [
+                {
+                  "label": "{weekday.long} {day}",
+                  "type": "heading"
+                },
+                {
+                  "label": "London",
+                  "type": "reading",
+                  "value": "{time:Europe/London}"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "label": "Seconds",
+                  "setting": "seconds",
+                  "type": "toggle"
+                },
+                {
+                  "label": "Order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "setting": "order",
+                  "type": "choice"
+                },
+                {
+                  "label": "Open Calendar",
+                  "open": "Calendar",
+                  "type": "action"
+                }
+              ]
+            },
+            "description": "The date and time, in any format.",
+            "files": [
+              "widget.json"
+            ],
+            "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+            "icon": "􀧞",
+            "id": "clock",
+            "label": "{date}",
+            "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+            "name": "Clock",
+            "origin": "builtIn",
+            "samples": {
+              "unavailable": "--",
+              "widest": "Wed 30 Sep 12:59 PM"
+            },
+            "scripted": false,
+            "settings": [
+              {
+                "default": false,
+                "hint": "Every second",
+                "key": "seconds",
+                "label": "Seconds",
+                "type": "toggle"
+              },
+              {
+                "default": "day-month",
+                "key": "order",
+                "label": "Date order",
+                "options": [
+                  "day-month",
+                  "month-day"
+                ],
+                "type": "choice"
+              },
+              {
+                "key": "size",
+                "label": "Size",
+                "max": 9,
+                "min": 1,
+                "step": 1,
+                "type": "number",
+                "unit": "pt"
+              }
+            ],
+            "source": "date",
+            "style": {
+              "box": "none",
+              "size": 13
+            },
+            "update": {
+              "events": [
+                "system_woke"
+              ],
+              "every": "minute"
+            },
+            "version": "1.0.0"
+          },
+          {
+            "files": [
+              "provider.sh",
+              "widget.json"
+            ],
+            "folder": "~/.config/macarchy/widgets/uptime",
+            "id": "uptime",
+            "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+            "name": "Uptime",
+            "origin": "user",
+            "provider": "provider.sh",
+            "scripted": true,
+            "settings": [],
+            "update": {
+              "every": "1m"
+            },
+            "version": "0.1.0"
+          }
+        ]
       }
     },
     {
@@ -563,8 +1078,32 @@
           "position": "top"
         },
         "items": [],
-        "unavailableReason": "sketchybar is not running."
+        "unavailableReason": "sketchybar is not running.",
+        "widgets": []
       }
+    }
+  ],
+  "menuBar.openWidgetFile": [
+    {
+      "params": {
+        "file": "provider.sh",
+        "widget": "uptime"
+      },
+      "result": null
+    }
+  ],
+  "menuBar.revealWidget": [
+    {
+      "params": {
+        "widget": "clock"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "widget": null
+      },
+      "result": null
     }
   ],
   "report.copy": [

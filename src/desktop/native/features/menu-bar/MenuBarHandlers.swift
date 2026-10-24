@@ -15,7 +15,7 @@ extension BridgeRouter {
             _ = await model.readMenuBar()
             if let error = bar.error { throw BridgeFailure(.operationFailed, error) }
             let configuration = try MenuBarEdits.configuration(
-                from: params, over: bar.applied)
+                from: params, over: bar.applied, catalogue: WidgetCatalogue().read())
             bar.edit { $0 = configuration }
             await bar.apply()
             StateBroadcast.shared.settingsWritten()
@@ -45,8 +45,10 @@ extension AppModel {
             MenuBarItemState(
                 id: component.id, title: component.title,
                 zone: MenuBarEdits.zone(fromSide: component.side), visible: component.visible,
-                kind: component.kind, text: component.text, icon: component.icon,
-                command: component.command, interval: component.interval,
+                kind: component.isWidget ? "widget" : component.kind, text: component.text,
+                icon: component.icon, command: component.command, interval: component.interval,
+                widget: component.widget, settings: component.settings ?? [:],
+                style: component.style, click: component.click,
                 reading: component.isCustom
                     ? component.rendered(component.text)
                     : component.members.filter { !$0.hasPrefix("gap.") }
@@ -60,7 +62,7 @@ extension AppModel {
                 height: Int(Double(geometry["height"] ?? "") ?? 35),
                 position: geometry["position"] == "bottom" ? "bottom" : "top",
                 padding: Int(Double(geometry["padding_left"] ?? "") ?? 10)),
-            unavailableReason: menuBar.error)
+            widgets: MenuBarWidgets.info(), unavailableReason: menuBar.error)
     }
 }
 
@@ -80,7 +82,8 @@ enum MenuBarEdits {
     }
 
     static func configuration(
-        from params: MenuBarApplyParams, over current: BarConfiguration
+        from params: MenuBarApplyParams, over current: BarConfiguration,
+        catalogue: WidgetCatalogue.Snapshot
     ) throws -> BarConfiguration {
         guard (16...64).contains(params.bar.height), (0...64).contains(params.bar.padding),
             ["top", "bottom"].contains(params.bar.position)
@@ -93,6 +96,10 @@ enum MenuBarEdits {
             var component: BarComponent
             if let known = existing[item.id] {
                 component = known
+            } else if item.kind == "widget", isNewID(item.id) {
+                component = BarComponent(
+                    id: item.id, title: item.title, side: "left", members: [item.id])
+                component.widget = item.widget
             } else {
                 // Only items made on the page are new, and their id becomes a
                 // SketchyBar item name.
@@ -118,18 +125,45 @@ enum MenuBarEdits {
                 component.command = component.kind == "command" ? item.command : nil
                 component.interval = component.kind == "command" ? item.interval : nil
             }
+            if component.isWidget { try widgetEdits(item, into: &component, catalogue: catalogue) }
             components.append(component)
         }
         // The bar's own items cannot be removed, only hidden; one the page
         // left out keeps its place at the end of its side.
         let sent = Set(params.items.map(\.id))
-        components += current.components.filter { !$0.isCustom && !sent.contains($0.id) }
+        components += current.components.filter { !$0.ownsItem && !sent.contains($0.id) }
         configuration.components = components
         configuration.geometry["height"] = String(params.bar.height)
         configuration.geometry["position"] = params.bar.position
         configuration.geometry["padding_left"] = String(params.bar.padding)
         configuration.geometry["padding_right"] = String(params.bar.padding)
-        return configuration
+        let manifests = Dictionary(
+            catalogue.entries.map { ($0.id, $0.manifest) }, uniquingKeysWith: { first, _ in first })
+        return WidgetLook(manifests: manifests).normalised(configuration)
+    }
+
+    /// A widget item's settings and its edits to the widget's look and
+    /// click, checked against the widget. Edits that change nothing are
+    /// dropped, so the item follows the widget if it changes.
+    static func widgetEdits(
+        _ item: MenuBarItemEdit, into component: inout BarComponent,
+        catalogue: WidgetCatalogue.Snapshot
+    ) throws {
+        guard let id = component.widget, item.widget == id, let entry = catalogue.entry(id) else {
+            throw BridgeFailure(.invalidParams, "There is no widget called \(item.widget ?? "").")
+        }
+        let manifest = entry.manifest
+        let problems =
+            manifest.problems(settings: item.settings)
+            + manifest.problems(style: item.style, click: item.click)
+        if let problem = problems.first {
+            throw BridgeFailure(.invalidParams, "\(item.title): \(problem)")
+        }
+        let defaults = (manifest.settings ?? [:]).compactMapValues(\.default)
+        let settings = item.settings.filter { defaults[$0.key] != $0.value }
+        component.settings = settings.isEmpty ? nil : settings
+        component.style = item.style == WidgetStyle() ? nil : item.style
+        component.click = item.click == manifest.click ? nil : item.click
     }
 
     /// `macarchy.` and then lower-case letters, digits and hyphens, as the

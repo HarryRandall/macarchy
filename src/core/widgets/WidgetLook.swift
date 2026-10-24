@@ -64,7 +64,8 @@ public struct WidgetLook: Sendable {
 
     /// Whether the widget stacks its label's two lines beside its icon.
     public func isStacked(_ component: BarComponent) -> Bool {
-        component.widget.flatMap { manifests[$0] }?.style?.lines == 2
+        guard let manifest = component.widget.flatMap({ manifests[$0] }) else { return false }
+        return (component.style?.lines ?? manifest.style?.lines) == 2
     }
 
     /// The bar with each widget component made of the items its widget
@@ -84,10 +85,10 @@ public struct WidgetLook: Sendable {
     /// is unknown, in which case the item is left as it is.
     public func arguments(for component: BarComponent) -> [String] {
         guard let widget = component.widget, let manifest = manifests[widget] else { return [] }
-        let style = manifest.style ?? WidgetStyle()
+        let style = (component.style ?? WidgetStyle()).over(manifest.style)
         let icon = manifest.icon ?? ""
         let size = style.size ?? 12
-        let clicks = manifest.click != nil || component.menu != nil
+        let clicks = (component.click ?? manifest.click) != nil
         let click =
             "click_script="
             + (clicks ? "\(command) widget click \(Shell.quote(component.id))" : "")

@@ -27,7 +27,7 @@ public enum WidgetMenu {
     public static func items(
         instance: WidgetInstance, component: BarComponent?, output: WidgetOutput?, label: String
     ) -> [WidgetMenuItem] {
-        let rows = component?.menu ?? output?.rows ?? instance.manifest.click?.dropdown ?? []
+        let rows = component?.click?.dropdown ?? output?.rows ?? instance.click?.dropdown ?? []
         let values = instance.settings.mapValues(\.string)
             .merging(output?.values ?? [:]) { $1 }
             .merging(["label": label]) { $1 }
@@ -75,7 +75,7 @@ public enum WidgetMenu {
         of index: Int, option: String? = nil, instance: WidgetInstance, component: BarComponent?,
         output: WidgetOutput?
     ) -> Effect {
-        let rows = component?.menu ?? output?.rows ?? instance.manifest.click?.dropdown ?? []
+        let rows = component?.click?.dropdown ?? output?.rows ?? instance.click?.dropdown ?? []
         guard rows.indices.contains(index) else { return .nothing }
         let row = rows[index]
         let declared = instance.manifest.settings ?? [:]

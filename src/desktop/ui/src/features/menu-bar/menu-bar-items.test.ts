@@ -27,6 +27,10 @@ function item(id: string, zone: Zone, kind: BarItem["kind"] = null): BarItem {
     icon: "",
     command: null,
     interval: null,
+    widget: null,
+    settings: {},
+    style: null,
+    click: null,
     reading: "",
   };
 }

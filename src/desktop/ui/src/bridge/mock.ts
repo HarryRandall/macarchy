@@ -535,6 +535,15 @@ export function installMockHost() {
       console.info("[mock] menuBar.apply", { items, bar });
       return menuBar.apply(items, bar);
     },
+    "menuBar.revealWidget": ({ widget }) => {
+      console.info("[mock] menuBar.revealWidget", widget);
+      return null;
+    },
+    "menuBar.openWidgetFile": ({ widget, file }) => {
+      console.info("[mock] menuBar.openWidgetFile", widget, file);
+      return null;
+    },
+    "menuBar.duplicateWidget": ({ widget }) => menuBar.duplicate(widget),
     "layout.getState": () => {
       if (failures.has("layout-state")) {
         throw new MockFailure("unavailable", "Could not read the layout from yabai.");

@@ -1,10 +1,11 @@
-import { Check, RotateCcw } from "lucide-react";
+import { Check, Folder, RotateCcw } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
-import type { BarItemKind, MenuBarSettings, MenuBarState } from "~/bridge/protocol";
+import type { MenuBarSettings, MenuBarState } from "~/bridge/protocol";
 import { PageHeader } from "~/components/layout/page-header";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardHeader, CardRows, Row, SectionLabel } from "~/components/ui/card";
+import { Card, CardHeader, CardRows, Row } from "~/components/ui/card";
 import { Notice } from "~/components/ui/notice";
 import { SegmentedControl } from "~/components/ui/segmented-control";
 import { ValueSlider } from "~/components/ui/value-slider";
@@ -13,6 +14,7 @@ import type { PageContext } from "~/shell/page";
 
 import { BarPreview } from "./bar-preview";
 import { BarZone, type DropTarget, type KeyMove } from "./bar-zone";
+import { ItemInspector, type WidgetFileActions } from "./item-inspector";
 import { ItemLibrary } from "./item-library";
 import {
   addItem,
@@ -20,6 +22,7 @@ import {
   editsOf,
   moveItem,
   newItem,
+  newWidgetItem,
   patchItem,
   problemWith,
   removeItem,
@@ -27,15 +30,23 @@ import {
   sameItems,
   shiftZone,
   stepItem,
+  widgetCounts,
   type Zone,
   zoneLabels,
   zones,
 } from "./menu-bar-items";
 import { fallbackLook, type MenuBarStore } from "./menu-bar-store";
+import { type Sample, sampleOptions, widgetOf, widgetProblem } from "./widget-model";
+import { WidgetEditor } from "./widget-editor";
 
 const positionOptions = [
   { value: "top" as const, label: "Top" },
   { value: "bottom" as const, label: "Bottom" },
+];
+
+const viewOptions = [
+  { value: "widgets" as const, label: "Widgets" },
+  { value: "bar" as const, label: "Bar" },
 ];
 
 interface Draft {
@@ -56,15 +67,33 @@ const draftOf = (state: MenuBarState): Draft => ({
 const edited = (draft: Draft) =>
   !sameItems(draft.items, draft.base.items) || !sameBar(draft.bar, draft.base.bar);
 
+/** How many items differ from the bar, for the badge by Apply. */
+function changeCount(draft: Draft): number {
+  const before = new Map(draft.base.items.map((item) => [item.id, item]));
+  let count = sameBar(draft.bar, draft.base.bar) ? 0 : 1;
+  for (const item of draft.items) {
+    const old = before.get(item.id);
+    if (!old || !sameItems([item], [old])) count++;
+    before.delete(item.id);
+  }
+  return count + before.size;
+}
+
 /**
  * The bar editor. Edits stay in the page until Apply, which makes SketchyBar
- * match and saves the configuration that startup replays.
+ * match and saves the configuration that startup replays. A widget opens in
+ * the inspector beside the zones, or in the full editor in place of them.
  */
 export function MenuBarPage({ store, context }: { store: MenuBarStore; context: PageContext }) {
   const snapshot = useStore(store);
   const paint = snapshot.look ?? fallbackLook;
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
+  const [view, setView] = useState<"widgets" | "bar">("widgets");
+  const [sample, setSample] = useState<Sample>("live");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  const [fullEditor, setFullEditor] = useState<string | null>(null);
+  const [duplicated, setDuplicated] = useState<string | null>(null);
   const [adding, setAdding] = useState<Zone | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<DropTarget>(null);
@@ -110,17 +139,26 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     );
   }
 
+  const widgets = state.widgets;
   const unavailable = state.unavailableReason;
   const changed = edited(draft);
-  const problem = items.map(problemWith).find((entry) => entry !== null) ?? null;
+  const problem =
+    items
+      .map((item) => problemWith(item) ?? widgetProblem(item, widgetOf(item, widgets)))
+      .find((entry) => entry !== null) ?? null;
   const setItems = (change: (current: BarItem[]) => BarItem[]) =>
     setDraft((current) => (current ? { ...current, items: change(current.items) } : current));
-  const patchBar = (patch: Partial<MenuBarSettings>) =>
-    setDraft((current) => (current ? { ...current, bar: { ...current.bar, ...patch } } : current));
+  const patch = (id: string, change: Partial<BarItem>) =>
+    setItems((current) => patchItem(current, id, change));
+  const patchBar = (change: Partial<MenuBarSettings>) =>
+    setDraft((current) => (current ? { ...current, bar: { ...current.bar, ...change } } : current));
+  const select = (id: string | null) => {
+    setSelected(id);
+    setSelectedRow(null);
+  };
 
   const reset = () => {
     setDraft(draftOf(state));
-    setEditing(null);
     store.dismissError();
   };
 
@@ -128,22 +166,24 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     if (await store.apply(editsOf(draft.items), draft.bar)) {
       const next = store.getSnapshot().state;
       if (next) setDraft(draftOf(next));
-      setEditing(null);
     }
   };
 
-  const make = (kind: BarItemKind, zone: Zone) => {
-    const item = newItem(kind, zone);
+  const add = (item: BarItem) => {
     setItems((current) => addItem(current, item));
-    if (kind !== "spacer") setEditing(item.id);
+    if (item.kind !== "spacer") select(item.id);
+    setView("widgets");
   };
 
-  const show = (id: string, zone: Zone) =>
+  const show = (id: string, zone: Zone) => {
     setItems((current) => patchItem(moveItem(current, id, zone), id, { visible: true }));
+    select(id);
+  };
 
   const remove = (id: string) => {
     setItems((current) => removeItem(current, id));
-    if (editing === id) setEditing(null);
+    if (selected === id) select(null);
+    if (fullEditor === id) setFullEditor(null);
   };
 
   const endDrag = () => {
@@ -183,94 +223,199 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     );
   };
 
+  const files: WidgetFileActions = {
+    reveal: (widget) => void store.reveal(widget),
+    open: (widget, file) => void store.openFile(widget, file),
+    duplicate: (widget) =>
+      void store.duplicate(widget).then((copy) => {
+        const folder = store
+          .getSnapshot()
+          .state?.widgets.find((entry) => entry.id === copy)?.folder;
+        setDuplicated(folder ?? null);
+      }),
+    duplicated,
+  };
+
+  const count = changeCount(draft);
+  const header = (
+    <PageHeader
+      title="Menu Bar"
+      actions={
+        <>
+          {changed ? (
+            <Badge tone="accent">
+              {count} {count === 1 ? "change" : "changes"}
+            </Badge>
+          ) : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!changed || snapshot.applying}
+            onClick={reset}
+          >
+            <RotateCcw aria-hidden size={12} /> Revert
+          </Button>
+          <Button size="sm" onClick={() => void store.reveal(null)}>
+            <Folder aria-hidden size={12} /> Widgets folder
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={!changed || problem !== null || unavailable !== null}
+            busy={snapshot.applying}
+            onClick={() => void apply()}
+          >
+            <Check aria-hidden size={13} /> Apply
+          </Button>
+        </>
+      }
+    />
+  );
+
+  const notices = (
+    <>
+      {unavailable ? (
+        <Notice.Root variant="warning">
+          <Notice.Title>The bar is not running</Notice.Title>
+          <Notice.Description>{unavailable}</Notice.Description>
+          <Notice.Actions>
+            <Button onClick={() => void store.load()}>Try again</Button>
+          </Notice.Actions>
+        </Notice.Root>
+      ) : null}
+      {snapshot.error ? (
+        <Notice.Root variant="error">
+          <Notice.Header onDismiss={() => store.dismissError()}>
+            <Notice.Title>Could not change the bar</Notice.Title>
+            <Notice.Description>{snapshot.error}</Notice.Description>
+          </Notice.Header>
+        </Notice.Root>
+      ) : null}
+      {changed && problem ? (
+        <Notice.Root variant="warning">
+          <Notice.Description>{problem}</Notice.Description>
+        </Notice.Root>
+      ) : null}
+    </>
+  );
+
+  const editing = fullEditor ? items.find((item) => item.id === fullEditor) : undefined;
+  const editingWidget = editing ? widgetOf(editing, widgets) : null;
+  if (editing && editingWidget) {
+    return (
+      <>
+        {header}
+        {notices}
+        <WidgetEditor
+          item={editing}
+          widget={editingWidget}
+          items={items}
+          bar={draft.bar}
+          look={paint}
+          widgets={widgets}
+          sample={sample}
+          onSample={setSample}
+          selectedRow={selectedRow}
+          onSelectRow={setSelectedRow}
+          files={files}
+          onChange={(change) => patch(editing.id, change)}
+          onBack={() => setFullEditor(null)}
+        />
+      </>
+    );
+  }
+
+  const current = items.find((item) => item.id === selected) ?? null;
+
   return (
     <>
-      <PageHeader
-        title="Menu Bar"
-        actions={
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={!changed || snapshot.applying}
-              onClick={reset}
-            >
-              <RotateCcw aria-hidden size={12} /> Reset
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={!changed || problem !== null || unavailable !== null}
-              busy={snapshot.applying}
-              onClick={() => void apply()}
-            >
-              <Check aria-hidden size={13} /> Apply
-            </Button>
-          </>
-        }
-      />
+      {header}
+      {notices}
 
-      <div className="flex flex-col">
-        {unavailable ? (
-          <Notice.Root variant="warning" className="mb-5">
-            <Notice.Title>The bar is not running</Notice.Title>
-            <Notice.Description>{unavailable}</Notice.Description>
-            <Notice.Actions>
-              <Button onClick={() => void store.load()}>Try again</Button>
-            </Notice.Actions>
-          </Notice.Root>
-        ) : null}
-
-        {snapshot.error ? (
-          <Notice.Root variant="error" className="mb-5">
-            <Notice.Header onDismiss={() => store.dismissError()}>
-              <Notice.Title>Could not change the bar</Notice.Title>
-              <Notice.Description>{snapshot.error}</Notice.Description>
-            </Notice.Header>
-          </Notice.Root>
-        ) : null}
-
-        <div className="mb-5">
-          <SectionLabel>Preview</SectionLabel>
-          <BarPreview
-            items={items}
-            bar={draft.bar}
-            look={paint}
-            active={editing}
-            onSelect={(id) => setEditing((current) => (current === id ? null : id))}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <SegmentedControl
+            label="Menu Bar view"
+            value={view}
+            options={viewOptions}
+            onValueChange={setView}
+          />
+          <span className="flex-1 text-small text-fg-tertiary">Click a widget to edit it</span>
+          <span className="text-small text-fg-tertiary">Sample</span>
+          <SegmentedControl
+            label="Sample values"
+            size="sm"
+            value={sample}
+            options={sampleOptions}
+            onValueChange={setSample}
           />
         </div>
+        <BarPreview
+          items={items}
+          bar={draft.bar}
+          look={paint}
+          widgets={widgets}
+          sample={sample}
+          active={selected}
+          onSelect={(id) => {
+            select(id);
+            setView("widgets");
+          }}
+        />
+      </div>
 
-        <p id={moveHintId} className="sr-only">
-          Up and Down arrows reorder within a zone; Left and Right move to the next zone.
-        </p>
-        <p aria-live="polite" className="sr-only">
-          {announcement}
-        </p>
-        <div ref={zonesRef} className="grid grid-cols-3 gap-3">
-          {zones.map((zone) => (
-            <BarZone
-              key={zone}
-              zone={zone}
-              items={items.filter((entry) => entry.zone === zone)}
-              editing={editing}
-              dragging={dragging}
-              over={over}
-              moveHintId={moveHintId}
-              onEdit={setEditing}
-              onPatch={(id, patch) => setItems((current) => patchItem(current, id, patch))}
-              onRemove={remove}
-              onAdd={setAdding}
-              onKeyMove={keyMove}
-              onDragStart={setDragging}
-              onDragOver={setOver}
-              onDrop={drop}
-              onDragEnd={endDrag}
+      {view === "widgets" ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <p id={moveHintId} className="sr-only">
+              Up and Down arrows reorder within a zone; Left and Right move to the next zone.
+            </p>
+            <p aria-live="polite" className="sr-only">
+              {announcement}
+            </p>
+            <div ref={zonesRef} className="grid grid-cols-3 gap-3">
+              {zones.map((zone) => (
+                <BarZone
+                  key={zone}
+                  zone={zone}
+                  items={items.filter((entry) => entry.zone === zone)}
+                  widgets={widgets}
+                  sample={sample}
+                  selected={selected}
+                  dragging={dragging}
+                  over={over}
+                  moveHintId={moveHintId}
+                  onSelect={(id) => select(id === selected ? null : id)}
+                  onVisible={(id, visible) => patch(id, { visible })}
+                  onAdd={setAdding}
+                  onKeyMove={keyMove}
+                  onDragStart={setDragging}
+                  onDragOver={setOver}
+                  onDrop={drop}
+                  onDragEnd={endDrag}
+                />
+              ))}
+            </div>
+            <p className="px-1 text-small text-fg-tertiary">
+              Drag to reorder, or between zones. Order matches the bar, left to right.
+            </p>
+          </div>
+          <div className="sticky top-0">
+            <ItemInspector
+              key={current?.id ?? "none"}
+              item={current}
+              widgets={widgets}
+              files={files}
+              selectedRow={selectedRow}
+              onSelectRow={setSelectedRow}
+              onChange={(change) => current && patch(current.id, change)}
+              onRemove={() => current && remove(current.id)}
+              onOpenEditor={() => current && setFullEditor(current.id)}
             />
-          ))}
+          </div>
         </div>
-
-        <Card className="mt-4">
+      ) : (
+        <Card>
           <CardHeader title="Bar" />
           <CardRows>
             <Row
@@ -317,13 +462,18 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             />
           </CardRows>
         </Card>
-      </div>
+      )}
 
       <ItemLibrary
         zone={adding}
+        widgets={widgets}
+        counts={widgetCounts(items)}
         hidden={items.filter((entry) => entry.kind === null && !entry.visible)}
-        onMake={make}
+        look={paint}
+        onAddWidget={(widget, zone) => add(newWidgetItem(widget, zone, items))}
+        onMake={(kind, zone) => add(newItem(kind, zone))}
         onShow={show}
+        onOpenFolder={() => void store.reveal(null)}
         onClose={() => setAdding(null)}
       />
     </>

@@ -150,12 +150,12 @@ struct WidgetMigrationTests {
             id: "macarchy.clock", title: "Clock", side: "right", members: ["macarchy.clock"])
         instance.widget = "clock"
         instance.settings = ["order": .text("month-day")]
-        instance.menu = [WidgetMenuRow(type: "divider")]
+        instance.click = WidgetClick(dropdown: [WidgetMenuRow(type: "divider")])
         let decoded = try JSONDecoder().decode(
             BarComponent.self, from: JSONEncoder().encode(instance))
         #expect(decoded == instance)
         let old = #"{"id":"x","title":"X","side":"left","members":["x"]}"#
         let component = try JSONDecoder().decode(BarComponent.self, from: Data(old.utf8))
-        #expect(component.widget == nil && component.settings == nil && component.menu == nil)
+        #expect(component.widget == nil && component.settings == nil && component.click == nil)
     }
 }

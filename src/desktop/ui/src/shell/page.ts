@@ -33,12 +33,15 @@ export interface PageContext {
  */
 export interface PageDefinition<S extends PageStore> {
   id: PaneId;
+  /** Lays the page out wider than the usual reading column, for editors. */
+  wide?: boolean;
   create(host: PageHost): S;
   render(store: S, context: PageContext): ReactNode;
 }
 
 export interface RegisteredPage {
   id: PaneId;
+  wide?: boolean;
   create(host: PageHost): PageStore;
   render(store: PageStore, context: PageContext): ReactNode;
 }
@@ -50,6 +53,7 @@ export interface RegisteredPage {
 export function definePage<S extends PageStore>(page: PageDefinition<S>): RegisteredPage {
   return {
     id: page.id,
+    wide: page.wide,
     create: (host) => page.create(host),
     render: (store, context) => page.render(store as S, context),
   };

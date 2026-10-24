@@ -87,6 +87,13 @@ extension WidgetManifest {
         return WidgetCheck(manifest: ordered, problems: problems)
     }
 
+    /// What is wrong with a bar component's edits to this widget's look and
+    /// click, in the words `macarchy widget check` uses.
+    public func problems(style: WidgetStyle?, click: WidgetClick?) -> [String] {
+        let found = (style?.findings() ?? []) + (click?.findings(settings: settings ?? [:]) ?? [])
+        return found.map(\.message)
+    }
+
     /// Problems with a widget instance's saved settings, such as a setting
     /// the widget no longer has or a value of the wrong kind.
     public func problems(settings values: [String: SettingValue]) -> [String] {

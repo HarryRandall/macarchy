@@ -69,7 +69,7 @@ struct WidgetMenuTests {
     func overrides() {
         var component = BarComponent(
             id: "macarchy.clock", title: "Clock", side: "right", members: ["macarchy.clock"])
-        component.menu = [WidgetMenuRow(type: "text", label: "Mine")]
+        component.click = WidgetClick(dropdown: [WidgetMenuRow(type: "text", label: "Mine")])
         #expect(
             WidgetMenu.items(instance: instance(), component: component, output: nil, label: "")
                 .map(\.label) == ["Mine"])

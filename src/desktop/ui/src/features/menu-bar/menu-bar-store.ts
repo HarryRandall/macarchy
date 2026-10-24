@@ -55,6 +55,9 @@ export interface MenuBarStoreDeps {
   getThemes(): Promise<ThemesState>;
   getState(): Promise<MenuBarState>;
   apply(items: MenuBarItemEdit[], bar: MenuBarSettings): Promise<MenuBarState>;
+  reveal(widget: string | null): Promise<null>;
+  openFile(widget: string, file: string): Promise<null>;
+  duplicate(widget: string): Promise<{ state: MenuBarState; widget: string }>;
   subscribe(
     type: "themes.changed",
     handler: (event: Extract<BridgeEvent, { type: "themes.changed" }>) => void,
@@ -124,6 +127,27 @@ export function createMenuBarStore(deps: MenuBarStoreDeps) {
     }
   }
 
+  /** Runs a request about a widget's files; a failure shows as the page's error. */
+  async function files(run: () => Promise<unknown>): Promise<void> {
+    try {
+      await run();
+    } catch (error) {
+      set({ error: errorMessage(error) });
+    }
+  }
+
+  /** Copies a widget into the person's own; resolves the copy's id, or null on failure. */
+  async function duplicate(widget: string): Promise<string | null> {
+    try {
+      const result = await deps.duplicate(widget);
+      set({ state: result.state, error: null });
+      return result.widget;
+    } catch (error) {
+      set({ error: errorMessage(error) });
+      return null;
+    }
+  }
+
   deps.subscribe("themes.changed", () => {
     if (snapshot.status === "loading") return;
     void readLook().then((look) => set({ look }));
@@ -134,6 +158,9 @@ export function createMenuBarStore(deps: MenuBarStoreDeps) {
     getSnapshot: () => snapshot,
     load,
     apply,
+    duplicate,
+    reveal: (widget: string | null) => files(() => deps.reveal(widget)),
+    openFile: (widget: string, file: string) => files(() => deps.openFile(widget, file)),
     dismissError: () => set({ error: null }),
   };
 }

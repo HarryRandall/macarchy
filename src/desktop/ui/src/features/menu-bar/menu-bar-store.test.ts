@@ -75,12 +75,16 @@ describe("barLook", () => {
 const bar: MenuBarState = {
   items: [],
   bar: { height: 35, position: "top", padding: 10 },
+  widgets: [],
   unavailableReason: null,
 };
 
 const reads = {
   getState: () => Promise.resolve(bar),
   apply: () => Promise.resolve(bar),
+  reveal: () => Promise.resolve(null),
+  openFile: () => Promise.resolve(null),
+  duplicate: () => Promise.resolve({ state: bar, widget: "clock-copy" }),
 };
 
 describe("createMenuBarStore", () => {
@@ -98,8 +102,8 @@ describe("createMenuBarStore", () => {
   it("fails when the bar cannot be read, saying why", async () => {
     const store = createMenuBarStore({
       getThemes: () => Promise.resolve(state("lumon")),
+      ...reads,
       getState: () => Promise.reject(new Error("sketchybar crashed")),
-      apply: reads.apply,
       subscribe: () => () => {},
     });
     await store.load();
@@ -156,5 +160,21 @@ describe("createMenuBarStore", () => {
     changed({ type: "themes.changed", state: { themes: [], current: "midnight" } });
     await vi.waitFor(() => expect(getThemes).toHaveBeenCalledTimes(3));
     expect(store.getSnapshot().look?.themeTitle).toBe("MIDNIGHT");
+  });
+
+  it("takes the new widget list from a duplicate, and shows a failed file request", async () => {
+    const copied = { ...bar, widgets: [] };
+    const store = createMenuBarStore({
+      ...reads,
+      duplicate: () => Promise.resolve({ state: copied, widget: "clock-copy" }),
+      reveal: () => Promise.reject(new Error("No such folder")),
+      getThemes: () => Promise.resolve(state("lumon")),
+      subscribe: () => () => {},
+    });
+    await store.load();
+    expect(await store.duplicate("clock")).toBe("clock-copy");
+    expect(store.getSnapshot().state).toBe(copied);
+    await store.reveal("clock");
+    expect(store.getSnapshot().error).toBe("No such folder");
   });
 });

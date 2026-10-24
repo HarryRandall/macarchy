@@ -33,6 +33,7 @@ import type {
   ThemeDetail,
   ThemesState,
   ThemeSummary,
+  WidgetInfo,
 } from "./protocol";
 
 type Cases<T> = [T, ...T[]];
@@ -201,6 +202,10 @@ const clock: MenuBarItemState = {
   icon: "",
   command: null,
   interval: null,
+  widget: null,
+  settings: {},
+  style: null,
+  click: null,
   reading: "Thu 23 Oct 14:05",
 };
 
@@ -214,18 +219,95 @@ const uptime: MenuBarItemState = {
   icon: "↑",
   command: "uptime | cut -d, -f1",
   interval: 60,
+  widget: null,
+  settings: {},
+  style: null,
+  click: null,
   reading: "",
 };
 
+const cpuWidget: MenuBarItemState = {
+  id: "macarchy.cpu",
+  title: "CPU",
+  zone: "right",
+  visible: true,
+  kind: "widget",
+  text: "",
+  icon: "",
+  command: null,
+  interval: null,
+  widget: "cpu",
+  settings: { temperature: false },
+  style: { box: "fill", radius: 6 },
+  click: { open: "Activity Monitor" },
+  reading: "12.0%",
+};
+
+const clockInfo: WidgetInfo = {
+  id: "clock",
+  name: "Clock",
+  description: "The date and time, in any format.",
+  author: "Macarchy",
+  version: "1.0.0",
+  icon: "􀧞",
+  origin: "builtIn",
+  scripted: false,
+  folder: "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+  files: ["widget.json"],
+  manifest: '{\n  "schema": 1,\n  "id": "clock"\n}\n',
+  label: "{date}",
+  source: "date",
+  settings: [
+    { key: "seconds", type: "toggle", label: "Seconds", default: false, hint: "Every second" },
+    {
+      key: "order",
+      type: "choice",
+      label: "Date order",
+      options: ["day-month", "month-day"],
+      default: "day-month",
+    },
+    { key: "size", type: "number", label: "Size", min: 1, max: 9, step: 1, unit: "pt" },
+  ],
+  style: { box: "none", size: 13 },
+  click: {
+    dropdown: [
+      { type: "heading", label: "{weekday.long} {day}" },
+      { type: "reading", label: "London", value: "{time:Europe/London}" },
+      { type: "divider" },
+      { type: "toggle", label: "Seconds", setting: "seconds" },
+      { type: "choice", label: "Order", setting: "order", options: ["day-month", "month-day"] },
+      { type: "action", label: "Open Calendar", open: "Calendar" },
+    ],
+  },
+  update: { every: "minute", events: ["system_woke"] },
+  samples: { widest: "Wed 30 Sep 12:59 PM", unavailable: "--" },
+};
+
+const uptimeInfo: WidgetInfo = {
+  id: "uptime",
+  name: "Uptime",
+  version: "0.1.0",
+  origin: "user",
+  scripted: true,
+  folder: "~/.config/macarchy/widgets/uptime",
+  files: ["provider.sh", "widget.json"],
+  manifest: '{ "schema": 1, "id": "uptime" }\n',
+  provider: "provider.sh",
+  settings: [],
+  update: { every: "1m" },
+};
+
 const menuBar: MenuBarState = {
-  items: [clock, uptime],
+  items: [clock, uptime, cpuWidget],
   bar: { height: 35, position: "top", padding: 10 },
+  widgets: [clockInfo, uptimeInfo],
   unavailableReason: null,
 };
 
 const menuBarStopped: MenuBarState = {
   items: [],
   bar: { height: 35, position: "top", padding: 10 },
+  widgets: [],
   unavailableReason: "sketchybar is not running.",
 };
 
@@ -712,6 +794,10 @@ export const methodFixtures: MethodFixtures = {
             icon: "",
             command: null,
             interval: null,
+            widget: null,
+            settings: {},
+            style: null,
+            click: null,
           },
           {
             id: "macarchy.note-2",
@@ -723,12 +809,39 @@ export const methodFixtures: MethodFixtures = {
             icon: "",
             command: null,
             interval: null,
+            widget: null,
+            settings: {},
+            style: null,
+            click: null,
+          },
+          {
+            id: "macarchy.clock",
+            title: "Clock",
+            zone: "right",
+            visible: true,
+            kind: "widget",
+            text: "",
+            icon: "",
+            command: null,
+            interval: null,
+            widget: "clock",
+            settings: { seconds: true, order: "month-day" },
+            style: { textColour: "accent", paddingLeft: 4 },
+            click: { dropdown: [{ type: "text", label: "Hi" }] },
           },
         ],
         bar: { height: 30, position: "bottom", padding: 6 },
       },
       result: menuBar,
     },
+  ],
+  "menuBar.revealWidget": [
+    { params: { widget: "clock" }, result: null },
+    { params: { widget: null }, result: null },
+  ],
+  "menuBar.openWidgetFile": [{ params: { widget: "uptime", file: "provider.sh" }, result: null }],
+  "menuBar.duplicateWidget": [
+    { params: { widget: "clock" }, result: { state: menuBar, widget: "clock-copy" } },
   ],
 
   "switcher.getState": [{ params: {}, result: switcher }],

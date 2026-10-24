@@ -4,6 +4,7 @@ import type {
   MenuBarItemEdit,
   MenuBarItemState,
   MenuBarSettings,
+  WidgetInfo,
 } from "~/bridge/protocol";
 
 export type Zone = BarZone;
@@ -26,14 +27,18 @@ export const intervals = [
 export const glyphs = ["", "●", "○", "◆", "★", "▲", "■", "↑", "↓", "→", "⇅", "»"] as const;
 
 /** Items the page can make, with what the library says about them. */
-export const makeable: { kind: BarItemKind; name: string; detail: string }[] = [
+export const makeable: { kind: Exclude<BarItemKind, "widget">; name: string; detail: string }[] = [
   { kind: "text", name: "Text", detail: "A label you write" },
   { kind: "spacer", name: "Spacer", detail: "Empty width, to push items apart" },
   { kind: "command", name: "Command", detail: "Shows what a shell command prints" },
 ];
 
 /** A new item for `zone`. Its id becomes a SketchyBar item name. */
-export function newItem(kind: BarItemKind, zone: Zone, patch: Partial<BarItem> = {}): BarItem {
+export function newItem(
+  kind: Exclude<BarItemKind, "widget">,
+  zone: Zone,
+  patch: Partial<BarItem> = {},
+): BarItem {
   const name = makeable.find((entry) => entry.kind === kind)?.name ?? "Item";
   return {
     id: `macarchy.${crypto.randomUUID().toLowerCase()}`,
@@ -45,9 +50,48 @@ export function newItem(kind: BarItemKind, zone: Zone, patch: Partial<BarItem> =
     icon: "",
     command: kind === "command" ? "" : null,
     interval: kind === "command" ? 30 : null,
+    widget: null,
+    settings: {},
+    style: null,
+    click: null,
     reading: "",
     ...patch,
   };
+}
+
+/**
+ * A widget for `zone`, as `macarchy.` and the widget's id, numbered when
+ * the bar already shows that widget.
+ */
+export function newWidgetItem(widget: WidgetInfo, zone: Zone, items: BarItem[]): BarItem {
+  const taken = new Set(items.map((item) => item.id));
+  let id = `macarchy.${widget.id}`;
+  for (let number = 2; taken.has(id); number++) id = `macarchy.${widget.id}-${number}`;
+  return {
+    id,
+    title: widget.name,
+    zone,
+    visible: true,
+    kind: "widget",
+    text: "",
+    icon: "",
+    command: null,
+    interval: null,
+    widget: widget.id,
+    settings: {},
+    style: null,
+    click: null,
+    reading: "",
+  };
+}
+
+/** How many items on the bar show each widget. */
+export function widgetCounts(items: BarItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.widget) counts.set(item.widget, (counts.get(item.widget) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function insertAtZoneEnd(items: BarItem[], item: BarItem): BarItem[] {
@@ -93,7 +137,7 @@ export function addItem(items: BarItem[], item: BarItem): BarItem[] {
   return insertAtZoneEnd(items, item);
 }
 
-/** Made items go; the bar's own can only be hidden. */
+/** Made items and widgets go; the bar's own can only be hidden. */
 export function removeItem(items: BarItem[], id: string): BarItem[] {
   return items.filter((entry) => entry.id !== id || entry.kind === null);
 }

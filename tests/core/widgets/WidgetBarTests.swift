@@ -68,6 +68,23 @@ struct WidgetBarTests {
             arguments.contains("click_script=\(Paths.cliInShell) widget click 'macarchy.clock'"))
     }
 
+    @Test("the component's edits to the look and click go over the widget's own")
+    func edited() {
+        var style = WidgetStyle()
+        style.box = "outline"
+        style.size = 13
+        let look = WidgetLook(manifests: ["clock": widget(style: style)])
+        var component = instance()
+        component.style = WidgetStyle()
+        component.style?.box = "fill"
+        component.click = WidgetClick(open: "Calendar")
+        let arguments = look.arguments(for: component)
+        #expect(arguments.contains("label.font=SF Pro:Semibold:13"))
+        #expect(!arguments.contains("background.border_width=1"))
+        #expect(
+            arguments.contains("click_script=\(Paths.cliInShell) widget click 'macarchy.clock'"))
+    }
+
     @Test(
         "a widget with nothing to click clears any click script, and an unknown widget is left alone"
     )
@@ -174,10 +191,10 @@ struct WidgetBarTests {
     // MARK: - Clicks
 
     private func click(
-        _ click: WidgetClick?, menu: [WidgetMenuRow]? = nil, recorder: CallRecorder
+        _ click: WidgetClick?, edited: WidgetClick? = nil, recorder: CallRecorder
     ) async throws -> WidgetActions.Outcome {
         var component = instance()
-        component.menu = menu
+        component.click = edited
         var configuration = BarConfiguration()
         configuration.components = [component]
         let snapshot = WidgetCatalogue.Snapshot(
@@ -222,9 +239,15 @@ struct WidgetBarTests {
         #expect(
             try await click(WidgetClick(dropdown: rows), recorder: recorder)
                 == .dropdown("macarchy.clock"))
-        #expect(try await click(nil, menu: rows, recorder: recorder) == .dropdown("macarchy.clock"))
+        #expect(
+            try await click(nil, edited: WidgetClick(dropdown: rows), recorder: recorder)
+                == .dropdown("macarchy.clock"))
         #expect(try await click(nil, recorder: recorder) == .nothing)
         #expect(await recorder.arguments().isEmpty)
+        #expect(
+            try await click(
+                WidgetClick(dropdown: rows), edited: WidgetClick(open: "Calendar"),
+                recorder: recorder) == .opened("Calendar"))
     }
 
     @Test("clicking something that is not on the bar says so")

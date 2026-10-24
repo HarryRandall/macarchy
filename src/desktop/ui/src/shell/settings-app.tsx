@@ -187,6 +187,7 @@ export function SettingsApp({
         onBack={() => showPane(goBack(history))}
         onForward={() => showPane(goForward(history))}
         go={go}
+        wide={!setup && page?.wide === true}
         logsRequest={logsRequest}
         health={health}
         changelog={{

@@ -125,6 +125,21 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
     }
 
     public init() {}
+
+    /// These fields, with any left unset taken from `base`.
+    public func over(_ base: WidgetStyle?) -> WidgetStyle {
+        guard let base else { return self }
+        var merged = self
+        merged.box = box ?? base.box
+        merged.size = size ?? base.size
+        merged.iconColour = iconColour ?? base.iconColour
+        merged.textColour = textColour ?? base.textColour
+        merged.radius = radius ?? base.radius
+        merged.paddingLeft = paddingLeft ?? base.paddingLeft
+        merged.paddingRight = paddingRight ?? base.paddingRight
+        merged.lines = lines ?? base.lines
+        return merged
+    }
 }
 
 /// When the label is worked out again.

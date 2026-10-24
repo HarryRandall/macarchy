@@ -1,30 +1,44 @@
+import type { ReactNode } from "react";
+
 import { focusRing } from "~/components/ui/focus-ring";
 import { cn } from "~/lib/cn";
 
-import type { MenuBarSettings } from "~/bridge/protocol";
+import type { MenuBarSettings, WidgetInfo } from "~/bridge/protocol";
 
 import { ItemIcon } from "./menu-bar-icon";
 import { type BarItem, shownText, type Zone } from "./menu-bar-items";
 import type { BarLook } from "./menu-bar-store";
+import { type Sample, widgetOf } from "./widget-model";
+import { WidgetChip } from "./widget-preview";
 
 const spaces = ["1", "2", "3", "4", "5"];
 
 /**
  * The bar over the theme's wallpaper, drawn from the page's draft. Each item
- * opens its editor, so the preview doubles as a way in.
+ * opens its editor, so the preview doubles as a way in. Widgets show the
+ * sample chosen; with `focus`, every other item is dimmed.
  */
 export function BarPreview({
   items,
   bar,
   look,
+  widgets,
+  sample,
   active,
+  focus,
   onSelect,
+  below,
 }: {
   items: BarItem[];
   bar: MenuBarSettings;
   look: BarLook;
+  widgets: readonly WidgetInfo[];
+  sample: Sample;
   active: string | null;
+  focus?: string;
   onSelect: (id: string) => void;
+  /** Drawn under the bar, over the wallpaper, such as a dropdown. */
+  below?: ReactNode;
 }) {
   const shown = (name: Zone) => items.filter((item) => item.zone === name && item.visible);
   const zone = (name: Zone) =>
@@ -36,7 +50,9 @@ export function BarPreview({
         aria-pressed={item.id === active}
         onClick={() => onSelect(item.id)}
         className={cn(
-          "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 whitespace-nowrap transition-colors hover:bg-white/10",
+          "flex h-[22px] shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
+          item.kind === "widget" ? "px-0.5" : "px-1.5",
+          focus && focus !== item.id && "opacity-35",
           focusRing,
         )}
         style={{
@@ -61,6 +77,8 @@ export function BarPreview({
           ))
         ) : item.kind === "spacer" ? (
           <span aria-hidden className="block w-5" />
+        ) : item.kind === "widget" ? (
+          <WidgetChip item={item} widget={widgetOf(item, widgets)} sample={sample} look={look} />
         ) : (
           <>
             {item.kind === null ? (
@@ -112,7 +130,9 @@ export function BarPreview({
       }}
     >
       {bar.position === "top" ? strip : null}
-      <div className="h-[72px]" />
+      <div className={cn("flex justify-end px-3", below ? "min-h-[72px] py-2" : "h-[72px]")}>
+        {below}
+      </div>
       {bar.position === "bottom" ? strip : null}
     </div>
   );
