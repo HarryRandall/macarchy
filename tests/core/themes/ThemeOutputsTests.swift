@@ -74,4 +74,31 @@ struct ThemeOutputsTests {
         #expect(outputs.barAccent == "0xff3366ff")
         #expect(Theme.argb("0x80aabbcc") == "0x80aabbcc")
     }
+
+    /// A hand-written theme may leave out everything but its schema and
+    /// name; mistakes name the file and the key.
+    @Test func themeManifestErrorsNameTheFileAndKey() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "theme-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func read(_ json: String) throws -> Result<Theme, any Error> {
+            try json.write(
+                to: root.appending(path: Theme.fileName), atomically: true, encoding: .utf8)
+            return Result { try Theme.read(from: root) }
+        }
+        let minimal = try read(#"{"schema":1,"name":"x"}"#).get()
+        #expect(minimal.dark && minimal.colors == Theme.Colors())
+        func message(_ json: String) throws -> String {
+            guard case .failure(let error) = try read(json) else { return "read succeeded" }
+            return error.localizedDescription
+        }
+        #expect(try message(#"{"schema":1,"dark":true}"#).hasSuffix("theme.json: name is missing."))
+        #expect(
+            try message(#"{"schema":1,"name":"x","colors":{"borderActive":5}}"#).hasSuffix(
+                "theme.json: colors.borderActive should be text."))
+        #expect(
+            try message(#"{"schema":1,"name":"x","colors":{"borderActive":"red"}}"#).hasSuffix(
+                "theme.json: Invalid theme colour: red"))
+        #expect(try message(#"{"schema":2,"name":"x"}"#).contains("newer Macarchy"))
+    }
 }

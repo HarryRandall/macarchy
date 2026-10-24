@@ -40,8 +40,7 @@ fi
 rm -rf "$RUN"
 mkdir -p "$BIN"
 cp -R "$ROOT/resources/themes" "$HOME_DIR/.config/macarchy/themes"
-# Every key, since settings without one fail to decode. An existing file also
-# means setup is not offered.
+# An existing file means setup is not offered.
 cat >"$HOME_DIR/.config/macarchy/settings.json" <<'JSON'
 {
   "schema": 1, "currentTheme": null, "wallpapers": {}, "layout": {}, "borders": {},

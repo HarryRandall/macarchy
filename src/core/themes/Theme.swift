@@ -100,18 +100,27 @@ public struct Theme: Codable, Sendable, Equatable {
     // MARK: - Disk
 
     public static func read(from directory: URL) throws -> Theme {
-        let theme = try JSONDecoder().decode(
-            Theme.self, from: Data(contentsOf: directory.appending(path: fileName)))
-        try theme.validate()
+        let url = directory.appending(path: fileName)
+        let theme = try JSONFile.decode(Theme.self, from: url)
+        do { try theme.validate() } catch {
+            throw ConfigurationError("\(Paths.display(url)): \(error.localizedDescription)")
+        }
         return theme
     }
 
     public static func load(from directory: URL) -> Theme? { try? read(from: directory) }
 
     public func validate() throws {
-        guard schema == 1, !name.isEmpty,
-            name.range(of: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$", options: .regularExpression) != nil
-        else { throw ConfigurationError("Invalid theme name or unsupported schema") }
+        guard schema == 1 else {
+            throw ConfigurationError(
+                "Theme schema \(schema) is from a newer Macarchy. Update Macarchy to use it.")
+        }
+        guard name.range(of: "^[a-zA-Z0-9][a-zA-Z0-9_-]*$", options: .regularExpression) != nil
+        else {
+            throw ConfigurationError(
+                "Invalid theme name \"\(name)\": use letters, digits, - and _, "
+                    + "starting with a letter or digit.")
+        }
         for path in [wallpaper, apps.ghosttyConfig].compactMap({ $0 }) {
             guard !path.hasPrefix("/"), !path.split(separator: "/").contains("..") else {
                 throw ConfigurationError("Theme assets must stay inside the theme folder")
@@ -139,5 +148,23 @@ public struct Theme: Codable, Sendable, Equatable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try encoder.encode(self).write(
             to: directory.appending(path: Self.fileName), options: .atomic)
+    }
+}
+
+extension Theme {
+    /// `schema` and `name` are required; the rest may be left out and take
+    /// their defaults, as a hand-written theme often does.
+    public init(from decoder: Decoder) throws {
+        let keys = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schema: try keys.decode(Int.self, forKey: .schema),
+            name: try keys.decode(String.self, forKey: .name),
+            displayName: try keys.decodeIfPresent(String.self, forKey: .displayName),
+            version: try keys.decodeIfPresent(String.self, forKey: .version),
+            author: try keys.decodeIfPresent(String.self, forKey: .author),
+            dark: try keys.decodeIfPresent(Bool.self, forKey: .dark) ?? true,
+            wallpaper: try keys.decodeIfPresent(String.self, forKey: .wallpaper),
+            colors: try keys.decodeIfPresent(Colors.self, forKey: .colors) ?? Colors(),
+            apps: try keys.decodeIfPresent(Apps.self, forKey: .apps) ?? Apps())
     }
 }
