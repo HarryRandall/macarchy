@@ -80,15 +80,24 @@ public enum Startup {
         let refocus =
             "\(yabai) -m query --windows --window >/dev/null 2>&1"
             + " || \(yabai) -m window --focus first >/dev/null 2>&1"
+        let field = { (name: String) in
+            "/usr/bin/awk -F'[:,]' '/\"\(name)\"/ { print $2; exit }'"
+        }
         // After Mission Control, yabai can still believe a window is focused
         // while macOS has handed focus elsewhere and no border is drawn, so
-        // focus is re-asserted rather than only filled in. yabai also reports
-        // the final Space a moment after the animation, so the bar looks again.
+        // focus is re-asserted rather than only filled in. Only a window on the
+        // visible Space is re-asserted: after choosing another Space, yabai can
+        // still report the previous Space's window, and focusing it would switch
+        // back and undo the choice. The Space change handler below fills focus in
+        // then. yabai also reports the final Space a moment after the animation,
+        // so the bar looks again.
         let reassert =
-            "id=$(\(yabai) -m query --windows --window 2>/dev/null"
-            + " | /usr/bin/awk -F'[:,]' '/\"id\"/ { print $2; exit }');"
-            + " if [ -n \"$id\" ]; then \(yabai) -m window --focus \"$id\" >/dev/null 2>&1;"
-            + " else \(yabai) -m window --focus first >/dev/null 2>&1; fi"
+            "space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
+            + " window=$(\(yabai) -m query --windows --window 2>/dev/null);"
+            + " id=$(printf '%s\\n' \"$window\" | \(field("id")));"
+            + " if [ -z \"$id\" ]; then \(yabai) -m window --focus first >/dev/null 2>&1;"
+            + " elif [ \"$(printf '%s\\n' \"$window\" | \(field("space")))\" = \"$space\" ]; then"
+            + " \(yabai) -m window --focus \"$id\" >/dev/null 2>&1; fi"
         let missionControl =
             "sleep 0.25; \(reassert); \(Shell.quote(Paths.sketchybar))"
             + " --trigger macarchy_spaces_changed >/dev/null 2>&1"
@@ -96,9 +105,6 @@ public enum Startup {
         // window as focused; a moment later macOS activates Finder or another
         // app with no window here, and no border is drawn. So wait for it to
         // settle, then focus a window here unless one already is.
-        let field = { (name: String) in
-            "/usr/bin/awk -F'[:,]' '/\"\(name)\"/ { print $2; exit }'"
-        }
         let spaceRefocus =
             "sleep 0.35; space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
             + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
