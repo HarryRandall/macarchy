@@ -244,15 +244,29 @@ public enum Setup {
     {
         try await OperationLock.run {
             await BordersService.stop(integrations: integrations)
-            let report = try uninstallLocked()
+            var report: [String] = []
+            do {
+                try uninstallLocked(into: &report)
+            } catch {
+                // borders was stopped for the restore; start whichever agent
+                // is in place now rather than leaving no borders at all.
+                await BordersService.resume(integrations: integrations)
+                guard !report.isEmpty else { throw error }
+                throw ConfigurationError(
+                    "Uninstall stopped part way: \(error.localizedDescription)\n"
+                        + "Already done:\n" + report.map { "  \($0)" }.joined(separator: "\n")
+                        + "\nFix the problem and run uninstall again to finish.")
+            }
             await BordersService.restoreHomebrew(integrations: integrations)
             return report
         }
     }
 
-    static func uninstallLocked() throws -> [String] {
+    /// Each change is added to `report` as it is made, so a failure part way
+    /// still tells the caller what was already put back.
+    static func uninstallLocked(into report: inout [String]) throws {
         let fm = FileManager.default
-        var report = try Backups().restoreAll()
+        try Backups().restoreAll(into: &report)
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {
             guard let text = try? String(contentsOf: url, encoding: .utf8),
@@ -264,7 +278,6 @@ public enum Setup {
         if (try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path)) != nil {
             try fm.removeItem(at: Paths.appLink)
         }
-        return report
     }
 }
 

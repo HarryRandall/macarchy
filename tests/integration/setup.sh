@@ -185,6 +185,21 @@ grep -q 'config-file = ?' "$SUPPORT/config" || fail "include not in the last-loa
 grep -q 'config-file' "$HOME_DIR/.config/ghostty/config" && fail "include in an earlier file"
 "$CLI" uninstall >/dev/null
 
+# An uninstall that stops part way says what it had already restored, and a
+# second run finishes.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/sketchybar"
+echo 'yabai -m config window_gap 3' > "$HOME_DIR/.config/yabai/yabairc"
+echo 'sketchybar --bar height=20' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+"$CLI" setup --keep --no-apply >/dev/null
+chmod 555 "$HOME_DIR/.config/yabai"
+OUTPUT="$("$CLI" uninstall 2>&1)" && fail "uninstall into a read-only folder succeeded"
+chmod 755 "$HOME_DIR/.config/yabai"
+grep -q 'Uninstall stopped part way' <<<"$OUTPUT" || fail "partial uninstall not reported: $OUTPUT"
+grep -q 'Restored ~/.config/sketchybar/sketchybarrc' <<<"$OUTPUT" || fail "restored files not listed: $OUTPUT"
+"$CLI" uninstall >/dev/null || fail "second uninstall did not finish"
+[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = 'yabai -m config window_gap 3' ] || fail "yabairc not restored on retry"
+
 # A missing backup stops uninstall before anything changes.
 rm -rf "$HOME_DIR/.config"
 mkdir -p "$HOME_DIR/.config/yabai"

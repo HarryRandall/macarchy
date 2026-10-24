@@ -116,6 +116,16 @@ public enum BordersService {
         _ = await integrations.execute(Paths.launchctl, ["bootout", "\(domain)/\(label)"])
     }
 
+    /// After a failed uninstall: load Macarchy's agent again if it is still
+    /// in place, and Homebrew's if it came back.
+    static func resume(integrations: Integrations) async {
+        guard !isolated else { return }
+        if FileManager.default.fileExists(atPath: plist.path) {
+            _ = await integrations.execute(Paths.launchctl, ["bootstrap", domain, plist.path])
+        }
+        await restoreHomebrew(integrations: integrations)
+    }
+
     /// After uninstall restored files: load Homebrew's agent again if it came back.
     static func restoreHomebrew(integrations: Integrations) async {
         guard !isolated else { return }
