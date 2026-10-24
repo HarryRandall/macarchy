@@ -23,7 +23,11 @@ public enum Paths {
         environment["MACARCHY_HOME"] != nil || environment["MACARCHY_SEARCH_PATH"] != nil
     }
 
-    public static var appRoot: URL { home.appending(path: "Library/Application Support/Macarchy") }
+    public static var appRoot: URL { appRoot(in: ProcessInfo.processInfo.environment) }
+
+    static func appRoot(in environment: [String: String]) -> URL {
+        home(in: environment).appending(path: "Library/Application Support/Macarchy")
+    }
     /// Where earlier versions kept everything. `LegacyLayout` moves it into `appRoot`.
     public static var legacyRoot: URL { home.appending(path: ".config/macarchy") }
     /// The configs Macarchy's LaunchAgents start yabai, skhd, SketchyBar and borders with.
@@ -106,7 +110,7 @@ public enum Paths {
     /// Finds a daemon executable without relying on the caller's PATH, which
     /// is minimal under launchd and in apps opened from Finder.
     ///
-    /// A file in `~/.config/macarchy/bin` wins, so a custom build can replace
+    /// A file in `binDirectory` wins, so a custom build can replace
     /// the Homebrew one without editing anything else. When nothing is found
     /// the Apple Silicon path is returned and checks report it as missing.
     public static func executable(_ name: String) -> String {
@@ -115,7 +119,7 @@ public enum Paths {
 
     static func executable(_ name: String, in environment: [String: String]) -> String {
         let fm = FileManager.default
-        let bin = home(in: environment).appending(path: ".config/macarchy/bin").path
+        let bin = appRoot(in: environment).appending(path: "bin").path
         let searched = searchDirectories(in: environment)
         for directory in [bin] + searched {
             let candidate = directory + "/" + name
@@ -161,7 +165,7 @@ public enum Paths {
         _ name: String, searched: [String], environment: [String: String]
     ) -> String {
         if let first = searched.first { return first + "/" + name }
-        return home(in: environment).appending(path: ".config/macarchy/bin/.missing/\(name)").path
+        return appRoot(in: environment).appending(path: "bin/.missing/\(name)").path
     }
 
     /// Where apps are installed. `MACARCHY_APPLICATIONS` replaces the list in tests.

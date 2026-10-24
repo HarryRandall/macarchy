@@ -39,8 +39,21 @@ public enum DaemonAgents {
         }
     }
 
-    /// The agent's contents. PATH covers both Homebrew prefixes, since
-    /// launchd starts jobs with almost none.
+    /// What the daemons' commands can run by name. launchd starts jobs with
+    /// almost no PATH, so this names the bundled CLI, Macarchy's own bin, the
+    /// folder yabai was found in and both Homebrew prefixes. skhd passes it to
+    /// every shortcut, so the shortcuts file can say `yabai` and `macarchy`.
+    static var path: String {
+        let folders = [
+            Paths.appLink.appending(path: "Contents/MacOS").path, Paths.binDirectory.path,
+            URL(fileURLWithPath: Paths.yabai).deletingLastPathComponent().path,
+            "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"
+        ]
+        var seen = Set<String>()
+        return folders.filter { seen.insert($0).inserted }.joined(separator: ":")
+    }
+
+    /// The agent's contents.
     static func agent(_ daemon: Daemon) throws -> Data {
         let log = Paths.stateDirectory.appending(path: "\(daemon.rawValue).log").path
         let dictionary: [String: Any] = [
@@ -49,9 +62,7 @@ public enum DaemonAgents {
             "RunAtLoad": true,
             "KeepAlive": true,
             "ProcessType": "Interactive",
-            "EnvironmentVariables": [
-                "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ],
+            "EnvironmentVariables": ["PATH": path],
             "StandardOutPath": log,
             "StandardErrorPath": log
         ]

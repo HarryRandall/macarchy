@@ -60,17 +60,15 @@ extension Setup {
         }
     }
 
-    /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
-    /// it was registered with, which from Finder does not include Homebrew.
+    /// Writes the default shortcuts. They run tools by name, since
+    /// Macarchy's skhd agent gives them a PATH that finds yabai and the CLI.
     public static func installDefaultShortcuts(to url: URL = skhdrc) throws {
         guard let source = Paths.resources?.appending(path: "skhd/skhdrc") else {
             throw ConfigurationError("Default shortcuts are missing. Reinstall Macarchy.")
         }
-        let template = try String(contentsOf: source, encoding: .utf8)
-        let text = template.replacingOccurrences(
-            of: " yabai -m ", with: " \(Shell.quote(Paths.yabai)) -m ")
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let text = try String(contentsOf: source, encoding: .utf8)
         try text.write(to: url, atomically: true, encoding: .utf8)
     }
 
