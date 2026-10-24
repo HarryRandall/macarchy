@@ -136,6 +136,47 @@ struct SkhdRewriteTests {
                 == "cmd - a : one\nalt - b : two")
     }
 
+    /// skhd escapes the line break after a trailing backslash, so the next
+    /// line belongs to the command. Commenting out only the first line left the
+    /// rest live, and skhd then rejected the whole file.
+    @Test("a continued command is one shortcut and is disabled whole")
+    func continuedCommand() throws {
+        let first = "cmd - x : yabai -m window --focus west \\"
+        let second = #"  || osascript -e 'display notification "a: b"'"#
+        let text = [first, second, "cmd - h : echo hi"].joined(separator: "\n")
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["x", "h"])
+        let binding = try #require(parsed.first)
+        #expect(binding.endLine == 1)
+        #expect(
+            binding.command
+                == #"yabai -m window --focus west   || osascript -e 'display notification "a: b"'"#)
+
+        let disabled = try #require(SkhdConfig.disable(text, binding: binding))
+        #expect(
+            disabled == ["# " + first, "# " + second, "cmd - h : echo hi"].joined(separator: "\n"))
+        #expect(SkhdConfig.parse(disabled).map(\.key) == ["h"])
+        #expect(SkhdConfig.disable(text, line: 0) == disabled)
+
+        let rebound = try #require(
+            SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "x"))
+        #expect(rebound == text.replacingOccurrences(of: "cmd - x", with: "alt - x"))
+    }
+
+    @Test("an escaped backslash at the end of a line does not continue it")
+    func escapedBackslash() {
+        let parsed = SkhdConfig.parse("cmd - a : echo \\\\\ncmd - b : echo b")
+        #expect(parsed.map(\.key) == ["a", "b"])
+        #expect(parsed.first?.endLine == 0)
+    }
+
+    @Test("a commented entry inside a per-app block is not an override")
+    func commentInBlock() throws {
+        let text = "cmd - n [\n  # \"Safari\" : old\n  \"Firefox\" : echo ff\n]"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.appOverrides.map(\.app) == ["Firefox"])
+    }
+
     @Test("an unterminated block is not offered for editing")
     func unterminatedBlock() {
         #expect(SkhdConfig.parse("cmd - w [\n    * : echo").isEmpty)

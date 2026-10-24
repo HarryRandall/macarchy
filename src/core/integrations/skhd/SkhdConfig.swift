@@ -19,9 +19,9 @@ public enum SkhdConfig {
         var index = 0
 
         while index < lines.count {
-            let raw = lines[index]
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            defer { index += 1 }
+            let line = lines[index].trimmingCharacters(in: .whitespaces)
+            var end = logicalEnd(lines, from: index)
+            defer { index = end + 1 }
 
             if line.isEmpty { pendingComment = []; continue }
 
@@ -37,13 +37,36 @@ public enum SkhdConfig {
                 pendingComment = []
             }
 
-            guard
-                let parsed = parseBinding(
-                    line, at: index, section: section, lines: lines, cursor: &index)
-            else { continue }
-            bindings.append(parsed)
+            let (parsed, last) = parseBinding(lines, from: index, through: end, section: section)
+            end = last
+            if let parsed { bindings.append(parsed) }
         }
         return bindings
+    }
+
+    /// The last physical line of the logical line that starts at `start`.
+    ///
+    /// skhd reads a backslash as escaping the next character, so a command
+    /// whose line ends in an odd run of backslashes carries on to the next
+    /// line. A comment ends at its line break whatever it ends with.
+    static func logicalEnd(_ lines: [String], from start: Int) -> Int {
+        guard !lines[start].trimmingCharacters(in: .whitespaces).hasPrefix("#") else {
+            return start
+        }
+        var end = start
+        while end + 1 < lines.count,
+            lines[end].reversed().prefix(while: { $0 == "\\" }).count % 2 == 1
+        {
+            end += 1
+        }
+        return end
+    }
+
+    /// One logical line as skhd hands it to the shell: each escaped line break
+    /// removed, everything else kept.
+    static func joined(_ lines: ArraySlice<String>) -> String {
+        guard let last = lines.last else { return "" }
+        return lines.dropLast().map { String($0.dropLast()) }.joined() + last
     }
 
     /// Where a binding line splits into its key spec and the rest.
@@ -72,50 +95,58 @@ public enum SkhdConfig {
             passthrough: passthrough)
     }
 
+    /// Parses the logical line `start...end`, and for a per-app block the
+    /// lines up to its closing bracket. Returns the last line it consumed,
+    /// even when there is no binding, so a broken block's body is skipped.
     private static func parseBinding(
-        _ line: String, at lineIndex: Int, section: String?,
-        lines: [String], cursor: inout Int
-    ) -> SkhdBinding? {
-        guard let split = split(line) else { return nil }
+        _ lines: [String], from start: Int, through end: Int, section: String?
+    ) -> (SkhdBinding?, Int) {
+        let line = joined(lines[start...end])
+        guard let split = split(line) else { return (nil, end) }
         let (modifiers, key) = splitKeySpec(split.keySpec)
-        guard !key.isEmpty else { return nil }
+        guard !key.isEmpty else { return (nil, end) }
 
         // App-specific form: `<keyspec> [` … `]`, optionally with `->`.
         if split.isBlock {
             var overrides: [SkhdBinding.AppOverride] = []
-            var scan = cursor + 1
+            var scan = end + 1
             var closed = false
             while scan < lines.count {
-                let entry = lines[scan].trimmingCharacters(in: .whitespaces)
-                scan += 1
+                let entryEnd = logicalEnd(lines, from: scan)
+                let entry = joined(lines[scan...entryEnd]).trimmingCharacters(in: .whitespaces)
+                scan = entryEnd + 1
                 if entry.hasPrefix("]") { closed = true; break }
-                guard let colon = entry.firstIndex(of: ":") else { continue }
+                guard !entry.hasPrefix("#"), let colon = entry.firstIndex(of: ":") else {
+                    continue
+                }
                 let app = entry[entry.startIndex..<colon]
                     .trimmingCharacters(in: CharacterSet(charactersIn: " \"\t"))
                 let command = entry[entry.index(after: colon)...].trimmingCharacters(
                     in: .whitespaces)
                 if !app.isEmpty { overrides.append(.init(app: app, command: command)) }
             }
-            cursor = scan - 1
+            let blockEnd = scan - 1
             // skhd rejects an unterminated block; its body must not surface as
             // separate bindings either.
-            guard closed else { return nil }
-            return SkhdBinding(
-                id: lineIndex, endLine: cursor, source: Array(lines[lineIndex...cursor]),
+            guard closed else { return (nil, blockEnd) }
+            let binding = SkhdBinding(
+                id: start, endLine: blockEnd, source: Array(lines[start...blockEnd]),
                 modifiers: modifiers, key: key,
                 command: overrides.first(where: { $0.app == "*" })?.command ?? "",
                 section: section, passthrough: split.passthrough, appOverrides: overrides)
+            return (binding, blockEnd)
         }
 
         // Standard form. Commands routinely contain colons (osascript, URLs), so
         // only the first one separates the key spec from the command.
         let command = line[line.index(after: split.rest)...].trimmingCharacters(
             in: .whitespaces)
-        guard !command.isEmpty else { return nil }
-        return SkhdBinding(
-            id: lineIndex, endLine: lineIndex, source: [lines[lineIndex]],
+        guard !command.isEmpty else { return (nil, end) }
+        let binding = SkhdBinding(
+            id: start, endLine: end, source: Array(lines[start...end]),
             modifiers: modifiers, key: key, command: command,
             section: section, passthrough: split.passthrough, appOverrides: [])
+        return (binding, end)
     }
 
     /// "cmd + shift - h" → (["cmd","shift"], "h"). Media keys carry no modifier.
@@ -187,18 +218,23 @@ extension SkhdConfig {
     }
 
     /// Comments a binding out rather than deleting it, so the file keeps its
-    /// line numbering and the change can be read back later.
+    /// line numbering and the change can be read back later. A command
+    /// continued onto later lines is commented out whole, or its tail would
+    /// stay live and break the file.
     public static func disable(_ text: String, line index: Int) -> String? {
         var lines = text.components(separatedBy: "\n")
         guard lines.indices.contains(index),
             !lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("#")
         else { return nil }
-        lines[index] = "# " + lines[index]
+        for line in index...logicalEnd(lines, from: index) {
+            lines[line] = "# " + lines[line]
+        }
         return lines.joined(separator: "\n")
     }
 
     /// Comments out every line of `binding`, including a per-app block's body
-    /// and closing bracket, which would otherwise stay live or break parsing.
+    /// and closing bracket or a continued command's later lines, which would
+    /// otherwise stay live or break parsing.
     public static func disable(_ text: String, binding: SkhdBinding) -> String? {
         guard matches(text, binding) else { return nil }
         var lines = text.components(separatedBy: "\n")

@@ -3,7 +3,8 @@ import Foundation
 /// One parsed skhdrc binding, plus how it is spelled on screen.
 public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public let id: Int  // first source line, which is also a stable identity
-    /// Last source line; differs from `id` for a per-app block.
+    /// Last source line; differs from `id` for a per-app block or a command
+    /// continued with a trailing backslash.
     public let endLine: Int
     /// The lines as read, so an edit can refuse a file that changed underneath it.
     public let source: [String]
