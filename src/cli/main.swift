@@ -135,7 +135,12 @@ do {
     case "startup":
         let options = try parse(values: 1...1, choices: ["yabai", "sketchybar", "borders"])
         if options.values[0] == "borders" {
-            try await Startup.applyCorners()
+            // Window corners are a separate preference; failing to set them
+            // must not keep borders from starting.
+            do { try await Startup.applyCorners() } catch {
+                FileHandle.standardError.write(
+                    Data("Window corners not set: \(error.localizedDescription)\n".utf8))
+            }
             // Replace the startup process; the daemon must not inherit the command timeout.
             let settings = try SettingsStore().read()
             let theme = settings.currentTheme.flatMap {
