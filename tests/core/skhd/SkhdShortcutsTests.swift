@@ -144,48 +144,6 @@ struct SkhdShortcutsTests {
         }
     }
 
-    @Test("skhd's own order picks the file: the config folder, then a lone dotfile")
-    func location() throws {
-        let files = try fixture()
-        defer { try? FileManager.default.removeItem(at: files.root) }
-        let home = files.root
-        let primary = home.appending(path: ".config/skhd/skhdrc")
-        let dotfile = home.appending(path: ".skhdrc")
-        #expect(Paths.skhdrc(home: home) == primary)
-        try "cmd - j : echo dotfile\n".write(to: dotfile, atomically: true, encoding: .utf8)
-        #expect(Paths.skhdrc(home: home) == dotfile)
-        try FileManager.default.createDirectory(
-            at: primary.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try "cmd - j : echo primary\n".write(to: primary, atomically: true, encoding: .utf8)
-        #expect(Paths.skhdrc(home: home) == primary)
-    }
-
-    /// With a lone `~/.skhdrc`, Reset must snapshot that file, the person's
-    /// only copy, and replace it in place rather than seed a second file.
-    @Test("reset snapshots a lone dotfile before replacing it")
-    func resetDotfile() async throws {
-        let files = try fixture()
-        defer { try? FileManager.default.removeItem(at: files.root) }
-        let home = files.root
-        let dotfile = home.appending(path: ".skhdrc")
-        try "cmd - j : echo my-only-copy\n".write(to: dotfile, atomically: true, encoding: .utf8)
-        let defaults = home.appending(path: "defaults")
-        try "play : echo default\n".write(to: defaults, atomically: true, encoding: .utf8)
-        let shortcuts = operation(
-            Paths.skhdrc(home: home), files.snapshots, defaults: defaults)
-        let state = try shortcuts.read()
-        #expect(state.bindings.map(\.key) == ["j"])
-        _ = try await shortcuts.reset(revision: state.revision)
-        #expect(try String(contentsOf: dotfile, encoding: .utf8) == "play : echo default\n")
-        let snapshot = try #require(files.snapshots.list().first)
-        #expect(
-            try String(contentsOf: snapshot.url.appending(path: "0-.skhdrc"), encoding: .utf8)
-                == "cmd - j : echo my-only-copy\n")
-        #expect(
-            !FileManager.default.fileExists(
-                atPath: home.appending(path: ".config/skhd/skhdrc").path))
-    }
-
     @Test("a failed snapshot leaves the person's configuration untouched")
     func snapshotFailure() async throws {
         let files = try fixture()

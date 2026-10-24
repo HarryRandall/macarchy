@@ -9,15 +9,20 @@ public enum DesktopConfiguration {
     ) async throws {
         // Read before restoring: restoring snapshots the current files, and
         // that capture can prune the snapshot being restored.
-        let restartsShortcuts = store.originalPaths(of: snapshot).contains {
-            $0.hasSuffix("/skhdrc") || $0.hasSuffix("/.skhdrc")
-        }
+        let restartsShortcuts = touchesShortcuts(
+            store.originalPaths(of: snapshot), linked: SkhdShortcuts().configURL.path)
         try await store.restoreLocked(snapshot)
         try await apply(integrations: integrations)
         if restartsShortcuts, Paths.isInstalled("skhd") {
             let result = await integrations.restart(.skhd)
             guard result.ok else { throw ConfigurationError(result.summary) }
         }
+    }
+
+    /// Whether a snapshot holds the shortcuts file. Shortcut edits snapshot a
+    /// linked skhdrc's target, which can have any name.
+    static func touchesShortcuts(_ paths: [String], linked: String) -> Bool {
+        paths.contains { $0.hasSuffix("/skhdrc") || $0.hasSuffix("/.skhdrc") || $0 == linked }
     }
 
     /// Reapplies every saved setting under one desktop lock, skipping tools
