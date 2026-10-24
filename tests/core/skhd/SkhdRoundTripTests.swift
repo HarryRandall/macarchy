@@ -115,9 +115,13 @@ struct SkhdRoundTripTests {
             let lines = disabled.components(separatedBy: "\n")
             #expect(lines.count == Self.lines.count)
             for index in lines.indices {
+                let line = Self.lines[index]
                 let expected =
-                    (binding.id...binding.endLine).contains(index)
-                    ? "# " + Self.lines[index] : Self.lines[index]
+                    switch index {
+                    case binding.id: "# disabled: " + line
+                    case binding.id...binding.endLine: "# " + line
+                    default: line
+                    }
                 #expect(lines[index] == expected, "line \(index)")
             }
             // Every other shortcut is unchanged, section included: the

@@ -64,7 +64,7 @@ struct SkhdRewriteTests {
     func disableBinding() {
         let text = "cmd - h : echo hi"
         let disabled = SkhdConfig.disable(text, line: 0)
-        #expect(disabled == "# cmd - h : echo hi")
+        #expect(disabled == "# disabled: cmd - h : echo hi")
         #expect(SkhdConfig.disable(disabled ?? "", line: 0) == nil)
     }
 
@@ -119,7 +119,8 @@ struct SkhdRewriteTests {
         let disabled = try #require(SkhdConfig.disable(text, binding: binding))
         #expect(
             disabled
-                == "# cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi")
+                == "# disabled: cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi"
+        )
         let remaining = SkhdConfig.parse(disabled)
         #expect(remaining.map(\.key) == ["w", "h"])
         #expect(remaining.map(\.isDisabled) == [true, false])
@@ -156,7 +157,9 @@ struct SkhdRewriteTests {
 
         let disabled = try #require(SkhdConfig.disable(text, binding: binding))
         #expect(
-            disabled == ["# " + first, "# " + second, "cmd - h : echo hi"].joined(separator: "\n"))
+            disabled
+                == ["# disabled: " + first, "# " + second, "cmd - h : echo hi"].joined(
+                    separator: "\n"))
         #expect(SkhdConfig.parse(disabled).filter { !$0.isDisabled }.map(\.key) == ["h"])
         #expect(SkhdConfig.disable(text, line: 0) == disabled)
         #expect(SkhdConfig.parse(disabled).first?.endLine == 1)
@@ -256,7 +259,7 @@ struct SkhdRewriteTests {
         )
         #expect(
             SkhdConfig.disable(text, binding: parsed[1])
-                == "cmd - r ; resize\n# resize < escape ; default\nresize < return : echo hi ; default"
+                == "cmd - r ; resize\n# disabled: resize < escape ; default\nresize < return : echo hi ; default"
         )
     }
 

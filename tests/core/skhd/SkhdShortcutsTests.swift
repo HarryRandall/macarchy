@@ -122,7 +122,8 @@ struct SkhdShortcutsTests {
         let disabled = try shortcuts.read()
         #expect(disabled.bindings.map(\.isDisabled) == [true, false])
         #expect(
-            try String(contentsOf: target, encoding: .utf8).hasPrefix("# alt - p [\n# \"Finder\""))
+            try String(contentsOf: target, encoding: .utf8).hasPrefix(
+                "# disabled: alt - p [\n# \"Finder\""))
         await #expect(throws: (any Error).self) {
             try await shortcuts.rebind(
                 id: 0, revision: disabled.revision, chord: .init(modifiers: ["cmd"], key: "k"))

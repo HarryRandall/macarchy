@@ -65,21 +65,29 @@ public enum SkhdConfig {
         return bindings
     }
 
+    /// What `disable` writes before a binding's first line. The marker tells
+    /// a disabled shortcut from a heading such as `# Space: switch desktops`,
+    /// which would otherwise read as a bare Space binding.
+    static let disabledMarker = "# disabled: "
+
     /// The binding that `disable` commented out, when the comment at `start`
     /// is one.
     ///
-    /// Disabling writes `# ` before every line of a binding, so removing that
-    /// from the run of comments must give back a binding whose chord skhd could
-    /// read. A prose comment such as `# Note: x` stays a heading.
+    /// The first line carries `disabledMarker` and the rest `# `. A first line
+    /// with only `# ` is read as disabled
+    /// when it names a modifier or a mode, so a prose comment such as
+    /// `# Note: x` or `# Play: media keys below` stays a heading.
     static func disabledBinding(
         _ lines: [String], from start: Int, section: String?
     ) -> SkhdBinding? {
-        let run = Array(
-            lines[start...].prefix { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) })
-        guard !run.isEmpty else { return nil }
+        let first = lines[start]
+        let marked = first.hasPrefix(disabledMarker)
+        guard marked || first.hasPrefix("# ") else { return nil }
+        var run = [String(first.dropFirst(marked ? disabledMarker.count : 2))]
+        run += lines[(start + 1)...].prefix { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) }
         let (parsed, last) = parseBinding(
             run, from: 0, through: logicalEnd(run, from: 0), section: section)
-        guard let parsed, isChord(parsed) else { return nil }
+        guard let parsed, isChord(parsed, marked: marked) else { return nil }
         return SkhdBinding(
             id: start, endLine: start + last, source: Array(lines[start...(start + last)]),
             modifiers: parsed.modifiers, key: parsed.key, command: parsed.command,
@@ -88,10 +96,10 @@ public enum SkhdConfig {
             activatesMode: parsed.activatesMode, isDisabled: true)
     }
 
-    /// Whether a parsed binding names modifiers and a key skhd knows. A bare
-    /// letter or digit counts only with a modifier or mode, as one on its own
-    /// is more likely the start of a sentence.
-    private static func isChord(_ binding: SkhdBinding) -> Bool {
+    /// Whether a parsed binding names modifiers and a key skhd knows. Without
+    /// the marker it also needs a modifier or a mode, as a key name on its
+    /// own is more likely the start of a sentence.
+    private static func isChord(_ binding: SkhdBinding, marked: Bool) -> Bool {
         let modifiers: Set<String> = [
             "fn", "cmd", "lcmd", "rcmd", "alt", "lalt", "ralt", "shift", "lshift", "rshift",
             "ctrl", "lctrl", "rctrl", "hyper", "meh"
@@ -99,11 +107,11 @@ public enum SkhdConfig {
         guard binding.modifiers.allSatisfy({ modifiers.contains($0.lowercased()) }) else {
             return false
         }
+        if !marked, binding.modifiers.isEmpty, binding.modes.isEmpty { return false }
         let key = binding.key.lowercased()
         if SkhdKey.named[key] != nil || SkhdBinding.keyGlyphs[key] != nil { return true }
         if key.hasPrefix("0x"), UInt16(key.dropFirst(2), radix: 16) != nil { return true }
-        let plain = key.count == 1 && key.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) }
-        return plain && (!binding.modifiers.isEmpty || !binding.modes.isEmpty)
+        return key.count == 1 && key.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) }
     }
 
     /// The last physical line of the logical line that starts at `start`.
@@ -317,102 +325,5 @@ extension SkhdConfig {
                 && SkhdKey.normalised($0.key) == key
                 && SkhdKey.normalised(modifiers: $0.modifiers) == modifiers
         }
-    }
-}
-
-// MARK: - Writing
-
-extension SkhdConfig {
-    /// Renders a key spec in the form skhd parses back: `cmd + shift - h`.
-    ///
-    /// Modifier order is normalised so two bindings that mean the same chord
-    /// read the same in the file, whatever order they were recorded in.
-    public static func keySpec(modifiers: [String], key: String) -> String {
-        let order = ["fn", "ctrl", "alt", "shift", "cmd", "hyper"]
-        let sorted = modifiers.map { $0.lowercased() }.sorted {
-            (order.firstIndex(of: $0) ?? order.count) < (order.firstIndex(of: $1) ?? order.count)
-        }
-        guard !sorted.isEmpty else { return key }
-        return sorted.joined(separator: " + ") + " - " + key
-    }
-
-    /// Replaces the key spec on one line, keeping the command untouched.
-    ///
-    /// Only the chord is rewritten: a `mode <` prefix stays, so the shortcut
-    /// keeps working in the same mode, and everything from the first `:`, `[`
-    /// or `;` stays, because a command routinely contains colons and arrows.
-    /// Returns `nil` when the line is not a binding, so a miscounted index
-    /// cannot corrupt the file.
-    public static func rebind(
-        _ text: String, line index: Int, modifiers: [String], key: String
-    ) -> String? {
-        var lines = text.components(separatedBy: "\n")
-        guard lines.indices.contains(index) else { return nil }
-
-        let line = lines[index]
-        guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("#"),
-            let split = split(line)
-        else { return nil }
-        let spec = keySpec(modifiers: modifiers, key: key) + (split.passthrough ? " ->" : "")
-        lines[index] = String(line[..<split.keyStart]) + spec + " " + String(line[split.rest...])
-        return lines.joined(separator: "\n")
-    }
-
-    /// Rebinds `binding`, refusing if the file no longer holds it where it was read.
-    ///
-    /// Another editor may have inserted lines since the page loaded; trusting
-    /// the stored line number alone would then rewrite a different shortcut.
-    public static func rebind(
-        _ text: String, binding: SkhdBinding, modifiers: [String], key: String
-    ) -> String? {
-        guard !binding.isDisabled, matches(text, binding) else { return nil }
-        return rebind(text, line: binding.id, modifiers: modifiers, key: key)
-    }
-
-    /// Comments a binding out rather than deleting it, so the file keeps its
-    /// line numbering and the change can be read back later. A command
-    /// continued onto later lines is commented out whole, or its tail would
-    /// stay live and break the file.
-    public static func disable(_ text: String, line index: Int) -> String? {
-        var lines = text.components(separatedBy: "\n")
-        guard lines.indices.contains(index),
-            !lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("#")
-        else { return nil }
-        for line in index...logicalEnd(lines, from: index) {
-            lines[line] = "# " + lines[line]
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    /// Comments out every line of `binding`, including a per-app block's body
-    /// and closing bracket or a continued command's later lines, which would
-    /// otherwise stay live or break parsing.
-    public static func disable(_ text: String, binding: SkhdBinding) -> String? {
-        guard !binding.isDisabled, matches(text, binding) else { return nil }
-        var lines = text.components(separatedBy: "\n")
-        for index in binding.id...binding.endLine {
-            lines[index] = "# " + lines[index]
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    /// Undoes `disable`: removes the `# ` it wrote before each of the
-    /// binding's lines, and nothing else, so the original bytes come back.
-    public static func enable(_ text: String, binding: SkhdBinding) -> String? {
-        guard binding.isDisabled, matches(text, binding) else { return nil }
-        var lines = text.components(separatedBy: "\n")
-        for index in binding.id...binding.endLine {
-            guard lines[index].hasPrefix("# ") else { return nil }
-            lines[index] = String(lines[index].dropFirst(2))
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    static func matches(_ text: String, _ binding: SkhdBinding) -> Bool {
-        let lines = text.components(separatedBy: "\n")
-        guard binding.id <= binding.endLine, lines.indices.contains(binding.endLine) else {
-            return false
-        }
-        return Array(lines[binding.id...binding.endLine]) == binding.source
     }
 }
