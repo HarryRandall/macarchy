@@ -66,7 +66,11 @@ export function filterBindings(all: ShortcutBinding[], filters: ShortcutFilters)
   );
 }
 
-/** The physical key, independent of Shift and Option's transformed characters. Swift validates it. */
+/**
+ * The physical key, independent of Shift and Option's transformed characters. skhd calls
+ * Backspace `backspace` and forward delete `delete`; keypad keys are keycodes so they stay
+ * distinct from the main keys. Swift validates the key and settles its spelling.
+ */
 export function recordedChord(
   event: Pick<
     KeyboardEvent,
@@ -78,7 +82,7 @@ export function recordedChord(
     Enter: "return",
     Tab: "tab",
     Space: "space",
-    Backspace: "delete",
+    Backspace: "backspace",
     Escape: "escape",
     ArrowLeft: "left",
     ArrowRight: "right",
@@ -100,6 +104,24 @@ export function recordedChord(
     Backquote: "0x32",
     Backslash: "0x2a",
     Delete: "0x75",
+    NumpadDecimal: "0x41",
+    NumpadMultiply: "0x43",
+    NumpadAdd: "0x45",
+    NumLock: "0x47",
+    NumpadDivide: "0x4b",
+    NumpadEnter: "0x4c",
+    NumpadSubtract: "0x4e",
+    NumpadEqual: "0x51",
+    Numpad0: "0x52",
+    Numpad1: "0x53",
+    Numpad2: "0x54",
+    Numpad3: "0x55",
+    Numpad4: "0x56",
+    Numpad5: "0x57",
+    Numpad6: "0x58",
+    Numpad7: "0x59",
+    Numpad8: "0x5b",
+    Numpad9: "0x5c",
   };
   const key =
     special[event.code] ??

@@ -153,6 +153,8 @@ describe("recording", () => {
     expect(recordedChord({ ...event, repeat: true })).toBeNull();
     expect(recordedChord({ ...event, isComposing: true })).toBeNull();
     expect(recordedChord({ ...event, code: "ArrowLeft" })?.key).toBe("left");
+    expect(recordedChord({ ...event, code: "Backspace" })?.key).toBe("backspace");
+    expect(recordedChord({ ...event, code: "Numpad1" })?.key).toBe("0x53");
   });
 });
 

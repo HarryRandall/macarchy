@@ -48,7 +48,8 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     /// Named keys, including the media keys skhd reads as system events.
     public static let keyGlyphs: [String: String] = [
         "return": "↩", "space": "space", "left": "←", "right": "→", "up": "↑", "down": "↓",
-        "tab": "⇥", "escape": "⎋", "delete": "⌫", "home": "↖", "end": "↘", "pageup": "⇞",
+        "tab": "⇥", "escape": "⎋", "backspace": "⌫", "delete": "⌦", "home": "↖", "end": "↘",
+        "pageup": "⇞",
         "pagedown": "⇟", "play": "⏯", "next": "⏭", "previous": "⏮", "fast": "⏩",
         "rewind": "⏪", "sound_up": "🔊", "sound_down": "🔉", "mute": "🔇",
         "brightness_up": "🔆", "brightness_down": "🔅"
@@ -59,6 +60,11 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
             return named
         }
         if let glyph = keyGlyphs[key.lowercased()] { return glyph }
+        if key.lowercased().hasPrefix("0x"), let code = UInt16(key.dropFirst(2), radix: 16),
+            let name = SkhdKey.keypad[code]
+        {
+            return name
+        }
         return key.count == 1 ? key.uppercased() : key
     }
 }

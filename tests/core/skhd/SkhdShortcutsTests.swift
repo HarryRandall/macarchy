@@ -181,4 +181,26 @@ struct SkhdShortcutsTests {
             try ShortcutChord(modifiers: [], key: "0xff").validated()
         }
     }
+
+    /// The recorder used to send Backspace as `delete`, which skhd reads as
+    /// forward delete, and punctuation reached the file as skhd syntax.
+    @Test("recorded keys are written in spellings skhd parses back")
+    func recordedSpellings() throws {
+        func written(_ key: String) throws -> String {
+            try ShortcutChord(modifiers: ["ctrl", "alt"], key: key).validated().key
+        }
+        #expect(try written("backspace") == "backspace")
+        #expect(try written("0x33") == "backspace")
+        #expect(try written("0x75") == "delete")
+        #expect(try written("=") == "0x18")
+        #expect(try written("0x1b") == "0x1B")
+        #expect(try written("0x53") == "0x53")
+        #expect(try written("K") == "k")
+        let chord = try ShortcutChord(modifiers: ["ctrl", "alt"], key: "-").validated()
+        let parsed = try #require(SkhdConfig.parse("\(chord.keySpec) : echo smaller").first)
+        #expect(parsed.key == "0x1B" && parsed.keyCaps == ["⌃", "⌥", "-"])
+        let equals = try #require(SkhdConfig.parse("alt + ctrl - 0x18 : echo grow").first)
+        #expect(ShortcutChord(modifiers: ["ctrl", "alt"], key: "=").overlaps(equals))
+        #expect(!ShortcutChord(modifiers: ["ctrl", "alt"], key: "0x51").overlaps(equals))
+    }
 }
