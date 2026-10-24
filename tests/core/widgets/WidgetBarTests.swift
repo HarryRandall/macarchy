@@ -155,7 +155,8 @@ struct WidgetBarTests {
         }
         #expect(targets == ["macarchy.clock", "macarchy.clock.lines", "macarchy.clock.box"])
         // The column fits the widest sample, with the box's inset after it.
-        #expect(arguments.contains("width=44") && arguments.contains("label.padding_right=-36"))
+        #expect(arguments.contains("icon.width=44") && arguments.contains("label.padding_right=8"))
+        #expect(!arguments.contains { $0.contains("padding") && $0.contains("=-") })
         #expect(arguments.contains("padding_left=3") && arguments.contains("padding_right=3"))
         #expect(arguments.contains("background.border_width=1"))
 

@@ -137,19 +137,23 @@ public struct WidgetLook: Sendable {
     private func stackedArguments(
         _ component: BarComponent, manifest: WidgetManifest, style: WidgetStyle, icon: [String]
     ) -> [String] {
-        // As the bar's stacked readings have always been drawn: each line
-        // takes no width of its own and is right-aligned at the column's
-        // edge, so the two end exactly over each other.
+        // The icon's fixed width is the whole item: the column, then the
+        // inset. SketchyBar right-aligns text against the end of its slot,
+        // less its right padding, so the top line ends at the column's edge.
+        // The label takes no width and starts where the icon's slot ends, so
+        // it right-aligns back against the same edge, under the top line.
+        // Each item is its own window, so nothing may reach past the icon's
+        // slot; negative padding would push the lines out of view.
         let column = Self.columnCharacters(manifest) * Self.characterWidth
         let font = "Menlo:Bold:10.0"
         let right = Int(style.paddingRight ?? Self.inset)
         var lines = [
-            "icon.font=\(font)", "label.font=\(font)", "icon.width=0", "label.width=0",
-            "icon.align=right", "label.align=right", "icon.y_offset=6", "label.y_offset=-5",
-            "icon.padding_left=\(column)", "icon.padding_right=-\(column)",
-            "label.padding_left=\(column)", "label.padding_right=-\(column)", "padding_left=0",
-            "padding_right=\(Self.gap)", "width=\(column + right)",
-            "background.drawing=off", "script=", icon.first { $0.hasPrefix("click_script=") } ?? ""
+            "icon.font=\(font)", "label.font=\(font)", "icon.width=\(column + right)",
+            "label.width=0", "icon.align=right", "label.align=right", "icon.y_offset=6",
+            "label.y_offset=-5", "icon.padding_left=0", "icon.padding_right=\(right)",
+            "label.padding_left=0", "label.padding_right=\(right)", "padding_left=0",
+            "padding_right=\(Self.gap)", "width=dynamic", "background.drawing=off", "script=",
+            icon.first { $0.hasPrefix("click_script=") } ?? ""
         ]
         if let colour = style.textColour.flatMap(colour) {
             lines += ["icon.color=\(colour)", "label.color=\(colour)"]
