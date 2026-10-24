@@ -22,7 +22,12 @@ extension StartupConfiguration {
     @discardableResult
     public func generateSketchybarRC(adopting: String? = nil) -> GeneratedFile.Outcome {
         let file = Self.sketchybarrc
-        let bundled = (try? SettingsStore().read().bundledBar) ?? nil ?? true
+        // An unreadable settings file must not quietly mean Macarchy's bar,
+        // which would reorder a person's own bar around the startup command.
+        let bundled: Bool
+        do { bundled = try SettingsStore().read().bundledBar ?? true } catch {
+            return .failed(error.localizedDescription)
+        }
         let startup = "\(Paths.cliInShell) startup sketchybar\n"
         let yours = region(yours(file, adopting: adopting)) + "\n"
         let content =

@@ -11,8 +11,12 @@ public enum SettingValue: Codable, Sendable, Equatable {
             self = .bool(boolean)
         } else if let number = try? value.decode(Double.self) {
             self = .number(number)
+        } else if let text = try? value.decode(String.self) {
+            self = .text(text)
         } else {
-            self = .text(try value.decode(String.self))
+            throw DecodingError.typeMismatch(
+                SettingValue.self,
+                .init(codingPath: decoder.codingPath, debugDescription: "Not a setting value"))
         }
     }
     public func encode(to encoder: Encoder) throws {
@@ -48,7 +52,66 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var itemLabels: [String: String] = [:]
     /// False when setup kept the person's existing bar instead of Macarchy's.
     public var bundledBar: Bool?
+    /// Top-level keys this version does not know, such as those a newer
+    /// version added. They are written back unchanged, never dropped.
+    public var unknownKeys: [String: JSONValue] = [:]
     public init() {}
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case schema, currentTheme, wallpapers, layout, borders, menuBar, floatingApps
+        case windowRules, barConfiguration, itemOrder, itemVisibility, itemLabels, bundledBar
+    }
+
+    /// `schema` is required; every other key may be left out and takes its
+    /// default, so a short hand-written file is valid. The schema is read
+    /// first, so a newer file is reported as newer rather than as malformed.
+    public init(from decoder: Decoder) throws {
+        let keys = try decoder.container(keyedBy: CodingKeys.self)
+        schema = try keys.decode(Int.self, forKey: .schema)
+        guard schema == 1 else {
+            throw ConfigurationError(
+                "settings.json uses schema \(schema), from a newer Macarchy. "
+                    + "Update Macarchy to use it.")
+        }
+        currentTheme = try keys.decodeIfPresent(String.self, forKey: .currentTheme)
+        wallpapers = try keys.decodeIfPresent([String: String].self, forKey: .wallpapers) ?? [:]
+        layout = try keys.decodeIfPresent([String: SettingValue].self, forKey: .layout) ?? [:]
+        borders = try keys.decodeIfPresent([String: SettingValue].self, forKey: .borders) ?? [:]
+        menuBar = try keys.decodeIfPresent([String: SettingValue].self, forKey: .menuBar) ?? [:]
+        floatingApps = try keys.decodeIfPresent([String].self, forKey: .floatingApps) ?? []
+        windowRules = try keys.decodeIfPresent([CustomWindowRule].self, forKey: .windowRules)
+        barConfiguration = try keys.decodeIfPresent(
+            BarConfiguration.self, forKey: .barConfiguration)
+        itemOrder = try keys.decodeIfPresent([String].self, forKey: .itemOrder) ?? []
+        itemVisibility =
+            try keys.decodeIfPresent([String: Bool].self, forKey: .itemVisibility) ?? [:]
+        itemLabels = try keys.decodeIfPresent([String: String].self, forKey: .itemLabels) ?? [:]
+        bundledBar = try keys.decodeIfPresent(Bool.self, forKey: .bundledBar)
+        let known = Set(CodingKeys.allCases.map(\.rawValue))
+        let all = try decoder.container(keyedBy: AnyCodingKey.self)
+        for key in all.allKeys where !known.contains(key.stringValue) {
+            unknownKeys[key.stringValue] = try all.decode(JSONValue.self, forKey: key)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var keys = encoder.container(keyedBy: CodingKeys.self)
+        try keys.encode(schema, forKey: .schema)
+        try keys.encodeIfPresent(currentTheme, forKey: .currentTheme)
+        try keys.encode(wallpapers, forKey: .wallpapers)
+        try keys.encode(layout, forKey: .layout)
+        try keys.encode(borders, forKey: .borders)
+        try keys.encode(menuBar, forKey: .menuBar)
+        try keys.encode(floatingApps, forKey: .floatingApps)
+        try keys.encodeIfPresent(windowRules, forKey: .windowRules)
+        try keys.encodeIfPresent(barConfiguration, forKey: .barConfiguration)
+        try keys.encode(itemOrder, forKey: .itemOrder)
+        try keys.encode(itemVisibility, forKey: .itemVisibility)
+        try keys.encode(itemLabels, forKey: .itemLabels)
+        try keys.encodeIfPresent(bundledBar, forKey: .bundledBar)
+        var extra = encoder.container(keyedBy: AnyCodingKey.self)
+        for (key, value) in unknownKeys { try extra.encode(value, forKey: AnyCodingKey(key)) }
+    }
 
     public func validate() throws {
         try barConfiguration?.validate()
@@ -57,7 +120,9 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
             throw ConfigurationError("Window rule identifiers must be unique")
         }
         for rule in rules { try rule.validate() }
-        guard schema == 1 else { throw ConfigurationError("Unsupported settings schema") }
+        guard schema == 1 else {
+            throw ConfigurationError("Settings schema \(schema) is from a newer Macarchy")
+        }
         let numeric = [layout, borders, menuBar].flatMap { $0.values }
         for value in numeric {
             if case .number(let number) = value, !number.isFinite {
@@ -99,6 +164,13 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
                 let name = prefix + key.uppercased()
                 if case .bool(let flag) = value, name != "BORDERS_VISIBLE" {
                     result[name] = flag ? "on" : "off"
+                } else if name.hasSuffix("_COLOR"), case .number(let number) = value,
+                    number.rounded() == number, (0...0xFFFF_FFFF).contains(number)
+                {
+                    // Earlier versions saved hex colours such as 0xffd75f5f
+                    // as decimal numbers, which the daemons do not read as
+                    // colours. Hand them back in hex.
+                    result[name] = String(format: "0x%08x", UInt32(number))
                 } else {
                     result[name] = value.string
                 }
@@ -107,12 +179,18 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         return result
     }
 
+    static func isPlainDecimal(_ raw: String) -> Bool {
+        raw.range(of: #"^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)$"#, options: .regularExpression) != nil
+    }
+
     public mutating func mergeFlat(_ values: [String: String]) {
         for (key, raw) in values {
             let value: SettingValue
             if ["true", "false", "on", "off"].contains(raw) {
                 value = .bool(raw == "true" || raw == "on")
-            } else if let number = Double(raw), number.isFinite {
+            } else if Self.isPlainDecimal(raw), let number = Double(raw), number.isFinite {
+                // Double also reads hex and exponents, which would turn a
+                // colour such as 0xffd75f5f into a decimal number.
                 value = .number(number)
             } else {
                 value = .text(raw)
@@ -141,11 +219,10 @@ public struct SettingsStore: Sendable {
 
     public func read() throws -> SettingsDocument {
         guard FileManager.default.fileExists(atPath: url.path) else { return SettingsDocument() }
-        let settings = try JSONDecoder().decode(SettingsDocument.self, from: Data(contentsOf: url))
-        guard settings.schema == 1 else {
-            throw ConfigurationError("Unsupported settings schema: \(settings.schema)")
+        let settings = try JSONFile.decode(SettingsDocument.self, from: url)
+        do { try settings.validate() } catch {
+            throw ConfigurationError("\(Paths.display(url)): \(error.localizedDescription)")
         }
-        try settings.validate()
         return settings
     }
 

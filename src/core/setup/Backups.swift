@@ -48,7 +48,15 @@ struct Backups {
             if let destination = try? fm.destinationOfSymbolicLink(atPath: url.path) {
                 current.entries[url.path] = .link(destination)
             } else if fm.fileExists(atPath: url.path) {
-                let name = "\(current.entries.count)-\(url.lastPathComponent)"
+                // A copy left by an interrupted save has no manifest entry;
+                // step past it rather than fail on every later setup.
+                var index = current.entries.count
+                while fm.fileExists(
+                    atPath: root.appending(path: "\(index)-\(url.lastPathComponent)").path)
+                {
+                    index += 1
+                }
+                let name = "\(index)-\(url.lastPathComponent)"
                 let stored = root.appending(path: name)
                 try fm.copyItem(at: url, to: stored)
                 current.entries[url.path] = .file(name)
@@ -65,7 +73,10 @@ struct Backups {
     /// Every stored copy is checked before anything changes, and the current
     /// files are snapshotted first, so edits made since setup can be recovered
     /// from Advanced. Each file is replaced atomically, never removed first.
-    func restoreAll(snapshots: SnapshotStore = SnapshotStore()) throws -> [String] {
+    /// Each change is added to `report` as it is made, so a failure part way
+    /// still tells the caller what was already put back.
+    func restoreAll(snapshots: SnapshotStore = SnapshotStore(), into report: inout [String]) throws
+    {
         let fm = FileManager.default
         let entries = try manifest().entries.sorted { $0.key < $1.key }
         for case (_, .file(let name)) in entries
@@ -77,7 +88,6 @@ struct Backups {
         try snapshots.capture(
             entries.map { URL(fileURLWithPath: $0.key) }, reason: "before restoring originals")
 
-        var report: [String] = []
         for (path, original) in entries {
             let url = URL(fileURLWithPath: path)
             let isLink = (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil
@@ -121,7 +131,6 @@ struct Backups {
                         + UUID().uuidString.prefix(8))
             try fm.moveItem(at: root, to: finished)
         }
-        return report
     }
 
     private func write(_ manifest: Manifest) throws {

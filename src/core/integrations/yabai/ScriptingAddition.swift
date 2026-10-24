@@ -39,7 +39,8 @@ public enum ScriptingAddition {
             case .permitted:
                 "The scripting addition has permission to load."
             case .binaryMissing:
-                "The window manager is not installed at \(Paths.yabai)."
+                "The window manager is not installed at "
+                    + "\(Paths.display(URL(fileURLWithPath: Paths.yabai)))."
             case .bundleMissing:
                 "Not installed. It is optional and needs System Integrity "
                     + "Protection partly disabled; `sudo yabai --load-sa` installs it."

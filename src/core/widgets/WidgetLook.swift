@@ -37,12 +37,14 @@ public struct WidgetLook: Sendable {
         let theme = (try? store.read())?.currentTheme.flatMap {
             Theme.load(from: Paths.themesDirectory.appending(path: $0))
         }
-        let text = theme?.colors.sketchybarText
+        // SketchyBar reads 0xAARRGGBB only; a theme may spell #rrggbb.
+        let text = theme?.colors.sketchybarText.map(Theme.argb)
         let muted = text.flatMap {
             $0.count == 10 && $0.hasPrefix("0x") ? "0x99" + $0.dropFirst(4) : nil
         }
         return WidgetLook(
-            manifests: manifests, accent: theme?.colors.borderActive, muted: muted, text: text)
+            manifests: manifests, accent: theme?.colors.borderActive.map(Theme.argb), muted: muted,
+            text: text)
     }
 
     // MARK: - Items

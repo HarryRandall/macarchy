@@ -69,7 +69,7 @@ public enum Daemon: String, CaseIterable, Identifiable, Sendable {
         case .yabai: "yabai --start-service"
         case .skhd: "skhd --start-service"
         case .sketchybar: "brew services start sketchybar"
-        case .borders: "macarchy services"
+        case .borders: "\(Paths.cliInShell) services"
         }
     }
 

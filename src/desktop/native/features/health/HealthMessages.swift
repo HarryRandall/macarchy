@@ -39,7 +39,7 @@ struct HealthState: Codable, Sendable {
         checks = snapshot.checks.map {
             Check(
                 id: $0.id, group: $0.group.rawValue, title: $0.title,
-                status: $0.status.rawValue, detail: $0.detail, fix: $0.fix)
+                status: $0.status.rawValue, detail: $0.detail, fix: $0.command ?? $0.fix)
         }
         let facts = snapshot.environment
         environment = Machine(

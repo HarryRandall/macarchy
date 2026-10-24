@@ -18,8 +18,9 @@ public enum BordersService {
     }
 
     /// launchctl changes reach the real login session even when tests point
-    /// `MACARCHY_HOME` elsewhere, so they never run from an isolated run.
-    static var isolated: Bool { Paths.isolated }
+    /// `MACARCHY_HOME` elsewhere, so they never run from an isolated run or a
+    /// test process.
+    static var isolated: Bool { DesktopIsolation.isActive }
 
     static var domain: String { "gui/\(getuid())" }
 
@@ -113,6 +114,16 @@ public enum BordersService {
     static func stop(integrations: Integrations) async {
         guard !isolated else { return }
         _ = await integrations.execute(Paths.launchctl, ["bootout", "\(domain)/\(label)"])
+    }
+
+    /// After a failed uninstall: load Macarchy's agent again if it is still
+    /// in place, and Homebrew's if it came back.
+    static func resume(integrations: Integrations) async {
+        guard !isolated else { return }
+        if FileManager.default.fileExists(atPath: plist.path) {
+            _ = await integrations.execute(Paths.launchctl, ["bootstrap", domain, plist.path])
+        }
+        await restoreHomebrew(integrations: integrations)
     }
 
     /// After uninstall restored files: load Homebrew's agent again if it came back.

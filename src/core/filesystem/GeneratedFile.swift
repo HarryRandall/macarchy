@@ -88,6 +88,17 @@ public struct GeneratedFile: Sendable {
         return Self.generatedHash(onDisk) != recorded && Self.hash(onDisk) != recorded
     }
 
+    /// Drops the recorded hash once the file is no longer Macarchy's, such
+    /// as after uninstall restored the original, so it is not reported as edited.
+    public func forget() throws {
+        guard FileManager.default.fileExists(atPath: ledgerURL.path) else { return }
+        try FileLock.withLock(ledgerURL) {
+            var current = try ledger()
+            guard current.removeValue(forKey: url.path) != nil else { return }
+            try JSONEncoder().encode(current).write(to: ledgerURL, options: .atomic)
+        }
+    }
+
     // MARK: - Preserved regions
 
     /// Pulls out `# >>> macarchy:keep <name>` … `# <<< macarchy:keep` blocks so
@@ -112,6 +123,18 @@ public struct GeneratedFile: Sendable {
         return regions
     }
 
+    /// Whether a keep region was opened and never closed, as happens when its
+    /// end marker is deleted by hand.
+    static func hasUnterminatedRegion(_ text: String) -> Bool {
+        var open = false
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix(beginKeep) { open = true }
+            if trimmed.hasPrefix(endKeep) { open = false }
+        }
+        return open
+    }
+
     public func preservedRegions() -> [String: String] {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [:] }
         return Self.preservedRegions(in: text)
@@ -128,6 +151,16 @@ public struct GeneratedFile: Sendable {
         let recorded: [String: String]
         do { recorded = try ledger() } catch { return .failed(error.localizedDescription) }
 
+        // Where the person's region ends cannot be guessed: regenerating would
+        // drop it or copy generated lines into it. Only a file Macarchy wrote
+        // is checked; adopted files have their markers removed.
+        if let existing, existing != content, recorded[url.path] != nil,
+            Self.hasUnterminatedRegion(existing)
+        {
+            return .failed(
+                "\(Paths.display(url)) has a keep region without its end marker "
+                    + "(\(Self.endKeep)). Add the marker after your own lines, then try again.")
+        }
         if existing == content {
             do {
                 // Keeps the ledger current when only its hashing has changed,

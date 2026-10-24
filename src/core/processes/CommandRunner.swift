@@ -6,8 +6,9 @@ public struct CommandResult: Sendable, Codable {
     public let status: Int32
     public let stdout: String
     public let stderr: String
-    /// Optional parts an operation left out, such as a stopped service. A
-    /// result can succeed with parts skipped; callers report that as partial.
+    /// Optional parts an operation left out, such as a stopped service or a
+    /// command an isolated run refused to run. A result can succeed with parts
+    /// skipped; callers report that as partial.
     public let skipped: [String]
     public var ok: Bool { status == 0 }
     public var summary: String { ok ? stdout : stderr }
@@ -40,6 +41,11 @@ public enum CommandRunner {
         _ executable: String, _ arguments: [String], timeout: TimeInterval = 30,
         environment: [String: String]? = nil, directory: URL? = nil
     ) async -> CommandResult {
+        if let reason = DesktopIsolation.refusal(executable, arguments) {
+            let command = ([URL(fileURLWithPath: executable).lastPathComponent] + arguments)
+                .joined(separator: " ")
+            return CommandResult(command: command, status: 0, skipped: [reason])
+        }
         let cancellation = CancellationFlag()
         let setup = Setup(environment: environment, directory: directory)
         return await withTaskCancellationHandler {

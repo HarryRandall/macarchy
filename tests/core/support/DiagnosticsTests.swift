@@ -22,4 +22,19 @@ struct DiagnosticsTests {
         #expect(!result.ok)
         #expect(result.stderr.range(of: "line [0-9]+", options: .regularExpression) != nil)
     }
+
+    @Test("window signals count as registered only when both helpers are loaded")
+    func windowSignals() async {
+        func registered(_ list: String) async -> Bool {
+            await Doctor.windowSignalsRegistered(
+                integrations: Integrations(execute: { _, _ in
+                    CommandResult(command: "mock", status: 0, stdout: list)
+                }))
+        }
+        #expect(!(await registered(#"[{"label":"macarchy_window_created"}]"#)))
+        #expect(
+            await registered(
+                #"[{"label":"macarchy_window_created"},{"label":"macarchy_refocus_destroyed"}]"#))
+        #expect(!(await registered("macarchy_window_created macarchy_refocus_destroyed")))
+    }
 }

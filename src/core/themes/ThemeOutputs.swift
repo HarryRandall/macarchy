@@ -1,6 +1,8 @@
 import Foundation
 
 /// Pure renderers shared by theme application and parity tests.
+/// Palette colours are read with `Theme.hex`, as the Ghostty output reads
+/// them, so a colour that themes the terminal also themes the bar.
 public struct ThemeOutputs: Sendable {
     public let theme: Theme
     public let ghostty: String
@@ -10,10 +12,8 @@ public struct ThemeOutputs: Sendable {
             let parts = line.split(separator: "=", maxSplits: 1).map {
                 $0.trimmingCharacters(in: .whitespaces)
             }
-            if parts.count == 2, parts[0] == key,
-                parts[1].range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil
-            {
-                return parts[1]
+            if parts.count == 2, parts[0] == key, let colour = Theme.hex(parts[1]) {
+                return colour
             }
         }
         return fallback
@@ -24,24 +24,26 @@ public struct ThemeOutputs: Sendable {
                 $0.trimmingCharacters(in: .whitespaces)
             }
             if parts.count == 3, parts[0] == "palette", Int(parts[1]) == index,
-                parts[2].range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil
+                let colour = Theme.hex(parts[2])
             {
-                return parts[2]
+                return colour
             }
         }
         return fallback
     }
     public var barAccent: String {
-        theme.colors.borderActive ?? "0xff"
+        theme.colors.borderActive.map(Theme.argb) ?? "0xff"
             + palette(4, fallback: colour("foreground", fallback: "#ffffff")).dropFirst()
     }
     public var barText: String {
-        theme.colors.sketchybarText ?? "0xff"
+        theme.colors.sketchybarText.map(Theme.argb) ?? "0xff"
             + colour("foreground", fallback: theme.dark ? "#ffffff" : "#000000").dropFirst()
     }
     /// One step above transparent when unset: a fully transparent bar is
     /// treated as pass-through by the compositor and leaves stale pixels.
-    public var barBackground: String { theme.colors.sketchybarBar ?? "0x01000000" }
+    public var barBackground: String {
+        theme.colors.sketchybarBar.map(Theme.argb) ?? "0x01000000"
+    }
     /// The theme's chosen colourscheme, or a default that matches its brightness.
     public var nvim: String {
         theme.apps.nvimColorscheme ?? (theme.dark ? "tokyonight-night" : "tokyonight-day")
@@ -59,7 +61,7 @@ public struct ThemeOutputs: Sendable {
     }
     public var shell: String {
         let palette4 = palette(4, fallback: "")
-        let border = theme.colors.borderActive.flatMap {
+        let border = theme.colors.borderActive.map(Theme.argb).flatMap {
             $0.lowercased().hasPrefix("0xff") ? String($0.dropFirst(4)) : nil
         }
         let candidates = [theme.colors.firefoxAccent, border, palette4].compactMap { $0 }.map {

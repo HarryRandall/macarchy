@@ -1,10 +1,19 @@
+import AppKit
+import Darwin
 import Foundation
 import Macarchy
-import Darwin
 
 func require(_ result: CommandResult) throws {
     if !result.stdout.isEmpty { print(result.stdout) }
     guard result.ok else { throw ConfigurationError(result.stderr) }
+}
+
+/// Tells the running app something. An isolated run must not reach the
+/// installed app, which would act on the real desktop.
+func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any]? = nil) {
+    guard !DesktopIsolation.isActive else { return }
+    DistributedNotificationCenter.default().postNotificationName(
+        name, object: nil, userInfo: userInfo, deliverImmediately: true)
 }
 
 let usage = """
@@ -36,17 +45,53 @@ let usage = """
                                   an event, such as windows_changed.
       switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
+                                  Put back the files in a snapshot; --apply also
+                                  reapplies them and restarts skhd if needed.
       startup yabai|sketchybar|borders   Run by the startup files at login.
     """
 
+/// The lines of `usage` for `command`, shown with its errors and `--help`.
+/// A command with several forms, such as `widget`, gets all of them.
+func usage(of command: String) -> String {
+    var entries: [String] = []
+    var inside = false
+    for line in usage.components(separatedBy: "\n") {
+        let entry = line.hasPrefix("  ") && !line.hasPrefix("   ")
+        if entry {
+            inside = line.split(separator: " ").first.map(String.init) == command
+            if inside {
+                entries.append(
+                    (entries.isEmpty ? "Usage: macarchy" : "       macarchy") + line.dropFirst())
+            }
+        } else if inside, line.hasPrefix("        ") {
+            entries.append(line)
+        } else {
+            inside = false
+        }
+    }
+    return entries.isEmpty ? usage : entries.joined(separator: "\n")
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
+let command = args.first ?? ""
+let rest = Array(args.dropFirst())
 do {
-    switch args.first {
+    func parse(
+        flags: Set<String> = [], values: ClosedRange<Int> = 0...0, choices: [String]? = nil,
+        conflicting: [Set<String>] = []
+    ) throws -> CommandArguments {
+        try CommandArguments(
+            rest, usage: usage(of: command), flags: flags, values: values, choices: choices,
+            conflicting: conflicting)
+    }
+    switch command {
     case "setup":
-        let existing: Setup.Existing = args.contains("--replace") ? .replace : .keep
+        let options = try parse(
+            flags: ["--keep", "--replace", "--no-apply"], conflicting: [["--keep", "--replace"]])
+        let existing: Setup.Existing = options.flags.contains("--replace") ? .replace : .keep
         // The CLI lives inside the app bundle, so its bundle is the app to link.
         let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
-        let applyToDesktop = !args.contains("--no-apply")
+        let applyToDesktop = !options.flags.contains("--no-apply")
         let report = await SetupSession().run(
             existing: existing, app: app, applyToDesktop: applyToDesktop)
         // Failed commands are already among the lines, worded as the app shows them.
@@ -61,8 +106,11 @@ do {
                 ? "Done. Check everything with: macarchy doctor"
                 : "Files are set up. Start the services with: macarchy services")
     case "services":
+        _ = try parse()
         var failed = false
-        for result in await Setup.startServices() {
+        let results = await Setup.startServices()
+        if results.isEmpty { print("No services are installed.") }
+        for result in results {
             print(
                 (result.ok ? "ok   " : "FAIL ") + result.command
                     + (result.ok ? "" : ": " + result.summary))
@@ -70,17 +118,29 @@ do {
         }
         if failed { exit(1) }
     case "uninstall":
+        _ = try parse()
         let report = try await SetupSession().restoreOriginals()
         for line in report.lines where !line.isEmpty { print(line) }
-        if report.commands.contains(where: { !$0.ok }) { exit(1) }
-    case "doctor": try require(await Doctor.check())
-    case "apply": try await DesktopConfiguration.apply()
-    case "startup":
-        guard args.count == 2 else {
-            throw ConfigurationError("Usage: macarchy startup yabai|borders|sketchybar")
+        if report.lines.allSatisfy(\.isEmpty) {
+            print("Nothing to restore: setup has not changed any files.")
         }
-        if args[1] == "borders" {
-            try await Startup.applyCorners()
+        if report.commands.contains(where: { !$0.ok }) { exit(1) }
+    case "doctor":
+        _ = try parse()
+        try require(await Doctor.check())
+    case "apply":
+        _ = try parse()
+        try await DesktopConfiguration.apply()
+        print("Applied the saved settings.")
+    case "startup":
+        let options = try parse(values: 1...1, choices: ["yabai", "sketchybar", "borders"])
+        if options.values[0] == "borders" {
+            // Window corners are a separate preference; failing to set them
+            // must not keep borders from starting.
+            do { try await Startup.applyCorners() } catch {
+                FileHandle.standardError.write(
+                    Data("Window corners not set: \(error.localizedDescription)\n".utf8))
+            }
             // Replace the startup process; the daemon must not inherit the command timeout.
             let settings = try SettingsStore().read()
             let theme = settings.currentTheme.flatMap {
@@ -95,57 +155,87 @@ do {
             execv(borders, &argv)
             throw ConfigurationError("Could not start borders: \(String(cString: strerror(errno)))")
         }
-        try await OperationLock.run { try await Startup.apply(args[1]) }
+        try await OperationLock.run { try await Startup.apply(options.values[0]) }
     case "theme":
-        guard args.count == 2 else {
-            throw ConfigurationError("Usage: macarchy theme <name>|next|prev")
-        }
-        try require(await ThemeApplication().apply(name: args[1]))
+        let options = try parse(values: 1...1)
+        try require(await ThemeApplication().apply(name: options.values[0]))
     case "wallpaper":
-        guard args.count == 3 else {
-            throw ConfigurationError("Usage: macarchy wallpaper <theme> <relative-path>")
-        }
-        try require(await ThemeApplication().chooseWallpaper(theme: args[1], path: args[2]))
+        let options = try parse(values: 2...2)
+        try require(
+            await ThemeApplication().chooseWallpaper(
+                theme: options.values[0], path: options.values[1]))
+        print("Saved the wallpaper for \(options.values[0]).")
     case "rules":
-        switch args.dropFirst().first {
+        // `window-created` is run by yabai's signals and is not listed.
+        let options = try parse(values: 0...1, choices: ["toggle", "window-created"])
+        switch options.values.first {
         case "toggle": try await WindowRules.toggle()
         case "window-created": try await WindowRules.windowCreated()
         default:
             let settings = try SettingsStore().read()
             try await WindowRules.apply(
                 settings.floatingApps, customRules: settings.windowRules ?? [])
+            print("Applied the window rules.")
         }
     case "switcher":
-        // Handled by the running app; opening it first covers a quit app.
-        DistributedNotificationCenter.default().postNotificationName(
-            Notification.Name("io.github.harryrandall.macarchy.switcher"), object: nil,
-            userInfo: nil, deliverImmediately: true)
+        _ = try parse()
+        // Handled by the running app, which listens for this notification;
+        // nothing is listening when it is not open.
+        guard !DesktopIsolation.isActive else { break }
+        guard
+            !NSRunningApplication.runningApplications(
+                withBundleIdentifier: "io.github.harryrandall.macarchy"
+            ).isEmpty
+        else {
+            throw ConfigurationError("Macarchy is not open. Open it, then try again.")
+        }
+        announce(Notification.Name("io.github.harryrandall.macarchy.switcher"))
     case "space":
-        guard args.count == 2, let space = Int(args[1]), (1...99).contains(space) else {
-            throw ConfigurationError("Usage: macarchy space <number>")
+        let options = try parse(values: 1...1)
+        guard let space = Int(options.values[0]), (1...99).contains(space) else {
+            throw CommandArguments.Invalid(
+                message: "The Space must be a number from 1 to 99", usage: usage(of: command))
         }
         // Heard by the running app, which repaints the bar from what it already
         // knows; then yabai switches, which takes a moment to animate.
-        DistributedNotificationCenter.default().postNotificationName(
-            WidgetActions.spaceNotification, object: nil, userInfo: ["space": space],
-            deliverImmediately: true)
+        announce(WidgetActions.spaceNotification, ["space": space])
         let yabai = Paths.yabai
         var argv: [UnsafeMutablePointer<CChar>?] =
             [yabai, "-m", "space", "--focus", String(space)].map { strdup($0) } + [nil]
         execv(yabai, &argv)
         throw ConfigurationError("yabai could not be started")
     case "bar":
-        guard args.dropFirst().first == "toggle" else { throw ConfigurationError(usage) }
+        _ = try parse(values: 1...1, choices: ["toggle"])
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))
     case "widget":
-        switch (args.dropFirst().first, args.count) {
-        case ("list", 2):
+        let forms = ["list", "check", "run", "click", "trigger"]
+        let form = rest.first ?? ""
+        if rest.isEmpty || ["--help", "-h"].contains(form) {
+            throw CommandArguments.Help(usage: usage(of: command))
+        }
+        guard forms.contains(form) else {
+            throw CommandArguments.Invalid(
+                message: "Unknown argument \(form)", usage: usage(of: command))
+        }
+        // The bar runs click and trigger with names it was given, taken as
+        // written; the others are checked like any other command.
+        let value: String
+        if ["check", "click", "trigger"].contains(form) {
+            value = try CommandArguments.literal(
+                Array(rest.dropFirst()), usage: usage(of: command))
+        } else {
+            _ = try CommandArguments(
+                Array(rest.dropFirst()), usage: usage(of: command))
+            value = ""
+        }
+        switch form {
+        case "list":
             for line in WidgetReport.list() { print(line) }
-        case ("check", 3):
-            let report = WidgetReport.check(args[2])
+        case "check":
+            let report = WidgetReport.check(value)
             for line in report.lines { print(line) }
             if !report.ok { exit(1) }
-        case ("run", 2):
+        case "run":
             // Only the widget items, so the rest of the bar is left as it is.
             var configuration = try BarConfigurationStore().load() ?? BarConfiguration()
             configuration.components = configuration.components.filter(\.isWidget)
@@ -174,49 +264,50 @@ do {
                 }
                 reported = problems
             }
-        case ("click", 3):
+        case "click":
             let outcome = try await WidgetActions.click(
-                args[2], configuration: try BarConfigurationStore().load(),
+                value, configuration: try BarConfigurationStore().load(),
                 catalogue: WidgetCatalogue().read())
             if case .dropdown(let instance) = outcome {
                 // Drawn by the running app; nothing happens if it is not running.
-                DistributedNotificationCenter.default().postNotificationName(
-                    WidgetActions.dropdownNotification, object: nil,
-                    userInfo: ["instance": instance], deliverImmediately: true)
+                announce(WidgetActions.dropdownNotification, ["instance": instance])
             }
-        case ("trigger", 3):
-            guard WidgetManifest.events.contains(args[2]) else {
+        default:
+            guard WidgetManifest.events.contains(value) else {
                 throw ConfigurationError(
-                    "There is no widget event called \(args[2]). Events: "
+                    "There is no widget event called \(value). Events: "
                         + WidgetManifest.events.joined(separator: ", "))
             }
             // Heard by the running app; nothing happens if it is not running.
-            DistributedNotificationCenter.default().postNotificationName(
-                WidgetActions.triggerNotification, object: nil, userInfo: ["event": args[2]],
-                deliverImmediately: true)
-        default:
-            throw ConfigurationError(
-                "Usage: macarchy widget list | check <id|folder> | run | click <instance>"
-                    + " | trigger <event>")
+            announce(WidgetActions.triggerNotification, ["event": value])
         }
     case "restore":
-        guard args.count >= 2 else {
-            throw ConfigurationError("Usage: macarchy restore <snapshot> [--apply]")
-        }
+        let options = try parse(flags: ["--apply"], values: 1...1)
         let store = SnapshotStore()
-        guard let snapshot = store.list().first(where: { $0.id == args[1] }) else {
-            throw ConfigurationError("Snapshot not found")
+        guard let snapshot = store.list().first(where: { $0.id == options.values[0] }) else {
+            throw ConfigurationError(
+                "Snapshot \(options.values[0]) not found. Snapshots are listed in Advanced.")
         }
-        if args.contains("--apply") {
+        if options.flags.contains("--apply") {
             try await DesktopConfiguration.restore(snapshot, store: store)
+            print("Restored and applied snapshot \(snapshot.id).")
         } else {
             try await store.restoreLocked(snapshot)
-            print("Files restored. Run macarchy apply to update the desktop.")
+            print(
+                "Files restored. Update the desktop with: macarchy restore \(snapshot.id) --apply,"
+                    + " or macarchy apply if your shortcuts are unchanged.")
         }
-    default:
+    case "", "help", "--help", "-h":
         print(usage)
-        if !args.isEmpty, args.first != "help", args.first != "--help" { exit(2) }
+    default:
+        FileHandle.standardError.write(Data("Unknown command \(command)\n\n\(usage)\n".utf8))
+        exit(2)
     }
+} catch let help as CommandArguments.Help {
+    print(help.usage)
+} catch let invalid as CommandArguments.Invalid {
+    FileHandle.standardError.write(Data("\(invalid.message)\n\n\(invalid.usage)\n".utf8))
+    exit(2)
 } catch {
     FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
     exit(1)

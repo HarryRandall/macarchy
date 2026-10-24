@@ -67,8 +67,14 @@ public enum Setup {
                 return Change(
                     path: url, action: .replace, detail: "Regenerated, keeping your region")
             }
-            guard adoptable(source ?? url) != nil else {
+            guard let text = adoptable(source ?? url) else {
                 return Change(path: url, action: .create, detail: create)
+            }
+            if existing == .keep, let interpreter = foreignInterpreter(text) {
+                return Change(
+                    path: url, action: .adopt,
+                    detail: "Runs with \(interpreter), so it cannot be kept and setup will stop. "
+                        + "Convert it to bash or start from defaults")
             }
             return existing == .keep
                 ? Change(path: url, action: .adopt, detail: adopt)
@@ -129,7 +135,10 @@ public enum Setup {
     /// interleave and back up each other's output as an original.
     /// A failing step throws `Interrupted` with the lines of the steps before it.
     public static func run(existing: Existing, app: URL?) async throws -> [String] {
-        try await OperationLock.run { try runLocked(existing: existing, app: app) }
+        try await OperationLock.run {
+            if existing == .keep { try await checkKeepable() }
+            return try runLocked(existing: existing, app: app)
+        }
     }
 
     static func runLocked(existing: Existing, app: URL?) throws -> [String] {
@@ -174,7 +183,7 @@ public enum Setup {
             }
         }
         try backups.save([yabairc])
-        try check(StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
+        report += try check(StartupConfiguration().generateYabaiRC(adopting: yabaiKept), "yabairc")
 
         // skhd: the file stays the person's; Macarchy only seeds it.
         let shortcuts = skhdrc
@@ -200,10 +209,11 @@ public enum Setup {
             }
         }
         try backups.save([sketchybarrc])
-        try check(StartupConfiguration().generateSketchybarRC(adopting: barKept))
+        report += try check(
+            StartupConfiguration().generateSketchybarRC(adopting: barKept), "sketchybarrc")
 
         try backups.save([StartupConfiguration.bordersrc.url])
-        try check(StartupConfiguration().generateBordersRC())
+        report += try check(StartupConfiguration().generateBordersRC(), "bordersrc")
         if Paths.isInstalled("borders") { try BordersService.install(backups: backups) }
 
         if ghosttyWanted {
@@ -212,9 +222,7 @@ public enum Setup {
             let updated = GhosttyConfig.addingInclude(to: current)
             if updated != current {
                 try backups.save([target])
-                try fm.createDirectory(
-                    at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try updated.write(to: target, atomically: true, encoding: .utf8)
+                try GhosttyConfig.write(updated, to: target)
                 report.append("Added the theme include to Ghostty")
             }
         }
@@ -229,81 +237,41 @@ public enum Setup {
     {
         try await OperationLock.run {
             await BordersService.stop(integrations: integrations)
-            let report = try uninstallLocked()
+            var report: [String] = []
+            do {
+                try uninstallLocked(into: &report)
+            } catch {
+                // borders was stopped for the restore; start whichever agent
+                // is in place now rather than leaving no borders at all.
+                await BordersService.resume(integrations: integrations)
+                guard !report.isEmpty else { throw error }
+                throw ConfigurationError(
+                    "Uninstall stopped part way: \(error.localizedDescription)\n"
+                        + "Already done:\n" + report.map { "  \($0)" }.joined(separator: "\n")
+                        + "\nFix the problem and run uninstall again to finish.")
+            }
             await BordersService.restoreHomebrew(integrations: integrations)
             return report
         }
     }
 
-    static func uninstallLocked() throws -> [String] {
+    /// Each change is added to `report` as it is made, so a failure part way
+    /// still tells the caller what was already put back.
+    static func uninstallLocked(into report: inout [String]) throws {
         let fm = FileManager.default
-        var report = try Backups().restoreAll()
+        try Backups().restoreAll(into: &report)
+        for file in StartupConfiguration.all { try file.forget() }
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {
             guard let text = try? String(contentsOf: url, encoding: .utf8),
                 GhosttyConfig.hasInclude(text)
             else { continue }
-            try GhosttyConfig.removingInclude(from: text).write(
-                to: url, atomically: true, encoding: .utf8)
+            try GhosttyConfig.write(GhosttyConfig.removingInclude(from: text), to: url)
             report.append("Removed the Ghostty include from \(Paths.display(url))")
         }
         if (try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path)) != nil {
             try fm.removeItem(at: Paths.appLink)
         }
-        return report
-    }
-
-    // MARK: - Steps
-
-    static let defaultTheme = "midnight"
-
-    /// Points the app link at `app`, replacing a stale link but never a real file.
-    public static func link(_ app: URL) throws {
-        let fm = FileManager.default
-        let target = app.resolvingSymlinksInPath().path
-        if let existing = try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path) {
-            if existing == target { return }
-            try fm.removeItem(at: Paths.appLink)
-        } else if fm.fileExists(atPath: Paths.appLink.path) {
-            throw ConfigurationError("\(Paths.display(Paths.appLink)) exists and is not a link")
-        }
-        try fm.createSymbolicLink(atPath: Paths.appLink.path, withDestinationPath: target)
-    }
-
-    /// Copies bundled themes that are not installed yet. Installed themes,
-    /// including edited copies of bundled ones, are never overwritten.
-    static func installThemes() throws -> [String] {
-        let fm = FileManager.default
-        guard let source = Paths.resources?.appending(path: "themes") else {
-            throw ConfigurationError("Bundled themes are missing. Reinstall Macarchy.")
-        }
-        var installed: [String] = []
-        for theme in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
-        where Theme.load(from: theme) != nil {
-            let destination = Paths.themesDirectory.appending(path: theme.lastPathComponent)
-            guard !fm.fileExists(atPath: destination.path) else { continue }
-            try fm.copyItem(at: theme, to: destination)
-            installed.append(theme.lastPathComponent)
-        }
-        return installed.isEmpty ? [] : ["Installed themes: \(installed.joined(separator: ", "))"]
-    }
-
-    /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
-    /// it was registered with, which from Finder does not include Homebrew.
-    public static func installDefaultShortcuts(to url: URL = skhdrc) throws {
-        guard let source = Paths.resources?.appending(path: "skhd/skhdrc") else {
-            throw ConfigurationError("Default shortcuts are missing. Reinstall Macarchy.")
-        }
-        let template = try String(contentsOf: source, encoding: .utf8)
-        let text = template.replacingOccurrences(
-            of: " yabai -m ", with: " \(Shell.quote(Paths.yabai)) -m ")
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try text.write(to: url, atomically: true, encoding: .utf8)
-    }
-
-    static func check(_ outcome: GeneratedFile.Outcome) throws {
-        if case .failed(let message) = outcome { throw ConfigurationError(message) }
     }
 }
 

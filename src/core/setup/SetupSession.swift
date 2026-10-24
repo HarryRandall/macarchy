@@ -43,8 +43,10 @@ public struct SetupSession: Sendable {
         } catch {
             if let interrupted = error as? Setup.Interrupted { lines = interrupted.lines }
             failure =
-                "Setup did not finish; some files may already have changed. "
-                + error.localizedDescription
+                error is Setup.Refused
+                ? error.localizedDescription
+                : "Setup did not finish; some files may already have changed. "
+                    + error.localizedDescription
         }
         lines += commands.map {
             $0.ok ? $0.summary : "Some changes applied. \($0.command): \($0.summary)"

@@ -20,16 +20,29 @@ mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/sk
 # Each fake records its calls. brew is there because uninstall restarts the
 # services, and SketchyBar and borders start through Homebrew. There is no
 # fake launchctl, so launchd jobs resolve to a missing file and are never reached.
+# Queries for lists answer as the real tools do when nothing is set.
 CALLS="$HOME_DIR/calls.log"
 for tool in yabai skhd sketchybar borders brew; do
   cat > "$MACARCHY_SEARCH_PATH/$tool" <<SH
 #!/bin/sh
 printf '%s\n' "$tool \$*" >>'$CALLS'
+case "\$*" in *--list*) echo '[]' ;; esac
 SH
   chmod +x "$MACARCHY_SEARCH_PATH/$tool"
 done
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
+status() { "$@" >/dev/null 2>&1; echo $?; }
+
+# Help and mistyped arguments never run the command.
+"$CLI" setup --help | grep -q 'Usage: macarchy setup' || fail "setup --help shows no usage"
+[ -e "$HOME_DIR/.config/macarchy" ] && fail "setup --help ran setup"
+[ "$(status "$CLI" setup --replce)" = 2 ] || fail "unknown setup option accepted"
+[ "$(status "$CLI" setup --keep --replace)" = 2 ] || fail "conflicting setup options accepted"
+[ "$(status "$CLI" rules togle)" = 2 ] || fail "unknown rules argument accepted"
+[ "$(status "$CLI" space 0)" = 2 ] || fail "out-of-range Space accepted"
+[ "$(status "$CLI" widget clik x)" = 2 ] || fail "unknown widget command accepted"
+[ -e "$HOME_DIR/.config/macarchy" ] && fail "a rejected command changed files"
 
 # An existing hand-written setup, to be adopted rather than lost.
 cat > "$HOME_DIR/.config/yabai/yabairc" <<'RC'
@@ -58,6 +71,9 @@ printf '%s\n' '# >>> macarchy:keep items' 'sketchybar --add item mine left' '# <
   'sketchybar --add item after right' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
 
 "$CLI" setup --keep --no-apply >/dev/null
+
+"$CLI" uninstall --help >/dev/null
+grep -q 'startup yabai' "$HOME_DIR/.config/yabai/yabairc" || fail "uninstall --help uninstalled"
 
 BAR="$HOME_DIR/.config/sketchybar/sketchybarrc"
 grep -q 'add item after right' "$BAR" || fail "content after a nested region lost"
@@ -96,7 +112,18 @@ cp "$HOME_DIR/.config/yabai/yabairc" "$HOME_DIR/before"
 cmp -s "$HOME_DIR/before" "$HOME_DIR/.config/yabai/yabairc" || fail "second setup changed yabairc"
 grep -Eqs -- '--start-service|services start' "$CALLS" && fail "--no-apply started a service"
 
+# Edits outside the keep region are replaced on the next setup, and said so.
+printf 'echo edited\n' >> "$HOME_DIR/.config/yabai/yabairc"
+OUTPUT="$("$CLI" setup --keep --no-apply)"
+grep -q 'Replaced edits to yabairc made outside its keep region; your edited copy is saved as snapshot' <<<"$OUTPUT" \
+  || fail "replaced edits not reported: $OUTPUT"
+grep -q 'echo edited' "$HOME_DIR/.config/yabai/yabairc" && fail "edit outside the keep region kept"
+grep -rq 'echo edited' "$HOME_DIR/.config/macarchy/snapshots" || fail "edited yabairc not snapshotted"
+
 "$CLI" uninstall >/dev/null
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+grep -q 'Edited outside' <<<"$DOCTOR" && fail "doctor reports restored originals as edited"
+[ "$(status env MACARCHY_SEARCH_PATH= "$CLI" startup yabai)" = 1 ] || fail "empty search path crashed"
 grep -qx 'yabai --start-service' "$CALLS" || fail "uninstall did not start yabai"
 grep -qx 'brew services start sketchybar' "$CALLS" || fail "uninstall did not start SketchyBar"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$ORIGINAL_YABAI" ] || fail "yabairc not restored"
@@ -135,6 +162,23 @@ grep -q 'config-file = ?' "$HOME_DIR/.config/ghostty/config" || fail "Ghostty in
 "$CLI" uninstall >/dev/null
 [ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "Ghostty not restored"
 
+# A Ghostty config linked from a dotfiles folder stays a link; the include is
+# written into the file it points at and removed again on uninstall.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/ghostty" "$HOME_DIR/dotfiles"
+echo 'font-size = 14' > "$HOME_DIR/dotfiles/ghostty-config"
+chmod 600 "$HOME_DIR/dotfiles/ghostty-config"
+ln -s "$HOME_DIR/dotfiles/ghostty-config" "$HOME_DIR/.config/ghostty/config"
+"$CLI" setup --keep --no-apply >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link replaced with a copy"
+grep -q 'config-file = ?' "$HOME_DIR/dotfiles/ghostty-config" || fail "include not in the link target"
+[ "$(stat -f %Lp "$HOME_DIR/dotfiles/ghostty-config")" = 600 ] || fail "Ghostty permissions changed"
+"$CLI" uninstall >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link not kept on uninstall"
+[ "$(cat "$HOME_DIR/dotfiles/ghostty-config")" = 'font-size = 14' ] || fail "include left in the link target"
+rm -rf "$HOME_DIR/dotfiles" "$HOME_DIR/.config/ghostty/config"
+echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
+
 # With an Application Support config, the include goes there, loaded last.
 SUPPORT="$HOME_DIR/Library/Application Support/com.mitchellh.ghostty"
 mkdir -p "$SUPPORT"
@@ -143,6 +187,21 @@ echo 'theme = something' > "$SUPPORT/config"
 grep -q 'config-file = ?' "$SUPPORT/config" || fail "include not in the last-loaded file"
 grep -q 'config-file' "$HOME_DIR/.config/ghostty/config" && fail "include in an earlier file"
 "$CLI" uninstall >/dev/null
+
+# An uninstall that stops part way says what it had already restored, and a
+# second run finishes.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/sketchybar"
+echo 'yabai -m config window_gap 3' > "$HOME_DIR/.config/yabai/yabairc"
+echo 'sketchybar --bar height=20' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+"$CLI" setup --keep --no-apply >/dev/null
+chmod 555 "$HOME_DIR/.config/yabai"
+OUTPUT="$("$CLI" uninstall 2>&1)" && fail "uninstall into a read-only folder succeeded"
+chmod 755 "$HOME_DIR/.config/yabai"
+grep -q 'Uninstall stopped part way' <<<"$OUTPUT" || fail "partial uninstall not reported: $OUTPUT"
+grep -q 'Restored ~/.config/sketchybar/sketchybarrc' <<<"$OUTPUT" || fail "restored files not listed: $OUTPUT"
+"$CLI" uninstall >/dev/null || fail "second uninstall did not finish"
+[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = 'yabai -m config window_gap 3' ] || fail "yabairc not restored on retry"
 
 # A missing backup stops uninstall before anything changes.
 rm -rf "$HOME_DIR/.config"
@@ -153,5 +212,41 @@ GENERATED="$(cat "$HOME_DIR/.config/yabai/yabairc")"
 rm "$HOME_DIR/.config/macarchy/backups/"*-yabairc
 "$CLI" uninstall >/dev/null 2>&1 && fail "uninstall succeeded with a missing backup"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$GENERATED" ] || fail "file changed despite a missing backup"
+
+# A bar written for another interpreter is not wrapped in bash: --keep stops
+# before changing anything and says what to do.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/sketchybar" "$HOME_DIR/.config/yabai"
+printf '#!/usr/bin/env lua\nsbar = require("sketchybar")\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+echo 'yabai -m config window_gap 4' > "$HOME_DIR/.config/yabai/yabairc"
+OUTPUT="$("$CLI" setup --keep --no-apply 2>&1)" && fail "setup kept a Lua sketchybarrc"
+grep -q 'runs with lua' <<<"$OUTPUT" || fail "Lua refusal not explained: $OUTPUT"
+grep -q 'some files may already have changed' <<<"$OUTPUT" && fail "refusal claims changes: $OUTPUT"
+grep -q 'require("sketchybar")' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "Lua bar changed"
+[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = 'yabai -m config window_gap 4' ] || fail "yabairc changed by a refused setup"
+[ -e "$HOME_DIR/.config/macarchy/backups" ] && fail "refused setup wrote backups"
+printf '#!/bin/bash\nif then\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+"$CLI" setup --keep --no-apply >/dev/null 2>&1 && fail "setup kept a sketchybarrc bash cannot parse"
+"$CLI" setup --replace --no-apply >/dev/null || fail "replace refused a non-bash bar"
+bash -n "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced sketchybarrc syntax"
+"$CLI" uninstall >/dev/null
+grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced bar not restored"
+
+# A full setup, apply and theme change in the temporary home reach only the
+# fake tools. launchd, defaults, the appearance, the wallpaper, running apps
+# and the bundled bar scripts are refused (see DesktopIsolation), so the real
+# desktop is left alone even though nothing here is a dry run.
+rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
+"$CLI" setup --replace >/dev/null || fail "isolated setup with services failed"
+"$CLI" apply >/dev/null || fail "isolated apply failed"
+# A copied theme folder whose manifest still names the original is stepped over.
+cp -R "$HOME_DIR/.config/macarchy/themes/midnight" "$HOME_DIR/.config/macarchy/themes/midnight-copy"
+"$CLI" theme next >/dev/null || fail "isolated theme change failed"
+grep -q '"currentTheme" : "turbonite"' "$HOME_DIR/.config/macarchy/settings.json" || fail "theme next did not advance"
+OUTPUT="$("$CLI" theme midnight-copy 2>&1)" && fail "mismatched theme folder applied"
+grep -q 'folder midnight-copy contains the theme midnight' <<<"$OUTPUT" || fail "mismatch not explained: $OUTPUT"
+grep -q 'may already have applied' <<<"$OUTPUT" && fail "untouched desktop reported as partly changed"
+grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
+"$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 
 echo "setup integration test passed"

@@ -89,4 +89,32 @@ struct GeneratedFileTests {
         _ = file.write(content, reason: "t")
         #expect(file.preservedRegions()["extra"]?.contains("MY_OWN_THING") == true)
     }
+
+    @Test("a keep region without its end marker stops regeneration")
+    func unterminatedRegionIsNotOverwritten() throws {
+        let (file, root) = try sandboxedFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let region = "\(GeneratedFile.beginKeep) yours\nmine\n\(GeneratedFile.endKeep)\n"
+        #expect(file.write("#!/bin/bash\nexec a\n" + region, reason: "t") == .written)
+        let edited = "#!/bin/bash\nexec a\n\(GeneratedFile.beginKeep) yours\nmine\n"
+        try edited.write(to: file.url, atomically: true, encoding: .utf8)
+        let outcome = file.write("#!/bin/bash\nexec b\n" + region, reason: "t")
+        guard case .failed(let message) = outcome else {
+            Issue.record("regenerated over an open region: \(outcome)")
+            return
+        }
+        #expect(message.contains("end marker"))
+        #expect(try String(contentsOf: file.url, encoding: .utf8) == edited)
+    }
+
+    @Test("a forgotten file is no longer reported as edited")
+    func forgetClearsTheLedger() throws {
+        let (file, root) = try sandboxedFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = file.write("#!/bin/bash\necho one\n", reason: "t")
+        try "#!/bin/bash\necho original\n".write(to: file.url, atomically: true, encoding: .utf8)
+        #expect(file.hasDrifted)
+        try file.forget()
+        #expect(!file.hasDrifted)
+    }
 }
