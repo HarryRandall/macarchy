@@ -70,16 +70,19 @@ extension SkhdConfig {
         return lines.joined(separator: "\n")
     }
 
-    /// The first line gains `disabledMarker` and the rest `# `.
+    /// The first line gains `disabledMarker` and the rest `# `. An empty line
+    /// becomes `#`, so there is no trailing space for an editor to trim.
     private static func commentOut(_ lines: inout [String], _ range: ClosedRange<Int>) {
         for index in range {
-            lines[index] = (index == range.lowerBound ? disabledMarker : "# ") + lines[index]
+            let line = lines[index]
+            lines[index] =
+                index == range.lowerBound ? disabledMarker + line : line.isEmpty ? "#" : "# " + line
         }
     }
 
     /// Undoes `disable`: removes the marker and the `# ` it wrote before each
     /// of the binding's lines, and nothing else, so the original bytes come
-    /// back.
+    /// back. A `#` left alone becomes the empty line it was.
     public static func enable(_ text: String, binding: SkhdBinding) -> String? {
         guard binding.isDisabled, matches(text, binding) else { return nil }
         var lines = text.components(separatedBy: "\n")
@@ -90,8 +93,8 @@ extension SkhdConfig {
                 guard line.hasPrefix(prefix) else { return nil }
                 lines[index] = String(line.dropFirst(prefix.count))
             } else {
-                guard line.hasPrefix("# ") else { return nil }
-                lines[index] = String(line.dropFirst(2))
+                guard let body = uncommented(line) else { return nil }
+                lines[index] = body
             }
         }
         return lines.joined(separator: "\n")

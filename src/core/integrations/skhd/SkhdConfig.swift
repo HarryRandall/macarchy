@@ -73,8 +73,9 @@ public enum SkhdConfig {
     /// The binding that `disable` commented out, when the comment at `start`
     /// is one.
     ///
-    /// The first line carries `disabledMarker` and the rest `# `. A first line
-    /// with only `# ` is read as disabled
+    /// The first line carries `disabledMarker` and the rest `# `, or `#` alone
+    /// for an empty line, which is also what an editor that trims trailing
+    /// spaces leaves of `# `. A first line with only `# ` is read as disabled
     /// when it names a modifier or a mode, so a prose comment such as
     /// `# Note: x` or `# Play: media keys below` stays a heading.
     static func disabledBinding(
@@ -84,7 +85,10 @@ public enum SkhdConfig {
         let marked = first.hasPrefix(disabledMarker)
         guard marked || first.hasPrefix("# ") else { return nil }
         var run = [String(first.dropFirst(marked ? disabledMarker.count : 2))]
-        run += lines[(start + 1)...].prefix { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) }
+        for line in lines[(start + 1)...] {
+            guard let body = uncommented(line) else { break }
+            run.append(body)
+        }
         let (parsed, last) = parseBinding(
             run, from: 0, through: logicalEnd(run, from: 0), section: section)
         guard let parsed, isChord(parsed, marked: marked) else { return nil }
@@ -94,6 +98,13 @@ public enum SkhdConfig {
             section: section, passthrough: parsed.passthrough,
             appOverrides: parsed.appOverrides, modes: parsed.modes,
             activatesMode: parsed.activatesMode, isDisabled: true)
+    }
+
+    /// A later line of a disabled binding as it was before `disable`, or nil
+    /// when the line is not one.
+    static func uncommented(_ line: String) -> String? {
+        if line.hasPrefix("# ") { return String(line.dropFirst(2)) }
+        return line.trimmingCharacters(in: .whitespaces) == "#" ? "" : nil
     }
 
     /// Whether a parsed binding names modifiers and a key skhd knows. Without

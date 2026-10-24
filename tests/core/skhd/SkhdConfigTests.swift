@@ -127,6 +127,35 @@ struct SkhdConfigTests {
         }
     }
 
+    /// Disabling a per-app block used to write `# ` on its blank lines, which
+    /// editors that trim trailing spaces cut to `#`, breaking the block apart.
+    @Test("a disabled per-app block survives trimmed blank lines")
+    func disabledBlockWithBlankLine() throws {
+        let text = """
+            # Apps
+            cmd - h [
+                "kitty" : echo k
+
+                * : echo all
+            ]
+            ctrl - x : echo x
+            """
+        let block = try #require(SkhdConfig.parse(text).first)
+        let disabled = try #require(SkhdConfig.disable(text, binding: block))
+        #expect(disabled.components(separatedBy: "\n")[3] == "#")
+        // The same block as an earlier build wrote it, after an editor trimmed it.
+        let legacy = disabled.replacingOccurrences(of: "# disabled: cmd", with: "# cmd")
+        for file in [disabled, legacy] {
+            let after = SkhdConfig.parse(file)
+            #expect(after.map(\.key) == ["h", "x"])
+            #expect(after.map(\.isDisabled) == [true, false])
+            #expect(after.map(\.section) == ["Apps", "Apps"])
+            #expect(after.first?.appOverrides.map(\.app) == ["kitty", "*"])
+            let parsed = try #require(after.first)
+            #expect(SkhdConfig.enable(file, binding: parsed) == text)
+        }
+    }
+
     @Test("prose comments that look a little like bindings stay headings")
     func proseComments() {
         let text = "# Note: keep these together\n# Move - then: follow\nalt - h : echo"

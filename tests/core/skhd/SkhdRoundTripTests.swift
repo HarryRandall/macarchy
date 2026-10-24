@@ -119,7 +119,7 @@ struct SkhdRoundTripTests {
                 let expected =
                     switch index {
                     case binding.id: "# disabled: " + line
-                    case binding.id...binding.endLine: "# " + line
+                    case binding.id...binding.endLine: line.isEmpty ? "#" : "# " + line
                     default: line
                     }
                 #expect(lines[index] == expected, "line \(index)")
