@@ -29,7 +29,7 @@ struct StatusMenu: View {
         Button("Settings…") { AppDelegate.showMainWindow() }
             .keyboardShortcut(",", modifiers: .command)
 
-        Button("Restart All Daemons") {
+        Button("Restart All Services") {
             Task { await model.daemons.restartAll() }
         }
 

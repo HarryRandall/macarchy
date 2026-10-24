@@ -42,7 +42,8 @@ extension WebInterfaceTests {
 
         @Test("shell state names every service with the monitor's reading and a version")
         func services() async throws {
-            try await withHarness(tools: ["launchctl"]) { harness in
+            try await withHarness(tools: ["launchctl", "yabai", "borders", "sketchybar", "skhd"]) {
+                harness in
                 await harness.desktop.answer("launchctl") { arguments in
                     guard arguments.first == "print" else { return nil }
                     return arguments.last?.contains("yabai") == true

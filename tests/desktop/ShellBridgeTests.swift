@@ -95,6 +95,8 @@ struct ShellBridgeTests {
                 return CommandResult(command: "launchctl", status: 113)
             }
         }
+        model.daemons.isInstalled = { _ in true }
+        model.daemons.start = { [backend = model.backend] in await backend.restart($0) }
         let router = makeRouter(model)
 
         let restart = try await reply(router, "shell.restartAll")
@@ -103,6 +105,38 @@ struct ShellBridgeTests {
         #expect(model.daemons.runningCount == 3)
         #expect(model.daemons.states[.skhd] == .stopped)
         #expect(model.log.entries.count == 4)
+    }
+
+    @Test("a tool that is not installed is left out of the counts and of restart all")
+    func missingTool() async throws {
+        let model = makeModel { path, arguments in
+            let tool = URL(fileURLWithPath: path).lastPathComponent
+            guard tool == "launchctl", arguments.first == "print" else {
+                return CommandResult(command: tool, status: 1, stderr: "Not found")
+            }
+            return CommandResult(
+                command: "launchctl print", status: 0, stdout: "state = running\npid = 42")
+        }
+        model.daemons.isInstalled = { $0 != .borders }
+        let started = Started()
+        model.daemons.start = { daemon in
+            started.daemons.append(daemon)
+            return CommandResult(command: daemon.rawValue, status: 0)
+        }
+        let router = makeRouter(model)
+
+        let restart = try await reply(router, "shell.restartAll")
+        let value = try #require(restart["value"] as? [String: Any])
+        #expect(value["outcome"] as? String == "Restarted all 3 services.")
+        #expect(started.daemons == [.yabai, .sketchybar, .skhd])
+        let state = model.shellState()
+        #expect(state.services == .init(running: 3, total: 3))
+        #expect(state.serviceList.map(\.id) == [.yabai, .sketchybar, .skhd])
+    }
+
+    @MainActor
+    private final class Started {
+        var daemons: [Daemon] = []
     }
 
     @Test("the restart outcome is one sentence naming every service that failed")

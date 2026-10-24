@@ -104,9 +104,9 @@ extension AppModel {
             sidebarVisible: InterfacePreferences.sidebarVisible,
             setupRequired: !FileManager.default.fileExists(atPath: settingsStore.url.path),
             appearance: .init(accent: accentHex, mode: InterfacePreferences.appearance),
-            services: .init(running: daemons.runningCount, total: Daemon.allCases.count),
+            services: .init(running: daemons.runningCount, total: daemons.installed.count),
             version: Self.version,
-            serviceList: Daemon.allCases.map {
+            serviceList: daemons.installed.map {
                 .init(
                     id: .init($0), name: $0.displayName,
                     state: ShellState.Service.State(daemons.states[$0]))

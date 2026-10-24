@@ -11,12 +11,28 @@ final class DaemonMonitor {
     private let backend: Integrations
     private let log: CommandLog
 
+    /// Every integration is optional, so a tool that is not installed is left
+    /// out of the counts and of Restart All rather than shown as stopped.
+    /// Replaceable so tests do not depend on what this Mac has installed.
+    var isInstalled: @MainActor (Daemon) -> Bool = { Paths.isInstalled($0.executableName) }
+
+    /// Starts one service for Restart All. The live start is the one
+    /// `macarchy services` uses; tests replace it so they never read or change
+    /// the real LaunchAgents.
+    var start: @MainActor (Daemon) async -> CommandResult
+
     init(backend: Integrations, log: CommandLog) {
         self.backend = backend
         self.log = log
+        let services = DesktopServices(
+            integrations: backend, deactivate: { NSApp.deactivate() },
+            activate: { NSApp.activate() })
+        start = { await services.start($0) }
     }
 
-    var runningCount: Int { states.values.filter(\.isRunning).count }
+    var installed: [Daemon] { Daemon.allCases.filter(isInstalled) }
+
+    var runningCount: Int { installed.filter { states[$0]?.isRunning == true }.count }
 
     /// Page reads call this, and an unchanged assignment would still notify `StateBroadcast`.
     func refresh() async {
@@ -44,12 +60,15 @@ final class DaemonMonitor {
 
     typealias Restart = (daemon: Daemon, result: CommandResult)
 
-    /// Restarts every service in turn.
+    /// Starts every installed service in turn, as `macarchy services` does:
+    /// a registered one restarts and one without a LaunchAgent is registered.
     @discardableResult
     func restartAll() async -> [Restart] {
         var results: [Restart] = []
-        for daemon in Daemon.allCases {
-            let result = await restart(daemon)
+        for daemon in installed {
+            let result = await start(daemon)
+            log.record(result)
+            await update(daemon)
             results.append((daemon, result))
         }
         return results

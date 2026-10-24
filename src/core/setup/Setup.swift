@@ -324,33 +324,32 @@ extension Setup {
     {
         var results: [CommandResult] = []
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
-            if daemon == .borders,
-                FileManager.default.fileExists(atPath: BordersService.plist.path)
-            {
-                results.append(await BordersService.start(integrations: integrations))
-                continue
-            }
-            if daemon.isRegistered {
-                results.append(await integrations.restart(daemon))
-                continue
-            }
-            switch daemon {
-            case .yabai, .skhd:
-                results.append(await integrations.execute(daemon.executable, ["--start-service"]))
-            case .sketchybar, .borders:
-                guard Paths.isInstalled("brew") else {
-                    results.append(
-                        CommandResult(
-                            command: daemon.startCommand, status: 1,
-                            stderr: "Homebrew is needed to start \(daemon.displayName)"))
-                    continue
-                }
-                results.append(
-                    await integrations.execute(
-                        Paths.executable("brew"), ["services", "start", daemon.rawValue]))
-            }
+            results.append(await startService(daemon, integrations: integrations))
         }
         return results
+    }
+
+    /// Starts one daemon the way `startServices` does, so the app's restart
+    /// and `macarchy services` share it.
+    public static func startService(
+        _ daemon: Daemon, integrations: Integrations = Integrations()
+    ) async -> CommandResult {
+        if daemon == .borders, FileManager.default.fileExists(atPath: BordersService.plist.path) {
+            return await BordersService.start(integrations: integrations)
+        }
+        if daemon.isRegistered { return await integrations.restart(daemon) }
+        switch daemon {
+        case .yabai, .skhd:
+            return await integrations.execute(daemon.executable, ["--start-service"])
+        case .sketchybar, .borders:
+            guard Paths.isInstalled("brew") else {
+                return CommandResult(
+                    command: daemon.startCommand, status: 1,
+                    stderr: "Homebrew is needed to start \(daemon.displayName)")
+            }
+            return await integrations.execute(
+                Paths.executable("brew"), ["services", "start", daemon.rawValue])
+        }
     }
 }
 

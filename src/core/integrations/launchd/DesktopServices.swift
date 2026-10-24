@@ -23,6 +23,14 @@ public struct DesktopServices {
         return await integrations.restart(daemon)
     }
 
+    /// Starts a daemon as `macarchy services` does, registering one that has
+    /// no LaunchAgent yet, with the same Secure Input hand-off as `restart`.
+    public func start(_ daemon: Daemon) async -> CommandResult {
+        let yielded = daemon == .skhd ? await yieldSecureInput() : false
+        defer { if yielded { activate() } }
+        return await Setup.startService(daemon, integrations: integrations)
+    }
+
     public func stop(_ daemon: Daemon) async -> CommandResult {
         await integrations.stop(daemon)
     }

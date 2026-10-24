@@ -64,7 +64,7 @@ extension WebInterfaceTests {
         )
         func services() async throws {
             defer { InterfacePreferences.selectedPane = .layout }
-            try await withHarness { harness in
+            try await withHarness(tools: ["yabai", "borders", "sketchybar", "skhd"]) { harness in
                 await harness.desktop.answer("launchctl") { arguments in
                     arguments.first == "print" ? .success("state = running\npid = 123") : .success()
                 }
