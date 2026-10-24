@@ -34,6 +34,12 @@ export function ShortcutDetails({ binding }: { binding: ShortcutBinding }) {
           </p>
         </div>
       ))}
+      {binding.activatesMode ? (
+        <p className="text-meta text-fg-secondary">Switches to {binding.activatesMode} mode</p>
+      ) : null}
+      {binding.modes.length ? (
+        <p className="text-meta text-fg-secondary">Works in {binding.modes.join(", ")} mode</p>
+      ) : null}
       {binding.passthrough ? (
         <p className="text-meta text-fg-secondary">Also sent to the focused app</p>
       ) : null}
@@ -67,6 +73,7 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
   const conflicts = draft.validation?.conflicts ?? [];
   const conflict = snapshot.state?.bindings.find((item) => conflicts.includes(item.id));
   const label = shortcutLabel(binding, snapshot.state?.bindings ?? [binding]);
+  const describes = !!binding.command || !!binding.activatesMode;
   return (
     <Dialog.Root
       open
@@ -162,8 +169,8 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
             ) : null}
           </Section>
           <Section
-            title={binding.command ? "What it does" : "Different per app"}
-            help={binding.command ? undefined : "Runs a different command in each app below."}
+            title={describes ? "What it does" : "Different per app"}
+            help={describes ? undefined : "Runs a different command in each app below."}
           >
             <div className="flex flex-col gap-2 rounded-tile border border-hairline bg-side px-3 py-2.5">
               <ShortcutDetails binding={binding} />
@@ -189,7 +196,7 @@ export function ShortcutEditor({ store }: { store: ShortcutsStore }) {
         </Dialog.Body>
         <Dialog.Footer
           leading={
-            <Tooltip content="Comment this shortcut out, keeping it in the file">
+            <Tooltip content="Comment this shortcut out, keeping it in the file to enable later">
               <Button
                 size="sm"
                 variant="ghost"

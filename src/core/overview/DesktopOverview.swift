@@ -21,7 +21,7 @@ public struct DesktopOverview: Sendable {
     public init(
         integrations: Integrations = Integrations(), store: SettingsStore = SettingsStore(),
         themes: URL = Paths.themesDirectory,
-        shortcuts: URL = Paths.home.appending(path: ".config/skhd/skhdrc"),
+        shortcuts: URL = Paths.skhdrc,
         snapshots: SnapshotStore = SnapshotStore()
     ) {
         self.integrations = integrations
@@ -51,7 +51,8 @@ public struct DesktopOverview: Sendable {
         return Snapshot(
             theme: installed.first { $0.lastPathComponent == settings.currentTheme }?
                 .lastPathComponent,
-            themeCount: installed.count, shortcutsCount: SkhdConfig.parse(text).count,
+            themeCount: installed.count,
+            shortcutsCount: SkhdConfig.parse(text).count { !$0.isDisabled },
             layout: layout.values.layout, running: running, total: Daemon.allCases.count,
             lastChange: snapshots.list().map(\.created).max())
     }

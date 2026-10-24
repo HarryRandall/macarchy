@@ -34,6 +34,13 @@ extension BridgeRouter {
                     id: params.id, revision: params.revision)
             }
         }
+        register("shortcuts.enable") { [weak model] (params: ShortcutDisableParams) in
+            guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
+            return try await model.changeShortcut {
+                try await SkhdShortcuts(integrations: model.backend).enable(
+                    id: params.id, revision: params.revision)
+            }
+        }
         register("shortcuts.reset") { [weak model] (params: ShortcutResetParams) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
             return try await model.changeShortcut {

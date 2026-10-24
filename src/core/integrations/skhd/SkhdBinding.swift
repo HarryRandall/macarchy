@@ -3,7 +3,8 @@ import Foundation
 /// One parsed skhdrc binding, plus how it is spelled on screen.
 public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public let id: Int  // first source line, which is also a stable identity
-    /// Last source line; differs from `id` for a per-app block.
+    /// Last source line; differs from `id` for a per-app block or a command
+    /// continued with a trailing backslash.
     public let endLine: Int
     /// The lines as read, so an edit can refuse a file that changed underneath it.
     public let source: [String]
@@ -15,6 +16,15 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public let passthrough: Bool
     /// The `[ "App" : cmd … ]` form: one binding behaving differently per app.
     public let appOverrides: [AppOverride]
+    /// The modes named before `<`, as in `resize < h`; empty for the default mode.
+    public internal(set) var modes: [String] = []
+    /// The mode a `; mode` binding switches to. It runs no command.
+    public internal(set) var activatesMode: String?
+    /// Commented out by `SkhdConfig.disable`; skhd does not see it.
+    public internal(set) var isDisabled = false
+
+    /// Where the binding works: skhd puts a binding with no mode in `default`.
+    public var activeModes: Set<String> { modes.isEmpty ? ["default"] : Set(modes) }
 
     public struct AppOverride: Sendable, Hashable {
         public let app: String  // "*" is the fallback
@@ -48,7 +58,8 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     /// Named keys, including the media keys skhd reads as system events.
     public static let keyGlyphs: [String: String] = [
         "return": "↩", "space": "space", "left": "←", "right": "→", "up": "↑", "down": "↓",
-        "tab": "⇥", "escape": "⎋", "delete": "⌫", "home": "↖", "end": "↘", "pageup": "⇞",
+        "tab": "⇥", "escape": "⎋", "backspace": "⌫", "delete": "⌦", "home": "↖", "end": "↘",
+        "pageup": "⇞",
         "pagedown": "⇟", "play": "⏯", "next": "⏭", "previous": "⏮", "fast": "⏩",
         "rewind": "⏪", "sound_up": "🔊", "sound_down": "🔉", "mute": "🔇",
         "brightness_up": "🔆", "brightness_down": "🔅"
@@ -59,6 +70,11 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
             return named
         }
         if let glyph = keyGlyphs[key.lowercased()] { return glyph }
+        if key.lowercased().hasPrefix("0x"), let code = UInt16(key.dropFirst(2), radix: 16),
+            let name = SkhdKey.keypad[code]
+        {
+            return name
+        }
         return key.count == 1 ? key.uppercased() : key
     }
 }

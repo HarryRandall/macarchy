@@ -38,6 +38,9 @@ export function shortcutsMock(
         command: "open -na Ghostty",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
+        disabled: false,
       },
       {
         id: 3,
@@ -48,6 +51,9 @@ export function shortcutsMock(
         command: "yabai -m window --focus west",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
+        disabled: false,
       },
       {
         id: 4,
@@ -58,6 +64,9 @@ export function shortcutsMock(
         command: "yabai -m window --focus east",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
+        disabled: false,
       },
     ],
   };
@@ -84,6 +93,7 @@ export function shortcutsMock(
         .filter(
           (binding) =>
             binding.id !== id &&
+            !binding.disabled &&
             binding.key === chord.key &&
             binding.modifiers.toSorted().join() === chord.modifiers.toSorted().join(),
         )
@@ -100,7 +110,21 @@ export function shortcutsMock(
       }),
     "shortcuts.disable": ({ id, revision }) =>
       apply(revision, () => {
-        state = { ...state, bindings: state.bindings.filter((binding) => binding.id !== id) };
+        state = {
+          ...state,
+          bindings: state.bindings.map((binding) =>
+            binding.id === id ? { ...binding, disabled: true } : binding,
+          ),
+        };
+      }),
+    "shortcuts.enable": ({ id, revision }) =>
+      apply(revision, () => {
+        state = {
+          ...state,
+          bindings: state.bindings.map((binding) =>
+            binding.id === id ? { ...binding, disabled: false } : binding,
+          ),
+        };
       }),
     "shortcuts.reset": ({ revision }) =>
       apply(revision, () => {

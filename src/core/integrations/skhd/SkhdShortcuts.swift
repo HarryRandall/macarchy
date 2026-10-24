@@ -20,57 +20,26 @@ public struct ShortcutChord: Codable, Sendable, Equatable {
         SkhdConfig.parse("\(keySpec) : placeholder").first?.keyCaps ?? []
     }
 
+    /// The chord in a spelling skhd parses back. The interface sends what it
+    /// recorded, so a key arrives here as a name, a character or a keycode;
+    /// punctuation is written as a keycode because skhd reads `-`, `:` and
+    /// `;` as its own syntax, and Backspace is `backspace`, not `delete`.
     public func validated() throws -> ShortcutChord {
         let allowed = [
-            "fn", "ctrl", "alt", "shift", "cmd", "hyper", "lctrl", "rctrl",
+            "fn", "ctrl", "alt", "shift", "cmd", "hyper", "meh", "lctrl", "rctrl",
             "lalt", "ralt", "lshift", "rshift", "lcmd", "rcmd"
         ]
-        let named = Set(SkhdBinding.keyGlyphs.keys).union((1...20).map { "f\($0)" })
-        let key = key.lowercased()
+        let named = Set(SkhdKey.named.keys).union(SkhdBinding.keyGlyphs.keys)
+        let key = SkhdKey.spelling(key)
         let simple =
-            key.range(of: #"\A(?:[a-z0-9]|0x[0-7]?[0-9a-f])\z"#, options: .regularExpression) != nil
+            key.range(
+                of: #"\A(?:[a-z0-9]|0x[0-7]?[0-9a-f])\z"#,
+                options: [.regularExpression, .caseInsensitive])
+            != nil
         guard modifiers.allSatisfy(allowed.contains), Set(modifiers).count == modifiers.count,
             simple || named.contains(key)
         else { throw ConfigurationError("Record a supported key combination.") }
         return ShortcutChord(modifiers: modifiers, key: key)
-    }
-
-    /// Physical keycodes and their named equivalents must conflict too.
-    func overlaps(_ binding: SkhdBinding) -> Bool {
-        func keys(_ key: String) -> String {
-            let names: [Int: String] = [
-                0: "a", 1: "s", 2: "d", 3: "f", 4: "h", 5: "g", 6: "z", 7: "x",
-                8: "c", 9: "v", 11: "b", 12: "q", 13: "w", 14: "e", 15: "r",
-                16: "y", 17: "t", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
-                23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
-                30: "]", 31: "o", 32: "u", 33: "[", 34: "i", 35: "p", 36: "return",
-                37: "l", 38: "j", 39: "'", 40: "k", 41: ";", 42: "\\", 43: ",",
-                44: "/", 45: "n", 46: "m", 47: ".", 48: "tab", 49: "space", 50: "`",
-                51: "delete", 53: "escape", 64: "f17", 79: "f18", 80: "f19", 90: "f20",
-                96: "f5", 97: "f6", 98: "f7", 99: "f3", 100: "f8", 101: "f9",
-                103: "f11", 105: "f13", 106: "f16", 107: "f14", 109: "f10", 111: "f12",
-                113: "f15", 115: "home", 116: "pageup", 118: "f4", 119: "end",
-                120: "f2", 121: "pagedown", 122: "f1", 123: "left", 124: "right",
-                125: "down", 126: "up"
-            ]
-            let key = key.lowercased()
-            guard key.hasPrefix("0x"), let code = Int(key.dropFirst(2), radix: 16) else {
-                return key
-            }
-            return names[code] ?? "0x" + String(code, radix: 16)
-        }
-        func expanded(_ values: [String]) -> Set<String> {
-            Set(
-                values.flatMap { value -> [String] in
-                    if value == "hyper" { return ["ctrl", "alt", "shift", "cmd"] }
-                    if value == "opt" { return ["alt"] }
-                    if value.hasPrefix("l") || value.hasPrefix("r") {
-                        return [String(value.dropFirst())]
-                    }
-                    return [value]
-                })
-        }
-        return keys(key) == keys(binding.key) && expanded(modifiers) == expanded(binding.modifiers)
     }
 }
 
@@ -91,7 +60,8 @@ public struct SkhdShortcuts: Sendable {
         self.defaultsURL = defaultsURL
     }
 
-    public var configURL: URL { (config ?? Setup.skhdrc).resolvingSymlinksInPath() }
+    /// The file skhd reads, through a link to the person's own copy.
+    public var configURL: URL { (config ?? Paths.skhdrc).resolvingSymlinksInPath() }
 
     public func read() throws -> ShortcutsSnapshot {
         let url = configURL
@@ -104,9 +74,13 @@ public struct SkhdShortcuts: Sendable {
             .joined()
     }
 
+    /// Another binding holding `chord` in a mode the binding `id` works in.
     public func validate(_ chord: ShortcutChord, excluding id: Int) throws -> Int? {
         let chord = try chord.validated()
-        return try read().bindings.first { $0.id != id && chord.overlaps($0) }?.id
+        let bindings = try read().bindings
+        return SkhdConfig.conflict(
+            in: bindings, modifiers: chord.modifiers, key: chord.key,
+            excluding: bindings.first { $0.id == id })?.id
     }
 
     public func rebind(
@@ -119,7 +93,14 @@ public struct SkhdShortcuts: Sendable {
                 throw ConfigurationError(
                     "This shortcut no longer exists. Refresh shortcuts and try again.")
             }
-            guard !bindings.contains(where: { $0.id != id && chord.overlaps($0) }) else {
+            guard !binding.isDisabled else {
+                throw ConfigurationError("Enable this shortcut before changing its keys.")
+            }
+            guard
+                SkhdConfig.conflict(
+                    in: bindings, modifiers: chord.modifiers, key: chord.key, excluding: binding)
+                    == nil
+            else {
                 throw ConfigurationError("Another shortcut already uses this combination.")
             }
             return SkhdConfig.rebind(
@@ -132,7 +113,23 @@ public struct SkhdShortcuts: Sendable {
             guard let binding = SkhdConfig.parse(text).first(where: { $0.id == id }) else {
                 return nil
             }
+            guard !binding.isDisabled else {
+                throw ConfigurationError("This shortcut is already disabled.")
+            }
             return SkhdConfig.disable(text, binding: binding)
+        }
+    }
+
+    /// Undoes `disable` exactly, through the same snapshot, write and restart.
+    public func enable(id: Int, revision: String) async throws -> CommandResult {
+        try await write(revision: revision, reason: "shortcut enabled") { text in
+            guard let binding = SkhdConfig.parse(text).first(where: { $0.id == id }) else {
+                return nil
+            }
+            guard binding.isDisabled else {
+                throw ConfigurationError("This shortcut is already enabled.")
+            }
+            return SkhdConfig.enable(text, binding: binding)
         }
     }
 

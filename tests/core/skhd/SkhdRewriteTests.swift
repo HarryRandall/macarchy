@@ -64,7 +64,7 @@ struct SkhdRewriteTests {
     func disableBinding() {
         let text = "cmd - h : echo hi"
         let disabled = SkhdConfig.disable(text, line: 0)
-        #expect(disabled == "# cmd - h : echo hi")
+        #expect(disabled == "# disabled: cmd - h : echo hi")
         #expect(SkhdConfig.disable(disabled ?? "", line: 0) == nil)
     }
 
@@ -119,9 +119,12 @@ struct SkhdRewriteTests {
         let disabled = try #require(SkhdConfig.disable(text, binding: binding))
         #expect(
             disabled
-                == "# cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi")
+                == "# disabled: cmd - w -> [\n#     \"Messages\" : echo quit\n# ]\ncmd - h : echo hi"
+        )
         let remaining = SkhdConfig.parse(disabled)
-        #expect(remaining.map(\.key) == ["h"])
+        #expect(remaining.map(\.key) == ["w", "h"])
+        #expect(remaining.map(\.isDisabled) == [true, false])
+        #expect(remaining.first?.appOverrides.map(\.app) == ["Messages"])
     }
 
     @Test("edits refuse a file that changed since it was read")
@@ -134,6 +137,156 @@ struct SkhdRewriteTests {
         #expect(
             SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "b")
                 == "cmd - a : one\nalt - b : two")
+    }
+
+    /// skhd escapes the line break after a trailing backslash, so the next
+    /// line belongs to the command. Commenting out only the first line left the
+    /// rest live, and skhd then rejected the whole file.
+    @Test("a continued command is one shortcut and is disabled whole")
+    func continuedCommand() throws {
+        let first = "cmd - x : yabai -m window --focus west \\"
+        let second = #"  || osascript -e 'display notification "a: b"'"#
+        let text = [first, second, "cmd - h : echo hi"].joined(separator: "\n")
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["x", "h"])
+        let binding = try #require(parsed.first)
+        #expect(binding.endLine == 1)
+        #expect(
+            binding.command
+                == #"yabai -m window --focus west   || osascript -e 'display notification "a: b"'"#)
+
+        let disabled = try #require(SkhdConfig.disable(text, binding: binding))
+        #expect(
+            disabled
+                == ["# disabled: " + first, "# " + second, "cmd - h : echo hi"].joined(
+                    separator: "\n"))
+        #expect(SkhdConfig.parse(disabled).filter { !$0.isDisabled }.map(\.key) == ["h"])
+        #expect(SkhdConfig.disable(text, line: 0) == disabled)
+        #expect(SkhdConfig.parse(disabled).first?.endLine == 1)
+
+        let rebound = try #require(
+            SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "x"))
+        #expect(rebound == text.replacingOccurrences(of: "cmd - x", with: "alt - x"))
+    }
+
+    @Test("an escaped backslash at the end of a line does not continue it")
+    func escapedBackslash() {
+        let parsed = SkhdConfig.parse("cmd - a : echo \\\\\ncmd - b : echo b")
+        #expect(parsed.map(\.key) == ["a", "b"])
+        #expect(parsed.first?.endLine == 0)
+    }
+
+    @Test("a commented entry inside a per-app block is not an override")
+    func commentInBlock() throws {
+        let text = "cmd - n [\n  # \"Safari\" : old\n  \"Firefox\" : echo ff\n]"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.appOverrides.map(\.app) == ["Firefox"])
+    }
+
+    /// `.blacklist` lists applications skhd ignores. Read as a per-app block,
+    /// a one-line list swallowed every shortcut down to the next `]`, and a
+    /// multi-line list became a shortcut whose rebind rewrote `.blacklist`.
+    @Test("a one-line blacklist is left alone and hides nothing")
+    func oneLineIgnoreList() {
+        let text = """
+            .blacklist [ "kitty" "terminal" ]
+            alt - h : yabai -m window --focus west
+            alt - l : yabai -m window --focus east
+            cmd - n [
+                "Safari" : echo safari
+                * : echo other
+            ]
+            """
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h", "l", "n"])
+        #expect(parsed.last?.appOverrides.map(\.app) == ["Safari", "*"])
+    }
+
+    @Test("a multi-line blacklist is not a shortcut")
+    func multiLineIgnoreList() {
+        let text = ".blacklist [\n  \"kitty\"\n  \"my [app]\"\n]\nalt - h : echo"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h"])
+        #expect(parsed.first?.id == 4)
+    }
+
+    @Test("other options are not shortcuts and do not name a section")
+    func otherOptions() {
+        let text = "# Load more\n.load \"extra: skhdrc\"\n.shell \"/bin/dash\"\nalt - h : echo"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["h"])
+        #expect(parsed.first?.section == nil)
+    }
+
+    /// Rebinding `resize < h` used to drop the prefix and move the shortcut
+    /// into the default mode.
+    @Test("a mode prefix survives a rebind")
+    func modeKeptOnRebind() throws {
+        let text = ":: resize @\nresize < h : yabai -m window --resize left:-20:0"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.modes == ["resize"])
+        #expect(binding.key == "h" && binding.modifiers.isEmpty)
+        let rebound = SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "j")
+        #expect(rebound == ":: resize @\nresize < alt - j : yabai -m window --resize left:-20:0")
+        #expect(SkhdConfig.parse(rebound ?? "").first?.modes == ["resize"])
+    }
+
+    @Test("several modes and a passthrough survive a rebind")
+    func modesAndPassthrough() throws {
+        let text = "  default, resize < cmd - k -> : echo k"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.modes == ["default", "resize"])
+        #expect(binding.passthrough)
+        #expect(
+            SkhdConfig.rebind(text, binding: binding, modifiers: ["ctrl"], key: "k")
+                == "  default, resize < ctrl - k -> : echo k")
+    }
+
+    /// `; mode` bindings were not listed at all, so the conflict check could
+    /// not see the chords they occupy.
+    @Test("mode switches are listed and keep their target on rebind")
+    func modeSwitches() throws {
+        let text =
+            "cmd - r ; resize\nresize < escape ; default\nresize < return : echo hi ; default"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["r", "escape", "return"])
+        #expect(parsed.map(\.activatesMode) == ["resize", "default", nil])
+        #expect(parsed[0].command.isEmpty)
+        #expect(parsed[2].command == "echo hi ; default")
+        #expect(
+            SkhdConfig.rebind(text, binding: parsed[0], modifiers: ["alt"], key: "r")
+                == "alt - r ; resize\nresize < escape ; default\nresize < return : echo hi ; default"
+        )
+        #expect(
+            SkhdConfig.disable(text, binding: parsed[1])
+                == "cmd - r ; resize\n# disabled: resize < escape ; default\nresize < return : echo hi ; default"
+        )
+    }
+
+    @Test("a chord conflicts only with bindings in the same mode")
+    func conflictsByMode() throws {
+        let text = "cmd - r ; resize\nresize < h : echo shrink\nalt - h : echo focus"
+        let parsed = SkhdConfig.parse(text)
+        let inResize = parsed[1]
+        let global = parsed[2]
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["cmd"], key: "r", excluding: global)?.id
+                == 0)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["cmd"], key: "r", excluding: nil)?.id == 0)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: [], key: "h", excluding: global) == nil)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["alt"], key: "h", excluding: inResize)
+                == nil)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["alt"], key: "h", excluding: nil)?.id == 2)
+    }
+
+    @Test("a mode declaration is not a shortcut")
+    func modeDeclaration() {
+        let text = ":: resize @ : echo entering: resize \\\n  now\nalt - h : echo"
+        #expect(SkhdConfig.parse(text).map(\.key) == ["h"])
     }
 
     @Test("an unterminated block is not offered for editing")

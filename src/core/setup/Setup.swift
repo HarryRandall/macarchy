@@ -27,15 +27,8 @@ public enum Setup {
 
     // MARK: - Locations
 
-    /// skhd reads `~/.config/skhd/skhdrc`, then `~/.skhdrc`. The shortcuts file
-    /// is whichever exists, so an older dotfile is edited in place, not shadowed.
-    public static var skhdrc: URL {
-        let primary = Paths.home.appending(path: ".config/skhd/skhdrc")
-        let dotfile = Paths.home.appending(path: ".skhdrc")
-        let fm = FileManager.default
-        return !fm.fileExists(atPath: primary.path) && fm.fileExists(atPath: dotfile.path)
-            ? dotfile : primary
-    }
+    /// The shortcuts file skhd reads; see `Paths.skhdrc`.
+    public static var skhdrc: URL { Paths.skhdrc }
 
     /// The yabai config in effect, which may be an older `~/.yabairc`.
     static var yabaiSource: URL {

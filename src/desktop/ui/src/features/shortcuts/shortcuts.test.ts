@@ -21,6 +21,9 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
     command: "echo custom",
     passthrough: false,
     appOverrides: [],
+    modes: [],
+    activatesMode: null,
+    disabled: false,
     ...patch,
   };
 }
@@ -109,6 +112,13 @@ describe("shortcut presentation", () => {
     });
     expect(shortcutLabel(item, [item])).toBe("Per-app action");
   });
+
+  it("says which skhd mode a binding works in or switches to", () => {
+    const enter = binding({ command: "", activatesMode: "resize" });
+    const inMode = binding({ id: 2, command: "yabai -m window --focus west", modes: ["resize"] });
+    expect(shortcutLabel(enter, [enter, inMode])).toBe("Switch to resize mode");
+    expect(shortcutLabel(inMode, [enter, inMode])).toBe("Focus left (resize mode)");
+  });
   it("filters source groups, scopes, modifier suffixes, keys and commands", () => {
     const all = [
       binding(),
@@ -130,6 +140,10 @@ describe("shortcut presentation", () => {
     ).toEqual([all[1]]);
     expect(filterBindings(all, { ...emptyFilters, scope: "global" })).toEqual([all[0]]);
     expect(filterBindings(all, { ...emptyFilters, section: "missing" })).toEqual([]);
+    const off = binding({ id: 3, disabled: true });
+    expect(filterBindings([...all, off], { ...emptyFilters, scope: "disabled" })).toEqual([off]);
+    expect(filterBindings([...all, off], { ...emptyFilters, scope: "global" })).toEqual([all[0]]);
+    expect(filterBindings([...all, off], emptyFilters)).toHaveLength(3);
   });
 });
 
@@ -153,6 +167,8 @@ describe("recording", () => {
     expect(recordedChord({ ...event, repeat: true })).toBeNull();
     expect(recordedChord({ ...event, isComposing: true })).toBeNull();
     expect(recordedChord({ ...event, code: "ArrowLeft" })?.key).toBe("left");
+    expect(recordedChord({ ...event, code: "Backspace" })?.key).toBe("backspace");
+    expect(recordedChord({ ...event, code: "Numpad1" })?.key).toBe("0x53");
   });
 });
 
@@ -247,6 +263,17 @@ describe("shortcuts store", () => {
     send.mockRejectedValueOnce(new Error("Snapshot failed"));
     await expect(store.reset("two")).rejects.toThrow("Snapshot failed");
     expect(send).toHaveBeenLastCalledWith("shortcuts.reset", { revision: "two" });
+  });
+
+  it("enables only a disabled binding, against the revision on screen, and never edits it", async () => {
+    const { store, initial, send } = fixture();
+    await store.load();
+    const off = binding({ id: 2, disabled: true });
+    store.edit(off);
+    expect(store.getSnapshot().draft).toBeNull();
+    expect(await store.enable(initial.bindings[0]!)).toBe(false);
+    expect(await store.enable(off)).toBe(true);
+    expect(send).toHaveBeenLastCalledWith("shortcuts.enable", { id: 2, revision: "one" });
   });
   it("clears a transient read error on fresh state but keeps a failed edit", async () => {
     const { store, initial, send, emit, unavailable } = fixture();

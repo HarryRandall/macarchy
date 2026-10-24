@@ -678,6 +678,9 @@ const terminalBinding: ShortcutBinding = {
   section: "Open a terminal",
   passthrough: false,
   appOverrides: [],
+  modes: [],
+  activatesMode: null,
+  disabled: false,
 };
 
 const focusBinding: ShortcutBinding = {
@@ -689,6 +692,9 @@ const focusBinding: ShortcutBinding = {
   section: null,
   passthrough: true,
   appOverrides: [{ app: "Ghostty", command: "skhd -k 'ctrl + alt - h'" }],
+  modes: ["resize"],
+  activatesMode: null,
+  disabled: false,
 };
 
 const shortcuts: ShortcutsState = {
@@ -699,6 +705,11 @@ const shortcuts: ShortcutsState = {
 const shortcutsAfterEdit: ShortcutsState = {
   revision: "7d793037a0760186",
   bindings: [terminalBinding],
+};
+
+const shortcutsAfterDisable: ShortcutsState = {
+  revision: "3c59dc048e885024",
+  bindings: [terminalBinding, { ...focusBinding, disabled: true }],
 };
 
 export const methodFixtures: MethodFixtures = {
@@ -1031,7 +1042,16 @@ export const methodFixtures: MethodFixtures = {
   "shortcuts.disable": [
     {
       params: { id: 3, revision: "5d41402abc4b2a76" },
-      result: { state: shortcutsAfterEdit, warning: "skhd: could not reload the configuration" },
+      result: {
+        state: shortcutsAfterDisable,
+        warning: "skhd: could not reload the configuration",
+      },
+    },
+  ],
+  "shortcuts.enable": [
+    {
+      params: { id: 3, revision: "3c59dc048e885024" },
+      result: { state: shortcuts, warning: "" },
     },
   ],
   "shortcuts.reset": [

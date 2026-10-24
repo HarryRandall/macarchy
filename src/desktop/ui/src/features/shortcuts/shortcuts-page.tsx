@@ -70,6 +70,7 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
   const shown = tab === "all" ? searched : searched.filter((b) => shortcutCategory(b) === tab);
   const shownGroups = groupByCategory(shown);
   const conflicts = findConflicts(all);
+  const disabledCount = all.filter((binding) => binding.disabled).length;
   const firstConflict = all.find((binding) => conflicts.has(binding.id));
   const menuFilters =
     !!filters.modifiers.length || filters.scope !== "all" || filters.section !== "";
@@ -101,6 +102,7 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
                   <MenuRadioItem value="all">All apps and scopes</MenuRadioItem>
                   <MenuRadioItem value="global">Global shortcuts</MenuRadioItem>
                   <MenuRadioItem value="perApp">Per-app shortcuts</MenuRadioItem>
+                  <MenuRadioItem value="disabled">Disabled shortcuts</MenuRadioItem>
                 </MenuRadioGroup>
               </MenuGroup>
               <MenuSeparator />
@@ -245,6 +247,7 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
                       conflict={conflicts.get(binding.id)}
                       disabled={snapshot.busy}
                       onEdit={() => store.edit(binding)}
+                      onEnable={() => void store.enable(binding)}
                     />
                   ))}
                 </Card>
@@ -282,7 +285,7 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
                       ? "Refreshing…"
                       : hasFilters
                         ? `${shown.length} of ${total(all.length)}`
-                        : total(all.length)}
+                        : total(all.length) + (disabledCount ? `, ${disabledCount} disabled` : "")}
                 </p>
                 <Button
                   size="sm"
