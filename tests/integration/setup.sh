@@ -156,6 +156,25 @@ rm "$HOME_DIR/.config/macarchy/backups/"*-yabairc
 "$CLI" uninstall >/dev/null 2>&1 && fail "uninstall succeeded with a missing backup"
 [ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = "$GENERATED" ] || fail "file changed despite a missing backup"
 
+# A bar written for another interpreter is not wrapped in bash: --keep stops
+# before changing anything and says what to do.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/sketchybar" "$HOME_DIR/.config/yabai"
+printf '#!/usr/bin/env lua\nsbar = require("sketchybar")\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+echo 'yabai -m config window_gap 4' > "$HOME_DIR/.config/yabai/yabairc"
+OUTPUT="$("$CLI" setup --keep --no-apply 2>&1)" && fail "setup kept a Lua sketchybarrc"
+grep -q 'runs with lua' <<<"$OUTPUT" || fail "Lua refusal not explained: $OUTPUT"
+grep -q 'some files may already have changed' <<<"$OUTPUT" && fail "refusal claims changes: $OUTPUT"
+grep -q 'require("sketchybar")' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "Lua bar changed"
+[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = 'yabai -m config window_gap 4' ] || fail "yabairc changed by a refused setup"
+[ -e "$HOME_DIR/.config/macarchy/backups" ] && fail "refused setup wrote backups"
+printf '#!/bin/bash\nif then\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+"$CLI" setup --keep --no-apply >/dev/null 2>&1 && fail "setup kept a sketchybarrc bash cannot parse"
+"$CLI" setup --replace --no-apply >/dev/null || fail "replace refused a non-bash bar"
+bash -n "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced sketchybarrc syntax"
+"$CLI" uninstall >/dev/null
+grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replaced bar not restored"
+
 # A full setup, apply and theme change in the temporary home reach only the
 # fake tools. launchd, defaults, the appearance, the wallpaper, running apps
 # and the bundled bar scripts are refused (see DesktopIsolation), so the real
