@@ -14,6 +14,10 @@ struct ShortcutsState: Codable, Sendable {
         var section: String?
         var passthrough: Bool
         var appOverrides: [Override]
+        /// The modes named before `<`; empty for skhd's default mode.
+        var modes: [String]
+        /// The mode a `; mode` binding switches to.
+        var activatesMode: String?
 
         struct Override: Codable, Sendable {
             var app: String
@@ -21,7 +25,8 @@ struct ShortcutsState: Codable, Sendable {
         }
 
         enum CodingKeys: CodingKey {
-            case id, modifiers, key, caps, command, section, passthrough, appOverrides
+            case id, modifiers, key, caps, command, section, passthrough, appOverrides, modes
+            case activatesMode
         }
 
         func encode(to encoder: Encoder) throws {
@@ -34,6 +39,8 @@ struct ShortcutsState: Codable, Sendable {
             try container.encode(section, forKey: .section)
             try container.encode(passthrough, forKey: .passthrough)
             try container.encode(appOverrides, forKey: .appOverrides)
+            try container.encode(modes, forKey: .modes)
+            try container.encode(activatesMode, forKey: .activatesMode)
         }
     }
 
@@ -45,7 +52,8 @@ struct ShortcutsState: Codable, Sendable {
                 caps: binding.keyCaps,
                 command: binding.command, section: binding.section,
                 passthrough: binding.passthrough,
-                appOverrides: binding.appOverrides.map { .init(app: $0.app, command: $0.command) })
+                appOverrides: binding.appOverrides.map { .init(app: $0.app, command: $0.command) },
+                modes: binding.modes, activatesMode: binding.activatesMode)
         }
     }
 }

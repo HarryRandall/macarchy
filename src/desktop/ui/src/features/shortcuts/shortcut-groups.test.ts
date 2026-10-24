@@ -21,6 +21,8 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
     command: "echo custom",
     passthrough: false,
     appOverrides: [],
+    modes: [],
+    activatesMode: null,
     ...patch,
   };
 }
@@ -92,6 +94,15 @@ describe("conflicts", () => {
     expect(conflicts.get(2)).toBe('Same keys as "Launch"');
     expect(conflicts.get(3)).toBe("macOS uses ⌘ Space for Spotlight");
     expect(conflicts.has(4)).toBe(false);
+  });
+
+  it("compares chords only within the same skhd mode", () => {
+    const plain = binding({ command: "echo plain" });
+    const resize = binding({ id: 2, command: "echo resize", modes: ["resize"] });
+    const both = binding({ id: 3, command: "echo both", modes: ["resize", "move"] });
+    const conflicts = findConflicts([plain, resize, both]);
+    expect(conflicts.has(1)).toBe(false);
+    expect(conflicts.get(2)).toBe('Same keys as "echo both (resize, move mode)"');
   });
 });
 

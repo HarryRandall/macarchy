@@ -41,14 +41,6 @@ public struct ShortcutChord: Codable, Sendable, Equatable {
         else { throw ConfigurationError("Record a supported key combination.") }
         return ShortcutChord(modifiers: modifiers, key: key)
     }
-
-    /// Equivalent spellings conflict: `=` and `0x18`, a keycode and the letter
-    /// it types, and `hyper` and its four modifiers.
-    func overlaps(_ binding: SkhdBinding) -> Bool {
-        SkhdKey.normalised(key) == SkhdKey.normalised(binding.key)
-            && SkhdKey.normalised(modifiers: modifiers)
-                == SkhdKey.normalised(modifiers: binding.modifiers)
-    }
 }
 
 /// skhdrc stays the person's file. Reads never create it or seed defaults.
@@ -81,9 +73,13 @@ public struct SkhdShortcuts: Sendable {
             .joined()
     }
 
+    /// Another binding holding `chord` in a mode the binding `id` works in.
     public func validate(_ chord: ShortcutChord, excluding id: Int) throws -> Int? {
         let chord = try chord.validated()
-        return try read().bindings.first { $0.id != id && chord.overlaps($0) }?.id
+        let bindings = try read().bindings
+        return SkhdConfig.conflict(
+            in: bindings, modifiers: chord.modifiers, key: chord.key,
+            excluding: bindings.first { $0.id == id })?.id
     }
 
     public func rebind(
@@ -96,7 +92,11 @@ public struct SkhdShortcuts: Sendable {
                 throw ConfigurationError(
                     "This shortcut no longer exists. Refresh shortcuts and try again.")
             }
-            guard !bindings.contains(where: { $0.id != id && chord.overlaps($0) }) else {
+            guard
+                SkhdConfig.conflict(
+                    in: bindings, modifiers: chord.modifiers, key: chord.key, excluding: binding)
+                    == nil
+            else {
                 throw ConfigurationError("Another shortcut already uses this combination.")
             }
             return SkhdConfig.rebind(

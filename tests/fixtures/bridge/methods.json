@@ -1736,6 +1736,7 @@
         "state": {
           "bindings": [
             {
+              "activatesMode": null,
               "appOverrides": [],
               "caps": [
                 "⌃",
@@ -1745,6 +1746,7 @@
               "command": "open -na Ghostty",
               "id": 1,
               "key": "return",
+              "modes": [],
               "modifiers": [
                 "ctrl",
                 "alt"
@@ -1765,6 +1767,7 @@
       "result": {
         "bindings": [
           {
+            "activatesMode": null,
             "appOverrides": [],
             "caps": [
               "⌃",
@@ -1774,6 +1777,7 @@
             "command": "open -na Ghostty",
             "id": 1,
             "key": "return",
+            "modes": [],
             "modifiers": [
               "ctrl",
               "alt"
@@ -1782,6 +1786,7 @@
             "section": "Open a terminal"
           },
           {
+            "activatesMode": null,
             "appOverrides": [
               {
                 "app": "Ghostty",
@@ -1796,6 +1801,9 @@
             "command": "yabai -m window --focus west",
             "id": 3,
             "key": "h",
+            "modes": [
+              "resize"
+            ],
             "modifiers": [
               "ctrl",
               "alt"
@@ -1831,6 +1839,7 @@
         "state": {
           "bindings": [
             {
+              "activatesMode": null,
               "appOverrides": [],
               "caps": [
                 "⌃",
@@ -1840,6 +1849,7 @@
               "command": "open -na Ghostty",
               "id": 1,
               "key": "return",
+              "modes": [],
               "modifiers": [
                 "ctrl",
                 "alt"
@@ -1863,6 +1873,7 @@
         "state": {
           "bindings": [
             {
+              "activatesMode": null,
               "appOverrides": [],
               "caps": [
                 "⌃",
@@ -1872,6 +1883,7 @@
               "command": "open -na Ghostty",
               "id": 1,
               "key": "return",
+              "modes": [],
               "modifiers": [
                 "ctrl",
                 "alt"
@@ -1880,6 +1892,7 @@
               "section": "Open a terminal"
             },
             {
+              "activatesMode": null,
               "appOverrides": [
                 {
                   "app": "Ghostty",
@@ -1894,6 +1907,9 @@
               "command": "yabai -m window --focus west",
               "id": 3,
               "key": "h",
+              "modes": [
+                "resize"
+              ],
               "modifiers": [
                 "ctrl",
                 "alt"

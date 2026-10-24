@@ -160,23 +160,46 @@ struct SkhdShortcutsTests {
         #expect(try String(contentsOf: files.config, encoding: .utf8) == text)
     }
 
+    /// Rebinding `resize < h` used to write the chord without its mode, and
+    /// a `; mode` switch held its chord without the conflict check seeing it.
+    @Test("rebinding keeps a binding's mode and checks conflicts within it")
+    func modes() async throws {
+        let files = try fixture()
+        defer { try? FileManager.default.removeItem(at: files.root) }
+        let text = "cmd - r ; resize\nresize < h : echo left\nalt - j : echo default\n"
+        try text.write(to: files.config, atomically: true, encoding: .utf8)
+        let shortcuts = operation(files.config, files.snapshots)
+        #expect(try shortcuts.validate(.init(modifiers: ["cmd"], key: "r"), excluding: 2) == 0)
+        #expect(try shortcuts.validate(.init(modifiers: ["alt"], key: "j"), excluding: 1) == nil)
+        _ = try await shortcuts.rebind(
+            id: 1, revision: shortcuts.read().revision, chord: .init(modifiers: ["alt"], key: "j"))
+        #expect(
+            try String(contentsOf: files.config, encoding: .utf8)
+                == text.replacingOccurrences(of: "resize < h", with: "resize < alt - j"))
+    }
+
     @Test("validation renders skhd notation and detects aliases and physical keycodes")
     func validation() throws {
         let chord = try ShortcutChord(modifiers: ["cmd", "shift"], key: "K").validated()
         #expect(chord.keySpec == "shift + cmd - k")
         #expect(chord.caps == ["⇧", "⌘", "K"])
-        let binding = try #require(SkhdConfig.parse("hyper - 0x24 : echo conflict").first)
+        func taken(_ chord: ShortcutChord, in text: String) -> Bool {
+            SkhdConfig.conflict(
+                in: SkhdConfig.parse(text), modifiers: chord.modifiers, key: chord.key,
+                excluding: nil) != nil
+        }
         #expect(
-            ShortcutChord(modifiers: ["ctrl", "alt", "shift", "cmd"], key: "return").overlaps(
-                binding))
+            taken(
+                ShortcutChord(modifiers: ["ctrl", "alt", "shift", "cmd"], key: "return"),
+                in: "hyper - 0x24 : echo conflict"))
         #expect(throws: (any Error).self) {
             try ShortcutChord(modifiers: [], key: "\n").validated()
         }
         #expect(throws: (any Error).self) {
             try ShortcutChord(modifiers: ["cmd"], key: "k\n").validated()
         }
-        let rawLetter = try #require(SkhdConfig.parse("cmd - 0x28 : echo conflict").first)
-        #expect(ShortcutChord(modifiers: ["cmd"], key: "k").overlaps(rawLetter))
+        #expect(
+            taken(ShortcutChord(modifiers: ["cmd"], key: "k"), in: "cmd - 0x28 : echo conflict"))
         #expect(throws: (any Error).self) {
             try ShortcutChord(modifiers: [], key: "0xff").validated()
         }
@@ -199,8 +222,11 @@ struct SkhdShortcutsTests {
         let chord = try ShortcutChord(modifiers: ["ctrl", "alt"], key: "-").validated()
         let parsed = try #require(SkhdConfig.parse("\(chord.keySpec) : echo smaller").first)
         #expect(parsed.key == "0x1B" && parsed.keyCaps == ["⌃", "⌥", "-"])
-        let equals = try #require(SkhdConfig.parse("alt + ctrl - 0x18 : echo grow").first)
-        #expect(ShortcutChord(modifiers: ["ctrl", "alt"], key: "=").overlaps(equals))
-        #expect(!ShortcutChord(modifiers: ["ctrl", "alt"], key: "0x51").overlaps(equals))
+        let equals = SkhdConfig.parse("alt + ctrl - 0x18 : echo grow")
+        for (key, taken) in [("=", true), ("0x51", false)] {
+            let found = SkhdConfig.conflict(
+                in: equals, modifiers: ["ctrl", "alt"], key: key, excluding: nil)
+            #expect((found != nil) == taken, "\(key)")
+        }
     }
 }

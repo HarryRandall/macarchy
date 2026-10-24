@@ -1,8 +1,18 @@
 import type { ShortcutBinding, ShortcutChord } from "~/bridge/protocol";
 
+/**
+ * A binding that only works in a skhd mode says so, so it does not read as a duplicate of
+ * the same chord outside it.
+ */
 export function shortcutLabel(binding: ShortcutBinding, all: ShortcutBinding[]): string {
+  const action = actionLabel(binding, all);
+  return binding.modes.length ? `${action} (${binding.modes.join(", ")} mode)` : action;
+}
+
+function actionLabel(binding: ShortcutBinding, all: ShortcutBinding[]): string {
   if (binding.section && all.filter((item) => item.section === binding.section).length === 1)
     return binding.section;
+  if (binding.activatesMode) return `Switch to ${binding.activatesMode} mode`;
   const command = binding.command;
   for (const [native, title] of [
     ["west", "left"],

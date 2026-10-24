@@ -104,27 +104,52 @@ public enum SkhdConfig {
 
     /// Where a binding line splits into its key spec and the rest.
     ///
-    /// The key spec never contains `:` or `[`, so the first of either ends it.
-    /// Searching for `->` anywhere would match inside commands such as
+    /// skhd's form is `[mode, … <] keysym [->] (: command | [ … ] | ; mode)`.
+    /// The key spec never contains `:`, `[` or `;`, so the first of these ends
+    /// it. Searching for `->` anywhere would match inside commands such as
     /// `echo "a -> b"` and discard part of them on rewrite.
     struct Split {
+        enum Kind { case command, block, activation }
+
+        /// Where the chord starts, after the indent and any `mode <` prefix,
+        /// both of which are kept verbatim on rewrite.
+        let keyStart: String.Index
         let keySpec: String
-        /// Index of the `:` or `[`, which is kept verbatim on rewrite.
+        /// The modes named before `<`; empty means skhd's default mode.
+        let modes: [String]
+        /// Index of the `:`, `[` or `;`, which is kept verbatim on rewrite.
         let rest: String.Index
-        let isBlock: Bool
+        let kind: Kind
         let passthrough: Bool
     }
 
     static func split(_ line: String) -> Split? {
-        guard let boundary = line.firstIndex(where: { $0 == ":" || $0 == "[" }) else {
-            return nil
+        guard let boundary = line.firstIndex(where: { $0 == ":" || $0 == "[" || $0 == ";" })
+        else { return nil }
+        let blank: (Character) -> Bool = { $0 == " " || $0 == "\t" }
+        var keyStart = line.firstIndex { !blank($0) } ?? boundary
+        var modes: [String] = []
+        if let marker = line[keyStart..<boundary].firstIndex(of: "<") {
+            modes = line[keyStart..<marker].split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            guard !modes.isEmpty else { return nil }
+            keyStart =
+                line[line.index(after: marker)..<boundary].firstIndex { !blank($0) } ?? boundary
         }
-        var head = line[line.startIndex..<boundary].trimmingCharacters(in: .whitespaces)
+        var head = line[keyStart..<boundary].trimmingCharacters(in: .whitespaces)
         let passthrough = head.hasSuffix("->")
         if passthrough { head = head.dropLast(2).trimmingCharacters(in: .whitespaces) }
-        guard !head.isEmpty else { return nil }
+        // `::` declares a mode and `.` starts an option; neither is a chord.
+        guard !head.isEmpty, !head.hasPrefix(".") else { return nil }
+        let kind: Split.Kind =
+            switch line[boundary] {
+            case "[": .block
+            case ";": .activation
+            default: .command
+            }
         return Split(
-            keySpec: head, rest: boundary, isBlock: line[boundary] == "[",
+            keyStart: keyStart, keySpec: head, modes: modes, rest: boundary, kind: kind,
             passthrough: passthrough)
     }
 
@@ -140,7 +165,7 @@ public enum SkhdConfig {
         guard !key.isEmpty else { return (nil, end) }
 
         // App-specific form: `<keyspec> [` … `]`, optionally with `->`.
-        if split.isBlock {
+        if split.kind == .block {
             var overrides: [SkhdBinding.AppOverride] = []
             var scan = end + 1
             var closed = false
@@ -166,8 +191,22 @@ public enum SkhdConfig {
                 id: start, endLine: blockEnd, source: Array(lines[start...blockEnd]),
                 modifiers: modifiers, key: key,
                 command: overrides.first(where: { $0.app == "*" })?.command ?? "",
-                section: section, passthrough: split.passthrough, appOverrides: overrides)
+                section: section, passthrough: split.passthrough, appOverrides: overrides,
+                modes: split.modes)
             return (binding, blockEnd)
+        }
+
+        // Mode switch: `<keyspec> ; mode` runs nothing and enters the mode.
+        if split.kind == .activation {
+            let target = line[line.index(after: split.rest)...]
+                .split(whereSeparator: { $0 == " " || $0 == "\t" }).first.map(String.init)
+            guard let target else { return (nil, end) }
+            let binding = SkhdBinding(
+                id: start, endLine: end, source: Array(lines[start...end]),
+                modifiers: modifiers, key: key, command: "",
+                section: section, passthrough: split.passthrough, appOverrides: [],
+                modes: split.modes, activatesMode: target)
+            return (binding, end)
         }
 
         // Standard form. Commands routinely contain colons (osascript, URLs), so
@@ -178,7 +217,8 @@ public enum SkhdConfig {
         let binding = SkhdBinding(
             id: start, endLine: end, source: Array(lines[start...end]),
             modifiers: modifiers, key: key, command: command,
-            section: section, passthrough: split.passthrough, appOverrides: [])
+            section: section, passthrough: split.passthrough, appOverrides: [],
+            modes: split.modes)
         return (binding, end)
     }
 
@@ -202,6 +242,29 @@ public enum SkhdConfig {
     }
 }
 
+// MARK: - Conflicts
+
+extension SkhdConfig {
+    /// Another binding using this chord in a mode `binding` works in, if there
+    /// is one. Without `binding` the chord is checked in the default mode. The
+    /// same chord can mean different things in different modes, and a mode
+    /// switch occupies its chord like any other binding.
+    public static func conflict(
+        in bindings: [SkhdBinding], modifiers: some Sequence<String>, key: String,
+        excluding binding: SkhdBinding?
+    ) -> SkhdBinding? {
+        let key = SkhdKey.normalised(key)
+        let modifiers = SkhdKey.normalised(modifiers: modifiers)
+        let modes = binding?.activeModes ?? ["default"]
+        return bindings.first {
+            $0.id != binding?.id
+                && !$0.activeModes.isDisjoint(with: modes)
+                && SkhdKey.normalised($0.key) == key
+                && SkhdKey.normalised(modifiers: $0.modifiers) == modifiers
+        }
+    }
+}
+
 // MARK: - Writing
 
 extension SkhdConfig {
@@ -220,9 +283,11 @@ extension SkhdConfig {
 
     /// Replaces the key spec on one line, keeping the command untouched.
     ///
-    /// Only the part before the first `:` or `[` is rewritten, because a
-    /// command routinely contains colons and arrows. Returns `nil` when the
-    /// line is not a binding, so a miscounted index cannot corrupt the file.
+    /// Only the chord is rewritten: a `mode <` prefix stays, so the shortcut
+    /// keeps working in the same mode, and everything from the first `:`, `[`
+    /// or `;` stays, because a command routinely contains colons and arrows.
+    /// Returns `nil` when the line is not a binding, so a miscounted index
+    /// cannot corrupt the file.
     public static func rebind(
         _ text: String, line index: Int, modifiers: [String], key: String
     ) -> String? {
@@ -233,9 +298,8 @@ extension SkhdConfig {
         guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("#"),
             let split = split(line)
         else { return nil }
-        let indent = String(line.prefix { $0 == " " || $0 == "\t" })
         let spec = keySpec(modifiers: modifiers, key: key) + (split.passthrough ? " ->" : "")
-        lines[index] = indent + spec + " " + String(line[split.rest...])
+        lines[index] = String(line[..<split.keyStart]) + spec + " " + String(line[split.rest...])
         return lines.joined(separator: "\n")
     }
 

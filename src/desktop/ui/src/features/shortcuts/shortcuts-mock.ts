@@ -38,6 +38,8 @@ export function shortcutsMock(
         command: "open -na Ghostty",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
       },
       {
         id: 3,
@@ -48,6 +50,8 @@ export function shortcutsMock(
         command: "yabai -m window --focus west",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
       },
       {
         id: 4,
@@ -58,6 +62,8 @@ export function shortcutsMock(
         command: "yabai -m window --focus east",
         passthrough: false,
         appOverrides: [],
+        modes: [],
+        activatesMode: null,
       },
     ],
   };

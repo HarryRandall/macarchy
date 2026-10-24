@@ -7,6 +7,10 @@ export interface ShortcutBinding {
   section: string | null;
   passthrough: boolean;
   appOverrides: { app: string; command: string }[];
+  /** The modes named before `<`; empty for skhd's default mode. */
+  modes: string[];
+  /** The mode a `; mode` binding switches to; it runs no command. */
+  activatesMode: string | null;
 }
 export interface ShortcutChord {
   modifiers: string[];

@@ -47,6 +47,14 @@ struct SkhdRoundTripTests {
         ]
 
         play : osascript -e 'tell application "Spotify" to playpause'
+
+        # Resize mode
+        :: resize @ : echo entering \\
+            resize: now
+        cmd - r ; resize
+        resize < escape ; default
+        resize < h : yabai -m window --resize left:-20:0
+        default, resize < shift - h -> : echo both
         """
 
     static var lines: [String] { fixture.components(separatedBy: "\n") }
@@ -55,7 +63,10 @@ struct SkhdRoundTripTests {
     func parsesFixture() {
         let bindings = SkhdConfig.parse(Self.fixture)
         #expect(
-            bindings.map(\.key) == ["left", "right", "0x18", "0x1B", "x", "y", "q", "w", "play"])
+            bindings.map(\.key) == [
+                "left", "right", "0x18", "0x1B", "x", "y", "q", "w", "play", "r", "escape", "h",
+                "h"
+            ])
     }
 
     @Test("rebinding a shortcut to its own chord leaves the file byte for byte")
@@ -86,6 +97,8 @@ struct SkhdRoundTripTests {
             #expect(moved.endLine == binding.endLine)
             #expect(moved.passthrough == binding.passthrough)
             #expect(moved.appOverrides == binding.appOverrides)
+            #expect(moved.modes == binding.modes)
+            #expect(moved.activatesMode == binding.activatesMode)
         }
     }
 
@@ -105,7 +118,7 @@ struct SkhdRoundTripTests {
             // Section names can shift when a comment joins the one above, so
             // compare what each remaining shortcut is.
             func shape(_ b: SkhdBinding) -> String {
-                "\(b.id) \(b.modifiers) \(b.key) \(b.command) \(b.appOverrides)"
+                "\(b.id) \(b.modes) \(b.modifiers) \(b.key) \(b.command) \(b.appOverrides)"
             }
             #expect(
                 SkhdConfig.parse(disabled).map(shape)

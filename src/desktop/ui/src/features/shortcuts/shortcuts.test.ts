@@ -21,6 +21,8 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
     command: "echo custom",
     passthrough: false,
     appOverrides: [],
+    modes: [],
+    activatesMode: null,
     ...patch,
   };
 }
@@ -108,6 +110,13 @@ describe("shortcut presentation", () => {
       appOverrides: [{ app: "Finder", command: "echo finder" }],
     });
     expect(shortcutLabel(item, [item])).toBe("Per-app action");
+  });
+
+  it("says which skhd mode a binding works in or switches to", () => {
+    const enter = binding({ command: "", activatesMode: "resize" });
+    const inMode = binding({ id: 2, command: "yabai -m window --focus west", modes: ["resize"] });
+    expect(shortcutLabel(enter, [enter, inMode])).toBe("Switch to resize mode");
+    expect(shortcutLabel(inMode, [enter, inMode])).toBe("Focus left (resize mode)");
   });
   it("filters source groups, scopes, modifier suffixes, keys and commands", () => {
     const all = [

@@ -9,10 +9,11 @@ struct ShortcutsMessagesTests {
     func nullSection() throws {
         let binding = ShortcutsState.Binding(
             id: 0, modifiers: ["cmd"], key: "k", caps: ["⌘", "K"], command: "echo custom",
-            section: nil, passthrough: false, appOverrides: [])
+            section: nil, passthrough: false, appOverrides: [], modes: [], activatesMode: nil)
         let data = try JSONEncoder().encode(binding)
         let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(object["section"] is NSNull)
+        #expect(object["activatesMode"] is NSNull)
         #expect(object["command"] as? String == "echo custom")
     }
 

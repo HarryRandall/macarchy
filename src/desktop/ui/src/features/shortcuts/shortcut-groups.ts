@@ -80,6 +80,14 @@ const systemChords: Record<string, string> = {
   [chordKey(["cmd"], "tab")]: "the App Switcher",
 };
 
+/** skhd puts a binding with no mode in `default`; the same chord can differ per mode. */
+const activeModes = (binding: ShortcutBinding) =>
+  binding.modes.length ? binding.modes : ["default"];
+
+function sharesMode(a: ShortcutBinding, b: ShortcutBinding): boolean {
+  return activeModes(a).some((mode) => activeModes(b).includes(mode));
+}
+
 /** Why each clashing binding cannot work, by its id. */
 export function findConflicts(bindings: readonly ShortcutBinding[]): Map<number, string> {
   const conflicts = new Map<number, string>();
@@ -91,7 +99,9 @@ export function findConflicts(bindings: readonly ShortcutBinding[]): Map<number,
   for (const binding of bindings) {
     const chord = chordKey(binding.modifiers, binding.key);
     const system = systemChords[chord];
-    const other = byChord.get(chord)?.find((item) => item.id !== binding.id);
+    const other = byChord
+      .get(chord)
+      ?.find((item) => item.id !== binding.id && sharesMode(item, binding));
     if (system) conflicts.set(binding.id, `macOS uses ${binding.caps.join(" ")} for ${system}`);
     else if (other)
       conflicts.set(binding.id, `Same keys as "${shortcutTitle(other, bindings).title}"`);

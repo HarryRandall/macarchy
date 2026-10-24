@@ -678,6 +678,8 @@ const terminalBinding: ShortcutBinding = {
   section: "Open a terminal",
   passthrough: false,
   appOverrides: [],
+  modes: [],
+  activatesMode: null,
 };
 
 const focusBinding: ShortcutBinding = {
@@ -689,6 +691,8 @@ const focusBinding: ShortcutBinding = {
   section: null,
   passthrough: true,
   appOverrides: [{ app: "Ghostty", command: "skhd -k 'ctrl + alt - h'" }],
+  modes: ["resize"],
+  activatesMode: null,
 };
 
 const shortcuts: ShortcutsState = {

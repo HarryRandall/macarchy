@@ -16,6 +16,13 @@ public struct SkhdBinding: Identifiable, Sendable, Hashable {
     public let passthrough: Bool
     /// The `[ "App" : cmd … ]` form: one binding behaving differently per app.
     public let appOverrides: [AppOverride]
+    /// The modes named before `<`, as in `resize < h`; empty for the default mode.
+    public internal(set) var modes: [String] = []
+    /// The mode a `; mode` binding switches to. It runs no command.
+    public internal(set) var activatesMode: String?
+
+    /// Where the binding works: skhd puts a binding with no mode in `default`.
+    public var activeModes: Set<String> { modes.isEmpty ? ["default"] : Set(modes) }
 
     public struct AppOverride: Sendable, Hashable {
         public let app: String  // "*" is the fallback

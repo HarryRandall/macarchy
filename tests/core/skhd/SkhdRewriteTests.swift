@@ -212,6 +212,77 @@ struct SkhdRewriteTests {
         #expect(parsed.first?.section == nil)
     }
 
+    /// Rebinding `resize < h` used to drop the prefix and move the shortcut
+    /// into the default mode.
+    @Test("a mode prefix survives a rebind")
+    func modeKeptOnRebind() throws {
+        let text = ":: resize @\nresize < h : yabai -m window --resize left:-20:0"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.modes == ["resize"])
+        #expect(binding.key == "h" && binding.modifiers.isEmpty)
+        let rebound = SkhdConfig.rebind(text, binding: binding, modifiers: ["alt"], key: "j")
+        #expect(rebound == ":: resize @\nresize < alt - j : yabai -m window --resize left:-20:0")
+        #expect(SkhdConfig.parse(rebound ?? "").first?.modes == ["resize"])
+    }
+
+    @Test("several modes and a passthrough survive a rebind")
+    func modesAndPassthrough() throws {
+        let text = "  default, resize < cmd - k -> : echo k"
+        let binding = try #require(SkhdConfig.parse(text).first)
+        #expect(binding.modes == ["default", "resize"])
+        #expect(binding.passthrough)
+        #expect(
+            SkhdConfig.rebind(text, binding: binding, modifiers: ["ctrl"], key: "k")
+                == "  default, resize < ctrl - k -> : echo k")
+    }
+
+    /// `; mode` bindings were not listed at all, so the conflict check could
+    /// not see the chords they occupy.
+    @Test("mode switches are listed and keep their target on rebind")
+    func modeSwitches() throws {
+        let text =
+            "cmd - r ; resize\nresize < escape ; default\nresize < return : echo hi ; default"
+        let parsed = SkhdConfig.parse(text)
+        #expect(parsed.map(\.key) == ["r", "escape", "return"])
+        #expect(parsed.map(\.activatesMode) == ["resize", "default", nil])
+        #expect(parsed[0].command.isEmpty)
+        #expect(parsed[2].command == "echo hi ; default")
+        #expect(
+            SkhdConfig.rebind(text, binding: parsed[0], modifiers: ["alt"], key: "r")
+                == "alt - r ; resize\nresize < escape ; default\nresize < return : echo hi ; default"
+        )
+        #expect(
+            SkhdConfig.disable(text, binding: parsed[1])
+                == "cmd - r ; resize\n# resize < escape ; default\nresize < return : echo hi ; default"
+        )
+    }
+
+    @Test("a chord conflicts only with bindings in the same mode")
+    func conflictsByMode() throws {
+        let text = "cmd - r ; resize\nresize < h : echo shrink\nalt - h : echo focus"
+        let parsed = SkhdConfig.parse(text)
+        let inResize = parsed[1]
+        let global = parsed[2]
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["cmd"], key: "r", excluding: global)?.id
+                == 0)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["cmd"], key: "r", excluding: nil)?.id == 0)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: [], key: "h", excluding: global) == nil)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["alt"], key: "h", excluding: inResize)
+                == nil)
+        #expect(
+            SkhdConfig.conflict(in: parsed, modifiers: ["alt"], key: "h", excluding: nil)?.id == 2)
+    }
+
+    @Test("a mode declaration is not a shortcut")
+    func modeDeclaration() {
+        let text = ":: resize @ : echo entering: resize \\\n  now\nalt - h : echo"
+        #expect(SkhdConfig.parse(text).map(\.key) == ["h"])
+    }
+
     @Test("an unterminated block is not offered for editing")
     func unterminatedBlock() {
         #expect(SkhdConfig.parse("cmd - w [\n    * : echo").isEmpty)
