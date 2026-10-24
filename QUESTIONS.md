@@ -22,8 +22,6 @@ behind. Delete this file before merging.
   headings such as `# Space: ...` stay headings. A binding with no modifier that an
   older build disabled (for example `# f1 : ...`) now reads as a heading. Is that
   acceptable, or do you want a one-off migration?
-- **Enable a shortcut whose chord is taken.** Enable doesn't refuse; the page's
-  conflict notice shows the clash afterwards. Should Enable refuse instead?
 
 ## Isolation and the CLI
 
@@ -38,8 +36,5 @@ behind. Delete this file before merging.
 
 ## React gaps
 
-- **Health page.** It still shows `fix` as copyable code, and rows that only
-  give advice still get a copy button. The new `file` field (open settings.json)
-  isn't exposed through the bridge yet.
 - **Skipped Ghostty colours.** The Themes page doesn't show which Ghostty colours
   were skipped. They appear only in the command log and the CLI output.
