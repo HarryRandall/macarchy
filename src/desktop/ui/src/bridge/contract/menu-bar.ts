@@ -150,6 +150,8 @@ export interface MenuBarSettings {
   position: "top" | "bottom";
   /** Points at each end of the bar, 0 to 64. */
   padding: number;
+  /** Whether the page offers the centre zone, for displays without a notch. */
+  centre: boolean;
 }
 
 export interface MenuBarState {

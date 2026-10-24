@@ -74,7 +74,7 @@ describe("barLook", () => {
 
 const bar: MenuBarState = {
   items: [],
-  bar: { height: 35, position: "top", padding: 10 },
+  bar: { height: 35, position: "top", padding: 10, centre: false },
   widgets: [],
   widgetProblems: [],
   unavailableReason: null,

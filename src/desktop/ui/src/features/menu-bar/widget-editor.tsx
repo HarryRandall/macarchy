@@ -19,11 +19,11 @@ import { MenuPreview, WidgetChip } from "./widget-preview";
 import { ContentSection, FilesSection, LookSection, UpdatesSection } from "./widget-sections";
 
 const sections = [
-  { id: "content", title: "Content", detail: "What the bar shows" },
-  { id: "look", title: "Look", detail: "Anything left alone follows the theme" },
-  { id: "click", title: "Click", detail: "Try a dropdown in the preview" },
-  { id: "updates", title: "Updates", detail: "" },
-  { id: "files", title: "Files", detail: "" },
+  { id: "content", title: "Content" },
+  { id: "look", title: "Look" },
+  { id: "click", title: "Click" },
+  { id: "updates", title: "Updates" },
+  { id: "files", title: "Files" },
 ] as const;
 
 /**
@@ -43,6 +43,7 @@ export function WidgetEditor({
   selectedRow,
   onSelectRow,
   files,
+  actions,
   onChange,
   onBack,
 }: {
@@ -57,6 +58,8 @@ export function WidgetEditor({
   selectedRow: number | null;
   onSelectRow: (index: number | null) => void;
   files: WidgetFileActions;
+  /** Revert and Apply, which act on the whole bar. */
+  actions: ReactNode;
   onChange: (patch: Partial<BarItem>) => void;
   onBack: () => void;
 }) {
@@ -109,9 +112,7 @@ export function WidgetEditor({
         </span>
         <h2 className="text-card-title text-fg">{item.title}</h2>
         <OriginBadge widget={widget} />
-        {widget.description ? (
-          <span className="ml-2 truncate text-small text-fg-tertiary">{widget.description}</span>
-        ) : null}
+        {actions}
       </div>
 
       <div className="grid grid-cols-1 items-start gap-5 @min-[900px]:grid-cols-[minmax(0,1fr)_420px]">
@@ -120,7 +121,6 @@ export function WidgetEditor({
           className="flex flex-col gap-4 @min-[900px]:sticky @min-[900px]:top-0"
         >
           <div className="flex items-center gap-3">
-            <span className="flex-1 text-label text-fg-tertiary uppercase">Preview</span>
             <SegmentedControl
               label="Sample values"
               size="sm"
@@ -209,7 +209,6 @@ export function WidgetEditor({
                 <h3 id={`${ids}-${section.id}`} className="text-card-title text-fg">
                   {section.title}
                 </h3>
-                <span className="text-small text-fg-tertiary">{section.detail}</span>
               </div>
               {body[section.id]}
             </Card>

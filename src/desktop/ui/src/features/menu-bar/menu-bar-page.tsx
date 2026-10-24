@@ -1,4 +1,4 @@
-import { Check, Folder, RotateCcw } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import type { MenuBarSettings, MenuBarState } from "~/bridge/protocol";
@@ -8,7 +8,9 @@ import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardRows, Row } from "~/components/ui/card";
 import { Notice } from "~/components/ui/notice";
 import { SegmentedControl } from "~/components/ui/segmented-control";
+import { Switch } from "~/components/ui/switch";
 import { ValueSlider } from "~/components/ui/value-slider";
+import { cn } from "~/lib/cn";
 import { useStore } from "~/lib/store";
 import type { PageContext } from "~/shell/page";
 
@@ -242,39 +244,29 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   };
 
   const count = changeCount(draft);
-  const header = (
-    <PageHeader
-      title="Menu Bar"
-      actions={
-        <>
-          {changed ? (
-            <Badge tone="accent">
-              {count} {count === 1 ? "change" : "changes"}
-            </Badge>
-          ) : null}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!changed || snapshot.applying}
-            onClick={reset}
-          >
-            <RotateCcw aria-hidden size={12} /> Revert
-          </Button>
-          <Button size="sm" onClick={() => void store.reveal(null)}>
-            <Folder aria-hidden size={12} /> Widgets folder
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!changed || problem !== null || unavailable !== null}
-            busy={snapshot.applying}
-            onClick={() => void apply()}
-          >
-            <Check aria-hidden size={13} /> Apply
-          </Button>
-        </>
-      }
-    />
+  const header = <PageHeader title="Menu Bar" />;
+
+  // The page's own actions, beside its controls: the top bar keeps only the window's.
+  const applyBar = (
+    <div className="ml-auto flex items-center gap-2">
+      {changed ? (
+        <Badge tone="accent">
+          {count} {count === 1 ? "change" : "changes"}
+        </Badge>
+      ) : null}
+      <Button size="sm" variant="ghost" disabled={!changed || snapshot.applying} onClick={reset}>
+        <RotateCcw aria-hidden size={12} /> Revert
+      </Button>
+      <Button
+        size="sm"
+        variant="primary"
+        disabled={!changed || problem !== null || unavailable !== null}
+        busy={snapshot.applying}
+        onClick={() => void apply()}
+      >
+        <Check aria-hidden size={13} /> Apply
+      </Button>
+    </div>
   );
 
   const notices = (
@@ -323,6 +315,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
           selectedRow={selectedRow}
           onSelectRow={setSelectedRow}
           files={files}
+          actions={applyBar}
           onChange={(change) => patch(editing.id, change)}
           onBack={() => setFullEditor(null)}
         />
@@ -331,6 +324,10 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   }
 
   const current = items.find((item) => item.id === selected) ?? null;
+  // A notch hides the centre, so it is offered only when asked for or already in use.
+  const shownZones = zones.filter(
+    (zone) => zone !== "centre" || draft.bar.centre || items.some((item) => item.zone === zone),
+  );
 
   return (
     <div className="@container flex flex-col gap-4">
@@ -345,15 +342,13 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             options={viewOptions}
             onValueChange={setView}
           />
-          <span className="flex-1 text-small text-fg-tertiary">Click a widget to edit it</span>
-          <span className="text-small text-fg-tertiary">Sample</span>
           <SegmentedControl
             label="Sample values"
-            size="sm"
             value={sample}
             options={sampleOptions}
             onValueChange={setSample}
           />
+          {applyBar}
         </div>
         <BarPreview
           items={items}
@@ -378,8 +373,14 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
             <p aria-live="polite" className="sr-only">
               {announcement}
             </p>
-            <div ref={zonesRef} className="grid grid-cols-1 gap-3 @min-[480px]:grid-cols-3">
-              {zones.map((zone) => (
+            <div
+              ref={zonesRef}
+              className={cn(
+                "grid grid-cols-1 gap-3",
+                shownZones.length === 3 ? "@min-[480px]:grid-cols-3" : "@min-[480px]:grid-cols-2",
+              )}
+            >
+              {shownZones.map((zone) => (
                 <BarZone
                   key={zone}
                   zone={zone}
@@ -401,9 +402,6 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                 />
               ))}
             </div>
-            <p className="px-1 text-small text-fg-tertiary">
-              Drag to reorder, or between zones. Order matches the bar, left to right.
-            </p>
           </div>
           <div className="@min-[900px]:sticky @min-[900px]:top-0">
             <ItemInspector
@@ -446,6 +444,17 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                   value={draft.bar.position}
                   options={positionOptions}
                   onValueChange={(position) => patchBar({ position })}
+                />
+              }
+            />
+            <Row
+              title="Centre zone"
+              description="For displays without a notch"
+              control={
+                <Switch
+                  aria-label="Centre zone"
+                  checked={draft.bar.centre}
+                  onCheckedChange={(centre) => patchBar({ centre })}
                 />
               }
             />

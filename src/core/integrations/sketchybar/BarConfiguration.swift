@@ -5,6 +5,8 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
     public var geometry: [String: String] = [:]
     public var componentPadding: Double?
     public var componentSpacing: Double?
+    /// Whether the editor offers the centre zone, which a notch hides.
+    public var showsCentre: Bool?
     public var padding: Double { componentPadding ?? 2 }
     public var spacing: Double { componentSpacing ?? 4 }
     public init() {}

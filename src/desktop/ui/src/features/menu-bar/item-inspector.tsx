@@ -74,7 +74,7 @@ export function ItemInspector({
     return (
       <aside
         aria-label="Item"
-        className="grid min-h-[220px] place-items-center rounded-card border border-dashed border-hairline p-6 text-center text-detail text-fg-tertiary"
+        className="grid place-items-center rounded-card border border-dashed border-hairline p-6 text-center text-detail text-fg-tertiary @min-[900px]:min-h-[220px]"
       >
         Pick an item in the preview or a zone to edit it.
       </aside>

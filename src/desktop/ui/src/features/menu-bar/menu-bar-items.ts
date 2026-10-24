@@ -157,7 +157,12 @@ export function sameItems(a: BarItem[], b: BarItem[]): boolean {
 }
 
 export function sameBar(a: MenuBarSettings, b: MenuBarSettings): boolean {
-  return a.height === b.height && a.padding === b.padding && a.position === b.position;
+  return (
+    a.height === b.height &&
+    a.padding === b.padding &&
+    a.position === b.position &&
+    a.centre === b.centre
+  );
 }
 
 /** Why an item cannot be applied yet, if it cannot. */

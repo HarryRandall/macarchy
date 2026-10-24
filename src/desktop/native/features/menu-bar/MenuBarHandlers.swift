@@ -61,7 +61,8 @@ extension AppModel {
             bar: MenuBarSettings(
                 height: Int(Double(geometry["height"] ?? "") ?? 35),
                 position: geometry["position"] == "bottom" ? "bottom" : "top",
-                padding: Int(Double(geometry["padding_left"] ?? "") ?? 10)),
+                padding: Int(Double(geometry["padding_left"] ?? "") ?? 10),
+                centre: configuration.showsCentre == true),
             widgets: MenuBarWidgets.info(), widgetProblems: MenuBarWidgets.problems(),
             unavailableReason: menuBar.error)
     }
@@ -138,6 +139,7 @@ enum MenuBarEdits {
         configuration.geometry["position"] = params.bar.position
         configuration.geometry["padding_left"] = String(params.bar.padding)
         configuration.geometry["padding_right"] = String(params.bar.padding)
+        configuration.showsCentre = params.bar.centre ? true : nil
         let manifests = Dictionary(
             catalogue.entries.map { ($0.id, $0.manifest) }, uniquingKeysWith: { first, _ in first })
         return WidgetLook(manifests: manifests).normalised(configuration)

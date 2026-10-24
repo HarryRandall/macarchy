@@ -60,7 +60,7 @@ struct MenuBarEditsTests {
         try MenuBarEdits.configuration(from: params, over: current(), catalogue: catalogue)
     }
 
-    private let bar = MenuBarSettings(height: 30, position: "bottom", padding: 6)
+    private let bar = MenuBarSettings(height: 30, position: "bottom", padding: 6, centre: true)
 
     @Test("the page's order, zones and visibility apply over every authored detail")
     func keepsAuthoredDetail() throws {
@@ -80,6 +80,7 @@ struct MenuBarEditsTests {
         #expect(result.geometry["height"] == "30" && result.geometry["position"] == "bottom")
         #expect(result.geometry["padding_left"] == "6" && result.geometry["padding_right"] == "6")
         #expect(result.geometry["blur_radius"] == "20")
+        #expect(result.showsCentre == true)
     }
 
     @Test("made items left out go; the bar's own stay, and new ones are created")
@@ -113,7 +114,8 @@ struct MenuBarEditsTests {
             try configuration(wrongZone)
         }
         let tall = MenuBarApplyParams(
-            items: [], bar: MenuBarSettings(height: 200, position: "top", padding: 0))
+            items: [], bar: MenuBarSettings(height: 200, position: "top", padding: 0, centre: false)
+        )
         #expect(throws: BridgeFailure.self) {
             try configuration(tall)
         }

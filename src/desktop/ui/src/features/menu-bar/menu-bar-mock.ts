@@ -216,7 +216,7 @@ export function createMenuBarMock(options: { stopped: boolean }) {
       widgetItem("battery", "Battery", "84%"),
       widgetItem("clock", "Clock", "Fri 23 Oct 3:41 PM"),
     ],
-    bar: { height: 35, position: "top", padding: 10 },
+    bar: { height: 35, position: "top", padding: 10, centre: false },
     widgets,
     widgetProblems: [
       {

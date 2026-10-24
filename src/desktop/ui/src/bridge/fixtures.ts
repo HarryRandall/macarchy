@@ -299,7 +299,7 @@ const uptimeInfo: WidgetInfo = {
 
 const menuBar: MenuBarState = {
   items: [clock, uptime, cpuWidget],
-  bar: { height: 35, position: "top", padding: 10 },
+  bar: { height: 35, position: "top", padding: 10, centre: false },
   widgets: [clockInfo, uptimeInfo],
   widgetProblems: [{ folder: "weather", problems: ["Line 3: id is missing"] }],
   unavailableReason: null,
@@ -307,7 +307,7 @@ const menuBar: MenuBarState = {
 
 const menuBarStopped: MenuBarState = {
   items: [],
-  bar: { height: 35, position: "top", padding: 10 },
+  bar: { height: 35, position: "top", padding: 10, centre: false },
   widgets: [],
   widgetProblems: [],
   unavailableReason: "sketchybar is not running.",
@@ -832,7 +832,7 @@ export const methodFixtures: MethodFixtures = {
             click: { dropdown: [{ type: "text", label: "Hi" }] },
           },
         ],
-        bar: { height: 30, position: "bottom", padding: 6 },
+        bar: { height: 30, position: "bottom", padding: 6, centre: true },
       },
       result: menuBar,
     },

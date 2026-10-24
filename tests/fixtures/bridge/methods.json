@@ -451,6 +451,7 @@
     {
       "params": {
         "bar": {
+          "centre": true,
           "height": 30,
           "padding": 6,
           "position": "bottom"
@@ -518,6 +519,7 @@
       },
       "result": {
         "bar": {
+          "centre": false,
           "height": 35,
           "padding": 10,
           "position": "top"
@@ -713,6 +715,7 @@
       "result": {
         "state": {
           "bar": {
+            "centre": false,
             "height": 35,
             "padding": 10,
             "position": "top"
@@ -907,6 +910,7 @@
       "params": {},
       "result": {
         "bar": {
+          "centre": false,
           "height": 35,
           "padding": 10,
           "position": "top"
@@ -1097,6 +1101,7 @@
       "params": {},
       "result": {
         "bar": {
+          "centre": false,
           "height": 35,
           "padding": 10,
           "position": "top"

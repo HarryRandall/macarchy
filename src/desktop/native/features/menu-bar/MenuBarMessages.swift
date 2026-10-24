@@ -47,6 +47,8 @@ struct MenuBarSettings: Codable, Sendable, Equatable {
     var height: Int
     var position: String
     var padding: Int
+    /// Whether the page offers the centre zone, for displays without a notch.
+    var centre: Bool
 }
 
 struct MenuBarState: Codable, Sendable, Equatable {

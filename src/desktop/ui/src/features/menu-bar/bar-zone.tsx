@@ -159,7 +159,7 @@ export function BarZone({
                 </span>
                 <span
                   className={cn(
-                    "min-w-0 shrink truncate text-detail font-medium",
+                    "min-w-0 flex-1 truncate text-detail font-medium",
                     item.visible ? "text-fg" : "text-fg-tertiary",
                   )}
                 >
@@ -170,7 +170,7 @@ export function BarZone({
                     Script
                   </Badge>
                 ) : null}
-                <span className="ml-auto min-w-0 truncate pl-1 font-mono text-caption text-fg-tertiary">
+                <span className="max-w-[45%] shrink-0 truncate pl-1 font-mono text-caption text-fg-tertiary">
                   {sampleOf(item, widgets, sample)}
                 </span>
               </button>
@@ -187,7 +187,7 @@ export function BarZone({
       </ul>
       {items.length === 0 ? (
         <p className="grid h-16 place-items-center px-3 text-center text-small text-fg-tertiary">
-          {zone === "centre" ? "For displays without a notch" : "Empty"}
+          Empty
         </p>
       ) : null}
       <button
