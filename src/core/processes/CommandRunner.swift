@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-public struct CommandResult: Sendable {
+public struct CommandResult: Sendable, Codable {
     public let command: String
     public let status: Int32
     public let stdout: String

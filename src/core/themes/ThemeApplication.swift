@@ -13,21 +13,31 @@ public struct ThemeApplication: Sendable {
         self.effects = effects
     }
 
+    /// Picking themes in quick succession applies the last one picked, even
+    /// when an earlier pick is still waiting for the desktop. `next` and
+    /// `prev` step from the theme current when they run, so each press counts.
     public func apply(name: String) async -> CommandResult {
         do {
-            return try await OperationLock.run {
-                let selected = try resolve(name)
-                let result = await applyLocked(name: selected)
-                if result.ok { return result }
-                return CommandResult(
-                    command: result.command, status: result.status, stdout: result.stdout,
-                    stderr:
-                        "Theme application did not finish; some changes may already have applied. "
-                        + result.stderr)
+            if name == "next" || name == "prev" {
+                return try await OperationLock.run { try await applyResolving(name) }
+            }
+            return try await OperationLock.runLatest(name, kind: "theme") {
+                try await applyResolving($0)
             }
         } catch {
             return CommandResult(command: "theme", status: 1, stderr: error.localizedDescription)
         }
+    }
+
+    /// Callers must hold the desktop lock.
+    private func applyResolving(_ name: String) async throws -> CommandResult {
+        let result = await applyLocked(name: try resolve(name))
+        if result.ok { return result }
+        return CommandResult(
+            command: result.command, status: result.status, stdout: result.stdout,
+            stderr:
+                "Theme application did not finish; some changes may already have applied. "
+                + result.stderr)
     }
 
     /// Maps `next` and `prev` onto an installed theme name.
