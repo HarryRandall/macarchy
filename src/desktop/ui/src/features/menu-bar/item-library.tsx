@@ -61,7 +61,7 @@ function detailOf(entry: Entry): string {
   if (entry.type === "widget") return entry.widget.description ?? "";
   if (entry.type === "make") return entry.detail;
   if (entry.type === "broken") return entry.problems.join(" · ");
-  return `Hidden in the ${zoneLabels[entry.item.zone].toLowerCase()} zone`;
+  return `Taken off the ${zoneLabels[entry.item.zone].toLowerCase()} zone`;
 }
 
 /**
@@ -121,7 +121,7 @@ export function ItemLibrary({
     { id: "builtIn", name: "Built-in" },
     { id: "user", name: "Yours" },
     { id: "make", name: "Make an item" },
-    ...(hidden.length > 0 ? [{ id: "hidden" as const, name: "Hidden on your bar" }] : []),
+    ...(hidden.length > 0 ? [{ id: "hidden" as const, name: "Taken off your bar" }] : []),
   ];
   const search = query.trim().toLowerCase();
   const shown = entries.filter(
@@ -246,7 +246,7 @@ export function ItemLibrary({
               ? selected.type === "broken"
                 ? "Fix it to add it"
                 : selected.type === "hidden"
-                  ? `Show ${nameOf(selected)} here`
+                  ? `Put ${nameOf(selected)} back`
                   : onBar > 0
                     ? "Add another"
                     : `Add ${nameOf(selected)}`

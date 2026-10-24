@@ -1,4 +1,4 @@
-import { Eye, EyeOff, GripVertical, Plus } from "lucide-react";
+import { GripVertical, Plus, X } from "lucide-react";
 import { type KeyboardEvent, useId } from "react";
 
 import type { WidgetInfo } from "~/bridge/protocol";
@@ -27,7 +27,6 @@ export type DropTarget = { item: string } | { zone: Zone } | null;
 
 /** What a row says the item shows, at the preview's sample. */
 function sampleOf(item: BarItem, widgets: readonly WidgetInfo[], sample: Sample): string {
-  if (!item.visible) return "Hidden";
   if (item.kind === "widget") {
     return sampleText(item, widgetOf(item, widgets), sample).replace(/\n/g, " ");
   }
@@ -44,7 +43,7 @@ export function BarZone({
   over,
   moveHintId,
   onSelect,
-  onVisible,
+  onRemove,
   onAdd,
   onKeyMove,
   onDragStart,
@@ -61,7 +60,7 @@ export function BarZone({
   over: DropTarget;
   moveHintId: string;
   onSelect: (id: string) => void;
-  onVisible: (id: string, visible: boolean) => void;
+  onRemove: (id: string) => void;
   onAdd: (zone: Zone) => void;
   onKeyMove: (id: string, move: KeyMove) => void;
   onDragStart: (id: string) => void;
@@ -89,7 +88,7 @@ export function BarZone({
         <h3 id={headingId} className="flex-1">
           {zoneLabels[zone]}
         </h3>
-        <span className="tabular-nums">{items.filter((item) => item.visible).length} shown</span>
+        <span className="tabular-nums">{items.length}</span>
       </div>
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
@@ -114,7 +113,7 @@ export function BarZone({
                 onDrop({ item: item.id });
               }}
               className={cn(
-                "flex h-10 cursor-grab items-center gap-1 rounded-control border bg-card pr-1 pl-0.5 shadow-card transition-all active:cursor-grabbing motion-reduce:transition-none",
+                "group/row flex h-10 cursor-grab items-center gap-1 rounded-control border bg-card pr-1 pl-0.5 shadow-card transition-all active:cursor-grabbing motion-reduce:transition-none",
                 picked ? "border-accent ring-[3px] ring-accent-soft" : "border-hairline",
                 dragging === item.id && "opacity-40",
                 targeted && "translate-y-0.5 border-t-2 border-t-accent",
@@ -175,11 +174,12 @@ export function BarZone({
                 </span>
               </button>
               <IconButton
-                label={item.visible ? `Hide ${item.title}` : `Show ${item.title}`}
+                label={`Remove ${item.title}`}
                 size="sm"
-                onClick={() => onVisible(item.id, !item.visible)}
+                onClick={() => onRemove(item.id)}
+                className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
               >
-                {item.visible ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+                <X aria-hidden />
               </IconButton>
             </li>
           );

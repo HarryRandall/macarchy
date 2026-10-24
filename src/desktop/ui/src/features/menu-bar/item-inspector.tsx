@@ -3,10 +3,8 @@ import { type KeyboardEvent, useId, useState } from "react";
 
 import type { WidgetInfo } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
 import { IconButton } from "~/components/ui/icon-button";
 import { SegmentedControl } from "~/components/ui/segmented-control";
-import { Switch } from "~/components/ui/switch";
 import { TabPanel, Tabs } from "~/components/ui/tabs";
 import { Field, Input } from "~/components/ui/text-field";
 
@@ -86,7 +84,7 @@ export function ItemInspector({
       aria-label={item.title}
       className="flex flex-col gap-4 rounded-card border border-hairline bg-card p-4 shadow-card"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-tile border border-hairline bg-side text-fg-secondary">
           <ItemIcon item={item} size={15} />
         </span>
@@ -95,33 +93,19 @@ export function ItemInspector({
             <span className="truncate text-card-title text-fg">{item.title}</span>
             {widget ? <OriginBadge widget={widget} /> : null}
           </div>
-          {widget ? (
-            <span className="truncate font-mono text-caption text-fg-tertiary">
-              {widget.folder}
-            </span>
-          ) : (
-            <span className="text-small text-fg-tertiary">
-              {item.kind === null ? "Part of your bar's own setup" : "Made on this page"}
-            </span>
-          )}
         </div>
-        <Switch
-          aria-label="Show on the bar"
-          checked={item.visible}
-          onCheckedChange={(visible) => onChange({ visible })}
-        />
+        {widget ? (
+          <IconButton label="Open full editor" onClick={onOpenEditor}>
+            <Maximize2 aria-hidden />
+          </IconButton>
+        ) : null}
+        <IconButton label="Remove from the bar" tone="danger" onClick={onRemove}>
+          <Trash aria-hidden />
+        </IconButton>
       </div>
 
       {widget ? (
         <>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={onOpenEditor}>
-              <Maximize2 aria-hidden size={12} /> Open full editor
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onRemove}>
-              <Trash aria-hidden size={12} /> Remove
-            </Button>
-          </div>
           <Tabs tabs={tabs} value={tab} onChange={setTab} label="Widget settings" id={tabsId} />
           <TabPanel tabs={tabsId} value={tab} className="flex flex-col gap-4">
             {tab === "content" ? (
@@ -158,7 +142,7 @@ export function ItemInspector({
           back.
         </p>
       ) : (
-        <ItemFields item={item} onChange={onChange} onRemove={onRemove} />
+        <ItemFields item={item} onChange={onChange} />
       )}
     </aside>
   );
@@ -173,11 +157,9 @@ function stopEnter(event: KeyboardEvent) {
 function ItemFields({
   item,
   onChange,
-  onRemove,
 }: {
   item: BarItem;
   onChange: (patch: Partial<BarItem>) => void;
-  onRemove: () => void;
 }) {
   const glyphLabelId = useId();
 
@@ -250,11 +232,6 @@ function ItemFields({
             ))}
           </div>
         </div>
-      ) : null}
-      {item.kind !== null ? (
-        <Button size="sm" variant="ghost" className="self-start" onClick={onRemove}>
-          <Trash aria-hidden size={12} /> Remove from the bar
-        </Button>
       ) : null}
     </div>
   );

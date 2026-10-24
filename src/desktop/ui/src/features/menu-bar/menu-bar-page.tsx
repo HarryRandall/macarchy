@@ -182,8 +182,14 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
     select(id);
   };
 
+  // One way off the bar. The bar's own items cannot be deleted, so they are
+  // hidden, and Add a widget offers them back.
   const remove = (id: string) => {
-    setItems((current) => removeItem(current, id));
+    setItems((current) =>
+      current.find((entry) => entry.id === id)?.kind === null
+        ? patchItem(current, id, { visible: false })
+        : removeItem(current, id),
+    );
     if (selected === id) select(null);
     if (fullEditor === id) setFullEditor(null);
   };
@@ -326,7 +332,10 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
   const current = items.find((item) => item.id === selected) ?? null;
   // A notch hides the centre, so it is offered only when asked for or already in use.
   const shownZones = zones.filter(
-    (zone) => zone !== "centre" || draft.bar.centre || items.some((item) => item.zone === zone),
+    (zone) =>
+      zone !== "centre" ||
+      draft.bar.centre ||
+      items.some((item) => item.zone === zone && item.visible),
   );
 
   return (
@@ -384,7 +393,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                 <BarZone
                   key={zone}
                   zone={zone}
-                  items={items.filter((entry) => entry.zone === zone)}
+                  items={items.filter((entry) => entry.zone === zone && entry.visible)}
                   widgets={widgets}
                   sample={sample}
                   selected={selected}
@@ -392,7 +401,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                   over={over}
                   moveHintId={moveHintId}
                   onSelect={(id) => select(id === selected ? null : id)}
-                  onVisible={(id, visible) => patch(id, { visible })}
+                  onRemove={remove}
                   onAdd={setAdding}
                   onKeyMove={keyMove}
                   onDragStart={setDragging}
@@ -482,7 +491,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
         zone={adding}
         widgets={widgets}
         counts={widgetCounts(items)}
-        hidden={items.filter((entry) => entry.kind === null && !entry.visible)}
+        hidden={items.filter((entry) => !entry.visible)}
         broken={state.widgetProblems}
         look={paint}
         onAddWidget={(widget, zone) => add(newWidgetItem(widget, zone, items))}
