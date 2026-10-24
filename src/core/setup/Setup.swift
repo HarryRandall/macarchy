@@ -228,9 +228,7 @@ public enum Setup {
             let updated = GhosttyConfig.addingInclude(to: current)
             if updated != current {
                 try backups.save([target])
-                try fm.createDirectory(
-                    at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try updated.write(to: target, atomically: true, encoding: .utf8)
+                try GhosttyConfig.write(updated, to: target)
                 report.append("Added the theme include to Ghostty")
             }
         }
@@ -259,8 +257,7 @@ public enum Setup {
             guard let text = try? String(contentsOf: url, encoding: .utf8),
                 GhosttyConfig.hasInclude(text)
             else { continue }
-            try GhosttyConfig.removingInclude(from: text).write(
-                to: url, atomically: true, encoding: .utf8)
+            try GhosttyConfig.write(GhosttyConfig.removingInclude(from: text), to: url)
             report.append("Removed the Ghostty include from \(Paths.display(url))")
         }
         if (try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path)) != nil {

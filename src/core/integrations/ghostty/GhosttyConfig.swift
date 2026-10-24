@@ -47,6 +47,24 @@ public enum GhosttyConfig {
         return text + comment + "\n" + includeLine + "\n"
     }
 
+    /// Writes a Ghostty config through a symbolic link, as dotfile managers
+    /// make them, instead of replacing the link with a copy, and keeps the
+    /// file's permissions. The file written is snapshotted first.
+    static func write(_ text: String, to url: URL) throws {
+        let fm = FileManager.default
+        let target = url.resolvingSymlinksInPath()
+        let permissions = try? fm.attributesOfItem(atPath: target.path)[.posixPermissions]
+        if fm.fileExists(atPath: target.path) {
+            try SnapshotStore().capture([target], reason: "Ghostty theme include")
+        }
+        try fm.createDirectory(
+            at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try text.write(to: target, atomically: true, encoding: .utf8)
+        if let permissions {
+            try fm.setAttributes([.posixPermissions: permissions], ofItemAtPath: target.path)
+        }
+    }
+
     public static func removingInclude(from config: String) -> String {
         config.components(separatedBy: "\n")
             .filter { !isInclude(Substring($0)) && $0 != comment }
