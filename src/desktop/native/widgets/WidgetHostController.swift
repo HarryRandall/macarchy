@@ -19,6 +19,9 @@ final class WidgetHostController {
     /// Held while the app runs, so the clock's fallback leaves the clock to
     /// this host (`WidgetHostPresence`).
     private var presence: Int32?
+    /// Tries the lock again while another host, or a missing folder before
+    /// setup, keeps it from this one.
+    private var presenceRetry: Timer?
     /// Keeps App Nap away: napping delays the host's timers and the click
     /// notifications from the bar, which makes widgets and dropdowns lag.
     private var activity: NSObjectProtocol?
@@ -27,7 +30,7 @@ final class WidgetHostController {
         guard observers.isEmpty else { return }
         lastBar = barData()
         lastTheme = currentTheme()
-        presence = WidgetHostPresence.hold()
+        holdPresence()
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
             reason: "Keeping bar widgets and their dropdowns responsive")
@@ -43,6 +46,23 @@ final class WidgetHostController {
         watchPower()
         watchFiles()
         watchTriggers()
+    }
+
+    /// Takes the widget host lock, or keeps trying every half minute, as
+    /// often as the clock's fallback runs, until it has it: while it is not
+    /// held, the fallback updates the clock as well as this host.
+    private func holdPresence() {
+        presence = WidgetHostPresence.hold()
+        guard presence == nil, presenceRetry == nil else { return }
+        presenceRetry = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                let controller = WidgetHostController.shared
+                guard let held = WidgetHostPresence.hold() else { return }
+                controller.presence = held
+                controller.presenceRetry?.invalidate()
+                controller.presenceRetry = nil
+            }
+        }
     }
 
     /// Events the bar passes on through `macarchy widget trigger`. Windows
