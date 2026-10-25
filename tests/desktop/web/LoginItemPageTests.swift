@@ -69,6 +69,19 @@ extension WebInterfaceTests {
                 #expect(recorder.calls == [true], "Turning it off afterwards sticks")
             }
         }
+
+        @Test("uninstall stops the app opening at login and says so")
+        func uninstallStopsLoginItem() async throws {
+            try await withHarness { harness in
+                #expect(LoginItem.isDevelopmentRun)
+                #expect(OpenAtLogin.stop() == nil)
+                let session = SetupSession(
+                    integrations: harness.model.backend,
+                    stopOpeningAtLogin: { "Macarchy no longer opens at login" })
+                let report = try await session.restoreOriginals()
+                #expect(report.lines.contains("Macarchy no longer opens at login"))
+            }
+        }
     }
 }
 

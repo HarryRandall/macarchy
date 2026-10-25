@@ -7,9 +7,10 @@ import ServiceManagement
 /// once; after that it is the person's choice, on the Advanced page or in
 /// System Settings, and a choice to turn it off is never undone.
 ///
-/// Debug builds and isolated runs share the installed app's bundle
-/// identifier, so they never register or read it: a development copy at
-/// login would be the wrong app.
+/// Debug builds, isolated runs and test processes share the installed app's
+/// bundle identifier, so they never register or read it: a development copy
+/// at login would be the wrong app. Uninstall unregisters it
+/// (`SetupSession.restoreOriginals`).
 @MainActor
 struct LoginItem {
     enum State: String, Codable, Sendable {
@@ -53,11 +54,13 @@ struct LoginItem {
             openSettings: { SMAppService.openSystemSettingsLoginItems() })
     }
 
+    /// Any test process counts, release or debug, not only a run with its
+    /// own home.
     static var isDevelopmentRun: Bool {
         #if DEBUG
         true
         #else
-        Paths.isolated
+        DesktopIsolation.isActive
         #endif
     }
 

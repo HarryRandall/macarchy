@@ -4,12 +4,16 @@ import Foundation
 public struct SetupSession: Sendable {
     public let integrations: Integrations
     private let applyTheme: @Sendable (String) async -> CommandResult
+    /// Unregisters the app as a login item on uninstall, returning what to report.
+    private let stopOpeningAtLogin: @Sendable () -> String?
 
     public init(
         integrations: Integrations = Integrations(),
-        applyTheme: (@Sendable (String) async -> CommandResult)? = nil
+        applyTheme: (@Sendable (String) async -> CommandResult)? = nil,
+        stopOpeningAtLogin: @escaping @Sendable () -> String? = { OpenAtLogin.stop() }
     ) {
         self.integrations = integrations
+        self.stopOpeningAtLogin = stopOpeningAtLogin
         self.applyTheme =
             applyTheme ?? { await ThemeApplication(integrations: integrations).apply(name: $0) }
     }
@@ -68,7 +72,8 @@ public struct SetupSession: Sendable {
             let commands = await Setup.returnServices(integrations: integrations)
             return Report(
                 lines: lines
-                    + commands.filter { !$0.ok }.map { "Files restored, but \($0.summary)" },
+                    + commands.filter { !$0.ok }.map { "Files restored, but \($0.summary)" }
+                    + [stopOpeningAtLogin()].compactMap { $0 },
                 commands: commands, failure: nil)
         } catch {
             throw ConfigurationError(
