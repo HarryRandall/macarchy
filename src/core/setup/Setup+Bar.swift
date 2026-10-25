@@ -188,6 +188,8 @@ extension Setup {
         }
         let note = """
             # Your own menu bar, from the keep region of \(Paths.display(source)).
+            # It relied on ~/.config/sketchybar: SketchyBar gave it that folder as
+            # $CONFIG_DIR, where its plugins, colours and icons were.
             # Macarchy moved the bar onto widgets, so these commands no longer run.
             # Add widgets on the Menu Bar page, or copy a command back into the keep
             # region of sketchybarrc to run it after the widgets are set up.

@@ -250,7 +250,10 @@ public enum Setup {
             await DaemonAgents.stopAll(integrations: integrations)
             var report: [String] = []
             do {
-                try uninstallLocked(into: &report)
+                // Read before restoring, which moves the backups folder aside.
+                let cleanups = try await OldConfiguration.unpackArchives()
+                defer { OldConfiguration.discard(cleanups) }
+                try uninstallLocked(into: &report, cleanups: cleanups)
             } catch {
                 // The daemons were stopped for the restore; start whichever
                 // agent each has now rather than leaving it stopped.
@@ -268,9 +271,14 @@ public enum Setup {
 
     /// Each change is added to `report` as it is made, so a failure part way
     /// still tells the caller what was already put back.
-    static func uninstallLocked(into report: inout [String]) throws {
+    /// `cleanups` are the archives cleaning up wrote, whose moved scripts
+    /// and old folders go back once setup's own originals have.
+    static func uninstallLocked(
+        into report: inout [String], cleanups: [OldConfiguration.Unpacked] = []
+    ) throws {
         let fm = FileManager.default
         try Backups().restoreAll(into: &report)
+        try OldConfiguration.putBack(cleanups, into: &report)
         for file in StartupConfiguration.all { try file.forget() }
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {

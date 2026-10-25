@@ -5,14 +5,14 @@ import Foundation
 extension OldConfiguration {
     /// What the archive holds and how each path was changed, by path under
     /// the home. Its files are in the archive under `files/`.
-    struct Manifest: Codable, Equatable {
-        enum Action: String, Codable {
+    struct Manifest: Codable, Equatable, Sendable {
+        enum Action: String, Codable, Sendable {
             case moved, removed, rewritten
             /// The launcher folder was a link to `link`.
             case link
         }
 
-        struct Entry: Codable, Equatable {
+        struct Entry: Codable, Equatable, Sendable {
             var path: String
             var action: Action
             /// Where a moved entry went.

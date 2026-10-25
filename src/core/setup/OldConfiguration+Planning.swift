@@ -179,7 +179,30 @@ extension OldConfiguration {
                             : "run by \(Paths.display(source))"
                     }
                 }
+                if !grew { grew = gatherOwnFiles() }
             }
+        }
+
+        /// The person's own files nothing names move too, once what is run
+        /// has been gathered, so the old folders can go. Whatever uses them
+        /// is weighed with everything else.
+        mutating func gatherOwnFiles() -> Bool {
+            var grew = false
+            for entry in entries
+            where kinds[entry] == .unknown && !moving.contains(entry)
+                && pinned[entry] == nil && folderPins[entry.folder] == nil
+            {
+                if let reason = blocker(entry) {
+                    pin(entry, reason)
+                    continue
+                }
+                moving.insert(entry)
+                movedBy[entry] =
+                    "yours, though nothing Macarchy knows of runs it; it moves so "
+                    + "\(Paths.display(OldConfiguration.folder(entry.folder))) can go"
+                grew = true
+            }
+            return grew
         }
 
         /// Keeps in place what anything that is not changed uses, and every

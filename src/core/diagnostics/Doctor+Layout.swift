@@ -62,7 +62,8 @@ extension Doctor {
         var found: [String] = []
         if !plan.moves.isEmpty {
             found.append(
-                plan.moves.count == 1 ? "1 script to move" : "\(plan.moves.count) scripts to move")
+                plan.moves.count == 1
+                    ? "1 file of yours to move" : "\(plan.moves.count) files of yours to move")
         }
         if !plan.removals.isEmpty {
             found.append(

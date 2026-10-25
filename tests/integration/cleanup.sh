@@ -13,6 +13,10 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 swift build --package-path "$REPO" -c debug >/dev/null
 CLI="$(swift build --package-path "$REPO" --show-bin-path)/macarchy"
+NVIM="$(command -v nvim || true)"
+# Nothing here may reach Homebrew's daemons: every tool the test needs is a
+# system one or a fake, and the owner's scripts are only ever checked.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
 
 WORK="$(mktemp -d -t macarchy-cleanup-test)"
 trap 'rm -rf "$WORK"' EXIT
@@ -39,6 +43,13 @@ make_home() {
   grep -rlI '@HOME@' "$H" | while IFS= read -r file; do
     sed -i '' "s#@HOME@#$H#g" "$file"
   done
+  # The owner's scripts name Homebrew's tools in full. Pointed at the fakes,
+  # not even a mistaken run could reach the real desktop.
+  local own=("$H/.config/yabai" "$H/.config/skhd" "$H/.config/borders" "$H/.config/sketchybar")
+  { grep -rlI '/opt/homebrew/\|/usr/local/bin/' "${own[@]}" || true; } | while IFS= read -r file; do
+    sed -i '' -e "s#/opt/homebrew/bin/#$H/fake-bin/#g" -e "s#/usr/local/bin/#$H/fake-bin/#g" "$file"
+  done
+  ! grep -rlI '/opt/homebrew\|/usr/local/bin' "${own[@]}" || fail "a script still names Homebrew"
   export HOME="$H" MACARCHY_HOME="$H" MACARCHY_SEARCH_PATH="$H/fake-bin" MACARCHY_APPLICATIONS="$H/Applications"
   mkdir -p "$MACARCHY_SEARCH_PATH"
   CALLS="$H/calls.log"
@@ -138,22 +149,26 @@ PY
 make_home owner
 BEFORE="$(tree)"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"
-grep -q 'warn Old configuration: Can be cleaned up: 6 scripts to move' <<<"$DOCTOR" \
+grep -q 'warn Old configuration: Can be cleaned up: 12 files of yours to move' <<<"$DOCTOR" \
   || fail "doctor does not offer the cleanup: $DOCTOR"
 
 # The dry run lists the plan and changes nothing.
 PLAN="$("$CLI" cleanup)" || fail "dry run failed: $PLAN"
 [ "$(tree)" = "$BEFORE" ] || fail "the dry run changed files"
-for script in launch_ghostty quit_focused_window close_firefox_selector toggle_sketchybar_visibility \
-  switch_space_native swap_space_and_refresh; do
-  grep -qx "  ~/.config/yabai/$script.sh" <<<"$PLAN" || fail "plan does not move $script: $PLAN"
+OWN="space_cycle.sh switch_space_macos27.sh sync_float_rules.sh toggle_float_persist.sh
+  apply_float_state.sh float_state.json"
+RUN="launch_ghostty.sh quit_focused_window.sh close_firefox_selector.sh
+  toggle_sketchybar_visibility.sh switch_space_native.sh swap_space_and_refresh.sh"
+for file in $RUN $OWN; do
+  grep -qx "  ~/.config/yabai/$file" <<<"$PLAN" || fail "plan does not move $file: $PLAN"
 done
 grep -qx '  ~/.config/skhd' <<<"$PLAN" || fail "plan does not delete the old shortcuts folder: $PLAN"
 grep -qx '  ~/.config/borders' <<<"$PLAN" || fail "plan does not delete the old borders folder: $PLAN"
 grep -qx '  ~/.config/zsh/.zshrc' <<<"$PLAN" || fail "plan does not point the zsh line: $PLAN"
 grep -qx '  ~/.config/nvim/lua/config/theme.lua' <<<"$PLAN" || fail "plan does not point the Neovim line: $PLAN"
 grep -q 'Make ~/.config/macarchy a folder for Macarchy' <<<"$PLAN" || fail "plan keeps the link: $PLAN"
-grep -qx '  ~/.config/yabai/space_cycle.sh' <<<"$PLAN" || fail "plan does not leave an unused script: $PLAN"
+grep -qx '  ~/.config/yabai' <<<"$PLAN" || fail "plan does not delete the yabai folder: $PLAN"
+grep -q 'Leave in place' <<<"$PLAN" && fail "plan leaves something in place: $PLAN"
 grep -qx '  ~/.config/sketchybar' <<<"$PLAN" || fail "plan does not delete the old bar: $PLAN"
 grep -q 'Nothing was changed' <<<"$PLAN" || fail "dry run does not say nothing changed"
 
@@ -170,11 +185,21 @@ grep -q 'manifest.json' <<<"$(unzip -l "$ROOT/backups/$ARCHIVE")" || fail "the a
 
 # Scripts moved with their names and permissions, and every shortcut and
 # moved script points at them.
-for script in launch_ghostty quit_focused_window close_firefox_selector toggle_sketchybar_visibility \
-  switch_space_native swap_space_and_refresh; do
-  [ -x "$ROOT/scripts/$script.sh" ] || fail "$script.sh not moved, or not executable"
-  [ -e "$H/.config/yabai/$script.sh" ] && fail "$script.sh left behind as well"
+for file in $RUN $OWN; do
+  [ -e "$ROOT/scripts/$file" ] || fail "$file not moved"
 done
+for file in $RUN; do [ -x "$ROOT/scripts/$file" ] || fail "$file not executable"; done
+[ "$(stat -f %Lp "$ROOT/scripts/float_state.json")" = 600 ] || fail "permissions changed"
+[ "$(stat -f %Lp "$ROOT/scripts/switch_space_macos27.sh")" = 644 ] || fail "permissions changed"
+# Scripts that use each other or their state file name the new places.
+NEW='$HOME/Library/Application Support/Macarchy/scripts'
+grep -qF "STATE_FILE=\"$NEW/float_state.json\"" "$ROOT/scripts/toggle_float_persist.sh" \
+  || fail "toggle_float_persist.sh does not use the moved state file"
+grep -qF "SYNC_SCRIPT=\"$NEW/sync_float_rules.sh\"" "$ROOT/scripts/toggle_float_persist.sh" \
+  || fail "toggle_float_persist.sh does not run the moved sync script"
+grep -qF "STATE_FILE=\"$NEW/float_state.json\"" "$ROOT/scripts/apply_float_state.sh" \
+  || fail "apply_float_state.sh does not use the moved state file"
+! grep -v '^ *#' "$ROOT"/scripts/* | grep -q '\.config/yabai' || fail "a moved script still names ~/.config/yabai"
 grep -q '.config/yabai\|.config/macarchy' "$CONFIG/skhdrc" && fail "shortcuts still name the old places"
 check_shortcuts || fail "a shortcut runs something that is not there"
 grep -c '"$HOME/Library/Application Support/Macarchy/scripts/' "$CONFIG/skhdrc" | grep -qx 54 \
@@ -184,19 +209,14 @@ bash -n "$CONFIG/yabairc" || fail "yabairc no longer parses"
 # never run: running one would drive the real desktop.
 for script in "$ROOT"/scripts/*; do bash -n "$script" || fail "$script no longer parses"; done
 
-# Unused scripts and what they use stay.
-for file in space_cycle.sh switch_space_macos27.sh sync_float_rules.sh toggle_float_persist.sh \
-  apply_float_state.sh float_state.json; do
-  [ -e "$H/.config/yabai/$file" ] || fail "$file was removed although nothing moved it"
-done
-[ "$(stat -f %Lp "$H/.config/yabai/float_state.json")" = 600 ] || fail "permissions changed"
-for gone in yabairc macarchy-yabairc examples swap_space_and_refresh.sh.backup-20260919-170619 \
-  swap_space_serial.py.retired-20260919 switch_space_native.sh.before-macarchy-space; do
-  [ -e "$H/.config/yabai/$gone" ] && fail "$gone was not deleted"
-done
+[ -e "$H/.config/yabai" ] && fail "the yabai folder was not deleted: $(ls -A "$H/.config/yabai")"
 [ -e "$H/.config/skhd" ] && fail "the old shortcuts folder was not deleted"
 [ -e "$H/.config/borders" ] && fail "the old borders folder was not deleted"
 [ -e "$H/.config/sketchybar" ] && fail "the old bar was not deleted"
+OWN_BAR="$CONFIG/own-bar-before-widgets.sh"
+grep -q 'It relied on ~/.config/sketchybar' "$OWN_BAR" || fail "the own bar does not say what it relied on"
+grep -qF "archived ~/.config/sketchybar in ~/Library/Application Support/Macarchy/backups/$ARCHIVE" "$OWN_BAR" \
+  || fail "the own bar does not name the archive"
 
 # The launcher folder is real and holds only the launchers, which the
 # daemons run through sh as the real ones do.
@@ -221,8 +241,8 @@ VALUE="$(HOME="$H" zsh -fc "$(grep '^_MACARCHY_SHELL_ENV=' "$H/.config/zsh/.zshr
 [ -r "$VALUE" ] || fail "zsh's colours file is missing"
 grep -qxF 'M.state_file = vim.fn.expand("~/Library/Application Support/Macarchy/generated/nvim-colorscheme")' \
   "$H/.config/nvim/lua/config/theme.lua" || fail "Neovim does not read the new folder"
-if command -v nvim >/dev/null; then
-  NAME="$(HOME="$H" XDG_CONFIG_HOME="$H/.config" nvim --clean --headless -u NONE \
+if [ -n "$NVIM" ]; then
+  NAME="$(HOME="$H" XDG_CONFIG_HOME="$H/.config" "$NVIM" --clean --headless -u NONE \
     -c "lua package.path='$H/.config/nvim/lua/?.lua;'..package.path; io.write(require('config.theme').colorscheme())" \
     -c q 2>&1)"
   [ "$NAME" = "$(cat "$ROOT/generated/nvim-colorscheme")" ] || fail "Neovim read $NAME, not the theme's colourscheme"
@@ -244,6 +264,32 @@ AFTER="$(tree)"
   = "$H/.config/yabai/macarchy-yabairc" ] || fail "yabai's agent does not start from its old launcher again"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"
 grep -q 'warn Old configuration' <<<"$DOCTOR" || fail "doctor does not offer the cleanup again: $DOCTOR"
+
+# Uninstalling after a cleanup leaves the owner as before Macarchy: setup's
+# originals, the scripts and folders their originals use back in place, and
+# nothing of Macarchy's in ~/.config.
+make_home uninstall
+cp -R "$H/.config/yabai" "$WORK/yabai.before"
+cp "$H/.config/skhd/skhdrc" "$WORK/skhdrc.before"
+apply
+# The fake launchctl loads only Macarchy's jobs, so handing the daemons back
+# to their installers reads as failed; the files are what is checked here.
+OUTPUT="$("$CLI" uninstall 2>&1)" || grep -q '^Files restored, but' <<<"$OUTPUT" \
+  || fail "uninstall after cleanup failed: $OUTPUT"
+grep -q 'before Macarchy' "$H/.config/yabai/yabairc" || fail "uninstall did not restore the original yabairc"
+for file in $RUN $OWN; do
+  cmp -s "$WORK/yabai.before/$file" "$H/.config/yabai/$file" || fail "$file not put back as it was"
+done
+[ "$(stat -f %Lp "$H/.config/yabai/float_state.json")" = 600 ] || fail "permissions not put back"
+cmp -s "$WORK/skhdrc.before" "$H/.config/skhd/skhdrc" || fail "the original shortcuts were not put back"
+grep -o '"$HOME/.config/yabai/[^"]*"' "$H/.config/skhd/skhdrc" | sort -u | while IFS= read -r quoted; do
+  path="${quoted//\"/}"
+  [ -e "${path/\$HOME/$H}" ] || fail "the original shortcuts run $path, which is missing"
+done
+[ -f "$H/.config/sketchybar/sketchybarrc" ] || fail "the owner's bar was not put back"
+[ -e "$ROOT/scripts" ] && fail "uninstall left the moved scripts: $(ls -A "$ROOT/scripts")"
+[ -e "$LINK" ] && fail "uninstall left ~/.config/macarchy"
+find "$H/.config" -name 'macarchy-*rc' | grep -q . && fail "uninstall left a launcher"
 
 # A region of Macarchy's sketchybarrc that still reads $CONFIG_DIR keeps
 # the old bar folder, and the bar's launcher in it, since SketchyBar gives

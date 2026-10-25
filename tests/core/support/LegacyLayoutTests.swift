@@ -227,7 +227,8 @@ struct LegacyLayoutTests {
         var expected: Set<String> = []
         for index in 0..<12 {
             let group = folder.appending(path: "g\(index)")
-            try fm.createDirectory(at: group.appending(path: "sub"), withIntermediateDirectories: true)
+            try fm.createDirectory(
+                at: group.appending(path: "sub"), withIntermediateDirectories: true)
             try fm.createSymbolicLink(
                 at: group.appending(path: "link"), withDestinationURL: fm.temporaryDirectory)
             for name in ["a.txt", "sub/b.txt", "z.txt"] {

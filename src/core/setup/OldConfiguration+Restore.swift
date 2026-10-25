@@ -55,6 +55,9 @@ extension OldConfiguration {
         try restoring.putBackLauncherFolder(into: &report.lines)
         try restoring.putBackFiles(into: &report.lines)
         try restoring.dropMovedCopies(into: &report.lines)
+        if restoring.entries(.removed).contains(where: { $0.path == ".config/sketchybar" }) {
+            try noteBarArchive(nil)
+        }
         let daemons = try restoring.putBackRewritten(into: &report.lines)
             .union(restoring.launcherDaemons)
         let backups = Backups()

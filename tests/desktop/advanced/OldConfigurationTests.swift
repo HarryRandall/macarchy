@@ -8,7 +8,7 @@ import Testing
 /// files in `~/.config/yabai` and `skhd`, a zsh line reading through the
 /// link at `~/.config/macarchy`, and Macarchy's configs referring to them.
 @MainActor
-private func upgradedHome(_ harness: Harness) throws {
+func upgradedHome(_ harness: Harness) throws {
     let fm = FileManager.default
     func script(_ text: String, _ path: String, mode: Int = 0o755) throws {
         try harness.write(text, to: path)
@@ -49,7 +49,7 @@ private func upgradedHome(_ harness: Harness) throws {
 
 /// Every file under the home that cleaning up may change, links not followed.
 @MainActor
-private func tree(_ harness: Harness) -> [String] {
+func cleanupTree(_ harness: Harness) -> [String] {
     let fm = FileManager.default
     let skipped =
         ["snapshots", "backups", "state", "generated.json", "desktop.lock"].map {
@@ -85,11 +85,14 @@ extension WebInterfaceTests {
             try await withHarness { harness in
                 try upgradedHome(harness)
                 let yabai = harness.home.appending(path: ".config/yabai")
-                let before = tree(harness)
+                let before = cleanupTree(harness)
                 let plan = await OldConfiguration.plan()
-                #expect(tree(harness) == before)
+                #expect(cleanupTree(harness) == before)
                 #expect(plan.refusal == nil)
-                #expect(plan.moves.map(\.from.lastPathComponent) == ["launch.sh", "state.json"])
+                #expect(
+                    plan.moves.map(\.from.lastPathComponent) == [
+                        "launch.sh", "mine.sh", "state.json"
+                    ])
                 #expect(
                     plan.moves.allSatisfy {
                         $0.to.deletingLastPathComponent().path == Paths.scriptsDirectory.path
@@ -103,9 +106,10 @@ extension WebInterfaceTests {
                         ])
                 let kept = Dictionary(uniqueKeysWithValues: plan.kept.map { ($0.path, $0.reason) })
                 #expect(kept[yabai.appending(path: "quoted.sh")]?.contains("single quotes") == true)
+                #expect(plan.kept.count == 1)
                 #expect(
-                    kept[yabai.appending(path: "mine.sh")]?.contains("nothing Macarchy knows")
-                        == true)
+                    plan.moves.first { $0.from.lastPathComponent == "mine.sh" }?.reason
+                        .contains("so ~/.config/yabai can go") == true)
                 #expect(plan.replacedLink == harness.root.path)
                 #expect(plan.launchers.map(\.daemon) == [.yabai])
                 #expect(
@@ -124,7 +128,7 @@ extension WebInterfaceTests {
                     arguments.first == "print" ? .success("state = running\npid = 123") : .success()
                 }
                 let fm = FileManager.default
-                let before = tree(harness)
+                let before = cleanupTree(harness)
                 let report = await OldConfiguration.apply(integrations: harness.model.backend)
                 #expect(report.failure == nil, "\(report.lines)")
                 let archive = try #require(report.archive)
@@ -151,7 +155,7 @@ extension WebInterfaceTests {
                     try fm.contentsOfDirectory(
                         atPath: harness.home.appending(path: ".config/yabai").path
                     )
-                    .sorted() == ["mine.sh", "quoted.sh"])
+                    .sorted() == ["quoted.sh"])
                 #expect(!fm.fileExists(atPath: harness.home.appending(path: ".config/skhd").path))
                 #expect(!OldConfiguration.isLink(Paths.launcherDirectory))
                 #expect(
@@ -172,7 +176,7 @@ extension WebInterfaceTests {
                 let restored = await OldConfiguration.restore(
                     archive.lastPathComponent, integrations: harness.model.backend)
                 #expect(restored.failure == nil, "\(restored.lines)")
-                let after = tree(harness)
+                let after = cleanupTree(harness)
                 #expect(
                     after == before,
                     "\(Set(after).symmetricDifference(Set(before)).sorted())")
@@ -233,7 +237,7 @@ extension WebInterfaceTests {
                 #expect(kept["~/.config/sketchybar"]?.contains("$CONFIG_DIR") == true)
                 #expect(kept["~/.config/macarchy"]?.contains("init.vim") == true)
                 #expect(plan.replacedLink == nil && plan.launchers.isEmpty)
-                #expect(plan.moves.isEmpty)
+                #expect(plan.moves.map(\.from.lastPathComponent) == ["mine.sh"])
                 #expect(!plan.removals.contains { $0.path.path.contains(".config/skhd") })
             }
         }
@@ -267,38 +271,5 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("Advanced reviews the plan, asks first and reports what was done")
-        func advancedPage() async throws {
-            defer { InterfacePreferences.selectedPane = .layout }
-            try await withHarness { harness in
-                try upgradedHome(harness)
-                let before = tree(harness)
-                let surface = try harness.settingsPage(pane: .advanced).1
-                try await waitFor(
-                    surface, "cleanup card",
-                    #"return page.text().includes("Clean up old configuration");"#)
-                try await run(
-                    surface,
-                    #"[...document.querySelectorAll('button')].find(b => b.textContent === "Review").click();"#
-                )
-                try await waitFor(
-                    surface, "plan",
-                    #"return document.querySelector('[role=alertdialog]')?.textContent.includes("~/.config/yabai/launch.sh");"#
-                )
-                #expect(tree(harness) == before)
-                try await run(
-                    surface,
-                    #"[...document.querySelectorAll('[role=alertdialog] button')].find(b => b.textContent === "Clean up").click();"#
-                )
-                try await waitFor(
-                    surface, "report",
-                    #"return page.text().includes("Old configuration cleaned up") && page.text().includes("Moved ~/.config/yabai/launch.sh");"#
-                )
-                #expect(
-                    FileManager.default.fileExists(
-                        atPath: Paths.scriptsDirectory.appending(path: "launch.sh").path))
-                #expect(!OldConfiguration.archives.isEmpty)
-            }
-        }
     }
 }

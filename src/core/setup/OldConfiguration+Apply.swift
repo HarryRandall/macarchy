@@ -88,6 +88,10 @@ extension OldConfiguration {
             try fm.removeItem(at: item.path)
             report.lines.append("Deleted \(Paths.display(item.path))")
         }
+        let bar = OldConfiguration.folder("sketchybar")
+        if plan.removals.contains(where: { $0.path.path == bar.path }) {
+            report.lines += try noteBarArchive(archive)
+        }
         report.lines += plan.kept.map { "Left \(Paths.display($0.path)): \($0.reason)" }
         return plan.restarts
     }
@@ -112,6 +116,40 @@ extension OldConfiguration {
                 "Pointed \(count(rewrite.changed)) in \(Paths.display(rewrite.file)) at the new "
                     + "places")
         }
+    }
+
+    static let barArchiveNote = "# Cleaning up old configuration archived ~/.config/sketchybar in "
+
+    static let barRestoreNote = "# Put it back with: macarchy cleanup --restore "
+
+    /// Says in each kept own bar where the folder it relied on went, in place
+    /// of what an earlier cleanup said; with no archive, only removes that.
+    @discardableResult
+    static func noteBarArchive(_ archive: URL?) throws -> [String] {
+        let fm = FileManager.default
+        let names = (try? fm.contentsOfDirectory(atPath: Paths.configDirectory.path)) ?? []
+        var lines: [String] = []
+        for name in names.sorted()
+        where name.hasPrefix("own-bar-before-widgets") && name.hasSuffix(".sh") {
+            let url = Paths.configDirectory.appending(path: name)
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            var kept = text.components(separatedBy: "\n").filter {
+                !$0.hasPrefix(barArchiveNote) && !$0.hasPrefix(barRestoreNote)
+            }
+            if let archive {
+                let header = kept.firstIndex { !$0.hasPrefix("#") } ?? kept.count
+                kept.insert(
+                    contentsOf: [
+                        barArchiveNote + Paths.display(archive) + ".",
+                        barRestoreNote + archive.lastPathComponent
+                    ], at: header)
+            }
+            let updated = kept.joined(separator: "\n")
+            guard updated != text else { continue }
+            try write(updated, to: url)
+            if archive != nil { lines.append("Noted the archive in \(Paths.display(url))") }
+        }
+        return lines
     }
 
     static func count(_ number: Int) -> String { number == 1 ? "1 path" : "\(number) paths" }
