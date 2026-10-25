@@ -25,6 +25,16 @@ export MACARCHY_RESOURCES="$RESOURCES"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 same_json() { python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[1])) != json.load(open(sys.argv[2])))' "$1" "$2"; }
+# Succeeds when a snapshot record names a file in the old folder. The records
+# are JSON, which escapes each slash, so they are decoded rather than searched.
+records_old_folder() {
+  python3 - "$OLD" "$@" <<'PY'
+import json, sys
+old = sys.argv[1]
+paths = [p for f in sys.argv[2:] for p in json.load(open(f))["paths"].values()]
+sys.exit(0 if any(p == old or p.startswith(old + "/") for p in paths) else 1)
+PY
+}
 
 # A fresh copy of the earlier layout in its own home, with fake tools and
 # the installed app (which holds this build's command and resources) linked
@@ -36,7 +46,7 @@ make_home() {
   grep -rlI '@HOME@' "$H" | while IFS= read -r file; do
     sed -i '' "s#@HOME@#$H#g" "$file"
   done
-  export MACARCHY_HOME="$H" MACARCHY_SEARCH_PATH="$H/fake-bin" MACARCHY_APPLICATIONS="$H/Applications"
+  export HOME="$H" MACARCHY_HOME="$H" MACARCHY_SEARCH_PATH="$H/fake-bin" MACARCHY_APPLICATIONS="$H/Applications"
   mkdir -p "$MACARCHY_SEARCH_PATH"
   CALLS="$H/calls.log"
   for tool in yabai skhd sketchybar borders brew launchctl; do
@@ -81,8 +91,10 @@ for theme in lumon midnight; do
 done
 [ -f "$ROOT/widgets/owner-clock/widget.json" ] || fail "widget not carried"
 [ "$(find "$ROOT/snapshots" -name .meta.json | wc -l | tr -d ' ')" = 2 ] || fail "snapshots not carried"
-grep -rq "$H/.config/macarchy/settings.json" "$ROOT/snapshots"/*/.meta.json \
-  && fail "a snapshot still records the old folder"
+records_old_folder "$ROOT/snapshots"/*/.meta.json && fail "a snapshot still records the old folder"
+# The check can fail: the record kept from before the move names the old folder.
+records_old_folder "$ROOT/snapshots"/*/.meta.legacy.json \
+  || fail "the snapshot check cannot see the old folder in a record"
 
 OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed: $OUTPUT"
 same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "setup changed settings: $OUTPUT"
