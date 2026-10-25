@@ -245,8 +245,11 @@ first, then:
 
 A file something it cannot change still uses, such as a LaunchAgent of your
 own, stays where it is and is listed with the reason. Everything it deletes or
-changes goes into one zip in `backups` first;
-`macarchy cleanup --restore <archive>` puts it all back. Your own bar's
+changes goes into one zip in `backups` first, apart from named pipes and
+sockets a running program made, which go with their folder;
+`macarchy cleanup --restore <archive>` puts it all back. A file it rewrote
+that you have edited since stays as you left it, with the earlier version
+beside it as `<name>.before-cleanup`. Your own bar's
 commands, kept in `config/own-bar-before-widgets.sh`, name that archive, since
 they relied on `~/.config/sketchybar`.
 
@@ -335,6 +338,7 @@ for example a patched `borders`.
    removes Ghostty's include line. After a cleanup it also puts your scripts
    and old folders back where your original files expect them; a moved script
    you edited since stays in `scripts` as well.
+   Macarchy also stops opening at login.
 2. Delete Macarchy.app, and `~/Library/Application Support/Macarchy` if you do
    not want your settings and themes.
 

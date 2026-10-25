@@ -88,12 +88,23 @@ anything else that still names it keeps the link.
 will delete or change, with a manifest, into `backups/` and checks the zip
 reads back before changing anything, snapshots the configs it rewrites, then
 moves, rewrites, replaces the link and launchers, rewrites the agents that
-name a launcher and deletes. It restarts skhd, yabai, SketchyBar or borders
-when their file or launcher changed, through `Setup.startService`. `restore`
-refuses before changing anything when a path it would put back is in use
-again; otherwise it puts every file and the link back, removes the moved
-copies that were not edited since, rewrites the agents and restarts the
-daemons. Doctor shows a warning while there is something to clean up.
+name a launcher and deletes. A failure before that says nothing was changed.
+The zip is written and read with `ditto`, which keeps links, permissions and
+extended attributes. Named pipes, sockets and devices cannot be archived:
+they are left out of every copy, recorded in the manifest as skipped and
+deleted with their folder. A pid file in a folder that goes, naming a process
+that runs a script from inside that folder, is a helper the old bar left
+running, and it is stopped; any other pid is reported. Deleting walks what the
+archive holds, so anything that appeared after archiving stays and is
+reported. It restarts skhd, yabai, SketchyBar or borders when their file or
+launcher changed, through `Setup.startService`. `restore` refuses before
+changing anything when a path it would put back is in use again; otherwise it
+puts every file and the link back, removes the moved copies that were not
+edited since (a moved folder is compared by a hash of its whole tree),
+rewrites the agents and restarts the daemons. A rewritten file edited since
+cleaning up is kept, and the archived version goes beside it as
+`<name>.before-cleanup`. Doctor shows a warning while there is something to
+clean up.
 
 Uninstall reads every cleanup archive before restoring setup's backups, then
 puts back what cleaning up moved or deleted wherever the backups left nothing,
@@ -160,8 +171,10 @@ sketchybar-app-font and item defaults), then replays the saved bar
 The app's `WidgetHost` keeps the widgets up to date, so the first launch after
 setup registers the app as a login item (`LoginItem`, through
 `SMAppService.mainApp`), once; Advanced can turn it off, and that sticks.
-Debug builds and isolated runs never register. While the host runs it holds a
-lock on `state/widget-host.lock` (`WidgetHostPresence`). Clock items ask
+Debug builds, isolated runs and test processes never register, and uninstall
+unregisters it (`OpenAtLogin`). While the host runs it holds a lock on
+`state/widget-host.lock` (`WidgetHostPresence`), trying again every half
+minute while something else holds it. Clock items ask
 SketchyBar to run `macarchy widget fallback` every half minute, which returns
 at once while the lock is held and otherwise updates that clock, so a bar
 without the app shows its last readings and the right time. Theme changes
