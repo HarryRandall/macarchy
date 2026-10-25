@@ -182,6 +182,23 @@ grep -q 'config-file = ?.*Application Support/Macarchy/generated/ghostty.conf' "
 "$CLI" uninstall >/dev/null
 [ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "Ghostty not restored"
 
+# A Ghostty config linked from a dotfiles folder stays a link; the include is
+# written into the file it points at and removed again on uninstall.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/ghostty" "$HOME_DIR/dotfiles"
+echo 'font-size = 14' > "$HOME_DIR/dotfiles/ghostty-config"
+chmod 600 "$HOME_DIR/dotfiles/ghostty-config"
+ln -s "$HOME_DIR/dotfiles/ghostty-config" "$HOME_DIR/.config/ghostty/config"
+"$CLI" setup --keep --no-apply >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link replaced with a copy"
+grep -q 'config-file = ?' "$HOME_DIR/dotfiles/ghostty-config" || fail "include not in the link target"
+[ "$(stat -f %Lp "$HOME_DIR/dotfiles/ghostty-config")" = 600 ] || fail "Ghostty permissions changed"
+"$CLI" uninstall >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link not kept on uninstall"
+[ "$(cat "$HOME_DIR/dotfiles/ghostty-config")" = 'font-size = 14' ] || fail "include left in the link target"
+rm -rf "$HOME_DIR/dotfiles" "$HOME_DIR/.config/ghostty/config"
+echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
+
 # With an Application Support config, the include goes there, loaded last.
 SUPPORT="$HOME_DIR/Library/Application Support/com.mitchellh.ghostty"
 mkdir -p "$SUPPORT"
