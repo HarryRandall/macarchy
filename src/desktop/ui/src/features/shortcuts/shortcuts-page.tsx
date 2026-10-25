@@ -29,13 +29,14 @@ import { useStore } from "~/lib/store";
 import { ShortcutEditor } from "./shortcut-editor";
 import {
   findConflicts,
+  foldRuns,
   groupByCategory,
   type ShortcutCategory,
   shortcutCategory,
   shortcutTitle,
 } from "./shortcut-groups";
 import { emptyFilters, filterBindings, type ShortcutFilters } from "./shortcut-presentation";
-import { ShortcutRow } from "./shortcut-row";
+import { ShortcutRow, ShortcutRunRow } from "./shortcut-row";
 import type { ShortcutsStore } from "./shortcuts-store";
 import { UsageCard } from "./shortcuts-usage";
 
@@ -239,17 +240,31 @@ export function ShortcutsPage({ store }: { store: ShortcutsStore }) {
                     level={2}
                     className="px-4"
                   />
-                  {group.bindings.map((binding) => (
-                    <ShortcutRow
-                      key={binding.id}
-                      binding={binding}
-                      all={all}
-                      conflict={conflicts.get(binding.id)}
-                      disabled={snapshot.busy}
-                      onEdit={() => store.edit(binding)}
-                      onEnable={() => void store.enable(binding)}
-                    />
-                  ))}
+                  {foldRuns(group.bindings).map((item) =>
+                    item.kind === "run" ? (
+                      <ShortcutRunRow
+                        key={`run-${item.bindings[0]!.id}`}
+                        run={item}
+                        all={all}
+                        conflicts={conflicts}
+                        desktops={state.desktops}
+                        disabled={snapshot.busy}
+                        onEdit={(binding) => store.edit(binding)}
+                        onEnable={(binding) => void store.enable(binding)}
+                      />
+                    ) : (
+                      <ShortcutRow
+                        key={item.binding.id}
+                        binding={item.binding}
+                        all={all}
+                        conflict={conflicts.get(item.binding.id)}
+                        desktops={state.desktops}
+                        disabled={snapshot.busy}
+                        onEdit={() => store.edit(item.binding)}
+                        onEnable={() => void store.enable(item.binding)}
+                      />
+                    ),
+                  )}
                 </Card>
               ))}
               {shown.length === 0 ? (

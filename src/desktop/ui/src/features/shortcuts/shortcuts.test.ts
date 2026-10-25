@@ -28,7 +28,7 @@ function binding(patch: Partial<ShortcutBinding> = {}): ShortcutBinding {
   };
 }
 function fixture() {
-  const initial: ShortcutsState = { revision: "one", bindings: [binding()] };
+  const initial: ShortcutsState = { revision: "one", bindings: [binding()], desktops: 3 };
   const send = vi.fn<(method: string, params: unknown) => Promise<unknown>>(async (method) => {
     if (method === "shortcuts.getState") return initial;
     if (method === "shortcuts.validate")
@@ -99,6 +99,10 @@ describe("shortcut presentation", () => {
       ["yabai -m window --space 2", "Move window to desktop 2"],
       [
         "yabai -m window --space 3; yabai -m space --focus 3",
+        "Move window to desktop 3 and follow",
+      ],
+      [
+        "yabai -m window --space 3 && yabai -m space --focus 3",
         "Move window to desktop 3 and follow",
       ],
       [

@@ -18,6 +18,18 @@ struct ShortcutsMessagesTests {
         #expect(object["command"] as? String == "echo custom")
     }
 
+    @Test("the desktop count is sent, and an unknown count is an explicit null")
+    func desktops() throws {
+        let snapshot = ShortcutsSnapshot(revision: "version", bindings: [])
+        func encoded(_ desktops: Int?) throws -> [String: Any] {
+            let data = try JSONEncoder().encode(ShortcutsState(snapshot, desktops: desktops))
+            return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        #expect(try encoded(3)["desktops"] as? Int == 3)
+        #expect(try encoded(nil)["desktops"] is NSNull)
+        #expect(try encoded(nil).keys.sorted() == ["bindings", "desktops", "revision"])
+    }
+
     @Test("recorded input decodes as a chord and Swift renders the binding")
     func recordedInput() throws {
         let input = Data(

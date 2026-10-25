@@ -59,6 +59,17 @@ public struct Integrations: Sendable {
         await execute(Paths.yabai, ["-m", "rule", "--list"])
     }
 
+    /// How many desktops (Spaces) exist across every display, or `nil` when
+    /// yabai is not running or answers with something other than a list.
+    public func desktopCount() async -> Int? {
+        let result = await execute(Paths.yabai, ["-m", "query", "--spaces"])
+        guard result.ok,
+            let spaces = try? JSONSerialization.jsonObject(with: Data(result.stdout.utf8))
+                as? [Any]
+        else { return nil }
+        return spaces.count
+    }
+
     public func globalDefault(_ key: String) async -> CommandResult {
         await execute(Paths.defaults, ["read", "-g", key])
     }

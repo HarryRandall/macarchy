@@ -21,6 +21,8 @@ export interface ShortcutChord {
 export interface ShortcutsState {
   revision: string;
   bindings: ShortcutBinding[];
+  /** The desktops (Spaces) yabai lists now, or null when yabai is not running. */
+  desktops: number | null;
 }
 export interface ShortcutValidation {
   spec: string;

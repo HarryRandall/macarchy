@@ -110,3 +110,101 @@ export function findConflicts(bindings: readonly ShortcutBinding[]): Map<number,
   }
   return conflicts;
 }
+
+/** A binding on its own, or a numbered run of them shown as one row. */
+export type ShortcutItem =
+  | { kind: "binding"; binding: ShortcutBinding }
+  | { kind: "run"; bindings: ShortcutBinding[]; numbers: number[] };
+
+/** The digit as a whole number in a command, not part of "rel:0.05" or "f1". */
+const digitPattern = (digit: string) => new RegExp(`(?<![\\w.])${digit}(?![\\w.])`, "g");
+
+/**
+ * What the bindings of one run share: the same modifiers, skhd modes and
+ * on or off state, and the same command once the number is taken out. Only a
+ * digit key whose number appears in the command can be part of a run, and a
+ * disabled binding never folds, so each keeps its own Enable button.
+ */
+function runShape(binding: ShortcutBinding): string | null {
+  if (!/^[0-9]$/.test(binding.key) || binding.appOverrides.length || binding.disabled) return null;
+  if (binding.activatesMode) return null;
+  const template = binding.command.replace(digitPattern(binding.key), "#");
+  if (template === binding.command) return null;
+  return [
+    chordKey(binding.modifiers, "#"),
+    binding.passthrough,
+    binding.modes.toSorted().join(","),
+    template,
+  ].join("\n");
+}
+
+/**
+ * Folds numbered runs, such as "Go to desktop 1" to 9, into one item each,
+ * listed where the run's first binding was. A lone binding stays as it is.
+ */
+export function foldRuns(bindings: readonly ShortcutBinding[]): ShortcutItem[] {
+  const runs = new Map<string, ShortcutBinding[]>();
+  for (const binding of bindings) {
+    const shape = runShape(binding);
+    if (shape) runs.set(shape, [...(runs.get(shape) ?? []), binding]);
+  }
+  const items: ShortcutItem[] = [];
+  const placed = new Set<string>();
+  for (const binding of bindings) {
+    const shape = runShape(binding);
+    const run = shape ? runs.get(shape)! : [];
+    if (run.length < 2) items.push({ kind: "binding", binding });
+    else if (!placed.has(shape!)) {
+      placed.add(shape!);
+      const sorted = run.toSorted((a, b) => Number(a.key) - Number(b.key));
+      items.push({
+        kind: "run",
+        bindings: sorted,
+        numbers: sorted.map((item) => Number(item.key)),
+      });
+    }
+  }
+  return items;
+}
+
+function consecutive(numbers: readonly number[]) {
+  return numbers.every((number, index) => index === 0 || number === numbers[index - 1]! + 1);
+}
+
+/** "1–9" for an unbroken run, otherwise "1, 2, 5". */
+export function runRange(numbers: readonly number[], joiner = "–"): string {
+  return consecutive(numbers) ? `${numbers[0]}${joiner}${numbers.at(-1)}` : numbers.join(", ");
+}
+
+/** The run's name and keys: "Go to desktop 1–9" on ⌃ ⌥ 1…9. */
+export function runSummary(
+  run: Extract<ShortcutItem, { kind: "run" }>,
+  all: readonly ShortcutBinding[],
+): { title: string; caps: string[] } {
+  const [first] = run.bindings;
+  const range = runRange(run.numbers);
+  const { title } = shortcutTitle(first!, all);
+  const numbered = title.replace(digitPattern(first!.key), range);
+  return {
+    title: numbered === title ? `${title} ${range}` : numbered,
+    caps: [
+      ...first!.caps.slice(0, -1),
+      consecutive(run.numbers) ? runRange(run.numbers, "…") : run.numbers.join(","),
+    ],
+  };
+}
+
+/**
+ * The desktop a binding goes to or sends a window to, when that desktop does
+ * not exist yet. Nothing is marked while the count is unknown.
+ */
+export function missingDesktop(binding: ShortcutBinding, desktops: number | null): number | null {
+  if (desktops === null) return null;
+  // Older setups spell yabai with its full path.
+  const targets = [
+    ...plainCommand(binding.command).matchAll(
+      /yabai -m (?:space --focus|window --space) (\d+)(?![\w.])/g,
+    ),
+  ].map((match) => Number(match[1]));
+  return targets.find((target) => target > desktops) ?? null;
+}

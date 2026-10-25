@@ -21,6 +21,31 @@ function caps(chord: ShortcutChord) {
   return [...chord.modifiers, chord.key].map((key) => symbols[key] ?? key.toUpperCase());
 }
 
+/** The bundled skhdrc's numbered desktop bindings, 1 to 9. */
+function desktopBindings(
+  firstId: number,
+  modifiers: string[],
+  section: string,
+  command: (n: number) => string,
+): ShortcutsState["bindings"] {
+  return Array.from({ length: 9 }, (_, index) => {
+    const key = String(index + 1);
+    return {
+      id: firstId + index,
+      modifiers,
+      key,
+      caps: caps({ modifiers, key }),
+      section,
+      command: command(index + 1),
+      passthrough: false,
+      appOverrides: [],
+      modes: [],
+      activatesMode: null,
+      disabled: false,
+    };
+  });
+}
+
 /** Browser development only. Native validation remains authoritative in the app. */
 export function shortcutsMock(
   deliver: (event: BridgeEvent) => void,
@@ -68,7 +93,20 @@ export function shortcutsMock(
         activatesMode: null,
         disabled: false,
       },
+      ...desktopBindings(
+        10,
+        ["ctrl", "alt"],
+        "Switch to desktop",
+        (n) => `yabai -m space --focus ${n}`,
+      ),
+      ...desktopBindings(
+        20,
+        ["ctrl", "alt", "shift"],
+        "Move window to desktop and follow",
+        (n) => `yabai -m window --space ${n} && yabai -m space --focus ${n}`,
+      ),
     ],
+    desktops: 3,
   };
   let state = structuredClone(original);
   let revisionCounter = 1;

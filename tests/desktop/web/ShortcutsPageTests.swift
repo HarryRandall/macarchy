@@ -4,7 +4,8 @@ import Testing
 @testable import App
 @testable import Macarchy
 
-private let shortcutsFixture = """
+/// Shared with the other Shortcuts page suites.
+let shortcutsFixture = """
     # Launch terminal
     ctrl - return : echo terminal
 
@@ -21,7 +22,7 @@ private let shortcutsFixture = """
     """
 
 @MainActor
-private func waitForShortcuts(_ surface: WebSurface) async throws {
+func waitForShortcuts(_ surface: WebSurface) async throws {
     try await waitFor(
         surface, "Shortcuts from the isolated skhdrc",
         """
@@ -31,7 +32,7 @@ private func waitForShortcuts(_ surface: WebSurface) async throws {
 }
 
 @MainActor
-private func shortcutClick(_ surface: WebSurface, _ title: String) async throws {
+func shortcutClick(_ surface: WebSurface, _ title: String) async throws {
     try await run(
         surface,
         """
@@ -210,45 +211,6 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("disable keeps the block as comments, Enable restores it, and failed reloads show")
-        func disableAndReloadFailure() async throws {
-            try await withHarness(tools: ["skhd"]) { harness in
-                try harness.write(shortcutsFixture, to: shortcutsFile)
-                let (_, surface) = try harness.settingsPage(pane: .shortcuts)
-                try await waitForShortcuts(surface)
-                try await run(
-                    surface,
-                    #"document.querySelector('[data-shortcut-id="8"] button[aria-label^="Edit shortcut"]').click();"#
-                )
-                try await waitFor(
-                    surface, "the per-app editor", #"return page.text().includes('Edit shortcut');"#
-                )
-                try await shortcutClick(surface, "Disable")
-                #expect(try SkhdShortcuts().read().bindings.count == 4)
-                try await shortcutClick(surface, "Really disable?")
-                try await waitFor(
-                    surface, "the partial application warning",
-                    #"return page.text().includes('Shortcuts were saved, but skhd could not restart');"#
-                )
-                #expect(try SkhdShortcuts().read().bindings.count { !$0.isDisabled } == 3)
-                #expect(
-                    try String(contentsOf: Setup.skhdrc, encoding: .utf8).contains(
-                        "#   \"Finder\" : echo finder"))
-                try await waitFor(
-                    surface, "the disabled row with Enable",
-                    #"return page.text().includes('4 shortcuts, 1 disabled') && !!document.querySelector('[data-shortcut-id="8"] button[aria-label^="Enable shortcut"]');"#
-                )
-                try await shortcutClick(surface, "Enable")
-                try await waitUntil("the enabled block in skhdrc") {
-                    (try? String(contentsOf: Setup.skhdrc, encoding: .utf8)) == shortcutsFixture
-                }
-                #expect(
-                    SnapshotStore().list().contains {
-                        SnapshotStore().reason(for: $0) == "shortcut enabled"
-                    })
-            }
-        }
-
         @Test("external changes arrive through the broadcaster without clobbering the recording")
         func externalChanges() async throws {
             try await withHarness { harness in
@@ -256,8 +218,10 @@ extension WebInterfaceTests {
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 let broadcast = ShortcutsBroadcast()
-                broadcast.written(try harness.model.readShortcuts())
-                broadcast.start { [weak surface] in surface?.send($0) }
+                broadcast.written(try await harness.model.readShortcuts())
+                broadcast.start(integrations: harness.model.backend) { [weak surface] in
+                    surface?.send($0)
+                }
                 try await editFirstShortcut(surface)
                 try await recordShortcut(surface)
                 try harness.write(

@@ -4,6 +4,8 @@ import Macarchy
 struct ShortcutsState: Codable, Sendable {
     var revision: String
     var bindings: [Binding]
+    /// The desktops that exist now, or `nil` when yabai cannot say.
+    var desktops: Int?
 
     struct Binding: Codable, Sendable {
         var id: Int
@@ -47,8 +49,19 @@ struct ShortcutsState: Codable, Sendable {
         }
     }
 
-    init(_ snapshot: ShortcutsSnapshot) {
+    enum CodingKeys: CodingKey { case revision, bindings, desktops }
+
+    /// `nil` is sent as `null`, so the page can tell "unknown" from a missing field.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(revision, forKey: .revision)
+        try container.encode(bindings, forKey: .bindings)
+        try container.encode(desktops, forKey: .desktops)
+    }
+
+    init(_ snapshot: ShortcutsSnapshot, desktops: Int?) {
         revision = snapshot.revision
+        self.desktops = desktops
         bindings = snapshot.bindings.map { binding in
             Binding(
                 id: binding.id, modifiers: binding.modifiers, key: binding.key,

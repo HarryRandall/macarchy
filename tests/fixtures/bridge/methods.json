@@ -1783,6 +1783,7 @@
               "section": null
             }
           ],
+          "desktops": 3,
           "revision": "3c59dc048e885024"
         },
         "warning": "skhd: could not reload the configuration"
@@ -1846,6 +1847,7 @@
               "section": null
             }
           ],
+          "desktops": 3,
           "revision": "5d41402abc4b2a76"
         },
         "warning": ""
@@ -1905,6 +1907,7 @@
             "section": null
           }
         ],
+        "desktops": 3,
         "revision": "5d41402abc4b2a76"
       }
     }
@@ -1952,6 +1955,7 @@
               "section": "Open a terminal"
             }
           ],
+          "desktops": null,
           "revision": "7d793037a0760186"
         },
         "warning": ""
@@ -2014,6 +2018,7 @@
               "section": null
             }
           ],
+          "desktops": 3,
           "revision": "5d41402abc4b2a76"
         },
         "warning": ""
