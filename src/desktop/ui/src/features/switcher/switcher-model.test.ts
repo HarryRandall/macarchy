@@ -90,6 +90,10 @@ describe("rows", () => {
   it("has no Switch Background row without themes", () => {
     expect(buildRows({ themes: [], current: null }, "")).toEqual([]);
   });
+
+  it("has no Switch Background row with no theme applied", () => {
+    expect(buildRows({ ...data, current: null }, "").map(rowKey)[0]).toBe("theme:awakening");
+  });
 });
 
 describe("selection", () => {
@@ -102,8 +106,8 @@ describe("selection", () => {
     });
   });
 
-  it("starts on the first row when nothing is applied", () => {
-    expect(initialModel({ ...data, current: null }).ui.selection).toBe("backgrounds");
+  it("starts on the first theme when nothing is applied", () => {
+    expect(initialModel({ ...data, current: null }).ui.selection).toBe("theme:awakening");
   });
 
   it("moves by one and stops at the ends", () => {
@@ -152,6 +156,7 @@ describe("selection", () => {
       actionsOpen: false,
       action: 0,
       failure: null,
+      notice: null,
     });
   });
 });
@@ -175,6 +180,30 @@ describe("a failed action", () => {
     const model = run(initialModel(data, failure), { type: "dismissFailure" });
     expect(model.ui.failure).toBeNull();
     expect(run(model, { type: "dismissFailure" })).toBe(model);
+  });
+});
+
+const saved = (model: SwitcherModel) =>
+  run(
+    model,
+    { type: "openBackgrounds", theme: "lumon" },
+    { type: "search", search: "ref" },
+    { type: "backgroundSaved", theme: "lumon" },
+  );
+
+describe("a background saved for a theme that is not applied", () => {
+  it("names the theme and returns to the theme list", () => {
+    const model = saved(initialModel(data));
+    expect(model.ui).toMatchObject({ mode: { kind: "themes" }, search: "", tile: null });
+    expect(model.ui.notice).toBe("Saved for Lumon; it shows when you apply that theme.");
+  });
+
+  it("is cleared by dismissing it and by the next open", () => {
+    const model = saved(initialModel(data));
+    expect(run(model, { type: "dismissNotice" }).ui.notice).toBeNull();
+    expect(run(model, { type: "reset", data }).ui.notice).toBeNull();
+    const none = run(model, { type: "dismissNotice" });
+    expect(run(none, { type: "dismissNotice" })).toBe(none);
   });
 });
 
@@ -273,6 +302,8 @@ describe("actions menu", () => {
       "Refresh Themes",
       "Open Macarchy",
     ]);
+    const onOther = run(onTheme, { type: "select", key: "theme:city-783" });
+    expect(actionItems(onOther)[1]?.title).toBe("Choose Background for City 783");
     const onRow = run(onTheme, { type: "select", key: "backgrounds" });
     expect(actionItems(onRow).map((item) => item.command)).toEqual([
       "primary",
@@ -300,14 +331,15 @@ describe("null fields from the host", () => {
 
   it("never builds a row key from a null current theme", () => {
     const model = initialModel(state);
-    expect(model.ui.selection).toBe("backgrounds");
+    expect(model.ui.selection).toBe("theme:awakening");
     expect(keys(model)).not.toContain("theme:null");
-    expect(run(model, { type: "step", delta: 1 }).ui.selection).toBe("theme:awakening");
+    expect(run(model, { type: "step", delta: 1 }).ui.selection).toBe("theme:lumon");
   });
 
-  it("falls back to the host's first theme for Switch Background, as the SwiftUI did", () => {
+  it("offers no background to switch with no theme applied", () => {
     const model = run(initialModel(state), { type: "select", key: "backgrounds" });
-    expect(primaryAction(model)).toEqual({ kind: "openBackgrounds", theme: "lumon" });
+    expect(keys(model)).not.toContain("backgrounds");
+    expect(primaryAction(model)).toBeNull();
   });
 
   it("lists backgrounds of a theme with no current background, colours or preview", () => {
@@ -319,14 +351,7 @@ describe("null fields from the host", () => {
 
   it("resets to the first row when the applied theme becomes null", () => {
     const model = run(initialModel(data), { type: "reset", data: { ...data, current: null } });
-    expect(model.ui.selection).toBe("backgrounds");
-  });
-});
-
-describe("backgroundName", () => {
-  it("drops the ordering prefix and extension and capitalises words", () => {
-    expect(backgroundName("backgrounds/2-hand-of-adam.png")).toBe("Hand Of Adam");
-    expect(backgroundName("wallpaper_dark.jpg")).toBe("Wallpaper Dark");
+    expect(model.ui.selection).toBe("theme:awakening");
   });
 });
 
@@ -335,5 +360,12 @@ describe("plural", () => {
     expect(plural(1, "option")).toBe("1 option");
     expect(plural(0, "option")).toBe("0 options");
     expect(plural(3, "background")).toBe("3 backgrounds");
+  });
+});
+
+describe("backgroundName", () => {
+  it("drops the ordering prefix and extension and capitalises words", () => {
+    expect(backgroundName("backgrounds/2-hand-of-adam.png")).toBe("Hand Of Adam");
+    expect(backgroundName("wallpaper_dark.jpg")).toBe("Wallpaper Dark");
   });
 });

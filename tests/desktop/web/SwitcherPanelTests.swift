@@ -74,6 +74,58 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("a background for a theme not applied is saved with the panel open and says so")
+        func savedBackground() async throws {
+            try await withHarness { harness in
+                try harness.addBackground(theme: "lumon", name: "1-office.png", red: 0.1)
+                try harness.addBackground(theme: "carbonfox", name: "1-ember.png", red: 0.5)
+                harness.model.themes.reload()
+                let recorder = ThemeRecorder()
+                let (switcher, surface) = try harness.switcherPage(recorder: recorder)
+                defer { withExtendedLifetime(switcher) {} }
+                let screen = FakeScreen(switcher)
+                try await waitFor(surface, "the theme list", "return page.rows().length === 9;")
+                await switcher.show()
+
+                try await run(surface, #"page.setValue(page.search(), "carbon");"#)
+                try await run(surface, #"page.key(page.search(), "k", { metaKey: true });"#)
+                try await waitFor(
+                    surface, "the action named for Carbonfox",
+                    #"return document.querySelector('[role=listbox][aria-label="Actions"]')?.innerText.includes("Choose Background for Carbonfox");"#
+                )
+                try await run(surface, #"page.key(page.search(), "Escape");"#)
+                try await run(surface, #"page.key(page.search(), "b", { metaKey: true });"#)
+                try await waitFor(
+                    surface, "the Carbonfox backgrounds",
+                    #"return !!document.querySelector('[role=listbox][aria-label="Backgrounds in Carbonfox"] [role=option]');"#
+                )
+                try await run(surface, #"page.key(page.search(), "Enter");"#)
+                try await waitFor(
+                    surface, "the saved notice over the theme list",
+                    """
+                    const notice = document.querySelector("[data-slot=notice][role=status]");
+                    return !!notice && notice.innerText.includes("Saved for Carbonfox")
+                      && page.search().value === "" && page.rows().length === 9;
+                    """)
+                #expect(recorder.backgrounds.map(\.theme) == ["carbonfox"])
+                #expect(switcher.isVisible && screen.dismissals == 0)
+
+                // The applied theme's background changes the desktop, so the panel goes.
+                try await run(surface, #"page.setValue(page.search(), "switch");"#)
+                try await waitFor(
+                    surface, "only Switch Background", "return page.rows().length === 1;")
+                try await run(surface, #"page.key(page.search(), "Enter");"#)
+                try await waitFor(
+                    surface, "the Lumon backgrounds",
+                    #"return !!document.querySelector('[role=listbox][aria-label="Backgrounds in Lumon"] [role=option]');"#
+                )
+                try await run(surface, #"page.key(page.search(), "Enter");"#)
+                try await waitUntil("the panel to close") { !switcher.isVisible }
+                #expect(recorder.backgrounds.map(\.theme) == ["carbonfox", "lumon"])
+                #expect(await harness.desktop.writes.isEmpty)
+            }
+        }
+
         @Test("counts, the palette sample and the empty list read well")
         func readable() async throws {
             try await withHarness { harness in

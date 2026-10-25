@@ -147,9 +147,9 @@ describe("null fields from the host", () => {
     const opened = send({ type: "switcher.willOpen", state });
     paint();
     await opened;
-    expect(store.getSnapshot().model?.ui.selection).toBe("backgrounds");
+    expect(store.getSnapshot().model?.ui.selection).toBe("theme:awakening");
 
     send({ type: "themes.changed", state: { ...state, current: null } });
-    expect(store.getSnapshot().model?.ui.selection).toBe("backgrounds");
+    expect(store.getSnapshot().model?.ui.selection).toBe("theme:awakening");
   });
 });

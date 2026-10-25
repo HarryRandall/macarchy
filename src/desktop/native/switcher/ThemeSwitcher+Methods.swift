@@ -63,7 +63,11 @@ extension ThemeSwitcher {
                 })
             else { throw BridgeFailure(.invalidParams, "That background is not in this theme.") }
             let choose = actions.useBackground
-            try await perform("Could not use the \(background.name) background", model) {
+            // Another theme's background is only saved for when it is applied.
+            let changesDesktop = params.theme == model.themes.current
+            try await perform(
+                "Could not use the \(background.name) background", model, closing: changesDesktop
+            ) {
                 await choose(model, params.theme, params.path)
             }
             return Null()

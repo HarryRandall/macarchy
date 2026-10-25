@@ -255,10 +255,15 @@ final class ThemeSwitcher {
     /// Closes the panel, then runs a desktop-changing action. The panel goes
     /// first: the action redraws the desktop, and the panel should not sit
     /// over it while that happens. A failure reopens it with the reason on top.
+    ///
+    /// `closing` is false for an action that leaves the desktop as it is, such
+    /// as choosing a background for a theme that is not applied: the panel
+    /// stays, and the page says what changed.
     func perform(
-        _ title: String, _ model: AppModel, _ action: @MainActor () async -> CommandResult
+        _ title: String, _ model: AppModel, closing: Bool = true,
+        _ action: @MainActor () async -> CommandResult
     ) async throws {
-        close()
+        if closing { close() }
         let result = await action()
         model.log.record(result)
         await model.themes.reloadInBackground()

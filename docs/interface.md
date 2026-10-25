@@ -71,7 +71,9 @@ running daemon and applies edits through `SettingsApply`, the same serialised,
 apply-then-save path every other setting uses. The switcher calls
 `ThemeApplication`, as the CLI and the status menu do. It closes the panel
 before applying a theme or background, so the panel never covers the desktop
-as it redraws, then awaits the outcome. A failure reopens the panel with what
+as it redraws, then awaits the outcome. A background chosen for a theme that is
+not applied leaves the desktop as it is, so the panel stays open and the page
+says it was saved for that theme. A failure reopens the panel with what
 failed and why in `switcher.willOpen`, shown until dismissed or the next
 opening.
 

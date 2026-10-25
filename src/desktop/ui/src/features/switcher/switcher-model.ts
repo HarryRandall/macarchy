@@ -17,6 +17,11 @@ export interface SwitcherUI {
   action: number;
   /** The action that reopened the panel by failing, until dismissed or the next open. */
   failure: SwitcherFailure | null;
+  /**
+   * What changed when nothing on the desktop did, such as a background saved
+   * for a theme that is not applied, until dismissed or the next open.
+   */
+  notice: string | null;
 }
 
 export interface SwitcherModel {
@@ -57,9 +62,12 @@ export function orderThemes(themes: readonly ThemeSummary[]): ThemeSummary[] {
   );
 }
 
-/** The applied theme, or the first one when nothing has been applied. */
+/**
+ * The applied theme. With none applied there is no background to switch, so
+ * the Switch Background row is not offered.
+ */
 export function activeTheme(data: SwitcherState): ThemeSummary | undefined {
-  return data.themes.find((theme) => theme.name === data.current) ?? data.themes[0];
+  return data.themes.find((theme) => theme.name === data.current);
 }
 
 /** "1 option", "3 options". */
@@ -147,6 +155,7 @@ export function initialModel(
       actionsOpen: false,
       action: 0,
       failure,
+      notice: null,
     },
   };
 }
@@ -193,8 +202,14 @@ export function primaryTitle(model: SwitcherModel): string {
 
 export function actionItems(model: SwitcherModel): ActionItem[] {
   const items: ActionItem[] = [{ command: "primary", title: primaryTitle(model), keys: ["↵"] }];
-  if (model.ui.mode.kind === "themes" && selectedRow(model)?.kind === "theme") {
-    items.push({ command: "switchBackground", title: "Switch Background", keys: ["⌘", "B"] });
+  const row = selectedRow(model);
+  if (model.ui.mode.kind === "themes" && row?.kind === "theme") {
+    // Another theme's background is only saved for when that theme is applied.
+    const title =
+      row.name === model.data.current
+        ? "Switch Background"
+        : `Choose Background for ${findTheme(model.data, row.name)?.title ?? row.name}`;
+    items.push({ command: "switchBackground", title, keys: ["⌘", "B"] });
   }
   items.push({ command: "refresh", title: "Refresh Themes", keys: ["⌘", "R"] });
   items.push({ command: "openSettings", title: "Open Macarchy", keys: ["⌘", ","] });
@@ -216,7 +231,10 @@ export type SwitcherAction =
   | { type: "toggleActions" }
   | { type: "closeActions" }
   | { type: "highlightAction"; index: number }
-  | { type: "dismissFailure" };
+  | { type: "dismissFailure" }
+  /** A background chosen for a theme that is not applied has been saved. */
+  | { type: "backgroundSaved"; theme: string }
+  | { type: "dismissNotice" };
 
 const GRID_COLUMNS = 2;
 
@@ -283,6 +301,22 @@ export function switcherReducer(model: SwitcherModel, action: SwitcherAction): S
       return { ...model, ui: { ...ui, action: action.index } };
     case "dismissFailure":
       return ui.failure ? { ...model, ui: { ...ui, failure: null } } : model;
+    case "backgroundSaved": {
+      const title = findTheme(model.data, action.theme)?.title ?? action.theme;
+      return reconcile({
+        ...model,
+        ui: {
+          ...ui,
+          mode: { kind: "themes" },
+          search: "",
+          tile: null,
+          actionsOpen: false,
+          notice: `Saved for ${title}; it shows when you apply that theme.`,
+        },
+      });
+    }
+    case "dismissNotice":
+      return ui.notice ? { ...model, ui: { ...ui, notice: null } } : model;
   }
 }
 

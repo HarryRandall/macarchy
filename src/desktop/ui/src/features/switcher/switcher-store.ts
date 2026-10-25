@@ -121,10 +121,17 @@ export function createSwitcherStore({
           } else if (action?.kind === "openBackgrounds") {
             dispatch({ type: "openBackgrounds", theme: action.theme });
           } else if (action?.kind === "useBackground") {
-            request("switcher.useBackground", {
-              theme: action.theme,
-              path: action.path,
-            }).catch(fail);
+            // The host keeps the panel open for a theme that is not applied,
+            // since the desktop does not change, so the page says what did.
+            const saved = action.theme !== model.data.current;
+            const { generation } = snapshot;
+            request("switcher.useBackground", { theme: action.theme, path: action.path })
+              .then(() => {
+                if (saved && snapshot.generation === generation) {
+                  dispatch({ type: "backgroundSaved", theme: action.theme });
+                }
+              })
+              .catch(fail);
           }
           return;
         }

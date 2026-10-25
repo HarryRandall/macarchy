@@ -195,6 +195,14 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
           </div>
         </Notice.Root>
       ) : null}
+      {ui.notice ? (
+        <Notice.Root className="m-2 mb-0">
+          <div className="flex items-start gap-2">
+            <Notice.Title className="min-w-0 flex-1">{ui.notice}</Notice.Title>
+            <Notice.Dismiss onClick={() => store.dispatch({ type: "dismissNotice" })} />
+          </div>
+        </Notice.Root>
+      ) : null}
       <SearchBar
         inputRef={inputRef}
         role="combobox"
