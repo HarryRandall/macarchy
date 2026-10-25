@@ -2,6 +2,20 @@ import Foundation
 import Macarchy
 
 extension ThemeSwitcher {
+    /// Checks only the running app can make, shown beside the shared ones.
+    var healthChecks: [HealthCheck] { Self.healthChecks(shortcutTaken: hotKeyTaken) }
+
+    static func healthChecks(shortcutTaken: Bool) -> [HealthCheck] {
+        guard shortcutTaken else { return [] }
+        return [
+            HealthCheck(
+                .optional, "Theme switcher shortcut", .warning,
+                "⌘⌃Space is taken, usually by Emoji & Symbols.",
+                fix: "Turn that shortcut off in System Settings, Keyboard, Keyboard Shortcuts, "
+                    + "then quit and reopen Macarchy.")
+        ]
+    }
+
     /// Not private: the contract tests register the same methods to check
     /// them against the shared fixtures.
     func registerMethods(on surface: WebSurface, model: AppModel) {

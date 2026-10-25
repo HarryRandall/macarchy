@@ -2,11 +2,17 @@ import Foundation
 import Macarchy
 
 extension BridgeRouter {
-    func registerHealth(model: AppModel, actions: DiagnosticActions = .live) {
+    /// `appChecks` are those only the running app can make, such as whether
+    /// the switcher's shortcut was free.
+    func registerHealth(
+        model: AppModel, actions: DiagnosticActions = .live,
+        appChecks: @escaping @MainActor () -> [HealthCheck] = { ThemeSwitcher.shared.healthChecks }
+    ) {
         var latest: DiagnosticSnapshot?
         register("health.getState") { [weak model] (_: Empty) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            let snapshot = await DiagnosticSnapshot.read(integrations: model.backend)
+            var snapshot = await DiagnosticSnapshot.read(integrations: model.backend)
+            snapshot.checks += appChecks()
             latest = snapshot
             model.log.note("health check", "\(snapshot.checks.count) checks completed")
             return HealthState(snapshot)

@@ -55,9 +55,10 @@ final class ThemeSwitcher {
     /// Where the arrival's scale-up starts.
     static let summonScale: CGFloat = 0.97
 
-    /// Whether ⌘⌃Space was free to register; the system's Emoji & Symbols
-    /// shortcut uses the same keys unless it is turned off.
-    var hotKeyAvailable: Bool { hotKey?.isRegistered ?? false }
+    /// Whether ⌘⌃Space was already taken when the app tried to register it;
+    /// the system's Emoji & Symbols shortcut uses the same keys unless it is
+    /// turned off. Setup health shows this.
+    var hotKeyTaken: Bool { hotKey.map { !$0.isRegistered } ?? false }
 
     /// Posted by `macarchy switcher`, so any shortcut tool can open the panel.
     static let openNotification = Notification.Name("io.github.harryrandall.macarchy.switcher")

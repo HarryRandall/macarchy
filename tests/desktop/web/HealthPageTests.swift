@@ -101,6 +101,30 @@ extension WebInterfaceTests {
             }
         }
 
+        @Test("a taken switcher shortcut shows as a warning with what to do")
+        func takenShortcut() async throws {
+            try await withHarness(tools: []) { harness in
+                let (_, surface) = try harness.settingsPage(pane: .health)
+                surface.router.registerHealth(
+                    model: harness.model,
+                    actions: DiagnosticActions(
+                        copy: { _ in false }, open: { _ in false }, reveal: {}),
+                    appChecks: { ThemeSwitcher.healthChecks(shortcutTaken: true) })
+                let row =
+                    "document.querySelector('[data-check-id=\"Optional/Theme switcher shortcut\"]')"
+                try await waitFor(surface, "the shortcut check", "return !!\(row);")
+                try await run(surface, "\(row).querySelector('[data-row-primary]').click();")
+                try await waitFor(
+                    surface, "its advice",
+                    """
+                    const check = \(row);
+                    return check.innerText.includes('Emoji & Symbols')
+                      && check.innerText.includes('Keyboard Shortcuts');
+                    """)
+                #expect(ThemeSwitcher.healthChecks(shortcutTaken: false).isEmpty)
+            }
+        }
+
         @Test("clipboard failures remain visible without changing settings")
         func failure() async throws {
             try await withHarness(tools: []) { harness in
