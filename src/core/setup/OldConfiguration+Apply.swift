@@ -13,14 +13,7 @@ extension OldConfiguration {
                     let restarts = try await applyLocked(into: &report)
                     return Locked(report: report, restarts: restarts)
                 } catch {
-                    report.failure =
-                        report.lines.isEmpty
-                        ? error.localizedDescription
-                        : "Cleaning up stopped part way: \(error.localizedDescription)"
-                            + (report.archive.map {
-                                " Everything it changed is in \(Paths.display($0)); put it back "
-                                    + "with macarchy cleanup --restore \($0.lastPathComponent)."
-                            } ?? "")
+                    report.failure = failure(error, report: report)
                     return Locked(report: report, restarts: [])
                 }
             }
@@ -31,6 +24,23 @@ extension OldConfiguration {
         guard report.failure == nil else { return report }
         report.commands = await restart(outcome.restarts, integrations: integrations)
         return report
+    }
+
+    /// Why cleaning up stopped, saying when nothing had changed yet. Writing
+    /// the archive is the first step, and it changes none of the person's files.
+    static func failure(_ error: Error, report: Report) -> String {
+        let message = error.localizedDescription
+        let changes = report.lines.dropFirst(report.archive == nil ? 0 : 1)
+        guard !changes.isEmpty else {
+            return message.contains("Nothing was changed")
+                || message.contains("nothing was changed")
+                ? message : message + " Nothing was changed."
+        }
+        return "Cleaning up stopped part way: \(message)"
+            + (report.archive.map {
+                " Everything it changed is in \(Paths.display($0)); put it back "
+                    + "with macarchy cleanup --restore \($0.lastPathComponent)."
+            } ?? "")
     }
 
     /// What a step under the desktop lock did, and the daemons to restart
@@ -50,11 +60,7 @@ extension OldConfiguration {
             return []
         }
         let fm = FileManager.default
-        let archive = try await writeArchive(try manifest(for: plan))
-        report.archive = archive
-        report.lines.append(
-            "Archived everything below in \(Paths.display(archive)). Put it back with: "
-                + "macarchy cleanup --restore \(archive.lastPathComponent)")
+        let saved = try await archive(plan, into: &report)
         let changed = plan.rewrites.map(\.file).filter { fm.fileExists(atPath: $0.path) }
         if !changed.isEmpty {
             try SnapshotStore().capture(changed, reason: "before cleaning up old configuration")
@@ -62,7 +68,6 @@ extension OldConfiguration {
 
         try moveAndPoint(plan, into: &report.lines)
 
-        let backups = Backups()
         if plan.replacedLink != nil {
             try fm.removeItem(at: Paths.launcherDirectory)
             try fm.createDirectory(at: Paths.launcherDirectory, withIntermediateDirectories: true)
@@ -70,30 +75,61 @@ extension OldConfiguration {
                 "Replaced the link at \(Paths.display(Paths.launcherDirectory)) with a folder "
                     + "for Macarchy's launchers")
         }
-        for moved in plan.launchers {
-            guard let launcher = StartLauncher.all.first(where: { $0.daemon == moved.daemon })
-            else { continue }
-            report.lines += try launcher.place(at: launcher.newURL, backups: backups)
-            try fm.removeItem(at: moved.from)
-            report.lines.append("Deleted \(Paths.display(moved.from))")
-            if DaemonAgents.isInstalled(moved.daemon) {
-                try DaemonAgents.install(moved.daemon, backups: backups, report: &report.lines)
-            }
-        }
-
-        for move in plan.moves where exists(move.from) {
-            try fm.removeItem(at: move.from)
-        }
-        for item in plan.removals where exists(item.path) {
-            try fm.removeItem(at: item.path)
-            report.lines.append("Deleted \(Paths.display(item.path))")
-        }
+        try relocateAndDelete(plan, archived: saved.archived, into: &report.lines)
         let bar = OldConfiguration.folder("sketchybar")
         if plan.removals.contains(where: { $0.path.path == bar.path }) {
-            report.lines += try noteBarArchive(archive)
+            report.lines += try noteBarArchive(saved.url)
         }
         report.lines += plan.kept.map { "Left \(Paths.display($0.path)): \($0.reason)" }
         return plan.restarts
+    }
+
+    /// Writes the archive, says what it left out, and stops the helpers
+    /// still running from a folder that goes.
+    static func archive(_ plan: Plan, into report: inout Report) async throws -> Written {
+        let saved = try await writeArchive(try manifest(for: plan))
+        report.archive = saved.url
+        report.lines.append(
+            "Archived everything below in \(Paths.display(saved.url)). Put it back with: "
+                + "macarchy cleanup --restore \(saved.url.lastPathComponent)")
+        report.lines += saved.manifest.entries.filter { $0.action == .skipped }.map {
+            let url = Paths.home.appending(path: $0.path)
+            return
+                "Did not archive \(Paths.display(url)), a \(describeSpecial(url)) only a running "
+                + "program uses; it is deleted with its folder"
+        }
+        report.lines += stopHelpers(in: plan.removals.map(\.path).filter(isFolder))
+        return saved
+    }
+
+    /// Moves the launchers into the launcher folder, then deletes what the
+    /// archive holds of everything that goes. Anything that appeared since
+    /// archiving stays and is reported.
+    static func relocateAndDelete(
+        _ plan: Plan, archived: [String: Fingerprint], into lines: inout [String]
+    ) throws {
+        var left: [URL] = []
+        func delete(_ url: URL) throws -> Bool {
+            guard let key = homeRelative(url) else { return false }
+            return try deleteArchived(url, key: key, archived: archived, left: &left)
+        }
+        let backups = Backups()
+        for moved in plan.launchers {
+            guard let launcher = StartLauncher.all.first(where: { $0.daemon == moved.daemon })
+            else { continue }
+            lines += try launcher.place(at: launcher.newURL, backups: backups)
+            if try delete(moved.from) { lines.append("Deleted \(Paths.display(moved.from))") }
+            if DaemonAgents.isInstalled(moved.daemon) {
+                try DaemonAgents.install(moved.daemon, backups: backups, report: &lines)
+            }
+        }
+        for move in plan.moves where exists(move.from) { _ = try delete(move.from) }
+        for item in plan.removals where exists(item.path) {
+            if try delete(item.path) { lines.append("Deleted \(Paths.display(item.path))") }
+        }
+        lines += left.map {
+            "Left \(Paths.display($0)), which appeared after archiving, so it is not in the archive"
+        }
     }
 
     /// Moves the scripts, then points every file that names them at their new place.
@@ -101,7 +137,12 @@ extension OldConfiguration {
         let fm = FileManager.default
         for move in plan.moves {
             try fm.createDirectory(at: Paths.scriptsDirectory, withIntermediateDirectories: true)
-            try fm.copyItem(at: move.from, to: move.to)
+            var copied = Copied()
+            try copyTree(move.from, to: move.to, key: move.from.path, into: &copied)
+            lines += copied.skipped.map {
+                "Did not move \(Paths.display(URL(fileURLWithPath: $0))), a "
+                    + "\(describeSpecial(URL(fileURLWithPath: $0))) only a running program uses"
+            }
             for (relative, text) in move.texts.sorted(by: { $0.key < $1.key }) {
                 try write(text, to: relative.isEmpty ? move.to : move.to.appending(path: relative))
             }

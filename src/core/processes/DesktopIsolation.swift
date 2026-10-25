@@ -77,6 +77,16 @@ public enum DesktopIsolation {
             ? nil : "\(name) was not run: this run is isolated from the desktop"
     }
 
+    /// Why a process running `script` may not be signalled, or nil when it
+    /// may. An isolated run only signals what runs from its own home, so a
+    /// test process without `MACARCHY_HOME` cannot stop the person's programs.
+    static func signalRefusal(_ script: String) -> String? {
+        guard isActive else { return nil }
+        let home = ProcessInfo.processInfo.environment["MACARCHY_HOME"].map { [$0] } ?? []
+        return Paths.isolated && inside(script, roots: home)
+            ? nil : "this run is isolated from the desktop"
+    }
+
     /// Whether `path`, as given or with links resolved, is below one of
     /// `roots`. An empty root or the file system root counts as none, so a
     /// stray value cannot allow everything.

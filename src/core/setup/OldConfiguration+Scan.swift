@@ -32,11 +32,14 @@ extension OldConfiguration {
         case finderData
         /// Part of the bar SketchyBar ran before Macarchy's widget bar.
         case barFile
+        /// A named pipe, socket or device, which a running program made and
+        /// which cannot be archived.
+        case special(String)
         case unknown
 
         var removable: Bool {
             switch self {
-            case .startupFile, .backup, .empty, .finderData, .barFile: true
+            case .startupFile, .backup, .empty, .finderData, .barFile, .special: true
             case .launcher, .unknown: false
             }
         }
@@ -55,6 +58,8 @@ extension OldConfiguration {
             case .empty: "an empty folder"
             case .finderData: "Finder's folder settings"
             case .barFile: "part of the bar SketchyBar ran before; Macarchy's bar replaces it"
+            case .special(let kind):
+                "a \(kind) a running program made, which cannot be archived, so it is only deleted"
             case .unknown: "nothing Macarchy knows of runs it, so it may be yours to keep"
             }
         }
@@ -76,6 +81,7 @@ extension OldConfiguration {
             return .launcher
         }
         if name == ".DS_Store" { return .finderData }
+        if let special = specialKind(url) { return .special(special) }
         if name == "\(entry.folder)rc" { return .startupFile(generated: Setup.isGenerated(url)) }
         let lowered = name.lowercased()
         if backupMarkers.contains(where: { lowered.contains($0) }) || name.hasSuffix("~") {

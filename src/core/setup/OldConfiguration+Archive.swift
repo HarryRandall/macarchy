@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 
 /// The zip cleaning up writes before it changes anything, and putting it back.
@@ -10,6 +11,9 @@ extension OldConfiguration {
             case moved, removed, rewritten
             /// The launcher folder was a link to `link`.
             case link
+            /// A named pipe, socket or device, which is not in the archive
+            /// but was deleted with its folder.
+            case skipped
         }
 
         struct Entry: Codable, Equatable, Sendable {
@@ -39,8 +43,13 @@ extension OldConfiguration {
         return formatter.string(from: .now)
     }
 
+    /// A regular file's hash, through links. Nil for anything else: reading
+    /// a named pipe would wait for a writer.
     static func hash(of url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
+        var info = stat()
+        guard stat(url.path, &info) == 0, info.st_mode & S_IFMT == S_IFREG,
+            let data = try? Data(contentsOf: url)
+        else { return nil }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -89,26 +98,49 @@ extension OldConfiguration {
         return Manifest(created: stamp(), entries: entries, launchers: launchers)
     }
 
+    /// A written archive: where it is, the manifest it holds and what it
+    /// holds of each path, to delete only that.
+    struct Written: Sendable {
+        let url: URL
+        let manifest: Manifest
+        let archived: [String: Fingerprint]
+    }
+
     /// Copies everything the plan deletes or changes into one zip in
     /// `Paths.backupsDirectory`, checks the zip reads back, and returns it.
-    static func writeArchive(_ manifest: Manifest) async throws -> URL {
+    /// Special files are left out and recorded as skipped. ditto keeps
+    /// links, permissions and extended attributes, which zip drops.
+    static func writeArchive(_ planned: Manifest) async throws -> Written {
         let fm = FileManager.default
+        var manifest = planned
         let name = archivePrefix + manifest.created
         let work = fm.temporaryDirectory.appending(path: "macarchy-cleanup-\(UUID())")
         defer { try? fm.removeItem(at: work) }
         let staging = work.appending(path: name)
         let files = staging.appending(path: "files")
         try fm.createDirectory(at: files, withIntermediateDirectories: true)
+        var copied = Copied()
         // Folders first, so a file inside one that goes whole is not copied twice.
-        let copied = manifest.entries.filter { $0.action != .link }
+        let entries = manifest.entries.filter { $0.action != .link }
             .sorted { $0.path.split(separator: "/").count < $1.path.split(separator: "/").count }
-        for entry in copied {
+        for entry in entries {
             let source = Paths.home.appending(path: entry.path)
             let copy = files.appending(path: entry.path)
-            guard exists(source), !exists(copy) else { continue }
+            guard exists(source), copied.prints[entry.path] == nil else { continue }
             try fm.createDirectory(
                 at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try fm.copyItem(at: source, to: copy)
+            // A rewritten file is put back where its link leads, so the
+            // archive holds what the link leads to.
+            let read = entry.action == .rewritten ? written(source) : source
+            try copyTree(read, to: copy, key: entry.path, into: &copied)
+        }
+        let listed = Set(manifest.entries.map(\.path))
+        for index in manifest.entries.indices
+        where copied.skipped.contains(manifest.entries[index].path) {
+            manifest.entries[index].action = .skipped
+        }
+        manifest.entries += copied.skipped.filter { !listed.contains($0) }.map {
+            Manifest.Entry(path: $0, action: .skipped)
         }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
@@ -121,9 +153,10 @@ extension OldConfiguration {
             archive = Paths.backupsDirectory.appending(path: "\(name)-\(suffix).zip")
             suffix += 1
         }
-        // -y keeps links as links; zip keeps each file's permissions.
         let zipped = await CommandRunner.run(
-            "/usr/bin/zip", ["-r", "-y", "-q", archive.path, name], timeout: 120, directory: work)
+            "/usr/bin/ditto",
+            ["-c", "-k", "--sequesterRsrc", "--keepParent", staging.path, archive.path],
+            timeout: 120)
         let tested = await CommandRunner.run("/usr/bin/unzip", ["-t", "-q", archive.path])
         guard zipped.ok, tested.ok, exists(archive) else {
             try? fm.removeItem(at: archive)
@@ -131,7 +164,7 @@ extension OldConfiguration {
                 "Could not archive the old configuration, so nothing was changed: "
                     + (zipped.ok ? tested.summary : zipped.summary))
         }
-        return archive
+        return Written(url: archive, manifest: manifest, archived: copied.prints)
     }
 
     /// The archive a person names: a path, or a name in the backups folder.
@@ -161,8 +194,9 @@ extension OldConfiguration {
                 "There is no archive at \(Paths.display(archive)). Archives are in "
                     + "\(Paths.display(Paths.backupsDirectory)).")
         }
+        // ditto puts back the extended attributes it sequestered.
         let unzipped = await CommandRunner.run(
-            "/usr/bin/unzip", ["-q", archive.path, "-d", folder.path], timeout: 120)
+            "/usr/bin/ditto", ["-x", "-k", archive.path, folder.path], timeout: 120)
         let top = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
         guard unzipped.ok, let name = top.first(where: { $0.hasPrefix(archivePrefix) }) else {
             throw ConfigurationError(

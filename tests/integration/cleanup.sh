@@ -50,6 +50,12 @@ make_home() {
     sed -i '' -e "s#/opt/homebrew/bin/#$H/fake-bin/#g" -e "s#/usr/local/bin/#$H/fake-bin/#g" "$file"
   done
   ! grep -rlI '/opt/homebrew\|/usr/local/bin' "${own[@]}" || fail "a script still names Homebrew"
+  # The owner's bar helper keeps its readings in a named pipe, which cannot
+  # be archived, and a pid file; this pid names no running process.
+  # Made after the greps above, which would wait reading the pipe.
+  mkdir -p "$H/.config/sketchybar/.state"
+  mkfifo "$H/.config/sketchybar/.state/macmon-stream.4242.fifo"
+  echo 999999 > "$H/.config/sketchybar/.state/macmon-stream.pid"
   export HOME="$H" MACARCHY_HOME="$H" MACARCHY_SEARCH_PATH="$H/fake-bin" MACARCHY_APPLICATIONS="$H/Applications"
   mkdir -p "$MACARCHY_SEARCH_PATH"
   CALLS="$H/calls.log"
@@ -112,6 +118,9 @@ for folder, dirs, files in os.walk(home):
             print(rel, "link", os.readlink(path))
         elif stat.S_ISDIR(info.st_mode):
             print(rel, "folder", oct(info.st_mode & 0o777))
+        elif not stat.S_ISREG(info.st_mode):
+            # A named pipe is not archived; the program that made it makes it again.
+            continue
         else:
             print(rel, oct(info.st_mode & 0o777), hashlib.sha256(open(path, "rb").read()).hexdigest())
     dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(folder, d))]
@@ -182,6 +191,11 @@ apply
 ARCHIVE="$(sed -n 's/.*macarchy cleanup --restore \(old-configuration-[0-9-]*\.zip\)$/\1/p' <<<"$OUTPUT" | head -1)"
 [ -n "$ARCHIVE" ] && [ -f "$ROOT/backups/$ARCHIVE" ] || fail "no archive reported: $OUTPUT"
 grep -q 'manifest.json' <<<"$(unzip -l "$ROOT/backups/$ARCHIVE")" || fail "the archive has no manifest"
+grep -q 'Did not archive ~/.config/sketchybar/.state/macmon-stream.4242.fifo, a named pipe' <<<"$OUTPUT" \
+  || fail "cleanup does not say it left out the named pipe: $OUTPUT"
+unzip -p "$ROOT/backups/$ARCHIVE" "${ARCHIVE%.zip}/manifest.json" \
+  | grep -A1 '"action" : "skipped"' | grep -q 'macmon-stream.4242.fifo' \
+  || fail "the manifest does not record the named pipe as skipped"
 
 # Scripts moved with their names and permissions, and every shortcut and
 # moved script points at them.

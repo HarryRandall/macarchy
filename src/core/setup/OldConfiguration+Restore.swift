@@ -54,6 +54,10 @@ extension OldConfiguration {
         }
         try restoring.putBackLauncherFolder(into: &report.lines)
         try restoring.putBackFiles(into: &report.lines)
+        report.lines += restoring.entries(.skipped).map {
+            "Not in the archive: \(Paths.display(restoring.place($0))), which only a running program "
+                + "used; that program makes it again when it runs"
+        }
         try restoring.dropMovedCopies(into: &report.lines)
         if restoring.entries(.removed).contains(where: { $0.path == ".config/sketchybar" }) {
             try noteBarArchive(nil)
@@ -99,7 +103,7 @@ extension OldConfiguration {
             for entry in entries(.moved) + entries(.removed) where exists(place(entry)) {
                 let url = place(entry)
                 let same =
-                    !isFolder(url) && !isLink(url)
+                    fingerprint(url) == .file && fingerprint(copy(entry.path)) == .file
                     && fm.contentsEqual(atPath: url.path, andPath: copy(entry.path).path)
                 if !same { found.append(Paths.display(url)) }
             }
@@ -138,7 +142,7 @@ extension OldConfiguration {
                 .sorted {
                     $0.path.split(separator: "/").count < $1.path.split(separator: "/").count
                 }
-            for entry in restored where !exists(place(entry)) {
+            for entry in restored where !exists(place(entry)) && exists(copy(entry.path)) {
                 let url = place(entry)
                 try fm.createDirectory(
                     at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
