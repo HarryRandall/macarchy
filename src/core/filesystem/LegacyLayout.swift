@@ -280,7 +280,7 @@ public enum LegacyLayout {
 
     /// The relative path of everything under `folder` that is not a folder,
     /// links included. A linked folder, such as the app link, is never entered.
-    private static func files(in folder: URL) -> [String] {
+    static func files(in folder: URL) -> [String] {
         guard let walk = FileManager.default.enumerator(atPath: folder.path) else { return [] }
         var found: [String] = []
         while let relative = walk.nextObject() as? String {
@@ -288,9 +288,9 @@ public enum LegacyLayout {
             guard lstat(folder.appending(path: relative).path, &info) == 0 else { continue }
             switch info.st_mode & S_IFMT {
             case S_IFDIR: continue
-            case S_IFLNK:
-                walk.skipDescendants()
-                found.append(relative)
+            // The enumerator does not enter linked folders, and skipping
+            // descendants after a link skips the rest of its folder instead.
+            case S_IFLNK: found.append(relative)
             default: found.append(relative)
             }
         }

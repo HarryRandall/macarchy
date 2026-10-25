@@ -218,4 +218,23 @@ struct LegacyLayoutTests {
             to: snapshot.url.appending(path: ".meta.json"), atomically: true, encoding: .utf8)
         #expect(throws: SnapshotError.self) { try store.restore(snapshot) }
     }
+
+    @Test("every file is listed, including those after a link in the same folder")
+    func listsFilesAfterLinks() throws {
+        let fm = FileManager.default
+        let folder = fm.temporaryDirectory.appending(path: "macarchy-files-\(UUID())")
+        defer { try? fm.removeItem(at: folder) }
+        var expected: Set<String> = []
+        for index in 0..<12 {
+            let group = folder.appending(path: "g\(index)")
+            try fm.createDirectory(at: group.appending(path: "sub"), withIntermediateDirectories: true)
+            try fm.createSymbolicLink(
+                at: group.appending(path: "link"), withDestinationURL: fm.temporaryDirectory)
+            for name in ["a.txt", "sub/b.txt", "z.txt"] {
+                try Data("x".utf8).write(to: group.appending(path: name))
+            }
+            expected.formUnion(["link", "a.txt", "sub/b.txt", "z.txt"].map { "g\(index)/\($0)" })
+        }
+        #expect(Set(LegacyLayout.files(in: folder)) == expected)
+    }
 }
