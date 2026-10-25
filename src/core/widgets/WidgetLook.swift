@@ -42,9 +42,27 @@ public struct WidgetLook: Sendable {
         let muted = text.flatMap {
             $0.count == 10 && $0.hasPrefix("0x") ? "0x99" + $0.dropFirst(4) : nil
         }
-        return WidgetLook(
+        var look = WidgetLook(
             manifests: manifests, accent: theme?.colors.borderActive.map(Theme.argb), muted: muted,
             text: text)
+        if let command = isolatedCommand() { look.command = command }
+        return look
+    }
+
+    /// An isolated copy's clicks must reach its own CLI with its own home:
+    /// the installed CLI behind the app link reads the real home, and the
+    /// installed app ignores notices from other homes.
+    static func isolatedCommand(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        isolated: Bool = Paths.isolated,
+        executable: URL? = Bundle.main.executableURL
+    ) -> String? {
+        guard isolated, let folder = executable?.deletingLastPathComponent() else { return nil }
+        let cli = folder.appending(path: "macarchy")
+        let variables = ["MACARCHY_HOME", "MACARCHY_SEARCH_PATH"].compactMap { name in
+            environment[name].map { "\(name)=\(Shell.quote($0)) " }
+        }
+        return variables.joined() + Shell.quote(cli.path)
     }
 
     // MARK: - Items

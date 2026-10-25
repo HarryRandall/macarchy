@@ -10,10 +10,8 @@ func require(_ result: CommandResult) throws {
 
 /// Tells the running app something. An isolated run must not reach the
 /// installed app, which would act on the real desktop.
-func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any]? = nil) {
-    guard !DesktopIsolation.isActive else { return }
-    DistributedNotificationCenter.default().postNotificationName(
-        name, object: nil, userInfo: userInfo, deliverImmediately: true)
+func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any] = [:]) {
+    AppNotice.post(name, userInfo)
 }
 
 let usage = """

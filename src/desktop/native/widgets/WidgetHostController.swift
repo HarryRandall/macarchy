@@ -45,14 +45,18 @@ final class WidgetHostController {
         let token = DistributedNotificationCenter.default().addObserver(
             forName: WidgetActions.triggerNotification, object: nil, queue: .main
         ) { notification in
-            guard let event = notification.userInfo?["event"] as? String else { return }
+            guard AppNotice.isForThisCopy(notification),
+                let event = notification.userInfo?["event"] as? String
+            else { return }
             MainActor.assumeIsolated { WidgetHostController.shared.coalesce(event) }
         }
         observers.append((DistributedNotificationCenter.default(), token))
         let space = DistributedNotificationCenter.default().addObserver(
             forName: WidgetActions.spaceNotification, object: nil, queue: .main
         ) { notification in
-            guard let index = notification.userInfo?["space"] as? Int else { return }
+            guard AppNotice.isForThisCopy(notification),
+                let index = notification.userInfo?["space"] as? Int
+            else { return }
             MainActor.assumeIsolated { WidgetHostController.shared.going(to: index) }
         }
         observers.append((DistributedNotificationCenter.default(), space))

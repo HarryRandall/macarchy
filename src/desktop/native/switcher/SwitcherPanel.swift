@@ -50,7 +50,8 @@ final class ThemeSwitcher {
             hotKey = HotKey.themeSwitcher { [weak self] in self?.toggle() }
             DistributedNotificationCenter.default().addObserver(
                 forName: Self.openNotification, object: nil, queue: .main
-            ) { _ in
+            ) { notification in
+                guard AppNotice.isForThisCopy(notification) else { return }
                 MainActor.assumeIsolated { ThemeSwitcher.shared.toggle() }
             }
             Logger(subsystem: "io.github.harryrandall.macarchy", category: "switcher").notice(

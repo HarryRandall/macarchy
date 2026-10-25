@@ -44,6 +44,7 @@ final class WidgetMenuController {
             DistributedNotificationCenter.default().addObserver(
                 forName: WidgetActions.dropdownNotification, object: nil, queue: .main
             ) { notification in
+                guard AppNotice.isForThisCopy(notification) else { return }
                 let id = notification.userInfo?["instance"] as? String
                 MainActor.assumeIsolated {
                     if let id { WidgetMenuController.shared.toggle(id) }
