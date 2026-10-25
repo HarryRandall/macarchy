@@ -32,16 +32,23 @@ public struct BarConfigurationStore: Sendable {
     }
 
     public func save(_ configuration: BarConfiguration) throws {
-        try SettingsStore(url: documentURL).update { settings in
-            settings.barConfiguration = configuration
-            var values: [String: String] = [:]
-            for (key, value) in configuration.geometry {
-                if let name = StartupConfiguration.envName(forBarKey: key) { values[name] = value }
-            }
-            settings.mergeFlat(values)
-            settings.itemOrder = []
-            settings.itemVisibility = [:]
-            settings.itemLabels = [:]
+        try SettingsStore(url: documentURL).update { $0.setBar(configuration) }
+    }
+}
+
+extension SettingsDocument {
+    /// Saves the bar, with its geometry as the menu bar settings startup
+    /// reads, and drops edits addressed to the native items of bars from
+    /// before the Menu Bar page.
+    public mutating func setBar(_ configuration: BarConfiguration) {
+        barConfiguration = configuration
+        var values: [String: String] = [:]
+        for (key, value) in configuration.geometry {
+            if let name = StartupConfiguration.envName(forBarKey: key) { values[name] = value }
         }
+        mergeFlat(values)
+        itemOrder = []
+        itemVisibility = [:]
+        itemLabels = [:]
     }
 }

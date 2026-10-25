@@ -25,34 +25,13 @@ public enum Startup {
                 settings.floatingApps, customRules: settings.windowRules ?? [],
                 integrations: integrations)
         case "sketchybar":
-            if settings.bundledBar ?? true {
-                try require(await bundledBar(integrations: integrations))
-            }
-            // A person's own bar keeps its geometry unless they changed it
-            // in Macarchy; Macarchy's bar gets the defaults.
-            let bundled = settings.bundledBar ?? true
-            let arguments = StartupConfiguration.sketchybarKeys.compactMap { key in
-                (values[key.env] ?? (bundled ? key.fallback : nil)).map { "\(key.key)=\($0)" }
-            }
-            if !arguments.isEmpty {
-                try require(await integrations.sketchybar(["--bar"] + arguments))
-            }
-            for (name, visible) in settings.itemVisibility.sorted(by: { $0.key < $1.key }) {
-                try require(
-                    await integrations.sketchybar([
-                        "--set", name, "drawing=\(visible ? "on" : "off")"
-                    ]))
-            }
-            for (name, label) in settings.itemLabels.sorted(by: { $0.key < $1.key }) {
-                try require(await integrations.sketchybar(["--set", name, "label=\(label)"]))
-            }
-            for pair in zip(settings.itemOrder, settings.itemOrder.dropFirst()) {
-                try require(await integrations.sketchybar(["--move", pair.1, "after", pair.0]))
-            }
-            if let configuration = try BarConfigurationStore().load() {
-                try await BarCommands.replay(configuration, integrations: integrations)
-                await fillWidgets(configuration, integrations: integrations)
-            }
+            try require(
+                await integrations.sketchybar(
+                    BarLook.arguments(
+                        values: values, colours: .theme(settings.currentTheme))))
+            let configuration = try bar(settings)
+            try await BarCommands.replay(configuration, integrations: integrations)
+            await fillWidgets(configuration, integrations: integrations)
         case "borders":
             let theme = settings.currentTheme.flatMap {
                 Theme.load(from: Paths.themesDirectory.appending(path: $0))
@@ -119,7 +98,7 @@ public enum Startup {
         // still report the previous Space's window, and focusing it would switch
         // back and undo the choice. The Space change handler below fills focus in
         // then. yabai also reports the final Space a moment after the animation,
-        // so the bar looks again.
+        // so the Spaces widget looks again.
         let reassert =
             "space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
             + " window=$(\(yabai) -m query --windows --window 2>/dev/null);"
@@ -128,8 +107,7 @@ public enum Startup {
             + " elif [ \"$(printf '%s\\n' \"$window\" | \(field("space")))\" = \"$space\" ]; then"
             + " \(yabai) -m window --focus \"$id\" >/dev/null 2>&1; fi"
         let missionControl =
-            "sleep 0.25; \(reassert); \(Shell.quote(Paths.sketchybar))"
-            + " --trigger macarchy_spaces_changed >/dev/null 2>&1"
+            "sleep 0.25; \(reassert); \(cli) widget trigger space_changed >/dev/null 2>&1"
         // Arriving on a Space, yabai first still reports the previous Space's
         // window as focused; a moment later macOS activates Finder or another
         // app with no window here, and no border is drawn. So wait for it to
@@ -151,18 +129,13 @@ public enum Startup {
         }
     }
 
-    /// Builds the bar shipped with the app. The scripts are addressed through
-    /// the app link so the items keep working when the app is updated in place.
-    static func bundledBar(integrations: Integrations) async -> CommandResult {
-        let stable = Paths.appLink.appending(path: "Contents/Resources/sketchybar")
-        let directory =
-            FileManager.default.fileExists(atPath: stable.path)
-            ? stable : Paths.resources?.appending(path: "sketchybar")
-        guard let directory else {
-            return CommandResult(
-                command: "menu bar", status: 1,
-                stderr: "The bundled menu bar is missing. Reinstall Macarchy.")
-        }
-        return await integrations.execute("/bin/bash", [directory.appending(path: "bar.sh").path])
+    /// The bar to start. Until setup moves an earlier bar onto widgets, a
+    /// person's own bar still builds its items and hides them as saved,
+    /// while Macarchy's earlier bar, whose scripts are gone, shows the
+    /// widgets it is about to move onto.
+    static func bar(_ settings: SettingsDocument) throws -> BarConfiguration {
+        let saved = try BarConfigurationStore().load()
+        guard settings.barBeforeWidgets == true else { return saved ?? .widgetDefault }
+        return WidgetMigration.moveBar(saved).configuration
     }
 }

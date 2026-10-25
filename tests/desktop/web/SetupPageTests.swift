@@ -15,6 +15,9 @@ func withSetupResources(_ harness: Harness, _ body: () async throws -> Void) asy
     try fm.copyItem(
         at: repository.appending(path: "resources/integrations/skhd"),
         to: resources.appending(path: "skhd"))
+    try fm.copyItem(
+        at: repository.appending(path: "resources/widgets"),
+        to: resources.appending(path: "widgets"))
     setenv("MACARCHY_RESOURCES", resources.path, 1)
     defer {
         if let previous {

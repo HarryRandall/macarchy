@@ -31,12 +31,22 @@ public struct WidgetLook: Sendable {
     public static func current(
         catalogue: WidgetCatalogue = WidgetCatalogue(), store: SettingsStore = SettingsStore()
     ) -> WidgetLook {
-        let manifests = Dictionary(
-            catalogue.read().entries.map { ($0.id, $0.manifest) },
-            uniquingKeysWith: { first, _ in first })
         let theme = (try? store.read())?.currentTheme.flatMap {
             Theme.load(from: Paths.themesDirectory.appending(path: $0))
         }
+        return current(catalogue: catalogue, theme: theme)
+    }
+
+    /// The widgets on this Mac in `theme`'s colours, as while a theme is
+    /// being applied and before settings name it.
+    public static func current(
+        catalogue: WidgetCatalogue = WidgetCatalogue(), theme: Theme?
+    )
+        -> WidgetLook
+    {
+        let manifests = Dictionary(
+            catalogue.read().entries.map { ($0.id, $0.manifest) },
+            uniquingKeysWith: { first, _ in first })
         // SketchyBar reads 0xAARRGGBB only; a theme may spell #rrggbb.
         let text = theme?.colors.sketchybarText.map(Theme.argb)
         let muted = text.flatMap {

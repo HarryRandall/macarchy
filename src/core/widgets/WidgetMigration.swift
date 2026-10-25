@@ -2,15 +2,20 @@ import Foundation
 
 /// Moves a bar saved before widgets onto them.
 ///
-/// The bar's own clock, CPU and battery items become instances of the
-/// built-in widgets, keeping their place and colours. Command items become
-/// widgets of their own in `Paths.widgetsDirectory`, whose provider runs the
-/// same command, so there is one way to run a script and it carries the
-/// Script badge. Text items, spacers and items without a widget yet stay as
-/// they are.
+/// The bar's own Spaces, network, memory, GPU, CPU, battery and clock items
+/// become instances of the built-in widgets, keeping their place and colours,
+/// whether Macarchy's earlier bar or a person's own made them. Command items
+/// become widgets of their own in `Paths.widgetsDirectory`, whose provider
+/// runs the same command, so there is one way to run a script and it carries
+/// the Script badge. Text items, spacers and items without a widget stay as
+/// they are; `moveBar` decides what happens to those.
 public enum WidgetMigration {
-    /// Native bar items and the built-in widget that replaces each.
-    public static let replacements = ["calendar": "clock", "cpu": "cpu", "battery": "battery"]
+    /// Native bar items and the built-in widget that replaces each. `ram`
+    /// and `network` are the names the owner's own bar used.
+    public static let replacements = [
+        "workspaces": "spaces", "network": "network", "memory": "memory", "ram": "memory",
+        "gpu": "gpu", "cpu": "cpu", "battery": "battery", "calendar": "clock"
+    ]
 
     /// A widget folder the migration needs written before the bar can use it.
     public struct NewWidget: Equatable, Sendable {

@@ -9,16 +9,21 @@ extension Setup {
     /// The person's lines from an earlier version's startup file: its keep
     /// regions, `yours` first, with paths into the old folder rewritten.
     static func carriedRegion(from source: URL, report: inout [String]) async throws -> String {
+        let body = try regions(of: source)
+        guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
+        report.append("Carried your own commands over from \(Paths.display(source))")
+        return await pointingAtNewFolder(body, in: source, report: &report)
+    }
+
+    /// The keep regions of a startup file as written, `yours` first.
+    static func regions(of source: URL) throws -> String {
         let text = try String(contentsOf: source, encoding: .utf8)
         let regions = GeneratedFile.preservedRegions(in: text)
         let names =
             [StartupConfiguration.yoursRegion].filter { regions[$0] != nil }
             + regions.keys.filter { $0 != StartupConfiguration.yoursRegion }.sorted()
-        let body = StartupConfiguration.tidy(
+        return StartupConfiguration.tidy(
             names.compactMap { regions[$0] }.joined(separator: "\n").components(separatedBy: "\n"))
-        guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
-        report.append("Carried your own commands over from \(Paths.display(source))")
-        return await pointingAtNewFolder(body, in: source, report: &report)
     }
 
     /// `text` with paths into `~/.config/macarchy` pointed at the new folder,

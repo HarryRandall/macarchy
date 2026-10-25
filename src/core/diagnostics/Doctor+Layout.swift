@@ -27,6 +27,13 @@ extension Doctor {
                     "Set up before Macarchy moved to Application Support",
                     fix: "Open Macarchy to set it up again", command: setupCommand))
         }
+        if Setup.barNeedsMoving {
+            results.append(
+                HealthCheck(
+                    .configuration, "Menu bar", .warning,
+                    "Set up before the bar showed widgets; setup moves it onto them",
+                    fix: "Open Macarchy to set it up again", command: setupCommand))
+        }
         if let note = LegacyLayout.note {
             results.append(
                 HealthCheck(

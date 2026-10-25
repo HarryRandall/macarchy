@@ -17,7 +17,7 @@ struct StartupSignalsTests {
             ])
         let missionControl = Startup.signals.first { $0.contains("event=mission_control_exit") }
         #expect(missionControl?.last?.contains("--focus \"$id\"") == true)
-        #expect(missionControl?.last?.contains("macarchy_spaces_changed") == true)
+        #expect(missionControl?.last?.contains("widget trigger space_changed") == true)
     }
 
     /// Runs the Mission Control action against a fake yabai that reports the
@@ -48,7 +48,10 @@ struct StartupSignalsTests {
             Startup.signals.first { $0.contains("event=mission_control_exit") }?.last)
         let script = String(action.dropFirst("action=".count))
             .replacingOccurrences(of: Shell.quote(Paths.yabai), with: Shell.quote(fake.path))
-            .replacingOccurrences(of: Shell.quote(Paths.sketchybar), with: "true")
+            .replacingOccurrences(
+                of: Shell.quote(Paths.appLink.appending(path: "Contents/MacOS/macarchy").path),
+                with: "true"
+            )
             .replacingOccurrences(of: "sleep 0.25", with: "true")
         let result = await CommandRunner.run("/bin/sh", ["-c", script])
         #expect(result.ok, "\(result.stderr)")

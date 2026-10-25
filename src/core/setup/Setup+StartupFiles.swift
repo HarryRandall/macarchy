@@ -84,40 +84,6 @@ extension Setup {
         return (try await carriedRegion(from: source, report: &lines), lines)
     }
 
-    /// The sketchybarrc region. An earlier version's region carries over and
-    /// its `bundledBar` setting still says whose bar runs; only a missing one
-    /// means Macarchy's. A hand-built bar kept with `keep` replaces
-    /// Macarchy's. The region is nil once the file is Macarchy's.
-    static func barRegion(
-        existing: Existing, settings: SettingsStore, updateSettings: SettingsEdit
-    ) async throws -> BarRegion {
-        guard !isGenerated(StartupConfiguration.sketchybarrc.url) else {
-            return BarRegion(region: nil, lines: [])
-        }
-        var lines: [String] = []
-        if let source = sketchybarSource, isGenerated(source) {
-            let region = try await carriedRegion(from: source, report: &lines)
-            let bundled = try settings.read().bundledBar
-            switch bundled {
-            case nil: try updateSettings { $0.bundledBar = true }
-            case false?: lines.append("Kept your menu bar")
-            case true?: break
-            }
-            return BarRegion(region: region, lines: lines)
-        }
-        guard existing == .keep, let source = sketchybarSource, let text = adoptable(source)
-        else {
-            try updateSettings { $0.bundledBar = true }
-            return BarRegion(region: "", lines: [])
-        }
-        let bar = StartupConfiguration.tidy(
-            text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
-        let kept = await pointingAtNewFolder(bar, in: source, report: &lines)
-        try updateSettings { $0.bundledBar = false }
-        lines.append("Kept your menu bar")
-        return BarRegion(region: kept, lines: lines)
-    }
-
     /// The launchers that installed daemons start from (`StartLauncher`).
     static var launchers: [StartLauncher] {
         StartLauncher.all.filter { Paths.isInstalled($0.daemon.executableName) }

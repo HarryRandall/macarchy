@@ -132,7 +132,7 @@ public struct ThemeApplication: Sendable {
             }
             if Paths.isInstalled("sketchybar"), await integrations.state(of: .sketchybar).isRunning
             {
-                let result = await recolourBar(bundled: settings.bundledBar ?? true)
+                let result = await recolourBar(theme: theme, colours: BarLook.Colours(outputs))
                 guard result.ok else { return partial(result) }
             } else {
                 skipped.append("menu bar")
@@ -168,19 +168,23 @@ public struct ThemeApplication: Sendable {
             skipped: stopped + colours.map { ghosttyColourPrefix + $0 })
     }
 
-    /// Macarchy's bar is recoloured in place. A person's own bar is told
-    /// instead, through an event its items can subscribe to.
-    private func recolourBar(bundled: Bool) async -> CommandResult {
-        guard bundled else {
-            // A bar that never registered the event is not an error.
-            _ = await integrations.sketchybar(["--trigger", "macarchy_theme_changed"])
+    /// Repaints the bar and its widgets in place: rebuilding would tear
+    /// every item down and visibly paint the bar back in. The text of each
+    /// widget goes to the theme's, then each widget's own colours go back
+    /// on; the app's widget host picks the theme up when settings change.
+    private func recolourBar(theme: Theme, colours: BarLook.Colours) async -> CommandResult {
+        do {
+            let look = WidgetLook.current(theme: theme)
+            let configuration = look.normalised(try Startup.bar(try SettingsStore().read()))
+            let existing = await BarCommands.items(integrations: integrations)
+            let result = await integrations.sketchybar(
+                BarLook.recolour(configuration, colours: colours, existing: existing))
+            guard result.ok else { return result }
+            try await BarCommands.replay(configuration, integrations: integrations, widgets: look)
             return CommandResult(command: "menu bar", status: 0)
+        } catch {
+            return CommandResult(command: "menu bar", status: 1, stderr: error.localizedDescription)
         }
-        guard let script = Paths.resources?.appending(path: "sketchybar/recolor.sh") else {
-            return CommandResult(
-                command: "menu bar", status: 1, stderr: "The bundled menu bar is missing.")
-        }
-        return await integrations.execute(script.path, [])
     }
 
     static func write(_ text: String, to url: URL) throws {

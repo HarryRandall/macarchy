@@ -7,17 +7,15 @@ extension Setup {
         public var errorDescription: String? { reason }
     }
 
-    /// Startup files kept with `--keep` are carried into a bash script, so a
-    /// file written for another interpreter, such as an SbarLua sketchybarrc,
-    /// or one bash cannot parse would start a broken daemon. Setup stops
+    /// A yabairc kept with `--keep` is carried into a bash script, so a file
+    /// written for another interpreter, such as zsh, or one bash cannot
+    /// parse would start a broken daemon. Setup stops
     /// before changing anything and says what to do instead.
     static func checkKeepable() async throws {
         // Only a config setup would carry over: one whose Macarchy copy has
         // not been generated yet.
-        let candidates = [
-            (StartupConfiguration.yabairc.url, yabaiSource),
-            (StartupConfiguration.sketchybarrc.url, sketchybarSource)
-        ]
+        // The bar is always Macarchy's widgets, so a sketchybarrc is never kept.
+        let candidates = [(StartupConfiguration.yabairc.url, yabaiSource)]
         for case (let target, let url?) in candidates where !isGenerated(target) {
             guard let text = adoptable(url) else { continue }
             let name = Paths.display(url)
