@@ -90,6 +90,13 @@ export function Footer({
   );
 }
 
+/**
+ * The selected row's wash. A tenth of white is its only sign, which Increase
+ * Contrast asks to be stronger and drawn as an edge too.
+ */
+export const selectedEdge =
+  "bg-white/10 contrast-more:bg-white/20 contrast-more:outline contrast-more:-outline-offset-1 contrast-more:outline-white/70";
+
 /** One list row: icon, title, and right-aligned accessories. */
 export function SwitcherRow({
   selected,
@@ -111,7 +118,10 @@ export function SwitcherRow({
       {...keepSearchFocus}
       className={cn(
         "flex h-[38px] shrink-0 items-center gap-2.5 rounded-control px-2 text-[14px] font-medium text-fg",
-        selected && "bg-white/10",
+        // Selection moves at once, as the keyboard expects; only the pointer's
+        // lighter wash eases, drawn beneath the row's content.
+        "relative isolate before:absolute before:inset-0 before:-z-10 before:rounded-control before:bg-white/5 before:opacity-0 before:transition-opacity before:ease-hover hover:not-aria-selected:before:opacity-100",
+        selected && selectedEdge,
       )}
       {...props}
     >

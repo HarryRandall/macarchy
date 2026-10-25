@@ -69,6 +69,7 @@ function Tile({
   onUse: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   return (
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- reached through the search field's aria-activedescendant; the field keeps focus and handles the keys.
     <div
@@ -89,8 +90,12 @@ function Tile({
             draggable={false}
             loading="lazy"
             decoding="async"
+            onLoad={() => setLoaded(true)}
             onError={() => setFailed(true)}
-            className="absolute inset-0 size-full object-cover"
+            className={cn(
+              "absolute inset-0 size-full object-cover transition-opacity ease-hover",
+              !loaded && "opacity-0",
+            )}
           />
         )}
         <div

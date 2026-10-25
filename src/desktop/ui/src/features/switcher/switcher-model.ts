@@ -62,6 +62,11 @@ export function activeTheme(data: SwitcherState): ThemeSummary | undefined {
   return data.themes.find((theme) => theme.name === data.current) ?? data.themes[0];
 }
 
+/** "1 option", "3 options". */
+export function plural(amount: number, noun: string): string {
+  return `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+}
+
 export function findTheme(data: SwitcherState, name: string | null): ThemeSummary | undefined {
   return name === null ? undefined : data.themes.find((theme) => theme.name === name);
 }

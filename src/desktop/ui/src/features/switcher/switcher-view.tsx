@@ -11,6 +11,7 @@ import {
   actionItems,
   activeTheme,
   buildRows,
+  plural,
   findTheme,
   primaryTitle,
   type Row,
@@ -125,7 +126,9 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
           icon={<LayoutGrid aria-hidden className="size-[17px]" strokeWidth={2.25} />}
           title="Switch Background"
           accessories={
-            <span className="text-fg-secondary">{active?.backgrounds.length ?? 0} options</span>
+            <span className="text-fg-secondary">
+              {plural(active?.backgrounds.length ?? 0, "option")}
+            </span>
           }
         />
       );
@@ -159,7 +162,10 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
               strokeWidth={2}
             />
             {theme.backgrounds.length > 0 ? (
-              <span className="text-fg-secondary">{theme.backgrounds.length} bg</span>
+              <span className="text-fg-secondary">
+                <span aria-hidden>{theme.backgrounds.length} bg</span>
+                <span className="sr-only">{plural(theme.backgrounds.length, "background")}</span>
+              </span>
             ) : null}
           </>
         }
@@ -219,23 +225,27 @@ export function SwitcherView({ store }: { store: SwitcherStore }) {
             }}
           />
         ) : (
-          <div className="relative flex min-w-0 flex-1">
-            <div
-              id={LIST_ID}
-              role="listbox"
-              aria-label="Themes"
-              data-scroll-reset
-              className="flex w-[340px] shrink-0 flex-col gap-0.5 overflow-y-auto p-2"
-            >
-              {rows.map(renderRow)}
+          <div className="flex min-w-0 flex-1">
+            <div className="relative flex w-[340px] shrink-0">
+              <div
+                id={LIST_ID}
+                role="listbox"
+                aria-label="Themes"
+                data-scroll-reset
+                className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+              >
+                {rows.map(renderRow)}
+              </div>
+              {/* Over the list it empties: centred across both panes it sat on
+                  the preview's wallpaper, where it could not be read. */}
+              {rows.length === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-[13px] text-fg-secondary">
+                  {emptyMessage}
+                </div>
+              ) : null}
             </div>
             <Divider vertical />
             <SwitcherPreview theme={previewTheme} details={row?.kind !== "backgrounds"} />
-            {rows.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-[13px] text-fg-secondary">
-                {emptyMessage}
-              </div>
-            ) : null}
           </div>
         )}
       </div>

@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import type { ThemeSummary } from "~/bridge/protocol";
+import { cn } from "~/lib/cn";
 
 import { backgroundName } from "./switcher-model";
 
@@ -16,21 +19,72 @@ export function SwitcherPreview({
         className="relative flex aspect-video w-full shrink-0 items-center justify-center overflow-hidden rounded-small"
         style={{ backgroundColor: theme?.colours?.background ?? "#000" }}
       >
-        {theme?.preview ? (
-          <img
-            key={theme.preview}
-            src={theme.preview}
-            alt=""
-            draggable={false}
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : theme && !theme.currentBackground ? (
-          <span className="text-[12px] text-fg-secondary">No wallpaper in this theme</span>
+        <Wallpaper src={theme?.preview ?? null} />
+        {theme && !theme.preview && !theme.currentBackground ? (
+          // On the theme's own terminal ground, not the panel's, so in the
+          // theme's text colour: the panel's secondary ink vanished on a light one.
+          <span
+            className="relative text-[12px]"
+            style={{
+              color: `color-mix(in srgb, ${theme.colours?.foreground ?? "#fff"} 70%, transparent)`,
+            }}
+          >
+            No wallpaper in this theme
+          </span>
         ) : null}
       </div>
       {details && theme ? <Details theme={theme} /> : null}
     </div>
   );
+}
+
+interface Layers {
+  /** The wallpaper the shown one replaced, kept under it while it fades in. */
+  below: string | null;
+  shown: string | null;
+  /** A wallpaper that would not load, so it is not waited for again. */
+  failed: string | null;
+}
+
+/**
+ * Keeps the wallpaper on show until the next has loaded, then fades the new
+ * one in over it, so arrowing through themes never flashes the palette ground
+ * between wallpapers.
+ */
+function Wallpaper({ src }: { src: string | null }) {
+  const [layers, setLayers] = useState<Layers>({ below: null, shown: src, failed: null });
+  // Adjusted while rendering, as React suggests for state derived from props.
+  if (src === null && (layers.shown !== null || layers.below !== null)) {
+    setLayers({ below: null, shown: null, failed: null });
+  } else if (src !== null && src === layers.below) {
+    // Back to the one underneath, which has already loaded.
+    setLayers({ below: layers.shown, shown: src, failed: null });
+  }
+  const pending = src !== null && src !== layers.shown && src !== layers.failed ? src : null;
+  const urls = [layers.below, layers.shown, pending].filter(
+    (url, index, all): url is string => url !== null && all.indexOf(url) === index,
+  );
+  return urls.map((url) => (
+    <img
+      key={url}
+      src={url}
+      alt=""
+      draggable={false}
+      decoding="async"
+      onLoad={
+        url === pending
+          ? () => setLayers((now) => ({ below: now.shown, shown: url, failed: null }))
+          : undefined
+      }
+      onError={
+        url === pending ? () => setLayers({ below: null, shown: null, failed: url }) : undefined
+      }
+      className={cn(
+        "absolute inset-0 size-full object-cover transition-opacity ease-hover",
+        url === pending && "opacity-0",
+      )}
+    />
+  ));
 }
 
 function Details({ theme }: { theme: ThemeSummary }) {
@@ -57,8 +111,9 @@ function Details({ theme }: { theme: ThemeSummary }) {
           style={{ backgroundColor: theme.ring }}
         />
       </div>
+      {/* A sample of the palette, which is noise when read aloud. */}
       {colours ? (
-        <div className="flex items-center gap-1.5 py-1 font-mono text-[11px]">
+        <div aria-hidden className="flex items-center gap-1.5 py-1 font-mono text-[11px]">
           <span className="mr-auto text-fg-secondary">ls -la</span>
           <Tag colour={colours.blue}>dir/</Tag>
           <Tag colour={colours.cyan}>link@</Tag>

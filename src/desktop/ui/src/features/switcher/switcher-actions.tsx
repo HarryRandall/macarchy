@@ -3,7 +3,7 @@ import { CornerDownLeft, Images, RotateCw, Settings } from "lucide-react";
 import { KbdGroup } from "~/components/ui/kbd";
 import { cn } from "~/lib/cn";
 
-import { keepSearchFocus } from "./switcher-chrome";
+import { keepSearchFocus, selectedEdge } from "./switcher-chrome";
 import type { ActionItem, Command } from "./switcher-model";
 
 const icons: Record<Command, typeof CornerDownLeft> = {
@@ -57,7 +57,7 @@ export function SwitcherActions({
             {...keepSearchFocus}
             className={cn(
               "flex h-[30px] items-center gap-2.5 rounded-small px-2 text-[13px] text-fg",
-              index === highlighted && "bg-white/10",
+              index === highlighted && selectedEdge,
             )}
           >
             <Icon aria-hidden className="w-[18px] shrink-0" size={14} strokeWidth={2} />

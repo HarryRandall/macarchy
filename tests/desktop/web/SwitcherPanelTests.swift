@@ -73,5 +73,79 @@ extension WebInterfaceTests {
                 #expect(await harness.desktop.writes.isEmpty)
             }
         }
+
+        @Test("counts, the palette sample and the empty list read well")
+        func readable() async throws {
+            try await withHarness { harness in
+                try harness.addBackground(theme: "lumon", name: "1-office.png", red: 0.1)
+                harness.model.themes.reload()
+                let (switcher, surface) = try harness.switcherPage(recorder: ThemeRecorder())
+                defer { withExtendedLifetime(switcher) {} }
+                try await waitFor(surface, "the theme list", "return page.rows().length === 9;")
+                await surface.deliver(.switcherWillOpen(harness.model.switcherState()))
+                try await waitFor(
+                    surface, "singular counts, read in full",
+                    """
+                    const [backgrounds] = page.rows();
+                    const lumon = page.activeRow();
+                    const short = [...lumon.querySelectorAll("[aria-hidden=true]")]
+                      .find((span) => span.textContent === "1 bg");
+                    return backgrounds.innerText.includes("1 option")
+                      && !!short && lumon.textContent.includes("1 background");
+                    """)
+                try await waitFor(
+                    surface, "the palette sample hidden from VoiceOver",
+                    """
+                    return [...document.querySelectorAll("[aria-hidden=true]")]
+                      .some((element) => element.textContent.startsWith("ls -la"));
+                    """)
+                try await run(surface, #"page.setValue(page.search(), "zzz");"#)
+                try await waitFor(
+                    surface, "the empty message over the list, not the preview",
+                    """
+                    const list = document.querySelector('[role=listbox][aria-label="Themes"]');
+                    const message = [...list.parentElement.children]
+                      .find((child) => child.textContent === "No matching themes");
+                    return page.rows().length === 0 && !!message
+                      && message.getBoundingClientRect().right <= list.getBoundingClientRect().right;
+                    """)
+            }
+        }
+
+        @Test("the preview keeps the last wallpaper until the next has loaded")
+        func keepsWallpaper() async throws {
+            try await withHarness { harness in
+                try harness.addBackground(theme: "lumon", name: "1-office.png", red: 0.1)
+                try harness.addBackground(theme: "carbonfox", name: "1-ember.png", red: 0.5)
+                harness.model.themes.reload()
+                let (switcher, surface) = try harness.switcherPage(recorder: ThemeRecorder())
+                defer { withExtendedLifetime(switcher) {} }
+                try await waitFor(surface, "the theme list", "return page.rows().length === 9;")
+                await surface.deliver(.switcherWillOpen(harness.model.switcherState()))
+                let wallpapers = "[...document.querySelectorAll('.aspect-video img')]"
+                try await waitFor(
+                    surface, "the Lumon wallpaper",
+                    "return \(wallpapers).some((img) => img.src.includes('/theme/lumon/'));")
+
+                try await run(surface, #"page.setValue(page.search(), "carbon");"#)
+                try await waitFor(
+                    surface, "Carbonfox's wallpaper loaded over Lumon's",
+                    """
+                    const images = \(wallpapers);
+                    const top = images.at(-1);
+                    return images.length === 2 && images[0].src.includes("/theme/lumon/")
+                      && top.src.includes("/theme/carbonfox/") && top.complete
+                      && !top.classList.contains("opacity-0");
+                    """)
+
+                try await run(surface, #"page.setValue(page.search(), "midnight");"#)
+                try await waitFor(
+                    surface, "no wallpaper for a theme without one",
+                    """
+                    return \(wallpapers).length === 0
+                      && page.text().includes("No wallpaper in this theme");
+                    """)
+            }
+        }
     }
 }

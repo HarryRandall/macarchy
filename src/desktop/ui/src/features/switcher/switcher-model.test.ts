@@ -7,6 +7,7 @@ import {
   backgroundName,
   buildRows,
   initialModel,
+  plural,
   primaryAction,
   primaryTitle,
   rowKey,
@@ -326,5 +327,13 @@ describe("backgroundName", () => {
   it("drops the ordering prefix and extension and capitalises words", () => {
     expect(backgroundName("backgrounds/2-hand-of-adam.png")).toBe("Hand Of Adam");
     expect(backgroundName("wallpaper_dark.jpg")).toBe("Wallpaper Dark");
+  });
+});
+
+describe("plural", () => {
+  it("says one without an s", () => {
+    expect(plural(1, "option")).toBe("1 option");
+    expect(plural(0, "option")).toBe("0 options");
+    expect(plural(3, "background")).toBe("3 backgrounds");
   });
 });
