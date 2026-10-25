@@ -263,11 +263,18 @@ grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replace c
 # bar scripts are refused (see DesktopIsolation), so the real desktop is left
 # alone even though nothing here is a dry run.
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
+# It keeps a list of loaded jobs, so a job reads as loaded only between its
+# bootstrap and bootout, as with launchd.
+LOADED="$HOME_DIR/loaded.log"
 cat > "$MACARCHY_SEARCH_PATH/launchctl" <<SH
 #!/bin/sh
 printf '%s\n' "launchctl \$*" >>'$CALLS'
+touch '$LOADED'
 case "\$1" in
-  print) printf 'state = running\npid = 4242\n' ;;
+  print) grep -qx "\${2##*/}" '$LOADED' || exit 113
+    printf 'state = running\npid = 4242\n' ;;
+  bootstrap) basename "\$3" .plist >>'$LOADED' ;;
+  bootout) grep -vx "\${2##*/}" '$LOADED' >'$LOADED.next'; mv '$LOADED.next' '$LOADED' ;;
 esac
 SH
 chmod +x "$MACARCHY_SEARCH_PATH/launchctl"

@@ -195,6 +195,15 @@ public enum Doctor {
         }
         results += await startupFileChecks(integrations: integrations)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+            if DaemonAgents.isSetAside(daemon) {
+                results.append(
+                    HealthCheck(
+                        .configuration, "\(daemon.displayName) agent", .failed,
+                        "Macarchy's agent did not stay running, so the installer's starts it",
+                        fix: "Use Restart all once the cause is fixed",
+                        command: "\(Paths.cliInShell) services"))
+                continue
+            }
             let agent = fm.fileExists(atPath: DaemonAgents.plist(daemon).path)
             results.append(
                 HealthCheck(

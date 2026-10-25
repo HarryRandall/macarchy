@@ -327,7 +327,7 @@ extension Setup {
     public static func startService(
         _ daemon: Daemon, integrations: Integrations = Integrations()
     ) async -> CommandResult {
-        guard FileManager.default.fileExists(atPath: DaemonAgents.plist(daemon).path) else {
+        guard DaemonAgents.isInstalled(daemon) else {
             return CommandResult(
                 command: daemon.startCommand, status: 1,
                 stderr: "Run setup so Macarchy can start \(daemon.displayName)")
