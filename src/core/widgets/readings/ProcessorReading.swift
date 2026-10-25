@@ -72,30 +72,3 @@ struct ProcessorInfo: Equatable, Sendable {
         return Int(value)
     }
 }
-
-/// How busy the GPU is, 0 to 100, as Activity Monitor's GPU History reads it.
-enum GPUUsage {
-    static func read() -> Double? {
-        var iterator: io_iterator_t = 0
-        guard
-            IOServiceGetMatchingServices(
-                kIOMainPortDefault, IOServiceMatching("IOAccelerator"), &iterator)
-                == KERN_SUCCESS
-        else { return nil }
-        defer { IOObjectRelease(iterator) }
-        var busiest: Double?
-        while case let service = IOIteratorNext(iterator), service != 0 {
-            defer { IOObjectRelease(service) }
-            var properties: Unmanaged<CFMutableDictionary>?
-            guard
-                IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0)
-                    == KERN_SUCCESS,
-                let dictionary = properties?.takeRetainedValue() as? [String: Any],
-                let statistics = dictionary["PerformanceStatistics"] as? [String: Any],
-                let usage = statistics["Device Utilization %"] as? NSNumber
-            else { continue }
-            busiest = max(busiest ?? 0, usage.doubleValue)
-        }
-        return busiest.map { min(100, $0) }
-    }
-}

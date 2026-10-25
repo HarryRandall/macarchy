@@ -38,6 +38,9 @@ export type WidgetRowType =
   | "toggle"
   | "choice"
   | "graph"
+  | "mirror"
+  | "map"
+  | "status"
   | "cores"
   | "apps"
   | "divider";
@@ -58,10 +61,17 @@ export interface WidgetMenuRow {
   icons?: string[];
   /** For a graph: the reading drawn large in its corner, which makes it a card. */
   current?: string;
-  /** For a graph: `accent`, `temperature` or a hex colour. */
+  /** For a graph: `accent`, `temperature` or a hex colour; a mirror or map takes one per part, split by `|`. */
   colour?: string;
-  /** For a graph: `%` or `°`, which also sets its scale. */
-  unit?: "%" | "°";
+  /** For a graph, mirror or map: what its numbers are in, such as `%`, `°`, `W` or `GB`. */
+  unit?: string;
+  /** A reading that has to be filled in, and not `false` or `0`, for the row to show. */
+  when?: string;
+  /** For a graph or map: the bottom and top of its scale, as readings. */
+  min?: string;
+  max?: string;
+  /** For a map: how many blocks it is drawn with. */
+  cells?: number;
 }
 
 /** What a click does: one of the three. */

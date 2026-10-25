@@ -133,4 +133,35 @@ struct WidgetMenuTests {
         #expect(await host.menu(for: "macarchy.clock")?[2].checked == true)
         #expect(await host.menu(for: "macarchy.nothing") == nil)
     }
+
+    @Test("a row shows only when its reading is filled in, and keeps its place for picking")
+    func when() {
+        var manifest = WidgetManifest(id: "battery", name: "Battery")
+        var charging = WidgetMenuRow(type: "graph", label: "Rate", value: "{rates}")
+        charging.when = "{charging}"
+        charging.max = "{top}"
+        charging.min = "5"
+        var status = WidgetMenuRow(type: "status", label: "{kind}")
+        status.options = ["{band}", "{channel}"]
+        status.icons = ["{icon}"]
+        var off = WidgetMenuRow(type: "text", label: "Off")
+        off.when = "{zero}"
+        manifest.click = WidgetClick(dropdown: [charging, status, off])
+        let instance = WidgetInstance(
+            id: "b", manifest: manifest, directory: root, settings: [:], visible: true)
+        let values = [
+            "charging": "yes", "top": "60", "kind": "Wi-Fi", "band": "5 GHz", "channel": "",
+            "icon": "wifi", "zero": "0"
+        ]
+        let items = WidgetMenu.items(
+            instance: instance, component: nil, output: WidgetOutput(values: values), label: "")
+        #expect(items.map(\.id) == [0, 1])
+        #expect(items[0].min == 5 && items[0].max == 60)
+        #expect(items[1].options == ["5 GHz", ""] && items[1].icons == ["wifi"])
+        let unplugged = WidgetMenu.items(
+            instance: instance, component: nil,
+            output: WidgetOutput(values: values.merging(["charging": ""]) { $1 }), label: "")
+        #expect(unplugged.map(\.id) == [1])
+        #expect(!WidgetMenu.shows("false") && !WidgetMenu.shows(" ") && WidgetMenu.shows("no"))
+    }
 }

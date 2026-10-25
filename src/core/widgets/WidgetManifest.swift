@@ -203,17 +203,18 @@ public struct WidgetClick: Codable, Equatable, Sendable {
 public struct WidgetMenuRow: Codable, Equatable, Sendable {
     /// Row types, and which drop-down component draws each:
     /// heading (MenuHeader), text (MenuText), reading, action and link (MenuLink),
-    /// toggle, choice (MenuChoice), graph (MenuGraph), cores (MenuCores),
+    /// toggle, choice (MenuChoice), graph (MenuGraph or MenuCard), mirror
+    /// (MenuMirror), map (MenuMap), status (MenuStatus), cores (MenuCores),
     /// apps (MenuApp) and divider.
     public static let types = [
-        "heading", "text", "reading", "action", "toggle", "choice", "graph", "cores", "apps",
-        "divider"
+        "heading", "text", "reading", "action", "toggle", "choice", "graph", "mirror", "map",
+        "status", "cores", "apps", "divider"
     ]
 
     public var type: String
     public var label: String?
     /// A template for the value shown on the right, or the reading a graph,
-    /// cores or apps row draws.
+    /// mirror, map, cores or apps row draws.
     public var value: String?
     /// A command an action row runs.
     public var run: String?
@@ -221,26 +222,40 @@ public struct WidgetMenuRow: Codable, Equatable, Sendable {
     public var open: String?
     /// The widget setting a toggle or choice row changes.
     public var setting: String?
-    /// The choices a choice row shows when it reflects a reading instead of a setting.
+    /// The choices a choice row shows when it reflects a reading instead of
+    /// a setting, or the small tags under a status row.
     public var options: [String]?
     /// SF Symbol names, one per option, drawn in round tiles as macOS does
-    /// for Energy Mode.
+    /// for Energy Mode, or the one symbol a status row shows.
     public var icons: [String]?
     /// For a graph: the reading drawn large in its corner, which makes it a
-    /// card. Card graphs one after another sit side by side.
+    /// card. Card graphs one after another sit side by side. For a mirror,
+    /// the readings for its two halves; for a status, its signal from 0 to 4.
     public var current: String?
     /// For a graph: `accent`, `temperature`, which colours the line and the
-    /// fill under it by how hot each moment was, or a hex colour.
+    /// fill under it by how hot each moment was, or a hex colour. A mirror
+    /// or map takes one colour per part, separated by `|`.
     public var colour: String?
-    /// For a graph: what its numbers are in, `%` or `°`, which also sets
-    /// its scale: 0 to 100 for `%`, 40° to 100° for `°`.
+    /// For a graph, mirror or map: what its numbers are in, such as `%`,
+    /// `°`, `W` or `GB`. `%` scales a graph from 0 to 100 and `°` from 40°
+    /// to 100°; anything else scales to the largest point unless `min` or
+    /// `max` says otherwise.
     public var unit: String?
+    /// A reading that has to be filled in, and not `false` or `0`, for the
+    /// row to show, so a dropdown can change with the reading.
+    public var when: String?
+    /// For a graph or map: the bottom and top of its scale, as readings.
+    public var min: String?
+    public var max: String?
+    /// For a map: how many blocks it is drawn with, in rows of 16.
+    public var cells: Int?
 
     /// Colours a graph row can take besides a hex value.
     public static let graphColours = ["accent", "temperature"]
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case type, label, value, run, open, setting, options, icons, current, colour, unit
+        case when, min, max, cells
     }
 
     public init(type: String, label: String? = nil, value: String? = nil) {

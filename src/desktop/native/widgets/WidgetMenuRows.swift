@@ -19,6 +19,22 @@ enum MenuValues {
         text.split(separator: "|").map { numbers(String($0)) }.filter { !$0.isEmpty }
     }
 
+    /// A point as its unit writes it: `12%`, `47.3°`, `512KB/s` or `1.2MB/s`
+    /// for a rate in kilobytes, and otherwise the number and its unit, such
+    /// as `42 W` or `0.3G`.
+    static func format(_ value: Double, unit: String) -> String {
+        switch unit {
+        case "%": return "\(Int(value.rounded()))%"
+        case "°": return String(format: "%.1f°", value)
+        case "KB/s":
+            return value >= 1024
+                ? String(format: "%.1fMB/s", value / 1024) : String(format: "%.0fKB/s", value)
+        default:
+            let number = String(format: abs(value) < 10 ? "%.1f" : "%.0f", value)
+            return ["G", "M", "K", ""].contains(unit) ? number + unit : "\(number) \(unit)"
+        }
+    }
+
     /// `Name:value` pairs separated by commas. The value is optional.
     static func apps(_ text: String) -> [(name: String, value: String)] {
         text.split(separator: ",").compactMap { pair in

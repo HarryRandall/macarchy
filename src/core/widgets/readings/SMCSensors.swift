@@ -13,6 +13,7 @@ final class SMCSensors: @unchecked Sendable {
     struct Temperatures: Equatable, Sendable {
         var cpu: Double?
         var gpu: Double?
+        var battery: Double?
     }
 
     /// The controller's request and reply, laid out as its kernel extension
@@ -54,7 +55,13 @@ final class SMCSensors: @unchecked Sendable {
 
     private let lock = NSLock()
     private var connection: io_connect_t = 0
-    private var keys: (cpu: [UInt32], gpu: [UInt32])?
+    /// Sensor keys by what they measure.
+    private struct Keys {
+        var cpu: [UInt32] = []
+        var gpu: [UInt32] = []
+        var battery: [UInt32] = []
+    }
+    private var keys: Keys?
     /// Each sensor's last believable value, and when it was read.
     private var last: [UInt32: (value: Double, at: Date)] = [:]
 
@@ -66,7 +73,9 @@ final class SMCSensors: @unchecked Sendable {
         let keys = self.keys ?? findKeys()
         self.keys = keys
         let now = Date()
-        return Temperatures(cpu: average(keys.cpu, at: now), gpu: average(keys.gpu, at: now))
+        return Temperatures(
+            cpu: average(keys.cpu, at: now), gpu: average(keys.gpu, at: now),
+            battery: average(keys.battery, at: now))
     }
 
     private func open() -> Bool {
@@ -102,17 +111,17 @@ final class SMCSensors: @unchecked Sendable {
         return Double(value)
     }
 
-    private func findKeys() -> (cpu: [UInt32], gpu: [UInt32]) {
+    /// CPU sensors start `Tp` or `Te`, GPU ones `Tg` and the battery's `TB`.
+    private func findKeys() -> Keys {
         var count = Message()
         count.key = Self.code("#KEY")
         count.dataSize = 4
         count.command = Command.readBytes.rawValue
-        guard let reply = call(count) else { return ([], []) }
+        guard let reply = call(count) else { return Keys() }
         let total = withUnsafeBytes(of: reply.data) {
             UInt32(bigEndian: $0.load(as: UInt32.self))
         }
-        var cpu: [UInt32] = []
-        var gpu: [UInt32] = []
+        var keys = Keys()
         for index in 0..<min(total, 10_000) {
             var request = Message()
             request.command = Command.keyAtIndex.rawValue
@@ -120,13 +129,18 @@ final class SMCSensors: @unchecked Sendable {
             guard let found = call(request) else { continue }
             let name = Self.name(found.key)
             let group =
-                name.hasPrefix("Tp") || name.hasPrefix("Te") ? 1 : name.hasPrefix("Tg") ? 2 : 0
+                name.hasPrefix("Tp") || name.hasPrefix("Te")
+                ? 1 : name.hasPrefix("Tg") ? 2 : name.hasPrefix("TB") ? 3 : 0
             // Chosen by name and type, not by what they read now, which may be
             // one of the moments their values are nonsense.
             guard group != 0, float(found.key) != nil else { continue }
-            if group == 1 { cpu.append(found.key) } else { gpu.append(found.key) }
+            switch group {
+            case 1: keys.cpu.append(found.key)
+            case 2: keys.gpu.append(found.key)
+            default: keys.battery.append(found.key)
+            }
         }
-        return (cpu, gpu)
+        return keys
     }
 
     /// Every few seconds the performance cores' sensors all report nonsense

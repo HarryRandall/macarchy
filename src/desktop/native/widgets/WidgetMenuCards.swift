@@ -25,7 +25,14 @@ struct MenuCard: View {
 
     private var points: [Double] { MenuValues.numbers(item.value) }
     private var degrees: Bool { item.unit == "°" }
-    private var range: ClosedRange<Double> { degrees ? 40...100 : 0...100 }
+    /// `%` runs 0 to 100 and `°` 40° to 100°, unless the row sets a scale;
+    /// other units reach just past the largest point.
+    private var range: ClosedRange<Double> {
+        let fallback: ClosedRange<Double> =
+            item.unit == "%" ? 0...100 : degrees ? 40...100 : 0...max((points.max() ?? 0) * 1.15, 1)
+        let lower = item.min ?? fallback.lowerBound
+        return lower...Swift.max(item.max ?? fallback.upperBound, lower + 1)
+    }
 
     private var hovered: Int? {
         guard let pointer, frame.contains(pointer), points.count > 1 else { return nil }
@@ -155,7 +162,7 @@ struct MenuCard: View {
     }
 
     private func format(_ value: Double) -> String {
-        degrees ? String(format: "%.1f°", value) : "\(Int(value.rounded()))%"
+        MenuValues.format(value, unit: item.unit)
     }
 
     private func ago(_ index: Int) -> String {

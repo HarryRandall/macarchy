@@ -98,6 +98,8 @@ struct WidgetMenuView: View {
         case "graph":
             MenuGraph(
                 caption: item.label, points: MenuValues.numbers(item.value), pointer: model.pointer)
+        case "mirror", "map", "status":
+            picture(item)
         case "cores":
             MenuCores(
                 caption: item.label, groups: MenuValues.groups(item.value), pointer: model.pointer)
@@ -110,6 +112,16 @@ struct WidgetMenuView: View {
                 Text(item.value).foregroundStyle(.secondary).monospacedDigit()
             }
             .padding(.horizontal, 10).frame(height: 24)
+        }
+    }
+
+    /// Rows drawn as a picture of a reading rather than as text.
+    @ViewBuilder
+    private func picture(_ item: WidgetMenuItem) -> some View {
+        switch item.type {
+        case "mirror": MenuMirror(item: item, pointer: model.pointer)
+        case "map": MenuMap(item: item, pointer: model.pointer)
+        default: MenuStatus(item: item)
         }
     }
 

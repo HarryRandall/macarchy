@@ -56,17 +56,45 @@ enum ReadingOutputs {
         return output
     }
 
-    static func gpu(
-        load: Double, temperature: Double?, history: [Double], settings: [String: SettingValue]
-    ) -> WidgetOutput {
+    /// One GPU reading, with the minute before it.
+    struct GPUSample: Equatable, Sendable {
+        var load: Double
+        var temperature: Double?
+        var history: [Double]
+        /// The temperature over the same minute.
+        var temperatures: [Double] = []
+        var memory: UInt64?
+        var memoryLimit: UInt64?
+        var cores: Int?
+        /// The busiest apps as `Name:12.4%,…`.
+        var top = ""
+    }
+
+    static func gpu(_ sample: GPUSample, settings: [String: SettingValue]) -> WidgetOutput {
+        let (load, temperature) = (sample.load, sample.temperature)
+        var values = [
+            "load": ReadingFormat.percent(load),
+            "load.short": ReadingFormat.wholePercent(load),
+            "temperature": ReadingFormat.degrees(temperature),
+            "history": ReadingFormat.history(sample.history),
+            "temperatures": ReadingFormat.history(sample.temperatures),
+            "cores": sample.cores.map { "\($0)-core" } ?? "",
+            "top": sample.top
+        ]
+        if let memory = sample.memory {
+            values["memory"] = ReadingFormat.bytesLong(memory)
+            values["memory.gb"] = ReadingFormat.gigabytes(memory)
+        }
+        if let limit = sample.memoryLimit {
+            let whole = String(format: "%.0f GB", (Double(limit) / 1_073_741_824).rounded())
+            values["memory.limit"] = whole
+            values["memory.limit.gb"] = ReadingFormat.gigabytes(limit)
+            values["memory.summary"] =
+                sample.memory.map { "\(ReadingFormat.bytesLong($0)) of \(whole)" } ?? "--"
+        }
         var output = WidgetOutput(
             label: ReadingFormat.percent(load) + "\n" + ReadingFormat.degrees(temperature),
-            values: [
-                "load": ReadingFormat.percent(load),
-                "load.short": ReadingFormat.wholePercent(load),
-                "temperature": ReadingFormat.degrees(temperature),
-                "history": ReadingFormat.history(history)
-            ])
+            values: values)
         output.lineColours = [
             ReadingFormat.warning(load, warn: number(settings, "warnLoad", 80), alarm: 95),
             ReadingFormat.warning(
@@ -76,24 +104,37 @@ enum ReadingOutputs {
     }
 
     static func memory(
-        _ reading: MemoryReading, history: [Double], top: TopProcesses
+        _ reading: MemoryReading, history: [Double], swapHistory: [Double] = [],
+        top: TopProcesses
     )
         -> WidgetOutput
     {
+        let total = Double(reading.total) / 1_073_741_824
         var output = WidgetOutput(
             label: ReadingFormat.percent(reading.percent) + "\n"
                 + ReadingFormat.bytes(reading.used),
             values: [
                 "percent": ReadingFormat.percent(reading.percent),
+                "percent.short": ReadingFormat.wholePercent(reading.percent),
                 "used": ReadingFormat.bytesLong(reading.used),
                 "total": ReadingFormat.bytesLong(reading.total),
+                "summary": String(
+                    format: "%.1f of %.0f GB", Double(reading.used) / 1_073_741_824, total),
                 "app": ReadingFormat.bytesLong(reading.app),
                 "wired": ReadingFormat.bytesLong(reading.wired),
                 "compressed": ReadingFormat.bytesLong(reading.compressed),
                 "cached": ReadingFormat.bytesLong(reading.cached),
                 "swap": ReadingFormat.bytesLong(reading.swapUsed),
+                "swap.short": String(format: "%.1fG", Double(reading.swapUsed) / 1_073_741_824),
+                "app.gb": ReadingFormat.gigabytes(reading.app),
+                "wired.gb": ReadingFormat.gigabytes(reading.wired),
+                "compressed.gb": ReadingFormat.gigabytes(reading.compressed),
+                "cached.gb": ReadingFormat.gigabytes(reading.cached),
+                "total.gb": ReadingFormat.gigabytes(reading.total),
                 "pressure": reading.pressure,
                 "history": ReadingFormat.history(history),
+                "swapHistory": swapHistory.map { String(format: "%.2f", $0) }
+                    .joined(separator: ","),
                 "top": top.byMemory()
             ])
         let colour =
@@ -102,42 +143,95 @@ enum ReadingOutputs {
         return output
     }
 
-    static func network(
-        _ reading: NetworkCounters, down: Double, up: Double, history: [Double]
-    )
-        -> WidgetOutput
-    {
-        WidgetOutput(
-            label: ReadingFormat.rate(up) + "\n" + ReadingFormat.rate(down),
+    /// One network reading: rates in bytes a second and their minute in
+    /// kilobytes a second.
+    struct NetworkSample: Equatable, Sendable {
+        var down: Double
+        var up: Double
+        var history: [Double]
+        var upHistory: [Double] = []
+        var wifi: WiFiReading?
+        var router: String?
+    }
+
+    static func network(_ reading: NetworkCounters, _ sample: NetworkSample) -> WidgetOutput {
+        let wifi = sample.wifi.flatMap { $0.interface == reading.interface ? $0 : nil }
+        let connected = reading.interface != nil
+        let kind = wifi != nil ? "Wi-Fi" : connected ? "Ethernet" : "Not connected"
+        return WidgetOutput(
+            label: ReadingFormat.rate(sample.up) + "\n" + ReadingFormat.rate(sample.down),
             values: [
-                "up": ReadingFormat.rate(up),
-                "down": ReadingFormat.rate(down),
+                "up": ReadingFormat.rate(sample.up),
+                "down": ReadingFormat.rate(sample.down),
                 "interface": reading.interface ?? "Not connected",
                 "address": reading.address ?? "--",
                 "received": ReadingFormat.bytesLong(reading.received),
                 "sent": ReadingFormat.bytesLong(reading.sent),
-                "history": ReadingFormat.history(history)
+                "history": ReadingFormat.history(sample.history),
+                "upHistory": ReadingFormat.history(sample.upHistory),
+                "status": connected ? "Connected" : "Not connected",
+                "kind": kind,
+                "icon": wifi != nil
+                    ? "wifi" : connected ? "cable.connector.horizontal" : "wifi.slash",
+                "link": [reading.interface, reading.address].compactMap { $0 }
+                    .joined(separator: " · "),
+                "signal": wifi.map { String($0.bars) } ?? "",
+                "band": wifi?.band ?? "",
+                "channel": wifi?.channel.map { "Ch \($0)" } ?? "",
+                "rate": wifi.map { String(format: "%.0f Mb/s", $0.rate) } ?? "",
+                "rssi": wifi.map { "\($0.rssi) dBm" } ?? "",
+                "router": sample.router ?? "--"
             ])
     }
 
+    /// One battery reading, with what has been kept of the last while.
+    struct BatterySample: Equatable, Sendable {
+        var levels: [Double] = []
+        var temperatures: [Double] = []
+        var rates: [Double] = []
+        var energyMode = "Automatic"
+        var energyApps = ""
+    }
+
     static func battery(
-        _ reading: BatteryReading, settings: [String: SettingValue]
+        _ reading: BatteryReading, _ sample: BatterySample = BatterySample(),
+        settings: [String: SettingValue]
     )
         -> WidgetOutput
     {
         let percent = "\(reading.percent)%"
         let showPercent = settings["showPercent"] != .bool(false)
+        let state =
+            reading.charging
+            ? " · Charging"
+            : reading.charged
+                ? " · Charged"
+                : reading.onAdapter ? " · On power" : ""
+        let short =
+            reading.onAdapter && !reading.charging
+            ? "On power" : reading.minutesLeft.map(ReadingFormat.hours) ?? "--"
         var output = WidgetOutput(
             label: showPercent ? percent : "",
             values: [
                 "percent": percent,
+                "headline": percent + state,
                 "source": reading.source,
                 "state": reading.state,
                 "remaining": reading.minutesLeft.map(ReadingFormat.duration) ?? "Calculating…",
+                "remaining.short": short,
                 "remainingLabel": reading.charging ? "Until full" : "Time remaining",
                 "cycles": reading.cycles.map(String.init) ?? "--",
                 "health": reading.health.map { "\($0)%" } ?? "--",
-                "lowPower": reading.lowPowerMode ? "On" : "Off"
+                "lowPower": reading.lowPowerMode ? "On" : "Off",
+                "temperature": ReadingFormat.degrees(reading.temperature),
+                "rate": reading.watts.map { String(format: "%.0f W", max($0, 0)) } ?? "--",
+                "charging": reading.charging ? "yes" : "",
+                "notCharging": reading.charging ? "" : "yes",
+                "levels": ReadingFormat.history(sample.levels),
+                "temperatures": ReadingFormat.history(sample.temperatures),
+                "rates": ReadingFormat.history(sample.rates),
+                "energyMode": sample.energyMode,
+                "energyApps": sample.energyApps
             ])
         output.icon = reading.glyph
         let low = Int(number(settings, "lowAt", 10))

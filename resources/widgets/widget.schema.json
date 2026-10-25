@@ -90,17 +90,21 @@
       "required": ["type"],
       "additionalProperties": false,
       "properties": {
-        "type": { "enum": ["heading", "text", "reading", "action", "toggle", "choice", "graph", "cores", "apps", "divider"] },
+        "type": { "enum": ["heading", "text", "reading", "action", "toggle", "choice", "graph", "mirror", "map", "status", "cores", "apps", "divider"] },
         "label": { "type": "string" },
         "value": { "type": "string" },
         "run": { "type": "string" },
         "open": { "type": "string" },
         "setting": { "type": "string" },
-        "options": { "type": "array", "items": { "type": "string" } },
-        "icons": { "type": "array", "items": { "type": "string" }, "description": "SF Symbol names, one per option." },
-        "current": { "type": "string", "description": "For a graph: the reading drawn large in its corner, which makes it a card. Card graphs one after another sit side by side." },
-        "colour": { "type": "string", "pattern": "^(accent|temperature|#([0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$", "description": "For a graph: accent, temperature (coloured by how hot each moment was) or a hex colour." },
-        "unit": { "enum": ["%", "°"], "description": "For a graph: what its numbers are in, which also sets its scale." }
+        "options": { "type": "array", "items": { "type": "string" }, "description": "A choice's options, or the small tags under a status row." },
+        "icons": { "type": "array", "items": { "type": "string" }, "description": "SF Symbol names, one per option, or the one a status row shows." },
+        "current": { "type": "string", "description": "For a graph: the reading drawn large in its corner, which makes it a card. Card graphs one after another sit side by side. For a mirror, both halves' readings split by |; for a status, its signal from 0 to 4." },
+        "colour": { "type": "string", "pattern": "^((accent|temperature|#([0-9a-fA-F]{6}|[0-9a-fA-F]{8}))\\|?)+$", "description": "For a graph: accent, temperature (coloured by how hot each moment was) or a hex colour. A mirror or map takes one per part, split by |." },
+        "unit": { "type": "string", "maxLength": 4, "description": "For a graph, mirror or map: what its numbers are in, such as %, °, W or GB. % and ° set a graph's scale." },
+        "when": { "type": "string", "description": "A reading that has to be filled in, and not false or 0, for the row to show." },
+        "min": { "type": "string", "description": "For a graph or map: the bottom of its scale, as a reading." },
+        "max": { "type": "string", "description": "For a graph or map: the top of its scale, or a map's whole, as a reading." },
+        "cells": { "type": "integer", "minimum": 16, "maximum": 192, "description": "For a map: how many blocks it is drawn with, in rows of 16." }
       }
     }
   }

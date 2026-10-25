@@ -4,7 +4,7 @@
   "name": "Network",
   "version": "1.0.0",
   "author": "Macarchy",
-  "description": "Upload over download, with a graph of recent downloads and your address.",
+  "description": "Upload over download, with your Wi-Fi link, both rates over the last minute and your router.",
   "icon": "􀤆",
   "source": "network",
   "label": "{up}\n{down}",
@@ -24,33 +24,38 @@
       {
         "type": "heading",
         "label": "Network",
-        "value": "{interface}"
+        "value": "{status}"
       },
       {
-        "type": "graph",
-        "label": "Download, last minute (KB/s)",
-        "value": "{history}"
+        "type": "status",
+        "label": "{kind}",
+        "value": "{link}",
+        "icons": [
+          "{icon}"
+        ],
+        "current": "{signal}",
+        "options": [
+          "{band}",
+          "{channel}",
+          "{rate}",
+          "{rssi}"
+        ]
+      },
+      {
+        "type": "mirror",
+        "label": "↓ Download|↑ Upload",
+        "value": "{history}|{upHistory}",
+        "current": "{down}|{up}",
+        "colour": "accent|#ff9f0a",
+        "unit": "KB/s"
       },
       {
         "type": "divider"
       },
       {
         "type": "reading",
-        "label": "Download",
-        "value": "{down}"
-      },
-      {
-        "type": "reading",
-        "label": "Upload",
-        "value": "{up}"
-      },
-      {
-        "type": "divider"
-      },
-      {
-        "type": "reading",
-        "label": "Address",
-        "value": "{address}"
+        "label": "Router",
+        "value": "{router}"
       },
       {
         "type": "reading",

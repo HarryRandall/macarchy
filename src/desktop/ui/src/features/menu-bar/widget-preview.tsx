@@ -322,6 +322,9 @@ function PreviewRow({
           </div>
         );
       case "graph":
+      case "mirror":
+      case "map":
+      case "status":
       case "cores":
       case "apps":
         return (

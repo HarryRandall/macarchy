@@ -43,6 +43,16 @@ enum ReadingFormat {
         String(format: "%d:%02d", minutes / 60, minutes % 60)
     }
 
+    /// `3h 05m` from minutes, or `12m` under an hour.
+    static func hours(_ minutes: Int) -> String {
+        minutes < 60 ? "\(minutes)m" : String(format: "%dh %02dm", minutes / 60, minutes % 60)
+    }
+
+    /// Gigabytes as a plain number, `11.02`, for a map to share out.
+    static func gigabytes(_ bytes: UInt64) -> String {
+        String(format: "%.2f", Double(bytes) / 1_073_741_824)
+    }
+
     /// Points for a dropdown graph, oldest first.
     static func history(_ values: [Double]) -> String {
         values.map { String(format: "%.1f", $0) }.joined(separator: ",")
@@ -106,5 +116,32 @@ struct TopProcesses: Equatable, Sendable {
     func byMemory(_ count: Int = 3) -> String {
         entries.sorted { $0.memory > $1.memory }.prefix(count)
             .map { "\($0.name):\(ReadingFormat.bytesLong($0.memory))" }.joined(separator: ",")
+    }
+}
+
+/// Apps busy enough to wear the battery down, as the Battery menu lists them
+/// under Using Significant Energy. Only processes inside an app count, each
+/// towards its app, so system services and helpers named after themselves,
+/// such as Firefox's `plugin-container`, are left out or folded in.
+enum EnergyApps {
+    static func read() async -> String {
+        let result = await CommandRunner.run("/bin/ps", ["-Aeo", "pcpu=,comm="], timeout: 2)
+        return parse(result.ok ? result.stdout : "")
+    }
+
+    /// Names only, busiest first, of apps at `threshold` percent or more.
+    static func parse(_ text: String, count: Int = 3, over threshold: Double = 10) -> String {
+        var apps: [String: Double] = [:]
+        for line in text.split(separator: "\n") {
+            let fields = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+            guard fields.count == 2, let cpu = Double(fields[0]),
+                let bundle = fields[1].range(of: ".app/")
+            else { continue }
+            let path = fields[1][..<bundle.lowerBound]
+            let name = path.split(separator: "/").last.map(String.init) ?? ""
+            if !name.isEmpty { apps[name, default: 0] += cpu }
+        }
+        return apps.filter { $0.value >= threshold }.sorted { $0.value > $1.value }.prefix(count)
+            .map(\.key).joined(separator: ",")
     }
 }

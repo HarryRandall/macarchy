@@ -15,7 +15,7 @@ public actor BuiltInReadings {
         "gpu": { instance, now in await shared.gpu(instance, now: now) },
         "memory": { instance, now in await shared.memory(instance, now: now) },
         "network": { instance, now in await shared.network(instance, now: now) },
-        "battery": { instance, _ in await shared.battery(instance) },
+        "battery": { instance, now in await shared.battery(instance, now: now) },
         "spaces": { instance, _ in await shared.spaces(instance) }
     ]
 
@@ -26,6 +26,8 @@ public actor BuiltInReadings {
     private var counters: (reading: NetworkCounters, at: Date)?
     private var histories: [String: [Double]] = [:]
     private var processes: (list: TopProcesses, at: Date)?
+    /// Each process's GPU time when last read, for the share since.
+    private var gpuTime: (time: [Int32: UInt64], at: Date)?
     /// Each Spaces widget folder's icon map, read once.
     private var icons: [URL: AppIcons] = [:]
     /// The Spaces and windows last read, for showing a switch straight away.
@@ -114,16 +116,31 @@ public actor BuiltInReadings {
     }
 
     func gpu(_ instance: WidgetInstance, now: Date) -> WidgetOutput {
-        let load = GPUUsage.read() ?? 0
-        return ReadingOutputs.gpu(
-            load: load, temperature: smoothed(SMCSensors.shared.read().gpu, as: "gpu"),
-            history: remember(load, as: "gpu"), settings: instance.settings)
+        let reading = GPUReading.read()
+        let load = reading?.load ?? 0
+        var top = ""
+        if let reading, let earlier = gpuTime {
+            top = GPUReading.apps(
+                from: earlier.time, to: reading.time, seconds: now.timeIntervalSince(earlier.at)
+            )
+            .prefix(3).map { "\($0.name):\(String(format: "%.1f%%", $0.share))" }
+            .joined(separator: ",")
+        }
+        if let reading { gpuTime = (reading.time, now) }
+        let temperature = smoothed(SMCSensors.shared.read().gpu, as: "gpu")
+        var sample = ReadingOutputs.GPUSample(
+            load: load, temperature: temperature, history: remember(load, as: "gpu"),
+            memory: reading?.memory, memoryLimit: GPUReading.memoryLimit, cores: reading?.cores,
+            top: top)
+        if let temperature { sample.temperatures = remember(temperature, as: "gpu.temperature") }
+        return ReadingOutputs.gpu(sample, settings: instance.settings)
     }
 
     func memory(_ instance: WidgetInstance, now: Date) async -> WidgetOutput? {
         guard let reading = MemoryReading.read() else { return nil }
         return ReadingOutputs.memory(
             reading, history: remember(reading.percent, as: "memory"),
+            swapHistory: remember(Double(reading.swapUsed) / 1_073_741_824, as: "memory.swap"),
             top: await topProcesses(now: now))
     }
 
@@ -140,10 +157,28 @@ public actor BuiltInReadings {
         }
         counters = (reading, now)
         return ReadingOutputs.network(
-            reading, down: down, up: up, history: remember(down / 1024, as: "network"))
+            reading,
+            .init(
+                down: down, up: up, history: remember(down / 1024, as: "network"),
+                upHistory: remember(up / 1024, as: "network.up"), wifi: WiFiReading.read(),
+                router: WiFiReading.router()))
     }
 
-    func battery(_ instance: WidgetInstance) -> WidgetOutput? {
-        BatteryReading.read().map { ReadingOutputs.battery($0, settings: instance.settings) }
+    func battery(_ instance: WidgetInstance, now: Date) async -> WidgetOutput? {
+        guard let reading = BatteryReading.read() else { return nil }
+        var sample = ReadingOutputs.BatterySample(
+            levels: remember(Double(reading.percent), as: "battery"),
+            energyMode: await EnergyMode.read(lowPowerMode: reading.lowPowerMode),
+            energyApps: await EnergyApps.read())
+        if let temperature = reading.temperature {
+            sample.temperatures = remember(temperature, as: "battery.temperature")
+        }
+        // Charging restarts the rate's history, so it shows this charge only.
+        if reading.charging, let watts = reading.watts {
+            sample.rates = remember(max(watts, 0), as: "battery.rate")
+        } else {
+            histories["battery.rate"] = nil
+        }
+        return ReadingOutputs.battery(reading, sample, settings: instance.settings)
     }
 }

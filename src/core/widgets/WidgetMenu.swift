@@ -23,6 +23,11 @@ public struct WidgetMenuItem: Equatable, Sendable, Identifiable {
     public var unit = "%"
     /// Seconds between a graph's points, for saying how long ago one was.
     public var interval: Double = 2
+    /// A graph's or map's scale, when the row sets one.
+    public var min: Double?
+    public var max: Double?
+    /// How many blocks a map is drawn with.
+    public var cells = 96
 }
 
 /// Builds a widget's dropdown and carries out what picking a row means.
@@ -38,7 +43,10 @@ public enum WidgetMenu {
             .merging(output?.values ?? [:]) { $1 }
             .merging(["label": label]) { $1 }
         let declared = instance.manifest.settings ?? [:]
-        return rows.enumerated().map { index, row in
+        return rows.enumerated().compactMap { index, row -> WidgetMenuItem? in
+            if let when = row.when, !shows(WidgetTemplate.render(when, values: values)) {
+                return nil
+            }
             let label = WidgetTemplate.render(row.label ?? "", values: values)
             let value = WidgetTemplate.render(row.value ?? "", values: values)
             let setting = row.setting.flatMap { declared[$0] != nil ? $0 : nil }
@@ -56,18 +64,32 @@ public enum WidgetMenu {
                     options: options, icons: row.icons ?? [], selected: current?.string ?? value,
                     enabled: setting != nil)
             default:
+                let fill = { (texts: [String]?) in
+                    (texts ?? []).map { WidgetTemplate.render($0, values: values) }
+                }
                 var item = WidgetMenuItem(
                     id: index, type: row.type, label: label, value: value, checked: false,
-                    options: [], icons: [], selected: nil,
+                    options: row.type == "status" ? fill(row.options) : [],
+                    icons: row.type == "status" ? fill(row.icons) : [], selected: nil,
                     enabled: row.type == "action" && (row.open != nil || row.run != nil))
                 item.current = WidgetTemplate.render(row.current ?? "", values: values)
                 item.colour = row.colour ?? "accent"
                 item.unit = row.unit ?? "%"
                 item.interval = Double(
                     WidgetUpdate(every: instance.every ?? "2s").seconds ?? 2)
+                item.min = row.min.flatMap { Double(WidgetTemplate.render($0, values: values)) }
+                item.max = row.max.flatMap { Double(WidgetTemplate.render($0, values: values)) }
+                item.cells = row.cells ?? 96
                 return item
             }
         }
+    }
+
+    /// Whether a row's `when` lets it show: anything filled in but `false`
+    /// or `0`.
+    static func shows(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed != "false" && trimmed != "0"
     }
 
     /// How many cells a row of cores holds: even rows of at most eight, or

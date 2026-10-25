@@ -15,6 +15,10 @@ struct BatteryReading: Equatable, Sendable {
     /// Full charge capacity as a share of the design capacity.
     var health: Int?
     var lowPowerMode: Bool
+    /// The battery's own temperature, in degrees.
+    var temperature: Double?
+    /// Watts going into the battery, or coming out of it when negative.
+    var watts: Double?
 
     var source: String { onAdapter ? "Power Adapter" : "Battery" }
 
@@ -62,23 +66,72 @@ struct BatteryReading: Equatable, Sendable {
                 charged: description[kIOPSIsChargedKey] as? Bool ?? false,
                 minutesLeft: minutes.flatMap { $0 > 0 ? $0 : nil },
                 cycles: condition.cycles, health: condition.health,
-                lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled)
+                lowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
+                temperature: condition.temperature ?? SMCSensors.shared.read().battery,
+                watts: condition.watts)
         }
         return nil
     }
 
-    private static func smartBattery() -> (cycles: Int?, health: Int?) {
+    /// The condition figures System Information shows, and the battery's
+    /// temperature and power.
+    private struct Condition {
+        var cycles: Int?
+        var health: Int?
+        var temperature: Double?
+        var watts: Double?
+    }
+
+    private static func smartBattery() -> Condition {
         let service = IOServiceGetMatchingService(
             kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
-        guard service != 0 else { return (nil, nil) }
+        guard service != 0 else { return Condition() }
         defer { IOObjectRelease(service) }
+        // Newer macOS keeps most figures only in BatteryData.
+        let data =
+            IORegistryEntryCreateCFProperty(
+                service, "BatteryData" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? [String: Any]
         func number(_ key: String) -> Int? {
             IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?
-                .takeRetainedValue() as? Int
+                .takeRetainedValue() as? Int ?? data?[key] as? Int
         }
         let design = number("DesignCapacity")
         let full = number("AppleRawMaxCapacity") ?? number("NominalChargeCapacity")
         let health = design.flatMap { design in full.map { min(100, $0 * 100 / max(design, 1)) } }
-        return (number("CycleCount"), health)
+        // Hundredths of a degree; current in milliamps, signed though the
+        // registry stores it unsigned, and millivolts.
+        let temperature = number("Temperature").map { Double($0) / 100 }
+        let current =
+            (IORegistryEntryCreateCFProperty(
+                service, "Amperage" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? NSNumber)?.int64Value
+        let watts = current.flatMap { current in
+            number("Voltage").map { Double(current) * Double($0) / 1_000_000 }
+        }
+        return Condition(
+            cycles: number("CycleCount"), health: health, temperature: temperature, watts: watts)
+    }
+}
+
+/// Energy Mode as the Battery menu shows it.
+enum EnergyMode {
+    /// From `pmset -g`: `powermode` 1 is Low Power and 2 High Power. Macs
+    /// without the setting have only Low Power Mode, on or off.
+    static func parse(_ settings: String, lowPowerMode: Bool) -> String {
+        let mode = settings.split(separator: "\n").lazy
+            .map { $0.split(separator: " ", omittingEmptySubsequences: true) }
+            .first { $0.first == "powermode" }?.last
+        switch mode {
+        case "1": return "Low Power"
+        case "2": return "High Power"
+        case nil: return lowPowerMode ? "Low Power" : "Automatic"
+        default: return "Automatic"
+        }
+    }
+
+    static func read(lowPowerMode: Bool) async -> String {
+        let result = await CommandRunner.run("/usr/bin/pmset", ["-g"], timeout: 2)
+        return parse(result.ok ? result.stdout : "", lowPowerMode: lowPowerMode)
     }
 }

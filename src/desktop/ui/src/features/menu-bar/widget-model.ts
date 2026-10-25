@@ -205,7 +205,14 @@ export const rowTypes: { type: WidgetRowType; name: string }[] = [
 export function rowTypeName(type: WidgetRowType): string {
   return (
     rowTypes.find((entry) => entry.type === type)?.name ??
-    { graph: "Graph", cores: "Cores", apps: "Apps" }[type as "graph"] ??
+    {
+      graph: "Graph",
+      mirror: "Mirror",
+      map: "Map",
+      status: "Status",
+      cores: "Cores",
+      apps: "Apps",
+    }[type as "graph"] ??
     type
   );
 }

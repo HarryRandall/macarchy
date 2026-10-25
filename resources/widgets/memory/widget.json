@@ -4,7 +4,7 @@
   "name": "Memory",
   "version": "1.0.0",
   "author": "Macarchy",
-  "description": "Memory in use, with what is using it and the busiest apps.",
+  "description": "Memory in use, with swap, a map of what is holding it and the busiest apps.",
   "icon": "􀫦",
   "source": "memory",
   "label": "{percent}\n{used}",
@@ -24,44 +24,31 @@
       {
         "type": "heading",
         "label": "Memory",
-        "value": "{percent}"
-      },
-      {
-        "type": "text",
-        "label": "{used} of {total} in use · Pressure {pressure}"
+        "value": "{summary}"
       },
       {
         "type": "graph",
-        "label": "Last minute",
-        "value": "{history}"
+        "label": "Used",
+        "value": "{history}",
+        "current": "{percent.short}"
+      },
+      {
+        "type": "graph",
+        "label": "Swap",
+        "value": "{swapHistory}",
+        "current": "{swap.short}",
+        "colour": "#bf5af2",
+        "unit": "G"
       },
       {
         "type": "divider"
       },
       {
-        "type": "reading",
-        "label": "App memory",
-        "value": "{app}"
-      },
-      {
-        "type": "reading",
-        "label": "Wired",
-        "value": "{wired}"
-      },
-      {
-        "type": "reading",
-        "label": "Compressed",
-        "value": "{compressed}"
-      },
-      {
-        "type": "reading",
-        "label": "Cached files",
-        "value": "{cached}"
-      },
-      {
-        "type": "reading",
-        "label": "Swap used",
-        "value": "{swap}"
+        "type": "map",
+        "value": "App:{app.gb},Wired:{wired.gb},Compressed:{compressed.gb},Cached:{cached.gb}",
+        "max": "{total.gb}",
+        "colour": "accent|#bf5af2|#ff9f0a|#8e8e93",
+        "unit": "GB"
       },
       {
         "type": "divider"

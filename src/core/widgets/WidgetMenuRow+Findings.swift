@@ -22,7 +22,8 @@ extension WidgetMenuRow {
 
     private func templateNotes() -> [Note] {
         let templates: [(field: String, text: String?)] = [
-            ("label", label), ("value", value), ("current", current)
+            ("label", label), ("value", value), ("current", current), ("when", when),
+            ("min", min), ("max", max)
         ]
         return templates.compactMap { field, text -> Note? in
             guard let text, let problem = templateProblem(text) else { return nil }
@@ -32,7 +33,7 @@ extension WidgetMenuRow {
 
     private func typeNotes(settings: [String: WidgetSetting]) -> [Note] {
         switch type {
-        case "heading", "text":
+        case "heading", "text", "status":
             return needsLabel
         case "reading":
             return needsLabel + (hasValue ? [] : [("value", "needs a value")])
@@ -41,7 +42,7 @@ extension WidgetMenuRow {
                 + ((run == nil) == (open == nil) ? [(nil, "needs one of run or open")] : [])
         case "toggle", "choice":
             return settingNotes(settings: settings)
-        case "graph", "cores", "apps":
+        case "graph", "mirror", "map", "cores", "apps":
             return hasValue ? [] : [("value", "needs the reading it shows, such as {history}")]
         default:
             let empty = !hasLabel && !hasValue && run == nil && open == nil && setting == nil
@@ -69,25 +70,46 @@ extension WidgetMenuRow {
         if type != "action", run != nil || open != nil {
             notes.append((nil, "can only run or open something if it is an action"))
         }
-        if icons != nil, type != "choice" {
-            notes.append(("icons", "can only have icons if it is a choice"))
+        if icons != nil, !["choice", "status"].contains(type) {
+            notes.append(("icons", "can only have icons if it is a choice or status"))
         }
         if !["toggle", "choice"].contains(type), setting != nil {
             notes.append(("setting", "can only change a setting if it is a toggle or choice"))
         }
-        for (field, present) in [("current", current), ("colour", colour), ("unit", unit)]
-        where present != nil && type != "graph" {
-            notes.append((field, "can only have a \(field) if it is a graph"))
+        let present = [
+            "current": current != nil, "colour": colour != nil, "unit": unit != nil,
+            "min": min != nil, "max": max != nil, "cells": cells != nil
+        ]
+        let allowed: [(field: String, types: [String])] = [
+            ("current", ["graph", "mirror", "status"]), ("colour", ["graph", "mirror", "map"]),
+            ("unit", ["graph", "mirror", "map"]), ("min", ["graph", "map"]),
+            ("max", ["graph", "map"]), ("cells", ["map"])
+        ]
+        for rule in allowed where present[rule.field] == true && !rule.types.contains(type) {
+            let kinds = rule.types.count == 1 ? "a \(rule.types[0])" : Self.either(rule.types)
+            let field = rule.field == "cells" ? "cells" : "a \(rule.field)"
+            notes.append((rule.field, "can only have \(field) if it is \(kinds)"))
         }
-        if let colour, !Self.graphColours.contains(colour),
-            !colour.matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+        if let colour,
+            colour.split(separator: "|", omittingEmptySubsequences: false).contains(where: {
+                !Self.graphColours.contains(String($0))
+                    && !String($0).matches("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+            })
         {
             notes.append(
                 ("colour", "colour should be accent, temperature or a colour such as #a5b4fc"))
         }
-        if let unit, !["%", "°"].contains(unit) {
-            notes.append(("unit", "unit should be % or °"))
+        if let unit, unit.count > 4 || unit.contains("{") {
+            notes.append(("unit", "unit should be short, such as %, °, W or GB"))
+        }
+        if let cells, !(16...192).contains(cells) {
+            notes.append(("cells", "cells should be between 16 and 192"))
         }
         return notes
+    }
+
+    /// `a graph, mirror or status`.
+    private static func either(_ types: [String]) -> String {
+        "a " + types.dropLast().joined(separator: ", ") + " or " + (types.last ?? "")
     }
 }

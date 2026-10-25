@@ -39,16 +39,22 @@ not used in its place.
 | `permissions` | Needs to show before adding it. Only `network` for now; nothing enforces it. |
 
 Dropdown rows have a `type`: `heading`, `text`, `reading`, `action`, `toggle`,
-`choice`, `graph`, `cores`, `apps` or `divider`. An action runs or opens
-something; a toggle or choice changes one of the widget's settings. A provider
-can print `rows` to replace them, for lists that change.
+`choice`, `graph`, `mirror`, `map`, `status`, `cores`, `apps` or `divider`. An
+action runs or opens something; a toggle or choice changes one of the widget's
+settings. A provider can print `rows` to replace them, for lists that change.
+Any row with `when` shows only while that reading is filled in and not `false`
+or `0`, so Battery shows temperature and time left on battery, and charging
+rate and time to full on the charger.
 
 The richer rows read their `value` as text, usually a reading the provider
 fills in:
 
 | Row | Value |
 |---|---|
-| `graph` | Numbers out of 100, separated by commas: `12,30,45`. |
+| `graph` | Numbers separated by commas: `12,30,45`. With `current` it is a card, two to a row. `unit` sets the scale: `%` is 0 to 100, `°` is 40° to 100°, anything else such as `W` reaches just past the largest point. `min` and `max` override it. |
+| `mirror` | Two groups of numbers, `12,30\|4,9`, the first drawn above a centre line and the second below. `label`, `current` and `colour` take one per half, split by `\|`. |
+| `map` | `Name:amount` pairs, such as `App:11.0,Wired:3.6`, drawn as blocks in rows of 16 out of `max`, with `cells` blocks in all (96 unless set) and one colour per part in `colour`. |
+| `status` | A card with the symbol in `icons`, `label` above `value`, signal bars from 0 to 4 in `current`, and `options` as small tags; empty tags are left off. |
 | `cores` | Two groups of numbers, performance then efficiency cores: `62,48,71\|80,74`. |
 | `apps` | `Name:value` pairs separated by commas, such as `Firefox:9%`; the value is optional. Icons come from the app. |
 

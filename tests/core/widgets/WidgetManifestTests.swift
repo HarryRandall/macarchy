@@ -188,7 +188,7 @@ struct WidgetManifestTests {
                 manifest(
                     "  \"click\": { \"dropdown\": [{ \"type\": \"text\", \"label\": \"A\", \"icons\": [\"bolt\"] }] }"
                 ))
-                == ["dropdown row 1 can only have icons if it is a choice"])
+                == ["dropdown row 1 can only have icons if it is a choice or status"])
     }
 
     @Test("anything that runs a command makes the widget a scripted one")
@@ -278,5 +278,33 @@ struct WidgetManifestTests {
         #expect(
             keys(definitions["setting"]) == Set(WidgetSetting.CodingKeys.allCases.map(\.rawValue)))
         #expect(keys(definitions["row"]) == Set(WidgetMenuRow.CodingKeys.allCases.map(\.rawValue)))
+    }
+}
+
+extension WidgetManifestTests {
+    @Test("mirror, map and status rows take only the fields they draw")
+    func richRows() {
+        let problems = messages(
+            manifest(
+                """
+                  "click": { "dropdown": [
+                    { "type": "mirror", "label": "Down|Up", "value": "{a}|{b}", "colour": "accent|#ff9f0a", "unit": "KB/s" },
+                    { "type": "map", "value": "App:{app}", "max": "{total}", "cells": 64, "colour": "accent|blue" },
+                    { "type": "status", "value": "{link}" },
+                    { "type": "graph", "value": "{a}", "cells": 32, "unit": "litres", "when": "{on" },
+                    { "type": "map", "value": "A:1", "cells": 4 },
+                    { "type": "text", "label": "Rate", "max": "5" }
+                  ] }
+                """))
+        #expect(
+            problems == [
+                "dropdown row 2 colour should be accent, temperature or a colour such as #a5b4fc",
+                "dropdown row 3 needs a label",
+                "dropdown row 4 when has a { that is never closed",
+                "dropdown row 4 can only have cells if it is a map",
+                "dropdown row 4 unit should be short, such as %, °, W or GB",
+                "dropdown row 5 cells should be between 16 and 192",
+                "dropdown row 6 can only have a max if it is a graph or map"
+            ])
     }
 }

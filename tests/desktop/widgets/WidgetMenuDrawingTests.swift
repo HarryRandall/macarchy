@@ -84,6 +84,114 @@ struct WidgetMenuDrawingTests {
         _ = try draw(view, as: "cpu-dropdown-core-hover")
     }
 
+    private func items(_ widget: String, _ output: WidgetOutput) throws -> [WidgetMenuItem] {
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appending(path: "../../../resources/widgets/\(widget)")
+        let manifest = try JSONDecoder().decode(
+            WidgetManifest.self, from: Data(contentsOf: folder.appending(path: "widget.json")))
+        let instance = WidgetInstance(
+            id: "macarchy.\(widget)", manifest: manifest, directory: folder, settings: [:],
+            visible: true)
+        return WidgetMenu.items(instance: instance, component: nil, output: output, label: "")
+    }
+
+    private func wave(_ base: Double, _ swing: Double, spikes: Bool = false) -> [Double] {
+        (0..<30).map {
+            base + swing * sin(Double($0) / 2.5) + (spikes && $0 % 7 == 3 ? base * 6 : 0)
+        }
+    }
+
+    /// Opens a dropdown off screen, then points at each spot given.
+    private func open(
+        _ items: [WidgetMenuItem], as name: String, pointing: [CGPoint] = []
+    )
+        throws -> NSView
+    {
+        let model = WidgetMenuModel()
+        model.items = items
+        let view = host(model)
+        _ = try draw(view, as: name)
+        for (index, spot) in pointing.enumerated() {
+            model.pointer = spot
+            _ = try draw(view, as: "\(name)-hover-\(index + 1)")
+        }
+        return view
+    }
+
+    @Test("Network draws its Wi-Fi card and download over upload")
+    func network() throws {
+        let output = ReadingOutputs.network(
+            NetworkCounters(
+                received: 1_331_000_000, sent: 341_000_000, interface: "en0",
+                address: "192.168.0.24"),
+            .init(
+                down: 38 * 1024, up: 77 * 1024, history: wave(40, 20, spikes: true),
+                upHistory: wave(20, 12, spikes: true),
+                wifi: WiFiReading(
+                    interface: "en0", rssi: -58, rate: 866, channel: 149, band: "5 GHz"),
+                router: "192.168.0.1"))
+        let items = try items("network", output)
+        #expect(items.map(\.type).prefix(3) == ["heading", "status", "mirror"])
+        let view = try open(items, as: "network-dropdown", pointing: [CGPoint(x: 150, y: 140)])
+        #expect(view.bounds.width == WidgetMenuView.width)
+    }
+
+    @Test("Memory draws used and swap cards over its map")
+    func memory() throws {
+        let gigabyte: UInt64 = 1_073_741_824
+        let reading = MemoryReading(
+            total: 24 * gigabyte, app: 11 * gigabyte, wired: 36 * gigabyte / 10,
+            compressed: 17 * gigabyte / 10, cached: 49 * gigabyte / 10, swapUsed: gigabyte / 4,
+            pressureLevel: 1)
+        let output = ReadingOutputs.memory(
+            reading, history: wave(68, 2), swapHistory: wave(0.25, 0.05),
+            top: TopProcesses.parse("1 3400000 Claude\n1 2100000 Safari\n1 1200000 WindowServer"))
+        let items = try items("memory", output)
+        #expect(
+            WidgetMenuView.blocks(items).first { $0.count == 2 }?.map(\.label) == ["Used", "Swap"])
+        _ = try open(items, as: "memory-dropdown", pointing: [CGPoint(x: 40, y: 130)])
+    }
+
+    @Test("GPU draws load and temperature over the memory it holds")
+    func gpu() throws {
+        let output = ReadingOutputs.gpu(
+            .init(
+                load: 42, temperature: 44.2, history: wave(40, 20), temperatures: wave(44, 2),
+                memory: 2_250_000_000, memoryLimit: 19_069_665_280, cores: 20,
+                top: "WindowServer:12.4%,Claude:5.1%,Safari:2.0%"),
+            settings: [:])
+        let items = try items("gpu", output)
+        #expect(items.first?.value == "20-core")
+        _ = try open(items, as: "gpu-dropdown")
+    }
+
+    @Test("Battery shows temperature and time left unplugged, and rate and time to full charging")
+    func battery() throws {
+        var reading = BatteryReading(
+            percent: 33, onAdapter: false, charging: false, charged: false, minutesLeft: 185,
+            cycles: 212, health: 94, lowPowerMode: false, temperature: 31.4, watts: -12)
+        let sample = ReadingOutputs.BatterySample(
+            levels: (0..<30).map { 48 - Double($0) / 2 }, temperatures: wave(31, 0.6),
+            rates: wave(42, 4), energyMode: "Automatic", energyApps: "Claude")
+        let unplugged = try items(
+            "battery", ReadingOutputs.battery(reading, sample, settings: [:]))
+        #expect(
+            WidgetMenuView.blocks(unplugged).first { $0.count == 2 }?.map(\.label) == [
+                "Temp", "Left"
+            ])
+        _ = try open(unplugged, as: "battery-dropdown")
+        reading.onAdapter = true
+        reading.charging = true
+        reading.minutesLeft = 80
+        reading.watts = 41.6
+        let charging = try items("battery", ReadingOutputs.battery(reading, sample, settings: [:]))
+        #expect(
+            WidgetMenuView.blocks(charging).first { $0.count == 2 }?.map(\.label) == [
+                "Rate", "Full"
+            ])
+        _ = try open(charging, as: "battery-dropdown-charging")
+    }
+
     @Test("core rows are even and line up between the groups")
     func columns() {
         #expect(WidgetMenu.coreColumns(4, other: 6) == 4)
