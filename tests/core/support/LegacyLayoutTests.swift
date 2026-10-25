@@ -82,6 +82,21 @@ struct LegacyLayoutTests {
         #expect(home.read("settings.json", in: home.root) == "{\"currentTheme\":\"lumon\"}")
     }
 
+    @Test("the move leaves a note saying what it did")
+    func notesTheMove() throws {
+        let home = try Home()
+        defer { try? FileManager.default.removeItem(at: home.url) }
+        try home.write("other", "theme-copy", in: home.root)
+        try home.write("mine", "theme-copy", in: home.legacy)
+        try LegacyLayout.move(legacy: home.legacy, root: home.root)
+        let note = try #require(LegacyLayout.Note.load(from: home.root))
+        #expect(note.kind == .merged && note.from == home.legacy.path)
+        #expect(note.setAside != nil)
+        #expect(note.lines.count == 2)
+        #expect(note.lines[0].hasPrefix("Moved "))
+        #expect(note.lines[1].contains(LegacyLayout.setAsidePrefix))
+    }
+
     @Test("a folder linked from dotfiles is copied, and the link and folder are left alone")
     func copiesLinkedFolder() throws {
         let home = try Home()
@@ -114,6 +129,8 @@ struct LegacyLayoutTests {
         #expect(
             (paths as? [String: String])?.values.first
                 == home.root.appending(path: "settings.json").path)
+        let note = try #require(LegacyLayout.Note.load(from: home.root))
+        #expect(note.kind == .copied && note.lines[0].hasPrefix("Copied your settings from "))
         #expect(try LegacyLayout.move(legacy: home.legacy, root: home.root) == .nothing)
     }
 

@@ -124,7 +124,8 @@ extension AppModel {
                 .init(path: Paths.display($0.path), action: $0.action.rawValue, detail: $0.detail)
             },
             hasExisting: plan.contains { $0.action == .adopt || $0.action == .replace },
-            canClose: !setupRequired)
+            canClose: !setupRequired,
+            notices: LegacyLayout.note?.lines ?? [])
     }
 
     func advancedState() async throws -> AdvancedState {

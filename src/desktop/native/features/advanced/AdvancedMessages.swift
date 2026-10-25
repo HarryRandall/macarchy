@@ -69,6 +69,8 @@ struct SetupState: Codable, Sendable {
     var changes: [Change]
     var hasExisting: Bool
     var canClose: Bool
+    /// What moving an earlier version's folder did, until setup reports it.
+    var notices: [String]
 }
 struct SetupReport: Codable, Sendable {
     var lines: [String]

@@ -38,6 +38,12 @@ extension Doctor {
                     "Set up before Macarchy moved to Application Support",
                     fix: "Open Macarchy to set it up again", command: setupCommand))
         }
+        if let note = LegacyLayout.note {
+            results.append(
+                HealthCheck(
+                    .configuration, "Earlier folder", .passed,
+                    note.lines.joined(separator: ". ")))
+        }
         if LegacyLayout.hasLeftoverData { results.append(leftoverCheck()) }
         if let missing = missingBarStartFile() {
             results.append(

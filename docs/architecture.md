@@ -33,6 +33,7 @@ Macarchy owns `~/Library/Application Support/Macarchy`:
 | `bin/` | Optional replacements for daemon executables. |
 | `state/` | Daemon logs and scratch state for the menu bar scripts. |
 | `Macarchy.app` | A link to the installed app. |
+| `migration.json` | What moving an earlier version's folder did, until setup reports it. |
 
 `MACARCHY_HOME` relocates everything for tests. It and `MACARCHY_SEARCH_PATH`
 also isolate the run from the desktop: `DesktopIsolation` lets launchd,
@@ -52,10 +53,13 @@ person's own scripts may still name it. When the old path is the person's own
 link, as dotfiles make it, the folder it leads to is copied instead, and the
 link and that folder are left as they are; Doctor reports the copy left behind.
 Setup also rewrites old paths in the shortcuts and the yabai, SketchyBar and
-borders keep regions it carries over, so the link is a fallback.
-A rewrite follows the shell's quoting (`OldPathScanner`) and is kept only when
-the result still parses with `bash -n`; otherwise the text stays as written and
-the report says so. Snapshot records are moved to the new paths, and restore maps any it missed.
+borders keep regions it carries over, so the link is a fallback. A rewrite
+follows the shell's quoting (`OldPathScanner`) and is kept only when the result
+still parses with `bash -n`; otherwise the text stays as written and the report
+says so. Snapshot records are moved to the new paths, and restore maps any it
+missed. The first command after an upgrade usually makes the move unseen, so
+`move` leaves `migration.json` saying what it did; the setup screen, Doctor and
+setup's report show it, and setup clears it.
 
 ## Startup
 

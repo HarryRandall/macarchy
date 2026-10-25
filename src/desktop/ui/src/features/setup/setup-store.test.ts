@@ -8,6 +8,7 @@ const plan: SetupState = {
   changes: [{ path: "~/yabairc", action: "adopt", detail: "Kept" }],
   hasExisting: true,
   canClose: false,
+  notices: [],
 };
 function harness() {
   const request = vi.fn<(...args: unknown[]) => Promise<unknown>>().mockResolvedValue(plan);

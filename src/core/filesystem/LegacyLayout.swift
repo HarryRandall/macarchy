@@ -175,6 +175,7 @@ public enum LegacyLayout {
                 copying
                 ? .copied(from: source, setAside: kept)
                 : aside == nil ? .moved : .merged(setAside: kept)
+            Note(outcome, legacy: legacy, root: root).save(in: root)
             return outcome
         }
     }

@@ -1327,6 +1327,9 @@
           }
         ],
         "hasExisting": true,
+        "notices": [
+          "Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"
+        ],
         "tools": [
           {
             "id": "yabai",
@@ -1373,6 +1376,7 @@
           }
         ],
         "hasExisting": true,
+        "notices": [],
         "tools": [
           {
             "id": "yabai",

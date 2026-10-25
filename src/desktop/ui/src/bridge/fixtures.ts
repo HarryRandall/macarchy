@@ -461,6 +461,7 @@ const keepPlan: SetupState = {
   ],
   hasExisting: true,
   canClose: true,
+  notices: ["Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"],
 };
 
 const replacePlan: SetupState = {
@@ -474,6 +475,7 @@ const replacePlan: SetupState = {
   ],
   hasExisting: true,
   canClose: false,
+  notices: [],
 };
 
 const setupCompleted: SetupReport = {

@@ -23,6 +23,8 @@ export interface SetupState {
   changes: { path: string; action: string; detail: string }[];
   hasExisting: boolean;
   canClose: boolean;
+  /** What moving an earlier version's folder did, until setup reports it. */
+  notices: string[];
 }
 export interface SetupReport {
   lines: string[];

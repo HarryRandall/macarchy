@@ -408,6 +408,7 @@ export function installMockHost() {
       ],
       hasExisting: true,
       canClose: !shell.setupRequired,
+      notices: [],
     }),
     "setup.run": () => {
       if (failures.has("setup")) {

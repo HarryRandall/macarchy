@@ -101,6 +101,9 @@ records_old_folder "$ROOT/snapshots"/*/.meta.json && fail "a snapshot still reco
 # The check can fail: the record kept from before the move names the old folder.
 records_old_folder "$ROOT/snapshots"/*/.meta.legacy.json \
   || fail "the snapshot check cannot see the old folder in a record"
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+grep -q 'Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy' <<<"$DOCTOR" \
+  || fail "doctor does not say the folder moved: $DOCTOR"
 
 OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed: $OUTPUT"
 same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "setup changed settings: $OUTPUT"
@@ -118,6 +121,10 @@ grep -q 'Carried your own commands over from ~/.config/yabai/yabairc' <<<"$OUTPU
   || fail "yabai region not reported: $OUTPUT"
 grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
   || fail "rewritten shortcuts not reported: $OUTPUT"
+# The command that moved the folder ran unseen, so setup says what it did, once.
+grep -q 'Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy' <<<"$OUTPUT" \
+  || fail "setup does not say the folder moved: $OUTPUT"
+[ -e "$ROOT/migration.json" ] && fail "the move's note was kept after setup reported it"
 grep -q 'Carried your own commands over from ~/.config/borders/bordersrc' <<<"$OUTPUT" \
   || fail "borders region not reported: $OUTPUT"
 grep -q 'Pointed 1 path from ~/.config/borders/bordersrc' <<<"$OUTPUT" \
@@ -257,7 +264,9 @@ ls "$ROOT/.." | grep -q 'Macarchy before migration' && fail "a set-aside folder 
 make_home clash
 mkdir -p "$ROOT/generated"
 echo 'other colours' > "$ROOT/generated/bar-colours.sh"
-"$CLI" setup --no-apply >/dev/null 2>&1 || fail "setup failed after a clash"
+OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed after a clash: $OUTPUT"
+grep -q 'and clashed are in ~/Library/Application Support/Macarchy before migration' <<<"$OUTPUT" \
+  || fail "setup does not report the set-aside files: $OUTPUT"
 same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "settings lost after a clash"
 ASIDE="$(ls -d "$ROOT/../Macarchy before migration"* 2>/dev/null | head -1)"
 [ "$(cat "$ASIDE/generated/bar-colours.sh")" = 'other colours' ] || fail "clashing file not kept aside"
@@ -286,6 +295,8 @@ same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "settings not co
 grep -q 'links to ~/dotfiles/macarchy, which still holds settings' <<<"$DOCTOR" \
   || fail "doctor does not flag the linked folder: $DOCTOR"
 OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed with a linked folder: $OUTPUT"
+grep -q 'Copied your settings from ~/dotfiles/macarchy, which ~/.config/macarchy links to' <<<"$OUTPUT" \
+  || fail "setup does not say the settings were copied: $OUTPUT"
 grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
   || fail "shortcuts not pointed at the new folder with a linked folder: $OUTPUT"
 grep -q '.config/macarchy' "$CONFIG/skhdrc" && fail "shortcuts still name the linked folder"

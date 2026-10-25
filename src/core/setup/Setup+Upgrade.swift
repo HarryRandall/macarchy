@@ -77,33 +77,16 @@ extension Setup {
     /// Moves an earlier version's folder before anything else touches the
     /// new one, and stops setup if it is still waiting to move, because
     /// setting up an empty folder would start every setting from defaults.
+    /// Returns what the move did, now or when a command made it earlier, so
+    /// the report tells the person; `run` clears the note once it has.
     static func moveEarlierFolder() throws -> [String] {
-        let outcome = try LegacyLayout.move()
+        try LegacyLayout.move()
         guard !LegacyLayout.needsMigration else {
             throw ConfigurationError(
                 "Settings from an earlier version are still in "
                     + "\(Paths.display(LegacyLayout.linkedFolder ?? Paths.legacyRoot)) and could "
                     + "not be moved. Setup did not change anything.")
         }
-        let moved =
-            "Moved \(Paths.display(Paths.legacyRoot)) to \(Paths.display(Paths.appRoot))"
-        switch outcome {
-        case .nothing: return []
-        case .moved: return [moved]
-        case .merged(nil): return [moved]
-        case .merged(let aside?):
-            return [moved, clashed(aside)]
-        case .copied(let source, let aside):
-            let copied =
-                "Copied your settings from \(Paths.display(source)), which "
-                + "\(Paths.display(Paths.legacyRoot)) links to, into \(Paths.display(Paths.appRoot)). "
-                + "Your link and that folder were left as they are; Macarchy no longer reads them"
-            return [copied] + (aside.map { [clashed($0)] } ?? [])
-        }
-    }
-
-    private static func clashed(_ aside: URL) -> String {
-        "Files that were already in \(Paths.display(Paths.appRoot)) and clashed are in "
-            + Paths.display(aside)
+        return LegacyLayout.note?.lines ?? []
     }
 }

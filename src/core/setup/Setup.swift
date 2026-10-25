@@ -139,9 +139,17 @@ public enum Setup {
         try checkCarriable()
         // Before the lock, which lives in the new folder and would create it.
         let moved = try moveEarlierFolder()
-        return try await OperationLock.run {
-            if existing == .keep { try await checkKeepable() }
-            return try await runLocked(existing: existing, app: app, report: moved)
+        do {
+            let report = try await OperationLock.run {
+                if existing == .keep { try await checkKeepable() }
+                return try await runLocked(existing: existing, app: app, report: moved)
+            }
+            LegacyLayout.clearNote()
+            return report
+        } catch let interrupted as Interrupted {
+            // Its lines, the move's among them, still reach the person.
+            LegacyLayout.clearNote()
+            throw interrupted
         }
     }
 
