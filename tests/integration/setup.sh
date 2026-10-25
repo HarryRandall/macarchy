@@ -124,7 +124,12 @@ for daemon in yabai skhd sketchybar borders; do
 done
 [ "$(argument yabai 2)" = "$CONFIG/yabairc" ] || fail "yabai agent does not use Macarchy's yabairc"
 [ "$(argument skhd 2)" = "$CONFIG/skhdrc" ] || fail "skhd agent does not use Macarchy's skhdrc"
-[ "$(argument sketchybar 2)" = "$CONFIG/sketchybarrc" ] || fail "SketchyBar agent does not use Macarchy's sketchybarrc"
+# The kept bar starts from a launcher in its own folder, so its items see that
+# folder as $CONFIG_DIR, and the launcher hands over to Macarchy's sketchybarrc.
+LAUNCHER="$HOME_DIR/.config/sketchybar/macarchy-sketchybarrc"
+[ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start the kept bar from its folder"
+grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"$' "$LAUNCHER" \
+  || fail "launcher does not hand over to Macarchy's sketchybarrc"
 [ "$(argument borders 0)" = "$CONFIG/bordersrc" ] || fail "borders agent does not run bordersrc"
 
 # Setting up again must not reseed or change anything already adopted.

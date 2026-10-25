@@ -68,6 +68,7 @@ run_old_bar_plugin() {
 
 make_home owner
 cp "$OLD/settings.json" "$WORK/settings.before"
+cp -R "$H/.config/sketchybar" "$WORK/sketchybar.before"
 run_old_bar_plugin
 [ -e "$ROOT" ] && fail "the old bar's plugin created the new folder before migration"
 
@@ -104,8 +105,6 @@ grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
 grep -q '^sudo yabai --load-sa$' "$CONFIG/yabairc" || fail "yabai keep region lost"
 grep -q 'label=restart_borders' "$CONFIG/yabairc" || fail "yabai keep region cut short"
 grep -q 'source "$CONFIG_DIR/colors.sh"' "$CONFIG/sketchybarrc" || fail "bar keep region lost"
-grep -q '^export CONFIG_DIR="$HOME/.config/sketchybar"$' "$CONFIG/sketchybarrc" \
-  || fail "bar region not given its folder"
 [ "$(grep -n 'source "$ITEM_DIR/spaces.sh"' "$CONFIG/sketchybarrc" | cut -d: -f1)" -lt \
   "$(grep -n 'startup sketchybar' "$CONFIG/sketchybarrc" | cut -d: -f1)" ] || fail "own bar must run before startup"
 for rc in yabairc sketchybarrc bordersrc; do
@@ -139,6 +138,53 @@ command="$(grep '^cmd + ctrl - 0x18 :' "$CONFIG/skhdrc" | sed 's/^[^:]*: //')"
 OUTPUT="$(HOME="$H" sh -c "$command" 2>&1)" || fail "theme shortcut failed: $command: $OUTPUT"
 grep -q '"currentTheme" : "lumon"' "$ROOT/settings.json" && fail "theme shortcut did nothing"
 
+# The owner's own bar runs as it did before. SketchyBar sets $CONFIG_DIR and
+# its working folder to the folder of the file its agent names, links
+# resolved, and passes both to every item script; this runs the bar and the
+# owner's scripts the same way, with fakes first on PATH and every tool the
+# scripts name by full path pointed at a fake.
+AGENTS="$H/Library/LaunchAgents"
+START="$(plutil -extract ProgramArguments.2 raw "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")"
+BAR_FOLDER="$(dirname "$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$START")")"
+[ "$BAR_FOLDER" = "$(cd "$H/.config/sketchybar" && pwd -P)" ] \
+  || fail "SketchyBar would give the owner's items $BAR_FOLDER as CONFIG_DIR"
+grep -q 'Written by Macarchy' "$START" || fail "SketchyBar does not start from Macarchy's launcher"
+rm -rf "$WORK/sketchybar.after"; cp -R "$H/.config/sketchybar" "$WORK/sketchybar.after"
+rm "$WORK/sketchybar.after/macarchy-sketchybarrc"
+diff -r "$WORK/sketchybar.before" "$WORK/sketchybar.after" >/dev/null || fail "setup changed the owner's bar folder"
+echo '{}' > "$WORK/macmon.json"
+as_sketchybar() {
+  (cd "$BAR_FOLDER" && env HOME="$H" CONFIG_DIR="$BAR_FOLDER" PATH="$MACARCHY_SEARCH_PATH:/usr/bin:/bin" \
+    SKETCHYBAR_BIN="$MACARCHY_SEARCH_PATH/sketchybar" YABAI_BIN="$MACARCHY_SEARCH_PATH/yabai" \
+    JQ_BIN="$MACARCHY_SEARCH_PATH/jq" MACMON_DATA_FILE="$WORK/macmon.json" "$@")
+}
+printf '#!/bin/sh\nexit 0\n' > "$MACARCHY_SEARCH_PATH/jq"; chmod +x "$MACARCHY_SEARCH_PATH/jq"
+: > "$CALLS"
+OUTPUT="$(as_sketchybar "$START" 2>&1)" || fail "the bar did not start: $OUTPUT"
+grep -q 'No such file' <<<"$OUTPUT" && fail "the bar could not find its files: $OUTPUT"
+grep -q "script=$BAR_FOLDER/plugins/battery.sh" "$CALLS" || fail "items not added with the owner's plugins"
+for icon in $(grep -o "background.image=[^ ]*" "$CALLS" | cut -d= -f2 | sort -u); do
+  [ -f "$icon" ] || fail "icon $icon missing"
+done
+grep -q "background.image=$BAR_FOLDER/icons/cpu.png" "$CALLS" || fail "icons not found through CONFIG_DIR"
+grep -q 'sketchybar --add event macarchy_theme_changed' "$CALLS" || fail "the bar stopped before its theme listener"
+[ -d "$BAR_FOLDER/.state" ] || fail "the owner's Space renderer kept no state"
+# Item scripts as SketchyBar runs them later: colours come from the theme
+# Macarchy wrote, read through the owner's colors.sh and the old-folder link.
+TEXT="$(sed -n 's/^export TEXT_COLOR="\(.*\)"$/\1/p' "$ROOT/generated/bar-colours.sh")"
+[ -n "$TEXT" ] || fail "no theme colours written"
+: > "$CALLS"
+as_sketchybar env NAME=battery SENDER=routine "$BAR_FOLDER/plugins/battery.sh" >/dev/null 2>&1
+grep -q '^sketchybar --set battery' "$CALLS" || fail "battery plugin did not run"
+as_sketchybar env NAME=ram.text SENDER=routine "$BAR_FOLDER/plugins/system_metrics.sh" >/dev/null 2>&1
+grep -q -- '--set ram.text' "$CALLS" || fail "metrics plugin did not run"
+: > "$CALLS"
+as_sketchybar env SENDER=macarchy_theme_changed "$BAR_FOLDER/recolor.sh" >/dev/null 2>&1 || fail "recolor failed"
+grep -q "label.color=$TEXT" "$CALLS" || fail "recolor did not use the theme's colours"
+# Macarchy's own bar scripts, reached through the app link, keep their state in the new folder.
+as_sketchybar env NAME=cpu "$ROOT/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1
+[ -d "$ROOT/state/bar" ] || fail "Macarchy's bar scripts keep no state in the new folder"
+
 # The earlier borders agent becomes Macarchy's, and is not recorded as an original.
 plutil -extract ProgramArguments.0 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.borders.plist" \
   | grep -qx "$CONFIG/bordersrc" || fail "borders agent does not run Macarchy's bordersrc"
@@ -168,6 +214,7 @@ grep -q 'Earlier settings' <<<"$DOCTOR" && fail "doctor flags the moved folder: 
 
 OUTPUT="$("$CLI" uninstall 2>&1)" || fail "uninstall failed: $OUTPUT"
 [ -e "$OLD" ] && fail "uninstall left the old folder link"
+[ -e "$H/.config/sketchybar/macarchy-sketchybarrc" ] && fail "uninstall left the bar launcher"
 grep -q 'before Macarchy' "$H/.config/yabai/yabairc" || fail "uninstall did not restore the original yabairc"
 same_json "$ROOT/snapshots/$SETTINGS_SNAPSHOT/0-settings.json" "$ROOT/settings.json" || fail "uninstall changed settings"
 
