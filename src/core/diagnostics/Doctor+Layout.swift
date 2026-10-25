@@ -15,17 +15,6 @@ extension Doctor {
             command: setupCommand)
     }
 
-    /// The file SketchyBar's agent names, when it is gone, as happens when
-    /// the person's bar folder holding the launcher is deleted.
-    static func missingBarStartFile() -> URL? {
-        guard
-            let arguments = DaemonAgents.definition(at: DaemonAgents.plist(.sketchybar))?.arguments,
-            let index = arguments.firstIndex(of: "--config"), index + 1 < arguments.count
-        else { return nil }
-        let file = URL(fileURLWithPath: arguments[index + 1])
-        return FileManager.default.fileExists(atPath: file.path) ? nil : file
-    }
-
     /// Setup has not run since the move, and data Macarchy no longer reads:
     /// an earlier version's folder kept beside the new one, or files a merge
     /// set aside because they clashed.
@@ -45,13 +34,6 @@ extension Doctor {
                     note.lines.joined(separator: ". ")))
         }
         if LegacyLayout.hasLeftoverData { results.append(leftoverCheck()) }
-        if let missing = missingBarStartFile() {
-            results.append(
-                HealthCheck(
-                    .configuration, "SketchyBar agent", .failed,
-                    "Macarchy's agent starts \(Paths.display(missing)), which is missing",
-                    fix: "Run setup again", command: setupCommand))
-        }
         for folder in LegacyLayout.setAsideFolders {
             results.append(
                 HealthCheck(

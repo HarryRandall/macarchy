@@ -117,8 +117,16 @@ public enum Doctor {
             }
             let state = await integrations.state(of: daemon)
             switch state {
-            case .running:
-                results.append(HealthCheck(.services, daemon.displayName, .passed, "Running"))
+            case .running(let pid):
+                let ours = daemon.launchdLabel == DaemonAgents.label(daemon)
+                let recorded = Startup.lastRun(daemon)
+                let seconds =
+                    !ours || recorded == pid || !recordedDaemons.contains(daemon)
+                    ? nil : await secondsRunning(pid, integrations: integrations)
+                results.append(
+                    startupCheck(
+                        daemon, ours: ours, pid: pid, recorded: recorded, secondsRunning: seconds)
+                        ?? HealthCheck(.services, daemon.displayName, .passed, "Running"))
             case .unknown:
                 results.append(HealthCheck(.services, daemon.displayName, .unknown, "No answer"))
             case .stopped:
@@ -140,8 +148,9 @@ public enum Doctor {
             results.append(
                 HealthCheck(
                     .services, "Window signals", registered ? .passed : .warning,
-                    registered ? "" : "Floating rules apply to new windows after a restart",
-                    fix: "Restart yabai from Advanced"))
+                    registered ? "" : "Not registered, so floating rules miss new windows",
+                    fix: "Restart yabai from Advanced, which runs its startup file again. "
+                        + "If they are still missing, the yabai check says why"))
         }
         return results
     }
@@ -200,11 +209,15 @@ public enum Doctor {
                 continue
             }
             let agent = fm.fileExists(atPath: DaemonAgents.plist(daemon).path)
+            let problem =
+                agent
+                ? startFileProblem(daemon)
+                : "Not started by Macarchy, so it misses Macarchy's config"
             results.append(
                 HealthCheck(
-                    .configuration, "\(daemon.displayName) agent", agent ? .passed : .failed,
-                    agent ? "" : "Not started by Macarchy, so it misses Macarchy's config",
-                    fix: "Run setup again", command: setupCommand))
+                    .configuration, "\(daemon.displayName) agent",
+                    problem == nil ? .passed : .failed,
+                    problem ?? "", fix: "Run setup again", command: setupCommand))
         }
         return results
     }

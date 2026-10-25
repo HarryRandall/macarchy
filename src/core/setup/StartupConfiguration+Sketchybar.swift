@@ -12,50 +12,6 @@ extension StartupConfiguration {
         SettingKey(key: "sticky", env: "SKETCHYBAR_STICKY", fallback: "on")
     ]
 
-    /// Where the launcher for a person's own bar goes: their bar's folder.
-    ///
-    /// SketchyBar sets `$CONFIG_DIR`, and its working folder, to the folder
-    /// of the file it was started with, links resolved, and passes both to
-    /// every item script. A hand-built bar finds its plugins, colours and
-    /// icons through them, so starting it from `config/` would break it. The
-    /// agent starts this small file instead. It hands over to
-    /// `config/sketchybarrc`, so the bar runs Macarchy's file with the folder
-    /// it was written for, and SketchyBar still watches that folder for
-    /// changes. A link would not do: SketchyBar resolves it.
-    public static var barLauncher: URL {
-        Paths.home.appending(path: ".config/sketchybar/macarchy-sketchybarrc")
-    }
-
-    static let barLauncherMarker = "# Written by Macarchy for its SketchyBar agent."
-
-    static var barLauncherContent: String {
-        let home = Paths.home.path
-        let config = sketchybarrc.url.path
-        let spelled =
-            config.hasPrefix(home + "/") ? "$HOME" + config.dropFirst(home.count) : config
-        return """
-            #!/bin/bash
-            \(barLauncherMarker)
-            # SketchyBar gives your items this folder as $CONFIG_DIR when it starts
-            # here, as it did before Macarchy. The bar itself, with your own region:
-            #   \(Paths.display(sketchybarrc.url))
-            # Uninstalling Macarchy removes this file.
-            exec "\(spelled)" "$@"
-
-            """
-    }
-
-    /// Whether the launcher is in place and Macarchy's.
-    public static var usesBarLauncher: Bool {
-        (try? String(contentsOf: barLauncher, encoding: .utf8))?.contains(barLauncherMarker)
-            == true
-    }
-
-    /// The file the SketchyBar agent starts.
-    public static var sketchybarStartFile: URL {
-        usesBarLauncher ? barLauncher : sketchybarrc.url
-    }
-
     public static func envName(forBarKey key: String) -> String? {
         sketchybarKeys.first { $0.key == key }?.env
     }

@@ -65,9 +65,10 @@ setup's report show it, and setup clears it.
 
 Macarchy runs yabai, skhd, SketchyBar and borders from its own LaunchAgents
 (`io.github.harryrandall.macarchy.<tool>`), each started with its file in
-`config/` (`yabai -c`, `skhd -c`, `sketchybar --config`, and bordersrc run
-directly), so nothing is written where the tools look by default. `DaemonAgents`
-writes the agents and switches off the ones the tools' installers made.
+`config/` (`skhd -c`, bordersrc run directly, and yabai and SketchyBar through
+launchers, below), so nothing is written where the tools look by default.
+`DaemonAgents` writes the agents and switches off the ones the tools'
+installers made.
 Starting a daemon reloads its job when the agent on disk no longer matches what
 `launchctl print` reports. If Macarchy's job does not stay running and an
 installer's job was running before, that one is loaded again and Macarchy's
@@ -81,14 +82,24 @@ repairs the link when it launches.
 
 `skhdrc` is the exception: seeded with defaults, then the person's file.
 
-SketchyBar sets `$CONFIG_DIR` and its working folder to the folder of the file
-it starts with, resolving links, and passes them to every item script. A
-person's own bar finds its plugins, colours and icons that way, so when setup
-keeps one, the agent starts `~/.config/sketchybar/macarchy-sketchybarrc`, a
-two-line launcher that execs `config/sketchybarrc`. The bar then runs
-Macarchy's file with the folder it was written for, and SketchyBar still
-watches that folder for changes. Setup backs the launcher up as absent, so
-uninstall removes it, and Doctor reports it if it goes missing.
+yabai and SketchyBar run the file they are started with as `sh -c <path>`,
+with the path unquoted, so sh splits a path in Application Support at its
+space and the file never runs. Their agents start a `StartLauncher` instead:
+`~/.config/yabai/macarchy-yabairc` and
+`~/.config/sketchybar/macarchy-sketchybarrc`, two-line files that exec the
+quoted path of `config/yabairc` and `config/sketchybarrc`. A link would not
+do: SketchyBar resolves it. SketchyBar also sets `$CONFIG_DIR` and its working
+folder to the launcher's folder, resolving links, and passes them to every
+item script, so a person's own bar finds its plugins, colours and icons as
+before, and SketchyBar watches that folder for changes. Macarchy's bar names
+its scripts in full. Setup backs the launchers up as absent, so uninstall
+removes them. skhd only reads its file, and launchd runs bordersrc itself.
+
+`macarchy startup <tool>` records the pid launchd reports for the daemon's
+job in `state/startup/<tool>`. Doctor compares it with the copy running now,
+so a daemon that started without running its file reads as a failure, not as
+running. It also fails an agent whose start file is missing or has a space in
+its path, as agents written before the launchers do until setup runs again.
 
 ## Setup and uninstall
 
@@ -134,4 +145,6 @@ rules, the menu bar editor, layout editing, border appearance editing, and the
 bridge and web views against the built interface.
 `corepack pnpm run check` in `src/desktop/ui` covers the interface.
 `tests/integration/setup.sh` runs setup, a repeat setup and uninstall
-in a temporary home against fake tools.
+in a temporary home against fake tools, and starts each agent as launchd
+would. The fake yabai and SketchyBar run their file as `sh -c <path>`, as the
+real ones do, so a path sh would split fails there too.

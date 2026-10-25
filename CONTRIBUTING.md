@@ -200,7 +200,8 @@ Outside the folder it only writes:
 |---|---|
 | `~/Library/LaunchAgents/io.github.harryrandall.macarchy.<tool>.plist` | Starts each tool at login with its config. The tool's own agent is switched off and backed up |
 | `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
-| `~/.config/sketchybar/macarchy-sketchybarrc` | Only if you keep your own bar: SketchyBar starts from it, so your items still see that folder as `$CONFIG_DIR` |
+| `~/.config/yabai/macarchy-yabairc` | yabai starts from it, since it cannot start a file whose path has a space. It hands over to `yabairc` |
+| `~/.config/sketchybar/macarchy-sketchybarrc` | SketchyBar starts from it for the same reason, and a bar of your own still sees that folder as `$CONFIG_DIR`. It hands over to `sketchybarrc` |
 | `~/.config/macarchy` | Only after an upgrade: a link to the new folder for files that still name the old one. A link of your own there is left as it is, and what it leads to is copied |
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not

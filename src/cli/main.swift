@@ -135,6 +135,7 @@ do {
         print("Applied the saved settings.")
     case "startup":
         let options = try parse(values: 1...1, choices: ["yabai", "sketchybar", "borders"])
+        await Startup.recordRun(options.values[0])
         if options.values[0] == "borders" {
             // Window corners are a separate preference; failing to set them
             // must not keep borders from starting.

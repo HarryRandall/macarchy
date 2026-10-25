@@ -63,6 +63,35 @@ public enum Startup {
         }
     }
 
+    /// Where `recordRun` notes the daemon that last ran its startup file.
+    static func runRecord(_ daemon: Daemon) -> URL {
+        Paths.stateDirectory.appending(path: "startup/\(daemon.rawValue)")
+    }
+
+    /// Notes which copy of a daemon ran its startup file: the process launchd
+    /// reports for the daemon's job while the file runs it. Doctor compares it
+    /// with the copy running now, which is the only way to tell that a daemon
+    /// started but never ran its file, as when yabai split a path at a space.
+    /// Only the startup files call `macarchy startup`; the app applies
+    /// settings directly. A record that cannot be written makes Doctor report
+    /// the file as not run, the safer mistake, so failures are not reported.
+    public static func recordRun(_ name: String, integrations: Integrations = Integrations()) async
+    {
+        guard let daemon = Daemon(rawValue: name),
+            case .running(let pid) = await integrations.state(of: daemon)
+        else { return }
+        let url = runRecord(daemon)
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? "\(pid)\n".write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// The process `recordRun` last noted for the daemon, if any.
+    static func lastRun(_ daemon: Daemon) -> Int? {
+        (try? String(contentsOf: runRecord(daemon), encoding: .utf8))
+            .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
     /// Fills the widgets in now, so the bar is right before the app starts
     /// updating it, and stays right if the app is not running.
     static func fillWidgets(_ configuration: BarConfiguration, integrations: Integrations) async {

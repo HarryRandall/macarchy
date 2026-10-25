@@ -5,12 +5,10 @@ import Foundation
 extension Setup {
     typealias SettingsEdit = ((inout SettingsDocument) throws -> Void) throws -> Void
 
-    /// The person's part of sketchybarrc, the report lines that go with it,
-    /// and whether SketchyBar starts from the launcher in their bar folder.
+    /// The person's part of sketchybarrc and the report lines that go with it.
     struct BarRegion {
         var region: String?
         var lines: [String]
-        var launcher: Bool
     }
 
     /// The plan's line for a startup file an earlier version wrote.
@@ -86,17 +84,15 @@ extension Setup {
         return (try await carriedRegion(from: source, report: &lines), lines)
     }
 
-    /// The sketchybarrc region, and whether SketchyBar should start from the
-    /// launcher in the person's bar folder (`StartupConfiguration.barLauncher`).
-    /// An earlier version's region carries over and its `bundledBar` setting
-    /// still says whose bar runs; only a missing one means Macarchy's. A
-    /// hand-built bar kept with `keep` replaces Macarchy's. The region is nil
-    /// once the file is Macarchy's, and the launcher then stays as it is.
+    /// The sketchybarrc region. An earlier version's region carries over and
+    /// its `bundledBar` setting still says whose bar runs; only a missing one
+    /// means Macarchy's. A hand-built bar kept with `keep` replaces
+    /// Macarchy's. The region is nil once the file is Macarchy's.
     static func barRegion(
         existing: Existing, settings: SettingsStore, updateSettings: SettingsEdit
     ) async throws -> BarRegion {
         guard !isGenerated(StartupConfiguration.sketchybarrc.url) else {
-            return BarRegion(region: nil, lines: [], launcher: StartupConfiguration.usesBarLauncher)
+            return BarRegion(region: nil, lines: [])
         }
         var lines: [String] = []
         if let source = sketchybarSource, isGenerated(source) {
@@ -107,68 +103,28 @@ extension Setup {
             case false?: lines.append("Kept your menu bar")
             case true?: break
             }
-            return BarRegion(
-                region: region, lines: lines,
-                launcher: bundled == false || region.contains("CONFIG_DIR"))
+            return BarRegion(region: region, lines: lines)
         }
         guard existing == .keep, let source = sketchybarSource, let text = adoptable(source)
         else {
             try updateSettings { $0.bundledBar = true }
-            return BarRegion(region: "", lines: [], launcher: false)
+            return BarRegion(region: "", lines: [])
         }
         let bar = StartupConfiguration.tidy(
             text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
         let kept = await pointingAtNewFolder(bar, in: source, report: &lines)
         try updateSettings { $0.bundledBar = false }
         lines.append("Kept your menu bar")
-        return BarRegion(region: kept, lines: lines, launcher: true)
+        return BarRegion(region: kept, lines: lines)
     }
 
-    /// The plan's line for the launcher, when the first setup will write one.
-    static func launcherChange(_ existing: Existing) -> Change? {
-        guard !isGenerated(StartupConfiguration.sketchybarrc.url),
-            let source = sketchybarSource
-        else { return nil }
-        let wanted =
-            isGenerated(source)
-            ? (try? SettingsStore().read().bundledBar) == false
-                || mentionsConfigDirectory(source)
-            : existing == .keep && adoptable(source) != nil
-        guard wanted else { return nil }
-        return Change(
-            path: StartupConfiguration.barLauncher, action: .create,
-            detail: "Starts your bar from its own folder, so its items find their plugins, "
-                + "colours and icons as before. Uninstall removes it")
+    /// The launchers that installed daemons start from (`StartLauncher`).
+    static var launchers: [StartLauncher] {
+        StartLauncher.all.filter { Paths.isInstalled($0.daemon.executableName) }
     }
 
-    private static func mentionsConfigDirectory(_ source: URL) -> Bool {
-        (try? String(contentsOf: source, encoding: .utf8))?.contains("CONFIG_DIR") == true
-    }
-
-    /// Writes or removes the launcher in the person's bar folder. It is
-    /// backed up as absent first, so uninstall removes it.
-    static func placeBarLauncher(_ wanted: Bool, backups: Backups) throws -> [String] {
-        let launcher = StartupConfiguration.barLauncher
-        let fm = FileManager.default
-        guard wanted else {
-            guard StartupConfiguration.usesBarLauncher else { return [] }
-            try fm.removeItem(at: launcher)
-            return ["Removed \(Paths.display(launcher))"]
-        }
-        let content = StartupConfiguration.barLauncherContent
-        guard (try? String(contentsOf: launcher, encoding: .utf8)) != content else { return [] }
-        if fm.fileExists(atPath: launcher.path), !StartupConfiguration.usesBarLauncher {
-            throw ConfigurationError(
-                "\(Paths.display(launcher)) exists and is not Macarchy's. Move it aside, then "
-                    + "set up again.")
-        }
-        var lines = try backups.save([launcher]).map { "Backed up \(Paths.display($0))" }
-        try fm.createDirectory(
-            at: launcher.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try content.write(to: launcher, atomically: true, encoding: .utf8)
-        try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: launcher.path)
-        lines.append(
-            "Wrote \(Paths.display(launcher)), so your bar's items find their files as before")
-        return lines
+    /// Writes each installed daemon's launcher before its agent, which names it.
+    static func placeLaunchers(backups: Backups) throws -> [String] {
+        try launchers.flatMap { try $0.place(backups: backups) }
     }
 }

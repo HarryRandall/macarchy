@@ -113,7 +113,7 @@ public enum Setup {
                 "Installs Macarchy's menu bar"),
             bordersChange()
         ]
-        if let launcher = launcherChange(existing) { changes.append(launcher) }
+        changes += launchers.compactMap(\.change)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             changes.append(
                 Change(
@@ -219,13 +219,12 @@ public enum Setup {
         report += bar.lines
         let barKept = bar.region
         try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))
-        // Before the agents, which start SketchyBar from the launcher when there is one.
-        report += try placeBarLauncher(bar.launcher, backups: backups)
 
         let bordersrc = StartupConfiguration.bordersrc.url
         let borders = try await bordersRegion()
         report += borders.lines
         try generate(bordersrc, StartupConfiguration().generateBordersRC(adopting: borders.region))
+        report += try placeLaunchers(backups: backups)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             try DaemonAgents.install(daemon, backups: backups, report: &report)
         }

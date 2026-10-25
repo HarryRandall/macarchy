@@ -21,11 +21,22 @@ mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/sk
 # services, and SketchyBar and borders start through Homebrew. There is no
 # fake launchctl, so launchd jobs resolve to a missing file and are never reached.
 # Queries for lists answer as the real tools do when nothing is set.
+# yabai and SketchyBar run the file they are started with as the real ones
+# do, as `sh -c <path>` with the path unquoted, so a path sh would split
+# fails here as it does on a Mac. SketchyBar first resolves links and moves
+# to the file's folder, which it gives the bar as $CONFIG_DIR.
 CALLS="$HOME_DIR/calls.log"
 for tool in yabai skhd sketchybar borders brew; do
   cat > "$MACARCHY_SEARCH_PATH/$tool" <<SH
 #!/bin/sh
 printf '%s\n' "$tool \$*" >>'$CALLS'
+case "$tool \$1" in
+  "yabai -c") [ -x "\$2" ] && exec /usr/bin/env sh -c "\$2"; exec /usr/bin/env sh "\$2" ;;
+  "sketchybar --config")
+    file="\$(realpath "\$2")" || exit 1
+    CONFIG_DIR="\$(dirname "\$file")"; export CONFIG_DIR; cd "\$CONFIG_DIR" || exit 1
+    exec /usr/bin/env sh -c "\$file" ;;
+esac
 case "\$*" in *--list*) echo '[]' ;; esac
 SH
   chmod +x "$MACARCHY_SEARCH_PATH/$tool"
@@ -122,14 +133,20 @@ argument() { plutil -extract "ProgramArguments.$2" raw "$AGENTS/io.github.harryr
 for daemon in yabai skhd sketchybar borders; do
   plutil -lint "$AGENTS/io.github.harryrandall.macarchy.$daemon.plist" >/dev/null || fail "$daemon agent missing or invalid"
 done
-[ "$(argument yabai 2)" = "$CONFIG/yabairc" ] || fail "yabai agent does not use Macarchy's yabairc"
 [ "$(argument skhd 2)" = "$CONFIG/skhdrc" ] || fail "skhd agent does not use Macarchy's skhdrc"
-# The kept bar starts from a launcher in its own folder, so its items see that
-# folder as $CONFIG_DIR, and the launcher hands over to Macarchy's sketchybarrc.
+# yabai and SketchyBar run the file they start with through sh unquoted, so
+# they start from launchers in their own folders, whose paths have no space,
+# and each hands over to Macarchy's file. The kept bar's items also see its
+# folder as $CONFIG_DIR.
+YABAI_LAUNCHER="$HOME_DIR/.config/yabai/macarchy-yabairc"
 LAUNCHER="$HOME_DIR/.config/sketchybar/macarchy-sketchybarrc"
+[ "$(argument yabai 2)" = "$YABAI_LAUNCHER" ] || fail "yabai agent does not start from its launcher"
 [ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start the kept bar from its folder"
+grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/yabairc" "$@"$' "$YABAI_LAUNCHER" \
+  || fail "launcher does not hand over to Macarchy's yabairc"
 grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"$' "$LAUNCHER" \
   || fail "launcher does not hand over to Macarchy's sketchybarrc"
+[ -x "$YABAI_LAUNCHER" ] && [ -x "$LAUNCHER" ] || fail "launchers not executable"
 [ "$(argument borders 0)" = "$CONFIG/bordersrc" ] || fail "borders agent does not run bordersrc"
 
 # Setting up again must not reseed or change anything already adopted.
@@ -156,6 +173,8 @@ untouched "uninstall"
 for daemon in yabai skhd sketchybar borders; do
   [ -e "$AGENTS/io.github.harryrandall.macarchy.$daemon.plist" ] && fail "$daemon agent not removed on uninstall"
 done
+[ -e "$YABAI_LAUNCHER" ] && fail "uninstall left the yabai launcher"
+[ -e "$LAUNCHER" ] && fail "uninstall left the bar launcher"
 [ -f "$SETTINGS" ] || fail "uninstall removed settings"
 
 # A replaced setup starts from defaults and still leaves the person's files alone.
@@ -164,6 +183,8 @@ rm -rf "$CONFIG"
 untouched "replace"
 grep -q 'ctrl + alt - left' "$CONFIG/skhdrc" || fail "default shortcuts missing"
 grep -q 'for app in Calculator Finder' "$CONFIG/yabairc" && fail "replace adopted yabai commands"
+# Macarchy's own bar starts from the launcher too: SketchyBar would split its path as well.
+[ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start Macarchy's bar from the launcher"
 "$CLI" uninstall >/dev/null
 
 # An older ~/.skhdrc is read in place of the newer location.
@@ -303,9 +324,47 @@ case "\$1" in
 esac
 SH
 chmod +x "$MACARCHY_SEARCH_PATH/launchctl"
-"$CLI" setup --replace >/dev/null || fail "isolated setup with services failed"
+# Set up from a copy of the command inside an app, as installed, so the
+# startup files reach this build through the app link.
+APP="$HOME_DIR/Applications/Macarchy.app"
+mkdir -p "$APP/Contents/MacOS"
+cp "$CLI" "$APP/Contents/MacOS/macarchy"
+"$APP/Contents/MacOS/macarchy" setup --replace >/dev/null || fail "isolated setup with services failed"
 grep -q '^launchctl kickstart -k .*io.github.harryrandall.macarchy.yabai$' "$CALLS" \
   || fail "setup did not start yabai from Macarchy's agent"
+# The fake launchctl starts nothing, so no daemon has run its startup file yet.
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+for daemon in yabai SketchyBar borders; do
+  grep -q "FAIL $daemon: Running, but it has not run its startup file" <<<"$DOCTOR" \
+    || fail "doctor does not report that $daemon skipped its startup file: $DOCTOR"
+done
+# The fake yabai runs a file as yabai does, so the path agents used to name
+# fails as it did on a Mac.
+OUTPUT="$(env HOME="$HOME_DIR" "$MACARCHY_SEARCH_PATH/yabai" -c "$CONFIG/yabairc" 2>&1)" \
+  && fail "the fake yabai ran a file in Application Support through sh -c"
+grep -q 'Library/Application: No such file' <<<"$OUTPUT" || fail "the fake yabai did not split the path: $OUTPUT"
+# Start each daemon as launchd does: its agent's arguments, run directly with
+# the agent's PATH and no shell in between. Each must reach its startup.
+run_agent() {
+  local plist="$AGENTS/io.github.harryrandall.macarchy.$1.plist" index=0 argument
+  local arguments=()
+  while argument="$(plutil -extract "ProgramArguments.$index" raw "$plist" 2>/dev/null)"; do
+    arguments+=("$argument")
+    index=$((index + 1))
+  done
+  env HOME="$HOME_DIR" PATH="$(plutil -extract EnvironmentVariables.PATH raw "$plist")" "${arguments[@]}"
+}
+: > "$CALLS"
+OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
+grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file set no layout: $OUTPUT"
+grep -q '^yabai -m signal --add label=macarchy_window_created ' "$CALLS" || fail "yabai's startup file added no signals"
+OUTPUT="$(run_agent sketchybar 2>&1)" || fail "SketchyBar did not run its startup file: $OUTPUT"
+grep -q '^sketchybar --bar ' "$CALLS" || fail "SketchyBar's startup file set up no bar: $OUTPUT"
+OUTPUT="$(run_agent borders 2>&1)" || fail "borders did not run its startup file: $OUTPUT"
+grep -q '^borders .*active_color=' "$CALLS" || fail "bordersrc did not start borders: $OUTPUT"
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+grep -q 'has not run its startup file' <<<"$DOCTOR" && fail "doctor reports a startup file that ran: $DOCTOR"
+grep -q 'agent: Macarchy' <<<"$DOCTOR" && fail "doctor reports a start file problem: $DOCTOR"
 "$CLI" apply >/dev/null || fail "isolated apply failed"
 # A copied theme folder whose manifest still names the original is stepped over.
 cp -R "$ROOT/themes/midnight" "$ROOT/themes/midnight-copy"

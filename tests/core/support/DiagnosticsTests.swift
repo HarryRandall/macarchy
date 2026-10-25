@@ -23,6 +23,31 @@ struct DiagnosticsTests {
         #expect(result.stderr.range(of: "line [0-9]+", options: .regularExpression) != nil)
     }
 
+    @Test("a running daemon passes only once that copy has run its startup file")
+    func startupRuns() {
+        func check(ours: Bool = true, recorded: Int?, seconds: Int?) -> HealthCheck.Status? {
+            Doctor.startupCheck(
+                .yabai, ours: ours, pid: 42, recorded: recorded, secondsRunning: seconds)?.status
+        }
+        #expect(check(recorded: 42, seconds: nil) == .passed)
+        #expect(check(recorded: 41, seconds: 600) == .failed)
+        #expect(check(recorded: nil, seconds: nil) == .failed)
+        #expect(check(recorded: nil, seconds: 3) == .unknown)
+        #expect(check(ours: false, recorded: nil, seconds: 600) == nil)
+        #expect(
+            Doctor.startupCheck(.skhd, ours: true, pid: 42, recorded: nil, secondsRunning: 600)
+                == nil)
+    }
+
+    @Test("ps elapsed times read as seconds")
+    func elapsedTimes() {
+        #expect(Doctor.elapsedSeconds("   00:07\n") == 7)
+        #expect(Doctor.elapsedSeconds("01:02:03") == 3723)
+        #expect(Doctor.elapsedSeconds("2-00:00:01") == 172_801)
+        #expect(Doctor.elapsedSeconds("") == nil)
+        #expect(Doctor.elapsedSeconds("soon") == nil)
+    }
+
     @Test("window signals count as registered only when both helpers are loaded")
     func windowSignals() async {
         func registered(_ list: String) async -> Bool {

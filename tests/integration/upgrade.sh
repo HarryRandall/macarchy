@@ -49,10 +49,21 @@ make_home() {
   export HOME="$H" MACARCHY_HOME="$H" MACARCHY_SEARCH_PATH="$H/fake-bin" MACARCHY_APPLICATIONS="$H/Applications"
   mkdir -p "$MACARCHY_SEARCH_PATH"
   CALLS="$H/calls.log"
-  for tool in yabai skhd sketchybar borders brew launchctl; do
+  # yabai and SketchyBar run the file they start with as the real ones do,
+  # as `sh -c <path>` unquoted, SketchyBar after resolving links and moving
+  # to the file's folder, which it gives the bar as $CONFIG_DIR. sudo is here
+  # for the owner's yabai region, which loads the scripting addition.
+  for tool in yabai skhd sketchybar borders brew launchctl sudo; do
     cat > "$MACARCHY_SEARCH_PATH/$tool" <<SH
 #!/bin/sh
 printf '%s\n' "$tool \$*" >>'$CALLS'
+case "$tool \$1" in
+  "yabai -c") [ -x "\$2" ] && exec /usr/bin/env sh -c "\$2"; exec /usr/bin/env sh "\$2" ;;
+  "sketchybar --config")
+    file="\$(realpath "\$2")" || exit 1
+    CONFIG_DIR="\$(dirname "\$file")"; export CONFIG_DIR; cd "\$CONFIG_DIR" || exit 1
+    exec /usr/bin/env sh -c "\$file" ;;
+esac
 case "\$*" in *--list*|*query*) echo '[]' ;; esac
 case "$tool \$1" in "launchctl print") printf 'state = running\npid = 4242\n' ;; esac
 exit 0
@@ -69,11 +80,35 @@ SH
   CONFIG="$ROOT/config"
 }
 
+# Macarchy's own bar scripts look for SketchyBar in its bin before Homebrew's,
+# never on PATH, so they run with a fake there to stay off the real bar.
+with_fake_bar() {
+  local bin="$1/bin"
+  shift
+  mkdir -p "$bin"
+  cp "$MACARCHY_SEARCH_PATH/sketchybar" "$bin/sketchybar"
+  "$@"
+  rm "$bin/sketchybar"
+  rmdir "$bin" 2>/dev/null || true
+}
+
 # The bar the earlier version started keeps running its plugins through the
 # old app link, which now leads to this build's scripts.
 run_old_bar_plugin() {
-  HOME="$H" PATH="/usr/bin:/bin" NAME=cpu \
+  with_fake_bar "$OLD" env HOME="$H" PATH="/usr/bin:/bin" NAME=cpu \
     bash "$OLD/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1 || true
+}
+
+# Starts a daemon as launchd does: its agent's arguments, run directly with
+# the agent's PATH and no shell in between.
+run_agent() {
+  local plist="$H/Library/LaunchAgents/io.github.harryrandall.macarchy.$1.plist" index=0 argument
+  local arguments=()
+  while argument="$(plutil -extract "ProgramArguments.$index" raw "$plist" 2>/dev/null)"; do
+    arguments+=("$argument")
+    index=$((index + 1))
+  done
+  env HOME="$H" PATH="$(plutil -extract EnvironmentVariables.PATH raw "$plist")" "${arguments[@]}"
 }
 
 make_home owner
@@ -141,6 +176,18 @@ for rc in yabairc sketchybarrc bordersrc; do
   grep -q '.config/macarchy' "$CONFIG/$rc" && fail "$rc still reaches the old folder"
 done
 grep -q 'theme_listener' "$CONFIG/sketchybarrc" || fail "bar region cut short"
+
+# yabai, started as launchd starts it, runs its startup file through sh: the
+# launcher's path has no space, and it hands over to Macarchy's yabairc, which
+# applies the owner's layout and runs their region.
+YABAI_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist")"
+[ "$YABAI_START" = "$H/.config/yabai/macarchy-yabairc" ] || fail "yabai does not start from its launcher: $YABAI_START"
+: > "$CALLS"
+OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
+grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file did not apply the layout: $OUTPUT"
+grep -q '^yabai -m signal --add label=macarchy_window_created ' "$CALLS" || fail "yabai's signals not added: $OUTPUT"
+grep -qx 'sudo yabai --load-sa' "$CALLS" || fail "the owner's yabai region did not run: $OUTPUT"
+grep -q 'label=restart_borders' "$CALLS" || fail "the owner's yabai region stopped early: $OUTPUT"
 grep -qxF 'THEME="$(cat "$HOME/Library/Application Support/Macarchy/generated/nvim-colorscheme")"' \
   "$CONFIG/bordersrc" || fail "borders keep region lost or misquoted"
 
@@ -191,7 +238,11 @@ as_sketchybar() {
 }
 printf '#!/bin/sh\nexit 0\n' > "$MACARCHY_SEARCH_PATH/jq"; chmod +x "$MACARCHY_SEARCH_PATH/jq"
 : > "$CALLS"
-OUTPUT="$(as_sketchybar "$START" 2>&1)" || fail "the bar did not start: $OUTPUT"
+# Started as launchd starts it, through the fake, which runs the file as
+# SketchyBar does and sets $CONFIG_DIR from it.
+OUTPUT="$(as_sketchybar env -u CONFIG_DIR "$(plutil -extract ProgramArguments.0 raw \
+  "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")" --config "$START" 2>&1)" \
+  || fail "the bar did not start: $OUTPUT"
 grep -q 'No such file' <<<"$OUTPUT" && fail "the bar could not find its files: $OUTPUT"
 grep -q "script=$BAR_FOLDER/plugins/battery.sh" "$CALLS" || fail "items not added with the owner's plugins"
 for icon in $(grep -o "background.image=[^ ]*" "$CALLS" | cut -d= -f2 | sort -u); do
@@ -213,7 +264,8 @@ grep -q -- '--set ram.text' "$CALLS" || fail "metrics plugin did not run"
 as_sketchybar env SENDER=macarchy_theme_changed "$BAR_FOLDER/recolor.sh" >/dev/null 2>&1 || fail "recolor failed"
 grep -q "label.color=$TEXT" "$CALLS" || fail "recolor did not use the theme's colours"
 # Macarchy's own bar scripts, reached through the app link, keep their state in the new folder.
-as_sketchybar env NAME=cpu "$ROOT/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1
+with_fake_bar "$ROOT" as_sketchybar env NAME=cpu \
+  "$ROOT/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1
 [ -d "$ROOT/state/bar" ] || fail "Macarchy's bar scripts keep no state in the new folder"
 
 # The earlier borders agent becomes Macarchy's, and is not recorded as an original.
@@ -246,6 +298,7 @@ grep -q 'Earlier settings' <<<"$DOCTOR" && fail "doctor flags the moved folder: 
 OUTPUT="$("$CLI" uninstall 2>&1)" || fail "uninstall failed: $OUTPUT"
 [ -e "$OLD" ] && fail "uninstall left the old folder link"
 [ -e "$H/.config/sketchybar/macarchy-sketchybarrc" ] && fail "uninstall left the bar launcher"
+[ -e "$H/.config/yabai/macarchy-yabairc" ] && fail "uninstall left the yabai launcher"
 grep -q 'before Macarchy' "$H/.config/yabai/yabairc" || fail "uninstall did not restore the original yabairc"
 same_json "$ROOT/snapshots/$SETTINGS_SNAPSHOT/0-settings.json" "$ROOT/settings.json" || fail "uninstall changed settings"
 
