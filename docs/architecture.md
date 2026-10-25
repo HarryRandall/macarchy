@@ -50,7 +50,9 @@ Bar scripts never create the new folder. The move leaves a link at the old path
 that stays until uninstall, because earlier startup files, shortcuts and the
 person's own scripts may still name it. Setup also rewrites old command paths
 in the shortcuts and keep regions it carries over, so the link is a fallback.
-Snapshot records are moved to the new paths, and restore maps any it missed.
+A rewrite follows the shell's quoting (`OldPathScanner`) and is kept only when
+the result still parses with `bash -n`; otherwise the text stays as written and
+the report says so. Snapshot records are moved to the new paths, and restore maps any it missed.
 
 ## Startup
 

@@ -160,18 +160,18 @@ public enum Setup {
         let moved = try moveEarlierFolder()
         return try await OperationLock.run {
             if existing == .keep { try await checkKeepable() }
-            return try runLocked(existing: existing, app: app, report: moved)
+            return try await runLocked(existing: existing, app: app, report: moved)
         }
     }
 
     static func runLocked(
         existing: Existing, app: URL?, report lines: [String] = []
-    ) throws
+    ) async throws
         -> [String]
     {
         var report = lines
         do {
-            try perform(existing: existing, app: app, report: &report)
+            try await perform(existing: existing, app: app, report: &report)
         } catch {
             throw Interrupted(lines: report, reason: error.localizedDescription)
         }
@@ -181,7 +181,9 @@ public enum Setup {
     // The steps read top to bottom in the order they must happen. Each one
     // appends its line as soon as it has changed a file, so an `Interrupted`
     // failure still lists everything changed before it.
-    private static func perform(existing: Existing, app: URL?, report: inout [String]) throws {
+    private static func perform(
+        existing: Existing, app: URL?, report: inout [String]
+    ) async throws {
         let fm = FileManager.default
         for directory in [
             Paths.appRoot, Paths.themesDirectory, Paths.generatedDirectory, Paths.backupsDirectory,
@@ -215,15 +217,15 @@ public enum Setup {
         }
 
         let yabairc = StartupConfiguration.yabairc.url
-        let yabai = try yabaiRegion(existing: existing, updateSettings: updateSettings)
+        let yabai = try await yabaiRegion(existing: existing, updateSettings: updateSettings)
         report += yabai.lines
         let yabaiKept = yabai.region
         try generate(yabairc, StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
 
-        try seedShortcuts(existing: existing, report: &report)
+        try await seedShortcuts(existing: existing, report: &report)
 
         let sketchybarrc = StartupConfiguration.sketchybarrc.url
-        let bar = try barRegion(
+        let bar = try await barRegion(
             existing: existing, settings: settings, updateSettings: updateSettings)
         report += bar.lines
         let barKept = bar.region

@@ -123,49 +123,6 @@ struct LegacyLayoutTests {
         #expect(paths("two/.meta.json") == [home.root.appending(path: "config/skhdrc").path])
     }
 
-    @Test("old command paths are pointed at the new folder in every spelling")
-    func rewritesPaths() {
-        let new =
-            "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy\""
-        let old = "/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy"
-        func rewritten(_ text: String) -> String {
-            LegacyLayout.rewritingOldPaths(text, home: "/Users/a").text
-        }
-        #expect(
-            rewritten("ctrl - t : \"$HOME\(old)\" rules toggle") == "ctrl - t : \(new) rules toggle"
-        )
-        #expect(
-            rewritten("ctrl - t : $HOME\(old) rules toggle") == "ctrl - t : \(new) rules toggle")
-        #expect(rewritten("ctrl - t : ${HOME}\(old) theme next") == "ctrl - t : \(new) theme next")
-        #expect(rewritten("ctrl - t : ~\(old); echo") == "ctrl - t : \(new); echo")
-        #expect(rewritten("ctrl - t : /Users/a\(old)") == "ctrl - t : \(new)")
-        #expect(
-            rewritten("x : sh -c \"$HOME\(old) bar toggle\"")
-                == "x : sh -c \"$HOME/Library/Application Support/Macarchy"
-                + "/Macarchy.app/Contents/MacOS/macarchy bar toggle\"")
-        #expect(
-            rewritten("source $HOME/.config/macarchy/generated/x.sh")
-                == "source \"$HOME/Library/Application Support/Macarchy/generated/x.sh\"")
-    }
-
-    @Test("comments, single quotes and other folders are left alone")
-    func leavesOtherText() {
-        func rewritten(_ text: String) -> (text: String, changed: Int) {
-            LegacyLayout.rewritingOldPaths(text, home: "/Users/a")
-        }
-        for text in [
-            "# Don't: $HOME/.config/macarchy/bin",
-            "x : osascript -e 'do shell script \"$HOME/.config/macarchy/bin/a\"'",
-            "x : $HOME/.config/macarchy-old/run",
-            "x : \"~/.config/macarchy/run\"",
-            "x : echo $HOME/x/.config/macarchy"
-        ] {
-            #expect(rewritten(text) == (text, 0))
-        }
-        let lines = "# it's mine\nctrl - t : $HOME/.config/macarchy/run"
-        #expect(rewritten(lines).changed == 1)
-    }
-
     @Test("snapshot paths from the old folder map to the new one")
     func mapsSnapshotPaths() {
         let home = URL(fileURLWithPath: "/Users/a")

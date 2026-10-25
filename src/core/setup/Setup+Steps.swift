@@ -48,14 +48,15 @@ extension Setup {
     /// defaults; after that it is theirs, edited on the Shortcuts page.
     /// Shortcuts that ran the command from the old folder, as earlier
     /// defaults did, are pointed at the new one.
-    static func seedShortcuts(existing: Existing, report: inout [String]) throws {
+    static func seedShortcuts(existing: Existing, report: inout [String]) async throws {
         let shortcuts = skhdrc
         guard !FileManager.default.fileExists(atPath: shortcuts.path) else { return }
         if existing == .keep, let source = skhdSource, let text = adoptable(source) {
             try FileManager.default.createDirectory(
                 at: shortcuts.deletingLastPathComponent(), withIntermediateDirectories: true)
             var lines: [String] = []
-            let carried = pointingAtNewFolder(text, in: source, report: &lines)
+            let carried = await pointingAtNewFolder(
+                text, in: source, shortcuts: true, report: &lines)
             try carried.write(to: shortcuts, atomically: true, encoding: .utf8)
             report.append("Copied your shortcuts from \(Paths.display(source))")
             report += lines

@@ -27,20 +27,20 @@ extension Setup {
     /// empty. Nil once the file is Macarchy's, so its own region stays.
     static func yabaiRegion(
         existing: Existing, updateSettings: SettingsEdit
-    ) throws
+    ) async throws
         -> (region: String?, lines: [String])
     {
         guard !isGenerated(StartupConfiguration.yabairc.url) else { return (nil, []) }
         var lines: [String] = []
         if let source = yabaiSource, isGenerated(source) {
-            return (try carriedRegion(from: source, report: &lines), lines)
+            return (try await carriedRegion(from: source, report: &lines), lines)
         }
         guard existing == .keep, let source = yabaiSource, let text = adoptable(source) else {
             return ("", [])
         }
         let adopted = StartupConfiguration.adoptYabai(text)
         try updateSettings { $0.mergeFlat(adopted.values) }
-        let kept = pointingAtNewFolder(adopted.kept, in: source, report: &lines)
+        let kept = await pointingAtNewFolder(adopted.kept, in: source, report: &lines)
         lines.append("Moved \(adopted.values.count) yabai settings into Macarchy")
         return (kept, lines)
     }
@@ -53,13 +53,13 @@ extension Setup {
     /// once the file is Macarchy's, and the launcher then stays as it is.
     static func barRegion(
         existing: Existing, settings: SettingsStore, updateSettings: SettingsEdit
-    ) throws -> BarRegion {
+    ) async throws -> BarRegion {
         guard !isGenerated(StartupConfiguration.sketchybarrc.url) else {
             return BarRegion(region: nil, lines: [], launcher: StartupConfiguration.usesBarLauncher)
         }
         var lines: [String] = []
         if let source = sketchybarSource, isGenerated(source) {
-            let region = try carriedRegion(from: source, report: &lines)
+            let region = try await carriedRegion(from: source, report: &lines)
             let bundled = try settings.read().bundledBar
             switch bundled {
             case nil: try updateSettings { $0.bundledBar = true }
@@ -77,7 +77,7 @@ extension Setup {
         }
         let bar = StartupConfiguration.tidy(
             text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
-        let kept = pointingAtNewFolder(bar, in: source, report: &lines)
+        let kept = await pointingAtNewFolder(bar, in: source, report: &lines)
         try updateSettings { $0.bundledBar = false }
         lines.append("Kept your menu bar")
         return BarRegion(region: kept, lines: lines, launcher: true)

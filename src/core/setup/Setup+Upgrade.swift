@@ -8,7 +8,7 @@ import Foundation
 extension Setup {
     /// The person's lines from an earlier version's startup file: its keep
     /// regions, `yours` first, with paths into the old folder rewritten.
-    static func carriedRegion(from source: URL, report: inout [String]) throws -> String {
+    static func carriedRegion(from source: URL, report: inout [String]) async throws -> String {
         let text = try String(contentsOf: source, encoding: .utf8)
         let regions = GeneratedFile.preservedRegions(in: text)
         let names =
@@ -18,22 +18,32 @@ extension Setup {
             names.compactMap { regions[$0] }.joined(separator: "\n").components(separatedBy: "\n"))
         guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
         report.append("Carried your own commands over from \(Paths.display(source))")
-        return pointingAtNewFolder(body, in: source, report: &report)
+        return await pointingAtNewFolder(body, in: source, report: &report)
     }
 
     /// `text` with paths into `~/.config/macarchy` pointed at the new folder,
-    /// saying so in the report.
+    /// saying so in the report. `shortcuts` is skhd text, rewritten one
+    /// command at a time; anything else is a bash script.
     static func pointingAtNewFolder(
-        _ text: String, in source: URL, report: inout [String]
-    )
+        _ text: String, in source: URL, shortcuts: Bool = false, report: inout [String]
+    ) async
         -> String
     {
-        let rewritten = LegacyLayout.rewritingOldPaths(text)
+        let rewritten =
+            shortcuts
+            ? await LegacyLayout.rewritingOldPaths(inShortcuts: text)
+            : await LegacyLayout.rewritingOldPaths(inScript: text)
+        func count(_ number: Int) -> String { number == 1 ? "1 path" : "\(number) paths" }
         if rewritten.changed != 0 {
-            let paths = rewritten.changed == 1 ? "1 path" : "\(rewritten.changed) paths"
             report.append(
-                "Pointed \(paths) from \(Paths.display(source)) at "
+                "Pointed \(count(rewritten.changed)) from \(Paths.display(source)) at "
                     + "\(Paths.display(Paths.appRoot))")
+        }
+        if rewritten.unsafe != 0 {
+            report.append(
+                "Left \(count(rewritten.unsafe)) in \(Paths.display(source)) as written, because "
+                    + "pointing \(rewritten.unsafe == 1 ? "it" : "them") at the new folder would "
+                    + "not parse as shell")
         }
         if LegacyLayout.mentionsOldFolder(rewritten.text) {
             report.append(

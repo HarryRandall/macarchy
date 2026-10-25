@@ -5,6 +5,15 @@ extension LegacyLayout {
     /// so it survives a renamed account, inside double quotes for the space.
     static let rootInShell = "$HOME/Library/Application Support/Macarchy"
 
+    /// The outcome of pointing carried text at the new folder.
+    struct Rewrite: Equatable {
+        var text: String
+        /// Paths pointed at the new folder.
+        var changed: Int
+        /// Paths left as written because the rewritten text would not parse.
+        var unsafe: Int
+    }
+
     /// Shell text carried over from the earlier version with every path into
     /// `~/.config/macarchy` pointed at the new folder, and how many it changed.
     ///
@@ -15,7 +24,7 @@ extension LegacyLayout {
     /// the long run, and a spelling it cannot rewrite safely, such as one
     /// inside single quotes, is left for the link to serve. Accepted
     /// spellings: `$HOME`, `${HOME}`, `~` and the home folder itself, quoted
-    /// or not. Comments are left alone, and an unquoted path is quoted.
+    /// or not. Comments are left alone; see `OldPathScanner` for quoting.
     public static func rewritingOldPaths(
         _ text: String, home: String = Paths.home.path
     )
@@ -23,133 +32,71 @@ extension LegacyLayout {
     {
         var scanner = OldPathScanner(text: text, home: home)
         scanner.run()
-        return (String(scanner.output), scanner.changed)
+        return (scanner.text, scanner.changed)
+    }
+
+    /// A startup file's lines rewritten as a whole, or left as written when
+    /// the result would not parse as bash.
+    static func rewritingOldPaths(
+        inScript text: String, home: String = Paths.home.path
+    ) async
+        -> Rewrite
+    {
+        let rewritten = rewritingOldPaths(text, home: home)
+        guard rewritten.changed != 0 else { return Rewrite(text: text, changed: 0, unsafe: 0) }
+        guard await Setup.bashSyntaxProblem(rewritten.text) == nil else {
+            return Rewrite(text: text, changed: 0, unsafe: rewritten.changed)
+        }
+        return Rewrite(text: rewritten.text, changed: rewritten.changed, unsafe: 0)
+    }
+
+    /// skhd text with each shortcut's command rewritten on its own. skhd
+    /// hands a command to the shell, so a command whose rewritten form would
+    /// not parse is left as written; the rest of the file is not shell.
+    static func rewritingOldPaths(
+        inShortcuts text: String, home: String = Paths.home.path
+    )
+        async -> Rewrite
+    {
+        let lines = text.components(separatedBy: "\n")
+        var result = Rewrite(text: "", changed: 0, unsafe: 0)
+        var output: [String] = []
+        var start = 0
+        while start < lines.count {
+            let end = SkhdConfig.logicalEnd(lines, from: start)
+            let logical = lines[start...end].joined(separator: "\n")
+            start = end + 1
+            guard let colon = commandStart(in: logical) else {
+                output.append(logical)
+                continue
+            }
+            let command = String(logical[colon...])
+            let rewritten = await rewritingOldPaths(inScript: command, home: home)
+            output.append(String(logical[..<colon]) + rewritten.text)
+            result.changed += rewritten.changed
+            result.unsafe += rewritten.unsafe
+        }
+        result.text = output.joined(separator: "\n")
+        return result
+    }
+
+    /// Where the command starts in one logical skhd line: after the first
+    /// `:` outside double quotes, which name applications in a per-app list.
+    /// Comments, options and mode declarations have none.
+    private static func commandStart(in line: String) -> String.Index? {
+        let trimmed = line.drop { $0 == " " || $0 == "\t" }
+        guard !trimmed.hasPrefix("#"), !trimmed.hasPrefix("."), !trimmed.hasPrefix("::")
+        else { return nil }
+        var quoted = false
+        for index in line.indices {
+            if line[index] == "\"" { quoted.toggle() }
+            if !quoted, line[index] == ":" { return line.index(after: index) }
+        }
+        return nil
     }
 
     /// Whether `text` still names the old folder somewhere, after rewriting.
     static func mentionsOldFolder(_ text: String) -> Bool {
         text.contains(".config/macarchy")
-    }
-}
-
-/// Walks shell text tracking quotes and comments, the way the shell reads it,
-/// so paths are only rewritten where the result means the same thing.
-private struct OldPathScanner {
-    let scalars: [Unicode.Scalar]
-    let spellings: [[Unicode.Scalar]]
-    var output = String.UnicodeScalarView()
-    var changed = 0
-    private var index = 0
-    private var quote: Unicode.Scalar?
-
-    private static let old = Array("/.config/macarchy".unicodeScalars)
-    private static let metacharacters = Set(" \t\n;|&()<>\"'`".unicodeScalars)
-    private static let root = Array(LegacyLayout.rootInShell.unicodeScalars)
-
-    init(text: String, home: String) {
-        scalars = Array(text.unicodeScalars)
-        spellings = ["$HOME", "${HOME}", home].map { Array($0.unicodeScalars) }
-    }
-
-    mutating func run() {
-        while index < scalars.count {
-            let handled =
-                switch quote {
-                case "'": singleQuoted()
-                case "\"": doubleQuoted()
-                default: unquoted()
-                }
-            if !handled {
-                output.append(scalars[index])
-                index += 1
-            }
-        }
-    }
-
-    /// Nothing expands inside single quotes, so nothing is rewritten.
-    private mutating func singleQuoted() -> Bool {
-        if scalars[index] == "'" { quote = nil }
-        return false
-    }
-
-    private mutating func doubleQuoted() -> Bool {
-        if escaped() { return true }
-        if scalars[index] == "\"" {
-            quote = nil
-            return false
-        }
-        guard let length = match(tilde: false) else { return false }
-        output.append(contentsOf: Self.root)
-        changed += 1
-        index += length
-        return true
-    }
-
-    private mutating func unquoted() -> Bool {
-        if escaped() { return true }
-        let character = scalars[index]
-        if character == "#", wordStart {
-            while index < scalars.count, scalars[index] != "\n" {
-                output.append(scalars[index])
-                index += 1
-            }
-            return true
-        }
-        if character == "'" || character == "\"" {
-            quote = character
-            return false
-        }
-        guard wordStart, let length = match(tilde: true) else { return false }
-        // The rest of the word goes inside the quotes; a quoted part that
-        // follows joins on, as the shell joins words.
-        var end = index + length
-        while end < scalars.count, !Self.metacharacters.contains(scalars[end]),
-            scalars[end] != "\\"
-        {
-            end += 1
-        }
-        output.append("\"")
-        output.append(contentsOf: Self.root)
-        output.append(contentsOf: scalars[(index + length)..<end])
-        output.append("\"")
-        changed += 1
-        index = end
-        return true
-    }
-
-    /// Copies a backslash and the character it escapes.
-    private mutating func escaped() -> Bool {
-        guard scalars[index] == "\\", index + 1 < scalars.count else { return false }
-        output.append(scalars[index])
-        output.append(scalars[index + 1])
-        index += 2
-        return true
-    }
-
-    private var wordStart: Bool {
-        index == 0 || Self.metacharacters.contains(scalars[index - 1])
-            || scalars[index - 1] == "="
-    }
-
-    private func starts(with word: [Unicode.Scalar], at position: Int) -> Bool {
-        position + word.count <= scalars.count
-            && Array(scalars[position..<position + word.count]) == word
-    }
-
-    /// The length of a home spelling and the old folder here, ending where
-    /// the path does.
-    private func match(tilde: Bool) -> Int? {
-        for spelling in spellings + (tilde ? [["~"]] : [])
-        where starts(with: spelling, at: index) {
-            let end = index + spelling.count
-            guard starts(with: Self.old, at: end) else { continue }
-            let after = end + Self.old.count
-            if after == scalars.count || scalars[after] == "/"
-                || Self.metacharacters.contains(scalars[after])
-            {
-                return after - index
-            }
-        }
-        return nil
     }
 }
