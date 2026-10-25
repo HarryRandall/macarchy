@@ -68,13 +68,14 @@ public struct StartupConfiguration: Sendable {
 
     // MARK: - borders
 
-    /// borders is configured entirely from settings, so nothing is adopted.
+    /// borders is configured entirely from settings; only an earlier
+    /// version's keep region is carried over, through `adopting`.
     @discardableResult
-    public func generateBordersRC() -> GeneratedFile.Outcome {
+    public func generateBordersRC(adopting: String? = nil) -> GeneratedFile.Outcome {
         let file = Self.bordersrc
         let content =
             Self.header("Borders follow the active theme and the Borders page.")
-            + region(yours(file, adopting: nil)) + "\n\n"
+            + region(yours(file, adopting: adopting)) + "\n\n"
             + "exec \(Paths.cliInShell) startup borders\n"
         return file.write(content, reason: "borders startup changed")
     }

@@ -77,6 +77,12 @@ run_old_bar_plugin() {
 }
 
 make_home owner
+# The owner's borders region is empty; a line of their own, with a path into
+# the old folder quoted inside a command substitution, must carry over too.
+sed -i '' '/^# >>> macarchy:keep yours$/a\
+THEME="$(cat "$HOME/.config/macarchy/generated/nvim-colorscheme")"
+' "$H/.config/borders/bordersrc"
+grep -q '^THEME=' "$H/.config/borders/bordersrc" || fail "could not add a borders region line"
 cp "$OLD/settings.json" "$WORK/settings.before"
 cp -R "$H/.config/sketchybar" "$WORK/sketchybar.before"
 run_old_bar_plugin
@@ -112,6 +118,10 @@ grep -q 'Carried your own commands over from ~/.config/yabai/yabairc' <<<"$OUTPU
   || fail "yabai region not reported: $OUTPUT"
 grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
   || fail "rewritten shortcuts not reported: $OUTPUT"
+grep -q 'Carried your own commands over from ~/.config/borders/bordersrc' <<<"$OUTPUT" \
+  || fail "borders region not reported: $OUTPUT"
+grep -q 'Pointed 1 path from ~/.config/borders/bordersrc' <<<"$OUTPUT" \
+  || fail "borders region path not reported: $OUTPUT"
 
 # Keep regions carry across; the owner's own bar still runs before startup.
 grep -q '^sudo yabai --load-sa$' "$CONFIG/yabairc" || fail "yabai keep region lost"
@@ -124,6 +134,8 @@ for rc in yabairc sketchybarrc bordersrc; do
   grep -q '.config/macarchy' "$CONFIG/$rc" && fail "$rc still reaches the old folder"
 done
 grep -q 'theme_listener' "$CONFIG/sketchybarrc" || fail "bar region cut short"
+grep -qxF 'THEME="$(cat "$HOME/Library/Application Support/Macarchy/generated/nvim-colorscheme")"' \
+  "$CONFIG/bordersrc" || fail "borders keep region lost or misquoted"
 
 # Every shortcut that runs the command reaches an existing one, the
 # rewritten ones directly and anything else through the link.

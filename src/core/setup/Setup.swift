@@ -49,6 +49,8 @@ public enum Setup {
     static var yabaiSource: URL? { ownConfig([".config/yabai/yabairc", ".yabairc"]) }
     static var skhdSource: URL? { ownConfig([".config/skhd/skhdrc", ".skhdrc"]) }
     static var sketchybarSource: URL? { ownConfig([".config/sketchybar/sketchybarrc"]) }
+    /// Only an earlier version's file counts: borders is configured from settings.
+    static var bordersSource: URL? { ownConfig([".config/borders/bordersrc"]) }
 
     /// Ghostty is themed when it is installed or already configured.
     static var ghosttyWanted: Bool {
@@ -109,11 +111,7 @@ public enum Setup {
                 StartupConfiguration.sketchybarrc.url, source: sketchybarSource,
                 "Runs your own bar; Macarchy's bar stays off",
                 "Installs Macarchy's menu bar"),
-            Change(
-                path: StartupConfiguration.bordersrc.url,
-                action: FileManager.default.fileExists(
-                    atPath: StartupConfiguration.bordersrc.url.path) ? .replace : .create,
-                detail: "Borders follow the theme and the Borders page")
+            bordersChange()
         ]
         if let launcher = launcherChange(existing) { changes.append(launcher) }
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
@@ -130,23 +128,6 @@ public enum Setup {
                     detail: "Adds one line so Ghostty uses theme colours"))
         }
         return changes
-    }
-
-    private static func shortcutsChange(_ existing: Existing) -> Change {
-        let url = skhdrc
-        if FileManager.default.fileExists(atPath: url.path) {
-            return Change(path: url, action: .adopt, detail: "Already set up; left as it is")
-        }
-        if existing == .keep, let source = skhdSource, let text = adoptable(source) {
-            let old = LegacyLayout.mentionsOldFolder(text)
-            return Change(
-                path: url, action: .adopt,
-                detail: old
-                    ? "Starts from your own shortcuts, pointing those that run Macarchy from "
-                        + "\(Paths.display(Paths.legacyRoot)) at its new folder"
-                    : "Starts from your own shortcuts")
-        }
-        return Change(path: url, action: .create, detail: "Installs Macarchy's default shortcuts")
     }
 
     // MARK: - Running
@@ -234,7 +215,9 @@ public enum Setup {
         report += try placeBarLauncher(bar.launcher, backups: backups)
 
         let bordersrc = StartupConfiguration.bordersrc.url
-        try generate(bordersrc, StartupConfiguration().generateBordersRC())
+        let borders = try await bordersRegion()
+        report += borders.lines
+        try generate(bordersrc, StartupConfiguration().generateBordersRC(adopting: borders.region))
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             try DaemonAgents.install(daemon, backups: backups, report: &report)
         }

@@ -60,7 +60,8 @@ extension Setup {
     static func checkCarriable() throws {
         let candidates = [
             (StartupConfiguration.yabairc.url, yabaiSource),
-            (StartupConfiguration.sketchybarrc.url, sketchybarSource)
+            (StartupConfiguration.sketchybarrc.url, sketchybarSource),
+            (StartupConfiguration.bordersrc.url, bordersSource)
         ]
         for case (let target, let source?) in candidates
         where !isGenerated(target) && isGenerated(source) {
