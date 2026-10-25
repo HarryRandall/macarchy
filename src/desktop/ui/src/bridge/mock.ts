@@ -397,6 +397,33 @@ export function installMockHost() {
       failures: [],
       failure: null,
     }),
+    "advanced.getCleanupPlan": () => ({
+      sections: [
+        {
+          title:
+            "Move into ~/Library/Application Support/Macarchy/scripts, keeping names and permissions",
+          lines: [
+            {
+              path: "~/.config/yabai/launch_ghostty.sh",
+              detail: "run by ~/Library/Application Support/Macarchy/config/skhdrc",
+            },
+          ],
+        },
+        {
+          title: "Archive, then delete",
+          lines: [{ path: "~/.config/skhd", detail: "the old skhdrc and 3 backup copies" }],
+        },
+      ],
+      hasChanges: true,
+      refusal: null,
+    }),
+    "advanced.cleanUp": () => ({
+      lines: ["Deleted ~/.config/skhd"],
+      failures: [],
+      failure: null,
+      archive:
+        "~/Library/Application Support/Macarchy/backups/old-configuration-2026-10-25-180000.zip",
+    }),
     "setup.getPlan": () => ({
       tools: [],
       changes: [

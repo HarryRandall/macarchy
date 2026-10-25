@@ -10,6 +10,8 @@
  */
 import type {
   AdvancedState,
+  CleanupPlan,
+  CleanupReport,
   BorderAppearance,
   BordersState,
   BridgeEvent,
@@ -491,6 +493,58 @@ const setupStopped: SetupReport = {
     "Setup did not finish; some files may already have changed. The menu bar file could not be written.",
 };
 
+const cleanupPlan: CleanupPlan = {
+  sections: [
+    {
+      title:
+        "Move into ~/Library/Application Support/Macarchy/scripts, keeping names and permissions",
+      lines: [
+        {
+          path: "~/.config/yabai/launch_ghostty.sh",
+          detail: "run by ~/Library/Application Support/Macarchy/config/skhdrc",
+        },
+      ],
+    },
+    {
+      title: "Point paths at the new places",
+      lines: [
+        { path: "~/Library/Application Support/Macarchy/config/skhdrc", detail: "54 paths" },
+        { path: "~/.config/zsh/.zshrc", detail: "1 path" },
+      ],
+    },
+    {
+      title: "Archive, then delete",
+      lines: [{ path: "~/.config/skhd", detail: "the old skhdrc and 3 backup copies" }],
+    },
+  ],
+  hasChanges: true,
+  refusal: null,
+};
+
+const cleanupRefused: CleanupPlan = {
+  sections: [],
+  hasChanges: false,
+  refusal:
+    "Set up Macarchy first: cleaning up relies on the configs setup writes to ~/Library/Application Support/Macarchy/config.",
+};
+
+const cleanupDone: CleanupReport = {
+  lines: [
+    "Moved ~/.config/yabai/launch_ghostty.sh to ~/Library/Application Support/Macarchy/scripts/launch_ghostty.sh",
+    "Deleted ~/.config/skhd",
+  ],
+  failures: [],
+  failure: null,
+  archive: "~/Library/Application Support/Macarchy/backups/old-configuration-2026-10-25-180000.zip",
+};
+
+const cleanupNothing: CleanupReport = {
+  lines: ["Nothing to clean up."],
+  failures: ["Secure Keyboard Entry is on, held by loginwindow."],
+  failure: "Set up Macarchy first.",
+  archive: null,
+};
+
 const borderAppearance: BorderAppearance = {
   width: 6,
   visible: true,
@@ -930,6 +984,14 @@ export const methodFixtures: MethodFixtures = {
   "advanced.repairAddition": [{ params: {}, result: null }],
   "advanced.restoreOriginals": [
     { params: {}, result: { lines: ["Restored original files"], failures: [], failure: null } },
+  ],
+  "advanced.getCleanupPlan": [
+    { params: {}, result: cleanupPlan },
+    { params: {}, result: cleanupRefused },
+  ],
+  "advanced.cleanUp": [
+    { params: {}, result: cleanupDone },
+    { params: {}, result: cleanupNothing },
   ],
   "setup.getPlan": [
     { params: { existing: "keep" }, result: keepPlan },

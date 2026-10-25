@@ -9,6 +9,10 @@ type ConfirmDialogProps = {
   title: string;
   /** What will happen and how to undo it, such as where the backup goes. */
   description: ReactNode;
+  /** A longer list of what will change, under the description. */
+  children?: ReactNode;
+  /** `lg` makes room for a list of paths. */
+  size?: "sm" | "lg";
   /** Say the action: "Restore", "Delete theme", "Reset shortcuts". Never "OK". */
   confirmLabel: string;
   /** Shown on the confirm button while `onConfirm` runs, such as "Restoring…". */
@@ -40,6 +44,8 @@ function message(error: unknown) {
 function ConfirmDialog({
   title,
   description,
+  children,
+  size = "sm",
   confirmLabel,
   busyLabel,
   cancelLabel = "Cancel",
@@ -94,13 +100,14 @@ function ConfirmDialog({
           <AlertDialog.Popup
             data-slot="confirm-dialog"
             initialFocus={tone === "danger" ? cancelRef : true}
-            className={dialogVariants({ size: "sm" })}
+            className={dialogVariants({ size })}
           >
             <div className="flex flex-col gap-1.5 px-5 pt-5 pb-4">
               <AlertDialog.Title className="text-card-title text-fg">{title}</AlertDialog.Title>
               <AlertDialog.Description className="text-detail text-fg-secondary select-text">
                 {description}
               </AlertDialog.Description>
+              {children}
               {error ? (
                 <InlineStatus tone="danger" className="pt-1">
                   {error}

@@ -1,5 +1,12 @@
 import { errorMessage } from "~/bridge/client";
-import type { AdvancedState, GeneratedFileId, ServiceId, SetupReport } from "~/bridge/protocol";
+import type {
+  AdvancedState,
+  CleanupPlan,
+  CleanupReport,
+  GeneratedFileId,
+  ServiceId,
+  SetupReport,
+} from "~/bridge/protocol";
 import { createListeners } from "~/lib/store";
 import type { PageHost } from "~/shell/page";
 
@@ -13,6 +20,10 @@ export function createAdvancedStore(host: PageHost) {
     refreshing: false,
     outcomes: {} as Partial<Record<GeneratedFileId, string>>,
     report: null as SetupReport | null,
+    /** The cleanup plan being reviewed, until it is carried out or closed. */
+    cleanupPlan: null as CleanupPlan | null,
+    reviewingCleanup: false,
+    cleanupReport: null as CleanupReport | null,
   };
   let version = 0;
   function set(patch: Partial<typeof snapshot>) {
@@ -95,6 +106,28 @@ export function createAdvancedStore(host: PageHost) {
       }),
     dismissReport() {
       set({ report: null });
+    },
+    /** Reads what cleaning up would do. Changes nothing. */
+    async reviewCleanup() {
+      if (snapshot.busy || snapshot.reviewingCleanup) return;
+      set({ reviewingCleanup: true, error: null, cleanupReport: null });
+      try {
+        set({ cleanupPlan: await host.request("advanced.getCleanupPlan") });
+      } catch (error) {
+        set({ error: errorMessage(error) });
+      } finally {
+        set({ reviewingCleanup: false });
+      }
+    },
+    closeCleanup() {
+      set({ cleanupPlan: null });
+    },
+    cleanUp: () =>
+      perform(async () => {
+        set({ cleanupReport: await host.request("advanced.cleanUp"), cleanupPlan: null });
+      }),
+    dismissCleanupReport() {
+      set({ cleanupReport: null });
     },
     /** Shows the settings folder in Finder. Changes nothing, so the state is not read again. */
     async reveal() {

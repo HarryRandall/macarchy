@@ -90,6 +90,46 @@ extension SetupReport {
     }
 }
 
+struct CleanupPlanState: Codable, Sendable {
+    struct Section: Codable, Sendable {
+        struct Line: Codable, Sendable {
+            var path: String
+            var detail: String
+        }
+        var title: String
+        var lines: [Line]
+    }
+    var sections: [Section]
+    var hasChanges: Bool
+    var refusal: String?
+
+    private enum CodingKeys: String, CodingKey { case sections, hasChanges, refusal }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(sections, forKey: .sections)
+        try container.encode(hasChanges, forKey: .hasChanges)
+        try container.encode(refusal, forKey: .refusal)
+    }
+}
+
+struct CleanupReport: Codable, Sendable {
+    var lines: [String]
+    var failures: [String]
+    var failure: String?
+    var archive: String?
+
+    private enum CodingKeys: String, CodingKey { case lines, failures, failure, archive }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(lines, forKey: .lines)
+        try container.encode(failures, forKey: .failures)
+        try container.encode(failure, forKey: .failure)
+        try container.encode(archive, forKey: .archive)
+    }
+}
+
 extension BridgeEvent {
     static func advancedChanged(_ state: AdvancedState) -> BridgeEvent {
         BridgeEvent("advanced.changed", state: state)
