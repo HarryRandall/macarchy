@@ -23,12 +23,14 @@ extension Setup {
 
     /// `text` with paths into `~/.config/macarchy` pointed at the new folder,
     /// saying so in the report.
-    static func pointingAtNewFolder(_ text: String, in source: URL, report: inout [String])
+    static func pointingAtNewFolder(
+        _ text: String, in source: URL, report: inout [String]
+    )
         -> String
     {
         let rewritten = LegacyLayout.rewritingOldPaths(text)
-        if rewritten.count > 0 {
-            let paths = rewritten.count == 1 ? "1 path" : "\(rewritten.count) paths"
+        if rewritten.changed != 0 {
+            let paths = rewritten.changed == 1 ? "1 path" : "\(rewritten.changed) paths"
             report.append(
                 "Pointed \(paths) from \(Paths.display(source)) at "
                     + "\(Paths.display(Paths.appRoot))")
@@ -45,7 +47,9 @@ extension Setup {
     /// SketchyBar sets `CONFIG_DIR` to the folder of the file it runs, which
     /// is now Macarchy's `config`. Bar lines carried from another folder that
     /// read it get the folder they were written for.
-    static func keepingBarFolder(_ text: String, from source: URL, report: inout [String])
+    static func keepingBarFolder(
+        _ text: String, from source: URL, report: inout [String]
+    )
         -> String
     {
         let folder = source.deletingLastPathComponent()

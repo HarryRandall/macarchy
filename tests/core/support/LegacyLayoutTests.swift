@@ -8,7 +8,8 @@ import Testing
 @Suite("Moving an earlier layout")
 struct LegacyLayoutTests {
     private struct Home {
-        let url = FileManager.default.temporaryDirectory.appending(path: "macarchy-legacy-\(UUID())")
+        let url = FileManager.default.temporaryDirectory.appending(
+            path: "macarchy-legacy-\(UUID())")
         var legacy: URL { url.appending(path: ".config/macarchy") }
         var root: URL { url.appending(path: "Library/Application Support/Macarchy") }
 
@@ -58,7 +59,8 @@ struct LegacyLayoutTests {
         try home.write("scratch", "state/bar/space_render", in: home.root)
         try home.write("early", "generated/extra", in: home.root)
         try home.write("old scratch", "state/bar/space_render", in: home.legacy)
-        #expect(try LegacyLayout.move(legacy: home.legacy, root: home.root) == .merged(setAside: nil))
+        #expect(
+            try LegacyLayout.move(legacy: home.legacy, root: home.root) == .merged(setAside: nil))
         #expect(home.read("settings.json", in: home.root) == "{\"currentTheme\":\"lumon\"}")
         #expect(home.read("generated/extra", in: home.root) == "early")
         #expect(home.read("state/bar/space_render", in: home.root) == "old scratch")
@@ -116,19 +118,24 @@ struct LegacyLayoutTests {
             return ((object?["paths"] as? [String: String]) ?? [:]).values.sorted()
         }
         #expect(paths("one/.meta.json") == [home.root.appending(path: "settings.json").path])
-        #expect(paths("one/.meta.legacy.json") == [home.legacy.appending(path: "settings.json").path])
+        #expect(
+            paths("one/.meta.legacy.json") == [home.legacy.appending(path: "settings.json").path])
         #expect(paths("two/.meta.json") == [home.root.appending(path: "config/skhdrc").path])
     }
 
     @Test("old command paths are pointed at the new folder in every spelling")
     func rewritesPaths() {
-        let new = "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy\""
+        let new =
+            "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy\""
         let old = "/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy"
         func rewritten(_ text: String) -> String {
             LegacyLayout.rewritingOldPaths(text, home: "/Users/a").text
         }
-        #expect(rewritten("ctrl - t : \"$HOME\(old)\" rules toggle") == "ctrl - t : \(new) rules toggle")
-        #expect(rewritten("ctrl - t : $HOME\(old) rules toggle") == "ctrl - t : \(new) rules toggle")
+        #expect(
+            rewritten("ctrl - t : \"$HOME\(old)\" rules toggle") == "ctrl - t : \(new) rules toggle"
+        )
+        #expect(
+            rewritten("ctrl - t : $HOME\(old) rules toggle") == "ctrl - t : \(new) rules toggle")
         #expect(rewritten("ctrl - t : ${HOME}\(old) theme next") == "ctrl - t : \(new) theme next")
         #expect(rewritten("ctrl - t : ~\(old); echo") == "ctrl - t : \(new); echo")
         #expect(rewritten("ctrl - t : /Users/a\(old)") == "ctrl - t : \(new)")
@@ -143,7 +150,7 @@ struct LegacyLayoutTests {
 
     @Test("comments, single quotes and other folders are left alone")
     func leavesOtherText() {
-        func rewritten(_ text: String) -> (text: String, count: Int) {
+        func rewritten(_ text: String) -> (text: String, changed: Int) {
             LegacyLayout.rewritingOldPaths(text, home: "/Users/a")
         }
         for text in [
@@ -156,7 +163,7 @@ struct LegacyLayoutTests {
             #expect(rewritten(text) == (text, 0))
         }
         let lines = "# it's mine\nctrl - t : $HOME/.config/macarchy/run"
-        #expect(rewritten(lines).count == 1)
+        #expect(rewritten(lines).changed == 1)
     }
 
     @Test("snapshot paths from the old folder map to the new one")
@@ -168,9 +175,12 @@ struct LegacyLayoutTests {
         }
         #expect(location("/Users/a/.config/macarchy/settings.json") == root.path + "/settings.json")
         #expect(location("/Users/a/.config/skhd/skhdrc") == "/Users/a/.config/skhd/skhdrc")
-        #expect(location("/Users/a/.config/skhd/skhdrc", startup: true) == root.path + "/config/skhdrc")
+        #expect(
+            location("/Users/a/.config/skhd/skhdrc", startup: true) == root.path + "/config/skhdrc")
         #expect(location("/Users/a/.config/macarchyx/a") == "/Users/a/.config/macarchyx/a")
-        #expect(location("/Users/a/.config/ghostty/config", startup: true) == "/Users/a/.config/ghostty/config")
+        #expect(
+            location("/Users/a/.config/ghostty/config", startup: true)
+                == "/Users/a/.config/ghostty/config")
     }
 
     @Test("a restore says what it wrote and refuses a snapshot with no files")

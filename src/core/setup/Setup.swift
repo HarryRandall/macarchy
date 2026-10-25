@@ -78,12 +78,7 @@ public enum Setup {
                 return Change(
                     path: url, action: .replace, detail: "Regenerated, keeping your region")
             }
-            if let source, isGenerated(source) {
-                return Change(
-                    path: url, action: .adopt,
-                    detail: "Carries over the commands in the keep region of "
-                        + "\(Paths.display(source)), written by an earlier version")
-            }
+            if let carried = carriedChange(url, source: source) { return carried }
             guard let source, let text = adoptable(source) else {
                 return Change(path: url, action: .create, detail: create)
             }
@@ -168,7 +163,9 @@ public enum Setup {
         }
     }
 
-    static func runLocked(existing: Existing, app: URL?, report lines: [String] = []) throws
+    static func runLocked(
+        existing: Existing, app: URL?, report lines: [String] = []
+    ) throws
         -> [String]
     {
         var report = lines
@@ -183,7 +180,6 @@ public enum Setup {
     // The steps read top to bottom in the order they must happen. Each one
     // appends its line as soon as it has changed a file, so an `Interrupted`
     // failure still lists everything changed before it.
-    // swiftlint:disable:next function_body_length
     private static func perform(existing: Existing, app: URL?, report: inout [String]) throws {
         let fm = FileManager.default
         for directory in [
@@ -217,54 +213,19 @@ public enum Setup {
             if document.currentTheme == nil { document.currentTheme = defaultTheme }
         }
 
-        // yabai: move standalone settings into JSON, keep everything else.
         let yabairc = StartupConfiguration.yabairc.url
-        var yabaiKept: String?
-        if !isGenerated(yabairc) {
-            if let source = yabaiSource, isGenerated(source) {
-                yabaiKept = try carriedRegion(from: source, report: &report)
-            } else if existing == .keep, let source = yabaiSource, let text = adoptable(source) {
-                let adopted = StartupConfiguration.adoptYabai(text)
-                try updateSettings { $0.mergeFlat(adopted.values) }
-                yabaiKept = pointingAtNewFolder(adopted.kept, in: source, report: &report)
-                report.append("Moved \(adopted.values.count) yabai settings into Macarchy")
-            } else {
-                yabaiKept = ""
-            }
-        }
+        let yabai = try yabaiRegion(existing: existing, updateSettings: updateSettings)
+        report += yabai.lines
+        let yabaiKept = yabai.region
         try generate(yabairc, StartupConfiguration().generateYabaiRC(adopting: yabaiKept))
 
         try seedShortcuts(existing: existing, report: &report)
 
-        // SketchyBar: a hand-built bar is kept whole, with Macarchy's switched off.
         let sketchybarrc = StartupConfiguration.sketchybarrc.url
-        var barKept: String?
-        if !isGenerated(sketchybarrc) {
-            if let source = sketchybarSource, isGenerated(source) {
-                // The earlier version's setting says whose bar runs; only a
-                // missing one means Macarchy's.
-                let region = try carriedRegion(from: source, report: &report)
-                barKept = keepingBarFolder(region, from: source, report: &report)
-                switch try settings.read().bundledBar {
-                case nil: try updateSettings { $0.bundledBar = true }
-                case false?: report.append("Kept your menu bar")
-                case true?: break
-                }
-            } else if existing == .keep, let source = sketchybarSource,
-                let text = adoptable(source)
-            {
-                let bar = StartupConfiguration.tidy(
-                    text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
-                barKept = keepingBarFolder(
-                    pointingAtNewFolder(bar, in: source, report: &report), from: source,
-                    report: &report)
-                try updateSettings { $0.bundledBar = false }
-                report.append("Kept your menu bar")
-            } else {
-                barKept = ""
-                try updateSettings { $0.bundledBar = true }
-            }
-        }
+        let bar = try barRegion(
+            existing: existing, settings: settings, updateSettings: updateSettings)
+        report += bar.lines
+        let barKept = bar.region
         try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))
 
         let bordersrc = StartupConfiguration.bordersrc.url
