@@ -289,6 +289,15 @@ public enum Setup {
         if try LegacyLayout.removeLink() {
             report.append("Removed the link at \(Paths.display(Paths.legacyRoot))")
         }
+        // The launcher folder, once restoring has removed the launchers in it.
+        let launchers = Paths.launcherDirectory
+        if StartLauncher.folderIsUsable,
+            let names = try? fm.contentsOfDirectory(atPath: launchers.path),
+            names.allSatisfy({ $0 == ".DS_Store" })
+        {
+            try fm.removeItem(at: launchers)
+            report.append("Removed \(Paths.display(launchers))")
+        }
     }
 }
 

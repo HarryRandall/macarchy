@@ -5,7 +5,8 @@ import Foundation
 /// Macarchy owns exactly one folder, `~/Library/Application Support/Macarchy`:
 /// settings, themes, the daemons' configs, history and logs. Its own
 /// LaunchAgents start the daemons with those configs, so the only things it
-/// writes outside the folder are the agents and Ghostty's include line.
+/// writes outside the folder are the agents, the launchers in
+/// `launcherDirectory` and Ghostty's include line.
 public enum Paths {
     public static var home: URL { home(in: ProcessInfo.processInfo.environment) }
 
@@ -57,6 +58,14 @@ public enum Paths {
     }
     /// Where earlier versions kept everything. `LegacyLayout` moves it into `appRoot`.
     public static var legacyRoot: URL { home.appending(path: ".config/macarchy") }
+    /// The folder that holds only the launchers yabai and SketchyBar start
+    /// from (`StartLauncher`), because their paths cannot have a space. It is
+    /// the same path as `legacyRoot`: after an upgrade a link stands there
+    /// until `OldConfiguration` replaces it with this folder.
+    public static var launcherDirectory: URL { legacyRoot }
+    /// The person's own scripts, which their shortcuts and keep regions run.
+    /// `OldConfiguration` moves them here from the tools' old folders.
+    public static var scriptsDirectory: URL { appRoot.appending(path: "scripts") }
     /// The configs Macarchy's LaunchAgents start yabai, skhd, SketchyBar and borders with.
     public static var configDirectory: URL { appRoot.appending(path: "config") }
     /// Logs and scratch state for the daemons and the bar scripts.

@@ -105,8 +105,11 @@ public enum LegacyLayout {
             return "\(Paths.display(Paths.legacyRoot)) links to \(Paths.display(target)), so the "
                 + "command still runs, but files read through it are no longer updated"
         }
-        if linkRemains { return "a link there keeps it working until uninstall" }
-        return "nothing is there now, so point it at \(Paths.display(Paths.appRoot))"
+        if linkRemains {
+            return "a link there keeps it working until you clean up old configuration"
+        }
+        return "that folder now holds only Macarchy's launchers, so point it at "
+            + Paths.display(Paths.appRoot)
     }
 
     /// Whether setup still has to run after the move: the link stands in for
