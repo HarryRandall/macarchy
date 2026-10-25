@@ -34,7 +34,8 @@ public enum DaemonAgents {
         switch daemon {
         case .yabai: [Paths.yabai, "-c", StartupConfiguration.yabairc.url.path]
         case .skhd: [Paths.skhd, "-c", Setup.skhdrc.path]
-        case .sketchybar: [Paths.sketchybar, "--config", StartupConfiguration.sketchybarrc.url.path]
+        case .sketchybar:
+            [Paths.sketchybar, "--config", StartupConfiguration.sketchybarStartFile.path]
         case .borders: [StartupConfiguration.bordersrc.url.path]
         }
     }

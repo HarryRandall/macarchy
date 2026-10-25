@@ -72,6 +72,15 @@ repairs the link when it launches.
 
 `skhdrc` is the exception: seeded with defaults, then the person's file.
 
+SketchyBar sets `$CONFIG_DIR` and its working folder to the folder of the file
+it starts with, resolving links, and passes them to every item script. A
+person's own bar finds its plugins, colours and icons that way, so when setup
+keeps one, the agent starts `~/.config/sketchybar/macarchy-sketchybarrc`, a
+two-line launcher that execs `config/sketchybarrc`. The bar then runs
+Macarchy's file with the folder it was written for, and SketchyBar still
+watches that folder for changes. Setup backs the launcher up as absent, so
+uninstall removes it, and Doctor reports it if it goes missing.
+
 ## Setup and uninstall
 
 `Setup.plan` lists every change without writing. `Setup.run` writes the files

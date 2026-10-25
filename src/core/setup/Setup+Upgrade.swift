@@ -44,27 +44,6 @@ extension Setup {
         return rewritten.text
     }
 
-    /// SketchyBar sets `CONFIG_DIR` to the folder of the file it runs, which
-    /// is now Macarchy's `config`. Bar lines carried from another folder that
-    /// read it get the folder they were written for.
-    static func keepingBarFolder(
-        _ text: String, from source: URL, report: inout [String]
-    )
-        -> String
-    {
-        let folder = source.deletingLastPathComponent()
-        guard text.contains("CONFIG_DIR"),
-            folder.standardizedFileURL != Paths.configDirectory.standardizedFileURL
-        else { return text }
-        let home = Paths.home.path
-        let spelled =
-            folder.path.hasPrefix(home + "/")
-            ? "$HOME" + folder.path.dropFirst(home.count) : folder.path
-        report.append("Kept $CONFIG_DIR at \(Paths.display(folder)) for your bar")
-        return "# SketchyBar now runs this file from Macarchy's folder; your items live here.\n"
-            + "export CONFIG_DIR=\"\(spelled)\"\n" + text
-    }
-
     /// A keep region without its end marker cannot be carried: where the
     /// person's lines stop cannot be told. Setup stops before changing
     /// anything and says how to fix it.

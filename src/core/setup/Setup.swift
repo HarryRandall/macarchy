@@ -115,6 +115,7 @@ public enum Setup {
                     atPath: StartupConfiguration.bordersrc.url.path) ? .replace : .create,
                 detail: "Borders follow the theme and the Borders page")
         ]
+        if let launcher = launcherChange(existing) { changes.append(launcher) }
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             changes.append(
                 Change(
@@ -227,6 +228,8 @@ public enum Setup {
         report += bar.lines
         let barKept = bar.region
         try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))
+        // Before the agents, which start SketchyBar from the launcher when there is one.
+        report += try placeBarLauncher(bar.launcher, backups: backups)
 
         let bordersrc = StartupConfiguration.bordersrc.url
         try generate(bordersrc, StartupConfiguration().generateBordersRC())
