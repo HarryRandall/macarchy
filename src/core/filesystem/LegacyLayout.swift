@@ -21,6 +21,10 @@ public enum LegacyLayout {
         /// clash moved back in. `setAside` is the folder still holding what
         /// clashed, or nil when only scratch state was left and it was removed.
         case merged(setAside: URL?)
+        /// The old path is the person's own link, as dotfiles make it. What
+        /// it leads to was copied, not moved, and both were left as they
+        /// were; `setAside` is as for `merged`.
+        case copied(from: URL, setAside: URL?)
     }
 
     /// Entries only Macarchy writes; any of them means the old folder holds
@@ -39,8 +43,34 @@ public enum LegacyLayout {
     }
 
     static func needsMigration(legacy: URL, root: URL) -> Bool {
-        isFolder(legacy) && holdsData(legacy)
+        source(legacy: legacy, root: root).map(holdsData) == true
             && !FileManager.default.fileExists(atPath: root.appending(path: "settings.json").path)
+    }
+
+    /// The folder to take the data from: the old folder itself, or where it
+    /// leads when it is the person's own link. Nil for Macarchy's link, or
+    /// when nothing is there.
+    static func source(legacy: URL, root: URL) -> URL? {
+        if isFolder(legacy) { return legacy }
+        guard let target = linkedFolder(legacy: legacy, root: root), isFolder(target) else {
+            return nil
+        }
+        return target
+    }
+
+    /// Where the old path leads when it is a link the person made, such as
+    /// one into a dotfiles folder, rather than the one `move` leaves.
+    public static var linkedFolder: URL? {
+        linkedFolder(legacy: Paths.legacyRoot, root: Paths.appRoot)
+    }
+
+    static func linkedFolder(legacy: URL, root: URL) -> URL? {
+        guard (try? FileManager.default.destinationOfSymbolicLink(atPath: legacy.path)) != nil
+        else { return nil }
+        let target = legacy.resolvingSymlinksInPath()
+        return target.standardizedFileURL.path
+            == root.resolvingSymlinksInPath().standardizedFileURL.path
+            ? nil : target
     }
 
     /// Whether the old folder still holds settings although the new one has
@@ -51,7 +81,7 @@ public enum LegacyLayout {
     }
 
     static func hasLeftoverData(legacy: URL, root: URL) -> Bool {
-        isFolder(legacy) && holdsData(legacy)
+        source(legacy: legacy, root: root).map(holdsData) == true
             && FileManager.default.fileExists(atPath: root.appending(path: "settings.json").path)
     }
 
@@ -63,9 +93,20 @@ public enum LegacyLayout {
             .map { parent.appending(path: $0) }
     }
 
-    /// Whether the old folder is a link, as `move` leaves it.
+    /// Whether the old folder is a link, as `move` leaves it or as the
+    /// person made it.
     public static var linkRemains: Bool {
         (try? FileManager.default.destinationOfSymbolicLink(atPath: Paths.legacyRoot.path)) != nil
+    }
+
+    /// What serves a file that still names the old folder, for the report.
+    static var oldPathFallback: String {
+        if let target = linkedFolder {
+            return "\(Paths.display(Paths.legacyRoot)) links to \(Paths.display(target)), so the "
+                + "command still runs, but files read through it are no longer updated"
+        }
+        if linkRemains { return "a link there keeps it working until uninstall" }
+        return "nothing is there now, so point it at \(Paths.display(Paths.appRoot))"
     }
 
     /// Whether setup still has to run after the move: the link stands in for
@@ -98,27 +139,43 @@ public enum LegacyLayout {
         try fm.createDirectory(at: parent, withIntermediateDirectories: true)
         // The app and the command can both start at once; only one moves.
         return try withLock(on: parent) {
-            guard needsMigration(legacy: legacy, root: root) else { return .nothing }
+            guard needsMigration(legacy: legacy, root: root),
+                let source = source(legacy: legacy, root: root)
+            else { return .nothing }
             var aside: URL?
             if exists(root) {
                 let place = parent.appending(path: "\(setAsidePrefix) \(stamp())")
                 try fm.moveItem(at: root, to: place)
                 aside = place
             }
+            let copying = source != legacy
             do {
-                try fm.moveItem(at: legacy, to: root)
+                // The person's own link and what it leads to stay theirs.
+                if copying {
+                    try fm.copyItem(at: source, to: root)
+                } else {
+                    try fm.moveItem(at: legacy, to: root)
+                }
             } catch {
+                if copying { try? fm.removeItem(at: root) }
                 if let aside { try? fm.moveItem(at: aside, to: root) }
                 throw ConfigurationError(
-                    "Could not move \(Paths.display(legacy)) to \(Paths.display(root)): "
-                        + "\(error.localizedDescription). Nothing was changed.")
+                    "Could not \(copying ? "copy" : "move") \(Paths.display(source)) to "
+                        + "\(Paths.display(root)): \(error.localizedDescription). Nothing was changed."
+                )
             }
             // The data is in place either way; without the link, files from
             // the earlier version stop finding the app until setup rewrites them.
-            try? fm.createSymbolicLink(atPath: legacy.path, withDestinationPath: root.path)
-            relocateSnapshots(in: root, legacy: legacy)
-            guard let aside else { return .moved }
-            return .merged(setAside: mergeLeftovers(from: aside, into: root))
+            if !copying {
+                try? fm.createSymbolicLink(atPath: legacy.path, withDestinationPath: root.path)
+            }
+            relocateSnapshots(in: root, legacy: legacy, alias: copying ? source : nil)
+            let kept = aside.flatMap { mergeLeftovers(from: $0, into: root) }
+            let outcome: Outcome =
+                copying
+                ? .copied(from: source, setAside: kept)
+                : aside == nil ? .moved : .merged(setAside: kept)
+            return outcome
         }
     }
 
@@ -150,10 +207,18 @@ public enum LegacyLayout {
     /// Points each snapshot's record at where its files live now, so
     /// restoring one taken before the move changes the files Macarchy uses.
     /// The original record is kept beside it.
-    static func relocateSnapshots(in root: URL, legacy: URL) {
+    /// `alias` is the folder a person's link led to, which a record may
+    /// name instead of the old path.
+    static func relocateSnapshots(in root: URL, legacy: URL, alias: URL? = nil) {
         let fm = FileManager.default
         let snapshots = root.appending(path: "snapshots")
         let home = legacy.deletingLastPathComponent().deletingLastPathComponent()
+        func unaliased(_ path: String) -> String {
+            guard let alias = alias?.path, path == alias || path.hasPrefix(alias + "/") else {
+                return path
+            }
+            return legacy.path + path.dropFirst(alias.count)
+        }
         for name in (try? fm.contentsOfDirectory(atPath: snapshots.path)) ?? [] {
             let meta = snapshots.appending(path: name).appending(path: ".meta.json")
             guard let data = try? Data(contentsOf: meta),
@@ -161,7 +226,8 @@ public enum LegacyLayout {
                 let paths = object["paths"] as? [String: String]
             else { continue }
             let moved = paths.mapValues {
-                SnapshotStore.currentLocation(of: $0, home: home, root: root, startupFiles: true)
+                SnapshotStore.currentLocation(
+                    of: unaliased($0), home: home, root: root, startupFiles: true)
             }
             guard moved != paths else { continue }
             object["paths"] = moved

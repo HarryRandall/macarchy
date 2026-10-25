@@ -82,6 +82,54 @@ struct LegacyLayoutTests {
         #expect(home.read("settings.json", in: home.root) == "{\"currentTheme\":\"lumon\"}")
     }
 
+    @Test("a folder linked from dotfiles is copied, and the link and folder are left alone")
+    func copiesLinkedFolder() throws {
+        let home = try Home()
+        defer { try? FileManager.default.removeItem(at: home.url) }
+        let fm = FileManager.default
+        let dotfiles = home.url.appending(path: "dotfiles/macarchy")
+        try fm.createDirectory(
+            at: dotfiles.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try fm.moveItem(at: home.legacy, to: dotfiles)
+        try fm.createSymbolicLink(at: home.legacy, withDestinationURL: dotfiles)
+        try home.write(
+            "{\"reason\":\"x\",\"paths\":{\"0-settings.json\":\""
+                + dotfiles.appending(path: "settings.json").path + "\"}}",
+            "snapshots/two/.meta.json", in: dotfiles)
+        #expect(LegacyLayout.needsMigration(legacy: home.legacy, root: home.root))
+        let outcome = try LegacyLayout.move(legacy: home.legacy, root: home.root)
+        guard case .copied(let source, nil) = outcome else {
+            Issue.record("expected a copy, got \(outcome)")
+            return
+        }
+        #expect(source.resolvingSymlinksInPath().path == dotfiles.resolvingSymlinksInPath().path)
+        #expect(home.read("settings.json", in: home.root) == "{\"currentTheme\":\"lumon\"}")
+        #expect(home.read("settings.json", in: dotfiles) == "{\"currentTheme\":\"lumon\"}")
+        #expect(try fm.destinationOfSymbolicLink(atPath: home.legacy.path) == dotfiles.path)
+        #expect(!LegacyLayout.needsMigration(legacy: home.legacy, root: home.root))
+        #expect(LegacyLayout.hasLeftoverData(legacy: home.legacy, root: home.root))
+        #expect(LegacyLayout.linkedFolder(legacy: home.legacy, root: home.root) != nil)
+        let data = Data((home.read("snapshots/two/.meta.json", in: home.root) ?? "").utf8)
+        let paths = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["paths"]
+        #expect(
+            (paths as? [String: String])?.values.first
+                == home.root.appending(path: "settings.json").path)
+        #expect(try LegacyLayout.move(legacy: home.legacy, root: home.root) == .nothing)
+    }
+
+    @Test("Macarchy's own link is never taken for an earlier folder")
+    func ignoresOwnLink() throws {
+        let home = try Home()
+        defer { try? FileManager.default.removeItem(at: home.url) }
+        let fm = FileManager.default
+        try fm.removeItem(at: home.legacy)
+        try home.write("{}", "themes/a/theme.json", in: home.root)
+        try fm.createSymbolicLink(at: home.legacy, withDestinationURL: home.root)
+        #expect(LegacyLayout.linkedFolder(legacy: home.legacy, root: home.root) == nil)
+        #expect(!LegacyLayout.needsMigration(legacy: home.legacy, root: home.root))
+        #expect(try LegacyLayout.move(legacy: home.legacy, root: home.root) == .nothing)
+    }
+
     @Test("settings already in the new folder are never moved over")
     func leavesExistingSettings() throws {
         let home = try Home()

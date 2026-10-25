@@ -201,7 +201,7 @@ Outside the folder it only writes:
 | `~/Library/LaunchAgents/io.github.harryrandall.macarchy.<tool>.plist` | Starts each tool at login with its config. The tool's own agent is switched off and backed up |
 | `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
 | `~/.config/sketchybar/macarchy-sketchybarrc` | Only if you keep your own bar: SketchyBar starts from it, so your items still see that folder as `$CONFIG_DIR` |
-| `~/.config/macarchy` | Only after an upgrade: a link to the new folder for files that still name the old one |
+| `~/.config/macarchy` | Only after an upgrade: a link to the new folder for files that still name the old one. A link of your own there is left as it is, and what it leads to is copied |
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
 silently lost.

@@ -273,4 +273,24 @@ grep -q 'still holds settings from an earlier version' <<<"$DOCTOR" \
   || fail "doctor does not report the old folder's settings: $DOCTOR"
 [ -d "$OLD" ] && [ ! -L "$OLD" ] || fail "the old folder was moved over existing settings"
 
+# A dotfiles link at the old path: what it leads to is copied, and the link
+# and that folder stay as they are, so the old command path still resolves.
+make_home dotfiles
+mkdir -p "$H/dotfiles"
+mv "$OLD" "$H/dotfiles/macarchy"
+ln -s "$H/dotfiles/macarchy" "$OLD"
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "settings not copied from the linked folder"
+[ "$(readlink "$OLD")" = "$H/dotfiles/macarchy" ] || fail "the person's link was changed"
+[ -f "$H/dotfiles/macarchy/settings.json" ] || fail "the linked folder was moved, not copied"
+grep -q 'links to ~/dotfiles/macarchy, which still holds settings' <<<"$DOCTOR" \
+  || fail "doctor does not flag the linked folder: $DOCTOR"
+OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed with a linked folder: $OUTPUT"
+grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
+  || fail "shortcuts not pointed at the new folder with a linked folder: $OUTPUT"
+grep -q '.config/macarchy' "$CONFIG/skhdrc" && fail "shortcuts still name the linked folder"
+[ -x "$OLD/Macarchy.app/Contents/MacOS/macarchy" ] || fail "the old command path no longer resolves"
+"$CLI" uninstall >/dev/null 2>&1 || fail "uninstall failed with a linked folder"
+[ "$(readlink "$OLD")" = "$H/dotfiles/macarchy" ] || fail "uninstall removed the person's link"
+
 echo "upgrade integration test passed"

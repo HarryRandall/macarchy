@@ -48,8 +48,7 @@ extension Setup {
         if LegacyLayout.mentionsOldFolder(rewritten.text) {
             report.append(
                 "\(Paths.display(source)) still names \(Paths.display(Paths.legacyRoot)) "
-                    + "where it could not be rewritten; a link there keeps it working until "
-                    + "uninstall")
+                    + "where it could not be rewritten; \(LegacyLayout.oldPathFallback)")
         }
         return rewritten.text
     }
@@ -83,8 +82,8 @@ extension Setup {
         guard !LegacyLayout.needsMigration else {
             throw ConfigurationError(
                 "Settings from an earlier version are still in "
-                    + "\(Paths.display(Paths.legacyRoot)) and could not be moved. "
-                    + "Setup did not change anything.")
+                    + "\(Paths.display(LegacyLayout.linkedFolder ?? Paths.legacyRoot)) and could "
+                    + "not be moved. Setup did not change anything.")
         }
         let moved =
             "Moved \(Paths.display(Paths.legacyRoot)) to \(Paths.display(Paths.appRoot))"
@@ -93,11 +92,18 @@ extension Setup {
         case .moved: return [moved]
         case .merged(nil): return [moved]
         case .merged(let aside?):
-            return [
-                moved,
-                "Files that were already in \(Paths.display(Paths.appRoot)) and clashed are in "
-                    + Paths.display(aside)
-            ]
+            return [moved, clashed(aside)]
+        case .copied(let source, let aside):
+            let copied =
+                "Copied your settings from \(Paths.display(source)), which "
+                + "\(Paths.display(Paths.legacyRoot)) links to, into \(Paths.display(Paths.appRoot)). "
+                + "Your link and that folder were left as they are; Macarchy no longer reads them"
+            return [copied] + (aside.map { [clashed($0)] } ?? [])
         }
+    }
+
+    private static func clashed(_ aside: URL) -> String {
+        "Files that were already in \(Paths.display(Paths.appRoot)) and clashed are in "
+            + Paths.display(aside)
     }
 }

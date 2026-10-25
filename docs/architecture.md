@@ -48,8 +48,11 @@ merging into a new folder something else created first (anything that clashes
 is kept aside in `Macarchy before migration <date>` and Doctor reports it).
 Bar scripts never create the new folder. The move leaves a link at the old path
 that stays until uninstall, because earlier startup files, shortcuts and the
-person's own scripts may still name it. Setup also rewrites old command paths
-in the shortcuts and keep regions it carries over, so the link is a fallback.
+person's own scripts may still name it. When the old path is the person's own
+link, as dotfiles make it, the folder it leads to is copied instead, and the
+link and that folder are left as they are; Doctor reports the copy left behind.
+Setup also rewrites old paths in the shortcuts and the yabai, SketchyBar and
+borders keep regions it carries over, so the link is a fallback.
 A rewrite follows the shell's quoting (`OldPathScanner`) and is kept only when
 the result still parses with `bash -n`; otherwise the text stays as written and
 the report says so. Snapshot records are moved to the new paths, and restore maps any it missed.

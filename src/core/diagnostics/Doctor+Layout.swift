@@ -9,7 +9,8 @@ extension Doctor {
         return HealthCheck(
             .configuration, "Setup", .failed,
             "Settings from an earlier version are still in "
-                + "\(Paths.display(Paths.legacyRoot)) and were not moved",
+                + "\(Paths.display(LegacyLayout.linkedFolder ?? Paths.legacyRoot)) and were not "
+                + "moved",
             fix: "Quit Macarchy and run setup; it says what stopped the move",
             command: setupCommand)
     }
@@ -37,16 +38,7 @@ extension Doctor {
                     "Set up before Macarchy moved to Application Support",
                     fix: "Open Macarchy to set it up again", command: setupCommand))
         }
-        if LegacyLayout.hasLeftoverData {
-            results.append(
-                HealthCheck(
-                    .configuration, "Earlier settings", .warning,
-                    "\(Paths.display(Paths.legacyRoot)) still holds settings from an earlier "
-                        + "version, which Macarchy no longer reads",
-                    fix: "Copy anything you need into \(Paths.display(Paths.appRoot)), "
-                        + "then move the old folder to the Bin",
-                    file: Paths.legacyRoot))
-        }
+        if LegacyLayout.hasLeftoverData { results.append(leftoverCheck()) }
         if let missing = missingBarStartFile() {
             results.append(
                 HealthCheck(
@@ -64,5 +56,27 @@ extension Doctor {
                     file: folder))
         }
         return results
+    }
+
+    /// The old folder still holds settings Macarchy no longer reads, or a
+    /// link the person made leads to a folder that does.
+    private static func leftoverCheck() -> HealthCheck {
+        guard let target = LegacyLayout.linkedFolder else {
+            return HealthCheck(
+                .configuration, "Earlier settings", .warning,
+                "\(Paths.display(Paths.legacyRoot)) still holds settings from an earlier "
+                    + "version, which Macarchy no longer reads",
+                fix: "Copy anything you need into \(Paths.display(Paths.appRoot)), "
+                    + "then move the old folder to the Bin",
+                file: Paths.legacyRoot)
+        }
+        return HealthCheck(
+            .configuration, "Earlier settings", .warning,
+            "\(Paths.display(Paths.legacyRoot)) links to \(Paths.display(target)), which still "
+                + "holds settings from an earlier version. Macarchy copied them to "
+                + "\(Paths.display(Paths.appRoot)) and no longer reads that folder",
+            fix: "Keep your settings in \(Paths.display(Paths.appRoot)) from now on. Remove the "
+                + "link, or the earlier settings from that folder, when nothing names it",
+            file: target)
     }
 }
