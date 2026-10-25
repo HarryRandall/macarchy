@@ -24,8 +24,8 @@ let usage = """
                                   --no-apply only writes the files: no services are
                                   started and no theme is applied.
       services                    Start or restart yabai, skhd, SketchyBar and borders.
-      uninstall                   Restore the files setup replaced and restart the
-                                  services.
+      uninstall                   Stop Macarchy's services and give the daemons back
+                                  the agents and files they had before setup.
       doctor                      Check dependencies, services and configuration.
       apply                       Reapply every saved setting to the desktop.
       theme <name>|next|prev      Switch theme.
@@ -71,6 +71,9 @@ func usage(of command: String) -> String {
 }
 
 let args = Array(CommandLine.arguments.dropFirst())
+// Startup files run the CLI at login, possibly before the app has moved the
+// old folder, so the CLI moves it too.
+LegacyLayout.migrate()
 let command = args.first ?? ""
 let rest = Array(args.dropFirst())
 do {

@@ -337,7 +337,7 @@ export function installMockHost() {
     addition: "missing",
     additionExplanation: "The scripting addition is optional.",
     wakeHelpers: true,
-    backupsDirectory: "~/.config/macarchy/backups",
+    backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   };
   let borders: BordersState = {
     appearance: {
@@ -401,7 +401,7 @@ export function installMockHost() {
       tools: [],
       changes: [
         {
-          path: "~/.config/yabai/yabairc",
+          path: "~/Library/Application Support/Macarchy/config/yabairc",
           action: "create",
           detail: "Starts tiling with Macarchy's layout and rules",
         },
@@ -471,16 +471,12 @@ export function installMockHost() {
       };
     },
     "shell.revealSettings": () => {
-      console.info("[mock] reveal ~/.config/macarchy in Finder");
+      console.info("[mock] reveal ~/Library/Application Support/Macarchy in Finder");
       record("reveal settings");
       return null;
     },
     "shell.quit": () => {
       console.info("[mock] quit; a browser tab keeps running");
-      return null;
-    },
-    "shell.openClassic": (params) => {
-      console.info("[mock] open classic window", params);
       return null;
     },
     "shell.setTitlebar": (params) => {
@@ -507,7 +503,8 @@ export function installMockHost() {
           status: "failed",
           detail: "Macarchy has not been set up",
           advice: "Open Macarchy to set it up",
-          command: "~/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy setup",
+          command:
+            "~/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy setup",
           file: null,
         },
         {
@@ -518,7 +515,7 @@ export function installMockHost() {
           detail: "settings.json is not valid JSON",
           advice: "Correct the file, or restore an earlier snapshot from Advanced",
           command: null,
-          file: "~/.config/macarchy/settings.json",
+          file: "~/Library/Application Support/Macarchy/settings.json",
         },
       ],
       environment: {
@@ -526,7 +523,7 @@ export function installMockHost() {
         architecture: "Apple Silicon",
         macOS: "26.0",
         app: "development build",
-        settingsFolder: "~/.config/macarchy",
+        settingsFolder: "~/Library/Application Support/Macarchy",
       },
       checkedAt: Date.now() / 1000,
     }),

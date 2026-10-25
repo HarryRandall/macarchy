@@ -58,7 +58,7 @@ const seeds: LogSeed[] = [
   },
   {
     command: "open skhdrc",
-    detail: "~/.config/skhd/skhdrc",
+    detail: "~/Library/Application Support/Macarchy/config/skhdrc",
     ok: true,
     status: null,
     category: "Shortcuts",

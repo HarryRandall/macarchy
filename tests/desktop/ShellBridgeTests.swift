@@ -197,10 +197,4 @@ struct ShellBridgeTests {
         _ = await received.next()
         #expect(sent.value == 2)
     }
-
-    @Test("React draws every pane and nothing opens the classic window")
-    func routing() {
-        #expect(Pane.migrated == Set(Pane.allCases))
-        #expect(Pane.allCases.filter(\.opensInClassic).isEmpty)
-    }
 }

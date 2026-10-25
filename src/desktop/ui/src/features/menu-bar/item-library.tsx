@@ -189,7 +189,8 @@ export function ItemLibrary({
             ))}
             <div className="flex-1" />
             <p className="px-2 pb-2 text-caption text-fg-secondary">
-              Your widgets live in <span className="font-mono">~/.config/macarchy/widgets</span>
+              Your widgets live in{" "}
+              <span className="font-mono">~/Library/Application Support/Macarchy/widgets</span>
             </p>
             <Button size="sm" onClick={onOpenFolder}>
               <Folder aria-hidden size={12} /> Open folder
@@ -218,7 +219,7 @@ export function ItemLibrary({
                   variant="plain"
                   icon={<Folder />}
                   title="No widgets of your own yet"
-                  description="Each widget is a folder with a widget.json in ~/.config/macarchy/widgets. Built-ins can be copied there from their Files tab."
+                  description="Each widget is a folder with a widget.json in ~/Library/Application Support/Macarchy/widgets. Built-ins can be copied there from their Files tab."
                   action={<Button onClick={onOpenFolder}>Open folder</Button>}
                 />
               )

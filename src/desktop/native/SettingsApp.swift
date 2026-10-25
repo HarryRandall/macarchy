@@ -1,3 +1,4 @@
+import Macarchy
 import SwiftUI
 
 @main
@@ -6,18 +7,19 @@ struct SettingsApp: App {
     @State private var model: AppModel
 
     init() {
+        // Before anything reads settings, so a first launch after the move
+        // to Application Support finds them there.
+        LegacyLayout.migrate()
         let model = AppModel()
         _model = State(initialValue: model)
         // The switcher's hotkey must work before any window has opened.
         ThemeSwitcher.shared.attach(model)
         SettingsWindow.shared.attach(model)
-        AppDelegate.model = model
-        model.openMigrated = { pane in SettingsWindow.shared.show(pane) }
         StateBroadcast.shared.start(model)
         Task { await model.loadEverything() }
     }
 
-    // Both settings windows are AppKit windows the app opens itself; the menu
+    // The settings window is an AppKit window the app opens itself; the menu
     // bar item is the only scene.
     var body: some Scene {
         MenuBarExtra {

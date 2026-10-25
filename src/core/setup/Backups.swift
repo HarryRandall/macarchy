@@ -40,13 +40,18 @@ struct Backups {
 
     /// Records each file the first time only, immediately before it is
     /// changed, so a second setup cannot replace the true original.
-    func save(_ urls: [URL]) throws {
+    /// Returns the files and links it newly kept; a file that did not exist
+    /// is recorded as absent and not returned.
+    @discardableResult
+    func save(_ urls: [URL]) throws -> [URL] {
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         var current = try manifest()
+        var kept: [URL] = []
         for url in urls where current.entries[url.path] == nil {
             if let destination = try? fm.destinationOfSymbolicLink(atPath: url.path) {
                 current.entries[url.path] = .link(destination)
+                kept.append(url)
             } else if fm.fileExists(atPath: url.path) {
                 // A copy left by an interrupted save has no manifest entry;
                 // step past it rather than fail on every later setup.
@@ -60,11 +65,13 @@ struct Backups {
                 let stored = root.appending(path: name)
                 try fm.copyItem(at: url, to: stored)
                 current.entries[url.path] = .file(name)
+                kept.append(url)
             } else {
                 current.entries[url.path] = .absent
             }
         }
         try write(current)
+        return kept
     }
 
     /// Puts every original back, deletes files that did not exist before, and

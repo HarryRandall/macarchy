@@ -1,7 +1,7 @@
 import Foundation
 
 /// Every widget that can go on the bar: the ones shipped in the app and the
-/// ones in `~/.config/macarchy/widgets`.
+/// ones in `~/Library/Application Support/Macarchy/widgets`.
 ///
 /// Ids are unique across both. A person's folder that reuses a built-in id is
 /// refused rather than shadowing it, so a built-in always means the same thing

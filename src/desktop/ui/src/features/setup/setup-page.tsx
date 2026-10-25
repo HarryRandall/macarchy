@@ -218,12 +218,22 @@ export function SetupPage({
               </ul>
             </Card>
           ) : null}
-          <div className="flex justify-end gap-2">
-            <Button onClick={health}>Check setup health</Button>
-            <Button variant="primary" onClick={close}>
-              Done
-            </Button>
-          </div>
+          {report.failure && !state?.canClose ? (
+            // Without settings the window has nothing to return to, so the
+            // only way on is to set up again.
+            <div className="flex justify-end gap-2">
+              <Button variant="primary" onClick={() => store.reset()}>
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button onClick={health}>Check setup health</Button>
+              <Button variant="primary" onClick={close}>
+                Done
+              </Button>
+            </div>
+          )}
         </>
       ) : null}
     </>

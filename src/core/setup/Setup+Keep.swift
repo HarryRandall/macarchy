@@ -12,12 +12,18 @@ extension Setup {
     /// or one bash cannot parse would start a broken daemon. Setup stops
     /// before changing anything and says what to do instead.
     static func checkKeepable() async throws {
-        for url in [yabaiSource, StartupConfiguration.sketchybarrc.url] {
+        // Only a config setup would carry over: one whose Macarchy copy has
+        // not been generated yet.
+        let candidates = [
+            (StartupConfiguration.yabairc.url, yabaiSource),
+            (StartupConfiguration.sketchybarrc.url, sketchybarSource)
+        ]
+        for case (let target, let url?) in candidates where !isGenerated(target) {
             guard let text = adoptable(url) else { continue }
-            let name = url.lastPathComponent
+            let name = Paths.display(url)
             let advice =
                 "Setup did not change anything. Convert it to bash, move it aside, or set up "
-                + "with --replace (Start from defaults), which backs it up first."
+                + "with --replace (Start from defaults), which leaves it as it is."
             if let interpreter = foreignInterpreter(text) {
                 throw Refused(
                     reason: "Your \(name) runs with \(interpreter), and keeping it only works for "

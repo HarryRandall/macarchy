@@ -1,12 +1,12 @@
 import type { ShortcutBinding } from "~/bridge/protocol";
 
-import { shortcutLabel } from "./shortcut-presentation";
+import { plainCommand, shortcutLabel } from "./shortcut-presentation";
 
-export type ShortcutCategory = "Windows" | "Workspaces" | "Macarchy" | "Apps" | "Other";
+export type ShortcutCategory = "Windows" | "Desktops" | "Macarchy" | "Apps" | "Other";
 
 export const categoryOrder: readonly ShortcutCategory[] = [
   "Windows",
-  "Workspaces",
+  "Desktops",
   "Macarchy",
   "Apps",
   "Other",
@@ -18,9 +18,9 @@ export const categoryOrder: readonly ShortcutCategory[] = [
  * tabs are inferred.
  */
 export function shortcutCategory(binding: ShortcutBinding): ShortcutCategory {
-  const command = binding.command;
-  if (/yabai -m (space\b|window --space\b|display\b)/.test(command)) return "Workspaces";
-  if (/yabai -m window\b/.test(command)) return "Windows";
+  const command = plainCommand(binding.command);
+  if (/yabai -m (space --focus\b|window --space\b|display\b)/.test(command)) return "Desktops";
+  if (/yabai -m (window|space)\b/.test(command)) return "Windows";
   if (/\bmacarchy"?\s/i.test(command)) return "Macarchy";
   if (binding.appOverrides.length || /\b(open|osascript)\b/.test(command)) return "Apps";
   return "Other";

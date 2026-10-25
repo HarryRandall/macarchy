@@ -1,6 +1,8 @@
 import Foundation
 
-/// The startup files the daemons read from their fixed locations.
+/// The startup files the daemons run, in `Paths.configDirectory`. Macarchy's
+/// LaunchAgents start each daemon with its file, so nothing is written where
+/// the daemons look by default.
 ///
 /// Each one only hands over to the Macarchy command, which reads settings.json,
 /// so they are correct at login whether or not the app is running. Anything
@@ -9,15 +11,15 @@ public struct StartupConfiguration: Sendable {
     public init() {}
 
     public static var bordersrc: GeneratedFile {
-        GeneratedFile(url: Paths.home.appending(path: ".config/borders/bordersrc"))
+        GeneratedFile(url: Paths.configDirectory.appending(path: "bordersrc"))
     }
 
     public static var sketchybarrc: GeneratedFile {
-        GeneratedFile(url: Paths.home.appending(path: ".config/sketchybar/sketchybarrc"))
+        GeneratedFile(url: Paths.configDirectory.appending(path: "sketchybarrc"))
     }
 
     public static var yabairc: GeneratedFile {
-        GeneratedFile(url: Paths.home.appending(path: ".config/yabai/yabairc"))
+        GeneratedFile(url: Paths.configDirectory.appending(path: "yabairc"))
     }
 
     public static var all: [GeneratedFile] { [yabairc, sketchybarrc, bordersrc] }

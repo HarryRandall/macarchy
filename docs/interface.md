@@ -17,9 +17,9 @@ presentation and interaction state. Only the menu bar item is still SwiftUI.
 | `src/desktop/ui/src/features` | One folder per page or surface, with its previews and complex controls. |
 | `src/desktop/native/web` | `WebSurface` (a web view and its bridge), `HostWebView` (title bar dragging), `AppScheme` (serves the bundled interface and wallpaper thumbnails). |
 | `src/desktop/native/bridge` | The Swift mirror of the contract, the router, state snapshots and the broadcaster. |
-| `src/desktop/native/window` | The React settings window, the classic window's AppKit host, and the window buttons both use. |
+| `src/desktop/native/window` | The settings window and its window buttons. |
+| `src/desktop/native/features` | Each page's bridge handlers and message types, and the Swift models behind them, such as `MenuBarModel` and its bar geometry for the Menu Bar page. |
 | `src/desktop/native/switcher` | The floating switcher panel and its global shortcut. |
-| `src/desktop/classic` | The old SwiftUI window, which nothing opens now. `MenuBarModel` and its helpers still live here and back the Menu Bar page. |
 
 Advanced and first-run setup are React pages. Before settings exist, setup
 replaces the selected pane and previews `Setup.plan` before enabling Set up.
@@ -50,9 +50,8 @@ the panel once that state has been drawn: WebKit does not draw pages in
 windows that are off screen, so rendering while hidden would show the previous
 frame. Closing resets the page the same way before the panel is ordered out.
 
-Both settings windows are AppKit windows the app opens itself. The classic
-SwiftUI root view is hosted in one rather than in a SwiftUI `Window` scene,
-which would open on its own at launch.
+The settings window is an AppKit window the app opens itself rather than a
+SwiftUI `Window` scene, which would open on its own at launch.
 
 ## Bridge
 
@@ -87,7 +86,7 @@ Events flow the other way through `window.macarchyBridge.receive`. A
 document-start script queues any that arrive before the page's client starts.
 `StateBroadcast` sends them whenever the models the status menu reads change,
 and when `settings.json` changes on disk, so a theme switched from the CLI, the
-status menu or the classic window shows up everywhere.
+status menu or the switcher shows up everywhere.
 
 `protocol.ts` and `BridgeMessages.swift` describe the same shapes and must be
 changed together.
@@ -194,8 +193,8 @@ folder renders each state of both pages there as PNGs for review.
    components, and add it to the shell's page host.
 2. Add its requests and events to `protocol.ts` and `BridgeMessages.swift`,
    and register handlers that call shared operations in `src/core`.
-3. Add the pane to `Pane.migrated`, so the classic window sends it to React.
-4. Delete the SwiftUI pane and anything only it used.
+3. Add the pane to `PaneId` in `protocol.ts` and to `Pane` in Swift, so the
+   host saves it as the selected pane.
 
 ## Rules
 
@@ -248,8 +247,7 @@ both named by check id. A file fingerprint also detects theme,
 shortcut and snapshot changes made outside the app. Slow health reads are
 serialised and keep the previous findings visible while checking again.
 
-`DiagnosticSnapshot` gathers the same Doctor checks and Diagnostics environment
-as the classic pages did. Report collects these facts when the page opens or
+`DiagnosticSnapshot` gathers the Doctor checks and Diagnostics environment. Report collects these facts when the page opens or
 the person presses Refresh (`report.prepare` with `refresh: true`), sharing a
 collection already running; draft edits reuse the last collection. It
 prepares a redacted preview for each description. Native report actions accept

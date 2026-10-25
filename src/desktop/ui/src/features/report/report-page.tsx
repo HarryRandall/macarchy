@@ -73,17 +73,19 @@ export function ReportPage({ store }: { store: ReportStore }) {
       <div className="flex flex-col gap-4">
         {snapshot.error ? (
           <Notice.Root variant="error">
-            <Notice.Title>
-              {snapshot.stale ? "Could not prepare the report" : "That did not go through"}
-            </Notice.Title>
+            <Notice.Title>Could not prepare the report</Notice.Title>
             <Notice.Description>{snapshot.error}</Notice.Description>
-            {snapshot.stale ? (
-              <Notice.Actions>
-                <Button disabled={snapshot.preparing} onClick={() => void store.load()}>
-                  Try again
-                </Button>
-              </Notice.Actions>
-            ) : null}
+            <Notice.Actions>
+              <Button disabled={snapshot.preparing} onClick={() => void store.load()}>
+                Try again
+              </Button>
+            </Notice.Actions>
+          </Notice.Root>
+        ) : null}
+        {snapshot.actionError ? (
+          <Notice.Root variant="error">
+            <Notice.Title>That did not go through</Notice.Title>
+            <Notice.Description>{snapshot.actionError}</Notice.Description>
           </Notice.Root>
         ) : null}
         <Card className="px-6 py-5">

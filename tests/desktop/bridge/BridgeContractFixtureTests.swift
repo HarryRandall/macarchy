@@ -117,6 +117,7 @@ struct BridgeContractFixtureTests {
             "borders.changed": { try .bordersChanged(JSON.decode(BordersState.self, $0)) },
             "home.changed": { _ in .homeChanged },
             "health.changed": { _ in .healthChanged },
+            "report.invalidated": { _ in .reportInvalidated },
             "shortcuts.changed": { try .shortcutsChanged(JSON.decode(ShortcutsState.self, $0)) },
             "shortcuts.unavailable": { try .shortcutsUnavailable(JSON.decode(String.self, $0)) }
         ]

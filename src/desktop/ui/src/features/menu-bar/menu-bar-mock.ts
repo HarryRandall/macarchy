@@ -244,7 +244,7 @@ export const mockWidgets: WidgetInfo[] = [
     version: "0.1.0",
     origin: "user",
     scripted: true,
-    folder: "~/.config/macarchy/widgets/uptime",
+    folder: "~/Library/Application Support/Macarchy/widgets/uptime",
     files: ["provider.sh", "widget.json"],
     manifest: manifest({ id: "uptime", name: "Uptime", version: "0.1.0", provider: "provider.sh" }),
     provider: "provider.sh",
@@ -313,7 +313,7 @@ export function createMenuBarMock(options: { stopped: boolean }) {
           id: copy,
           name: `${original.name} copy`,
           origin: "user",
-          folder: `~/.config/macarchy/widgets/${copy}`,
+          folder: `~/Library/Application Support/Macarchy/widgets/${copy}`,
         },
       ];
       state = { ...state, widgets };

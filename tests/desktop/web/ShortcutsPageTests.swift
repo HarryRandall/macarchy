@@ -86,7 +86,7 @@ extension WebInterfaceTests {
         @Test("opening and refreshing read real skhdrc without writing or restarting")
         func openingIsReadOnly() async throws {
             try await withHarness(tools: ["skhd"]) { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let before = harness.settingsData
                 let snapshotsBefore = SnapshotStore().list().count
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
@@ -104,7 +104,7 @@ extension WebInterfaceTests {
         @Test("the top bar's search filters the bindings read from skhdrc")
         func pageSearch() async throws {
             try await withHarness { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 try await run(
@@ -124,7 +124,7 @@ extension WebInterfaceTests {
         @Test("recording reaches Swift, saves only the chord, snapshots and restarts skhd")
         func rebind() async throws {
             try await withHarness(tools: ["skhd"]) { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 await harness.desktop.answer("launchctl") { arguments in
                     arguments.first == "print"
                         ? .success("state = running\npid = 123\n") : .success()
@@ -160,7 +160,7 @@ extension WebInterfaceTests {
         @Test("native Command keys are captured before shell search")
         func commandRecording() async throws {
             try await withHarness { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let (window, surface) = try offscreenSettings(harness, pane: .shortcuts)
                 defer { window.contentView = nil }
                 try await waitForShortcuts(surface)
@@ -180,7 +180,7 @@ extension WebInterfaceTests {
         @Test("conflicts and externally changed files leave the configuration unchanged")
         func staleAndConflict() async throws {
             try await withHarness { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 try await editFirstShortcut(surface)
@@ -201,7 +201,7 @@ extension WebInterfaceTests {
                     #"return page.text().includes('Already used by Focus windows');"#)
                 try await recordShortcut(surface)
                 let external = shortcutsFixture + "# edited outside Macarchy\n"
-                try harness.write(external, to: ".config/skhd/skhdrc")
+                try harness.write(external, to: shortcutsFile)
                 try await shortcutClick(surface, "Save")
                 try await waitFor(
                     surface, "the stale file failure",
@@ -213,7 +213,7 @@ extension WebInterfaceTests {
         @Test("disable keeps the block as comments, Enable restores it, and failed reloads show")
         func disableAndReloadFailure() async throws {
             try await withHarness(tools: ["skhd"]) { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 try await run(
@@ -252,7 +252,7 @@ extension WebInterfaceTests {
         @Test("external changes arrive through the broadcaster without clobbering the recording")
         func externalChanges() async throws {
             try await withHarness { harness in
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitForShortcuts(surface)
                 let broadcast = ShortcutsBroadcast()
@@ -261,7 +261,7 @@ extension WebInterfaceTests {
                 try await editFirstShortcut(surface)
                 try await recordShortcut(surface)
                 try harness.write(
-                    shortcutsFixture + "cmd - q : echo external\n", to: ".config/skhd/skhdrc")
+                    shortcutsFixture + "cmd - q : echo external\n", to: shortcutsFile)
                 try await waitFor(
                     surface, "external edits and the preserved recording",
                     #"return page.text().includes('5 shortcuts') && page.text().includes('Your recording has been kept') && page.text().includes('cmd - k');"#
@@ -283,7 +283,7 @@ extension WebInterfaceTests {
                     #"return page.text().includes('Could not read your shortcuts') && page.text().includes('Try again');"#
                 )
                 #expect(!FileManager.default.fileExists(atPath: Setup.skhdrc.path))
-                try harness.write(shortcutsFixture, to: ".config/skhd/skhdrc")
+                try harness.write(shortcutsFixture, to: shortcutsFile)
                 try await shortcutClick(surface, "Try again")
                 try await waitForShortcuts(surface)
                 let previous = getenv("MACARCHY_RESOURCES").map { String(cString: $0) }

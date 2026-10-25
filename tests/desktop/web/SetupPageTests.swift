@@ -49,11 +49,26 @@ extension WebInterfaceTests {
                         surface,
                         #"[...document.querySelectorAll('button')].find(b => b.textContent === "Set up Macarchy").click();"#
                     )
+                    // Without settings there is nothing to close to, so only a retry is offered.
                     try await waitFor(
                         surface, "setup error",
-                        #"return page.text().includes("Setup could not finish") && page.text().includes("some files may already have changed");"#
-                    )
+                        """
+                        const text = page.text();
+                        const buttons = [...document.querySelectorAll('button')].map(b => b.textContent);
+                        return text.includes("Setup could not finish")
+                          && text.includes("some files may already have changed")
+                          && buttons.includes("Try again")
+                          && !buttons.includes("Done") && !buttons.includes("Check setup health");
+                        """)
                     #expect(!FileManager.default.fileExists(atPath: harness.store.url.path))
+                    try await run(
+                        surface,
+                        #"[...document.querySelectorAll('button')].find(b => b.textContent === "Try again").click();"#
+                    )
+                    try await waitFor(
+                        surface, "setup plan again",
+                        #"return page.text().includes("What will change") && !page.text().includes("Setup could not finish");"#
+                    )
                 }
             }
         }
@@ -98,8 +113,8 @@ extension WebInterfaceTests {
                     try FileManager.default.removeItem(at: harness.store.url)
                     try harness.write(
                         "yabai -m config window_gap 17\necho mine\n", to: ".config/yabai/yabairc")
-                    let original = try String(
-                        contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
+                    let own = harness.home.appending(path: ".config/yabai/yabairc")
+                    let original = try String(contentsOf: own, encoding: .utf8)
                     let (_, surface) = try harness.settingsPage()
                     try await waitFor(
                         surface, "setup plan",
@@ -107,8 +122,8 @@ extension WebInterfaceTests {
                     )
                     #expect(!FileManager.default.fileExists(atPath: harness.store.url.path))
                     #expect(
-                        try String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
-                            == original)
+                        !FileManager.default.fileExists(
+                            atPath: StartupConfiguration.yabairc.url.path))
                     #expect(await harness.desktop.calls.isEmpty)
                     try await run(
                         surface,
@@ -122,6 +137,7 @@ extension WebInterfaceTests {
                     #expect(
                         try String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
                             .contains("echo mine"))
+                    #expect(try String(contentsOf: own, encoding: .utf8) == original)
                     #expect(!harness.model.shellState().setupRequired)
                 }
             }
@@ -145,7 +161,7 @@ extension WebInterfaceTests {
                     )
                     try await waitFor(
                         surface, "replacement plan",
-                        #"return page.text().includes("Replaced; the original is backed up");"#)
+                        #"return page.text().includes("is left as it is");"#)
                     try await run(
                         surface,
                         #"[...document.querySelectorAll('button')].find(b => b.textContent === "Set up Macarchy").click();"#
@@ -161,11 +177,14 @@ extension WebInterfaceTests {
         @Test("restore originals requires confirmation and uses the injected backend")
         func originals() async throws {
             defer { InterfacePreferences.selectedPane = .layout }
-            try await withHarness(tools: []) { harness in
+            try await withHarness(tools: ["yabai"]) { harness in
                 try await withSetupResources(harness) {
                     let original = "echo original\n"
                     try harness.write(original, to: ".config/yabai/yabairc")
+                    let own = harness.home.appending(path: ".config/yabai/yabairc")
+                    let agent = DaemonAgents.plist(.yabai)
                     _ = await harness.model.setupSession.run(existing: .replace, app: nil)
+                    #expect(FileManager.default.fileExists(atPath: agent.path))
                     let (_, surface) = try harness.settingsPage(pane: .advanced)
                     try await waitFor(
                         surface, "restore originals",
@@ -177,17 +196,14 @@ extension WebInterfaceTests {
                     try await waitFor(
                         surface, "confirmation", #"return page.text().includes("Really restore?");"#
                     )
-                    #expect(
-                        try String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
-                            != original)
                     try await run(
                         surface,
                         #"[...document.querySelectorAll('[role=alertdialog] button')].find(b => b.textContent === 'Restore').click();"#
                     )
-                    try await waitUntil("original restored") {
-                        (try? String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8))
-                            == original
+                    try await waitUntil("Macarchy's agent removed") {
+                        !FileManager.default.fileExists(atPath: agent.path)
                     }
+                    #expect(try String(contentsOf: own, encoding: .utf8) == original)
                 }
             }
         }

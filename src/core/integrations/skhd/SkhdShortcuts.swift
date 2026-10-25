@@ -161,9 +161,7 @@ public struct SkhdShortcuts: Sendable {
         guard let source = defaultsURL ?? Paths.resources?.appending(path: "skhd/skhdrc") else {
             throw ConfigurationError("Default shortcuts are missing. Reinstall Macarchy.")
         }
-        let template = try String(contentsOf: source, encoding: .utf8)
-        let defaults = template.replacingOccurrences(
-            of: " yabai -m ", with: " \(Shell.quote(Paths.yabai)) -m ")
+        let defaults = try String(contentsOf: source, encoding: .utf8)
         return try await write(revision: revision, reason: "reset shortcuts") { _ in defaults }
     }
 

@@ -107,9 +107,8 @@ extension WindowRules {
     }
 
     /// The saved floating apps plus any that float only through a live `float_persist_`
-    /// rule, added by an older version or by the classic window. Reads show this list
-    /// and edits start from it, so an unrelated edit adopts those apps instead of
-    /// removing their rules.
+    /// rule, added by an older version. Reads show this list and edits start from it,
+    /// so an unrelated edit adopts those apps instead of removing their rules.
     static func floatingApps(saved: [String], live: [LiveRule]) -> [String] {
         var apps = saved
         for name in live.compactMap(ownedFloatingApp) where !apps.contains(name) {

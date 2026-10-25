@@ -2,9 +2,10 @@ import Foundation
 
 /// Every filesystem location the app and CLI depend on, in one place.
 ///
-/// Macarchy owns exactly one folder, `~/.config/macarchy`. The only files it
-/// writes outside it are the startup files the daemons read from fixed places,
-/// and Ghostty's include line, all of which setup backs up first.
+/// Macarchy owns exactly one folder, `~/Library/Application Support/Macarchy`:
+/// settings, themes, the daemons' configs, history and logs. Its own
+/// LaunchAgents start the daemons with those configs, so the only things it
+/// writes outside the folder are the agents and Ghostty's include line.
 public enum Paths {
     public static var home: URL { home(in: ProcessInfo.processInfo.environment) }
 
@@ -49,7 +50,17 @@ public enum Paths {
         return homes
     }()
 
-    public static var appRoot: URL { home.appending(path: ".config/macarchy") }
+    public static var appRoot: URL { appRoot(in: ProcessInfo.processInfo.environment) }
+
+    static func appRoot(in environment: [String: String]) -> URL {
+        home(in: environment).appending(path: "Library/Application Support/Macarchy")
+    }
+    /// Where earlier versions kept everything. `LegacyLayout` moves it into `appRoot`.
+    public static var legacyRoot: URL { home.appending(path: ".config/macarchy") }
+    /// The configs Macarchy's LaunchAgents start yabai, skhd, SketchyBar and borders with.
+    public static var configDirectory: URL { appRoot.appending(path: "config") }
+    /// Logs and scratch state for the daemons and the bar scripts.
+    public static var stateDirectory: URL { appRoot.appending(path: "state") }
     public static var settings: URL { appRoot.appending(path: "settings.json") }
     public static var themesDirectory: URL { appRoot.appending(path: "themes") }
     /// Bar widgets people made or imported, one folder each.
@@ -57,7 +68,7 @@ public enum Paths {
     public static var snapshotsDirectory: URL { appRoot.appending(path: "snapshots") }
     /// Files rendered from the active theme for other programs to read.
     public static var generatedDirectory: URL { appRoot.appending(path: "generated") }
-    /// Originals of every file setup replaced, kept until uninstall.
+    /// Originals of the files setup replaced or moved aside, kept until uninstall.
     public static var backupsDirectory: URL { appRoot.appending(path: "backups") }
     /// Drop-in replacements for daemon executables, such as a custom borders build.
     public static var binDirectory: URL { appRoot.appending(path: "bin") }
@@ -67,25 +78,18 @@ public enum Paths {
     public static var appLink: URL { appRoot.appending(path: "Macarchy.app") }
 
     /// The command startup files run. Spelled with `$HOME` so the file stays
-    /// correct if the account is renamed or restored onto another Mac.
-    public static let cliInShell = "\"$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy\""
+    /// correct if the account is renamed or restored onto another Mac, and
+    /// quoted for the space in Application Support.
+    public static let cliInShell =
+        "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy\""
 
     // MARK: - Fixed locations
 
-    /// The shortcuts file skhd reads: `~/.config/skhd/skhdrc`, or an older
-    /// `~/.skhdrc` when only that exists. skhd is started by its own
-    /// LaunchAgent without `-c`, so this is its search order. Setup, the
-    /// Shortcuts page and Home all use it, so a dotfile is edited in place
-    /// rather than shadowed or replaced.
-    public static var skhdrc: URL { skhdrc(home: home) }
-
-    static func skhdrc(home: URL) -> URL {
-        let primary = home.appending(path: ".config/skhd/skhdrc")
-        let dotfile = home.appending(path: ".skhdrc")
-        let fm = FileManager.default
-        return !fm.fileExists(atPath: primary.path) && fm.fileExists(atPath: dotfile.path)
-            ? dotfile : primary
-    }
+    /// The shortcuts file skhd runs with: Macarchy's skhd agent starts it
+    /// with `-c` and this file. Setup seeds it, from the person's own
+    /// `~/.config/skhd/skhdrc` or `~/.skhdrc` or from the defaults, and
+    /// after that the Shortcuts page, Home and snapshots all use it.
+    public static var skhdrc: URL { configDirectory.appending(path: "skhdrc") }
 
     // MARK: - Bundled resources
 
@@ -144,7 +148,7 @@ public enum Paths {
     /// Finds a daemon executable without relying on the caller's PATH, which
     /// is minimal under launchd and in apps opened from Finder.
     ///
-    /// A file in `~/.config/macarchy/bin` wins, so a custom build can replace
+    /// A file in `binDirectory` wins, so a custom build can replace
     /// the Homebrew one without editing anything else. When nothing is found
     /// the first searched path is returned and checks report it as missing.
     public static func executable(_ name: String) -> String {
@@ -153,7 +157,7 @@ public enum Paths {
 
     static func executable(_ name: String, in environment: [String: String]) -> String {
         let fm = FileManager.default
-        let bin = home(in: environment).appending(path: ".config/macarchy/bin").path
+        let bin = appRoot(in: environment).appending(path: "bin").path
         let searched = searchDirectories(in: environment)
         for directory in [bin] + searched {
             let candidate = directory + "/" + name
@@ -199,7 +203,7 @@ public enum Paths {
         _ name: String, searched: [String], environment: [String: String]
     ) -> String {
         if let first = searched.first { return first + "/" + name }
-        return home(in: environment).appending(path: ".config/macarchy/bin/.missing/\(name)").path
+        return appRoot(in: environment).appending(path: "bin/.missing/\(name)").path
     }
 
     /// Where apps are installed. `MACARCHY_APPLICATIONS` replaces the list in tests.

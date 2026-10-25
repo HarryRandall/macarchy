@@ -1,7 +1,7 @@
 import Macarchy
 import Observation
 
-/// The remaining classic Home summary uses the same read as the React page.
+/// The saved shortcuts, kept so a change to them reaches every open page.
 @MainActor
 @Observable
 final class ShortcutsModel {

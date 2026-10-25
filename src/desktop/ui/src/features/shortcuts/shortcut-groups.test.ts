@@ -32,9 +32,15 @@ describe("shortcut categories", () => {
   it.each([
     ["yabai -m window --focus west", "Windows"],
     ["yabai -m window --toggle zoom-fullscreen", "Windows"],
-    ["yabai -m space --focus 3", "Workspaces"],
-    ["yabai -m window --space 2 && yabai -m space --focus 2", "Workspaces"],
-    ['"$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next', "Macarchy"],
+    ["yabai -m space --focus 3", "Desktops"],
+    ["yabai -m window --space 2 && yabai -m space --focus 2", "Desktops"],
+    ["yabai -m space --rotate 90 && yabai -m space --balance", "Windows"],
+    ["'/opt/homebrew/bin/yabai' -m window --focus west", "Windows"],
+    [
+      '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next',
+      "Macarchy",
+    ],
+    ["macarchy bar toggle", "Macarchy"],
     ["open -na Ghostty 2>/dev/null || open -na Terminal", "Apps"],
     ["echo custom", "Other"],
   ])("files %s under %s", (command, category) => {
@@ -56,7 +62,7 @@ describe("shortcut titles", () => {
   it("names a command it cannot describe by its skhdrc group, keeping the command", () => {
     const grow = binding({
       section: "Grow and shrink",
-      command: "yabai -m window --ratio rel:0.05",
+      command: "yabai -m window --ratio rel:0.1 && echo grown",
     });
     const shrink = binding({
       id: 2,
@@ -65,7 +71,7 @@ describe("shortcut titles", () => {
     });
     expect(shortcutTitle(grow, [grow, shrink])).toEqual({
       title: "Grow and shrink",
-      command: "yabai -m window --ratio rel:0.05",
+      command: "yabai -m window --ratio rel:0.1 && echo grown",
     });
     const left = binding({ command: "yabai -m window --focus west" });
     expect(shortcutTitle(left, [left, shrink])).toEqual({ title: "Focus left", command: null });

@@ -5,7 +5,7 @@
       "result": {
         "addition": "active",
         "additionExplanation": "The scripting addition is loaded.",
-        "backupsDirectory": "~/.config/macarchy/backups",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "services": [
           {
@@ -42,7 +42,7 @@
       "result": {
         "addition": "missing",
         "additionExplanation": "yabai is not installed, so there is no scripting addition to load.",
-        "backupsDirectory": "~/.config/macarchy/backups",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 0,
         "services": [
           {
@@ -72,7 +72,7 @@
       "result": {
         "addition": "unavailable",
         "additionExplanation": "Development runs never change the real sudoers rule.",
-        "backupsDirectory": "~/.config/macarchy/backups",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "services": [
           {
@@ -334,7 +334,7 @@
             "advice": "Correct the file, or restore an earlier snapshot from Advanced",
             "command": null,
             "detail": "settings.json is not valid JSON",
-            "file": "~/.config/macarchy/settings.json",
+            "file": "~/Library/Application Support/Macarchy/settings.json",
             "group": "Configuration",
             "id": "Configuration/Settings",
             "status": "failed",
@@ -356,7 +356,7 @@
           "architecture": "Apple Silicon",
           "macOS": "26.1",
           "model": "Mac15,6",
-          "settingsFolder": "~/.config/macarchy"
+          "settingsFolder": "~/Library/Application Support/Macarchy"
         }
       }
     }
@@ -716,7 +716,7 @@
               "provider.sh",
               "widget.json"
             ],
-            "folder": "~/.config/macarchy/widgets/uptime",
+            "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
             "id": "uptime",
             "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
             "name": "Uptime",
@@ -912,7 +912,7 @@
                 "provider.sh",
                 "widget.json"
               ],
-              "folder": "~/.config/macarchy/widgets/uptime",
+              "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
               "id": "uptime",
               "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
               "name": "Uptime",
@@ -1107,7 +1107,7 @@
               "provider.sh",
               "widget.json"
             ],
-            "folder": "~/.config/macarchy/widgets/uptime",
+            "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
             "id": "uptime",
             "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
             "name": "Uptime",
@@ -1318,12 +1318,12 @@
           {
             "action": "create",
             "detail": "Starts tiling with Macarchy's layout and rules",
-            "path": "~/.config/yabai/yabairc"
+            "path": "~/Library/Application Support/Macarchy/config/yabairc"
           },
           {
             "action": "adopt",
             "detail": "Keeps your shortcuts and adds Macarchy's",
-            "path": "~/.config/skhd/skhdrc"
+            "path": "~/Library/Application Support/Macarchy/config/skhdrc"
           }
         ],
         "hasExisting": true,
@@ -1369,7 +1369,7 @@
           {
             "action": "replace",
             "detail": "Backs up your shortcuts and starts from Macarchy's defaults",
-            "path": "~/.config/skhd/skhdrc"
+            "path": "~/Library/Application Support/Macarchy/config/skhdrc"
           }
         ],
         "hasExisting": true,
@@ -1484,7 +1484,7 @@
             "at": 1792570506,
             "category": "Shortcuts",
             "command": "open skhdrc",
-            "detail": "~/.config/skhd/skhdrc",
+            "detail": "~/Library/Application Support/Macarchy/config/skhdrc",
             "id": "6E5C4D3B-8F7A-4B9C-9D2E-3F4A5B6C7D8E",
             "ok": true,
             "status": null
@@ -1613,32 +1613,6 @@
         "sidebarVisible": false,
         "version": "development build"
       }
-    }
-  ],
-  "shell.openClassic": [
-    {
-      "params": {
-        "pane": "workshop",
-        "show": "search"
-      },
-      "result": null
-    },
-    {
-      "params": {
-        "pane": "plugins",
-        "show": "console"
-      },
-      "result": null
-    },
-    {
-      "params": {
-        "pane": "menuBar"
-      },
-      "result": null
-    },
-    {
-      "params": {},
-      "result": null
     }
   ],
   "shell.quit": [

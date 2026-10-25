@@ -19,7 +19,7 @@ extension WebInterfaceTests {
                     ctrl - h : open -a Notes
 
                     """
-                try harness.write(fixture, to: ".config/skhd/skhdrc")
+                try harness.write(fixture, to: shortcutsFile)
                 let (_, surface) = try harness.settingsPage(pane: .shortcuts)
                 try await waitFor(
                     surface, "the disabled shortcut",

@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import Macarchy
 
 struct InstalledTheme: Identifiable, Sendable, Equatable {
@@ -9,9 +8,6 @@ struct InstalledTheme: Identifiable, Sendable, Equatable {
 
     var id: String { name }
 
-    var accent: Color {
-        Color(macarchyHex: manifest?.colors.borderActive ?? values["BORDER_ACTIVE"]) ?? .accentColor
-    }
     var isDark: Bool { manifest?.dark ?? (values["DARK_MODE"] != "false") }
     var colorscheme: String? { manifest?.apps.nvimColorscheme ?? values["NVIM_COLORSCHEME"] }
 
@@ -22,7 +18,6 @@ struct InstalledTheme: Identifiable, Sendable, Equatable {
     var selectedBackground: String?
     var manifest: Theme?
     var terminal: TerminalPalette?
-    var palette: GhosttyPalette? { terminal.map(GhosttyPalette.init) }
 
     var manifestURL: URL { directory.appending(path: Theme.fileName) }
 

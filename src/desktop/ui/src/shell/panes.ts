@@ -52,7 +52,7 @@ export const groups: { title: string; panes: PaneId[] }[] = [
   { title: "System", panes: ["health", "advanced", "report"] },
 ];
 
-/** Panes drawn by React so far; the rest open the classic window. */
+/** Panes with a registered page. */
 export const reactPanes = new Set<PaneId>(pages.map((page) => page.id));
 
 /** Shown when the saved pane is not, or no longer, a React page. */

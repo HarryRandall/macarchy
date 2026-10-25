@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 import Foundation
 import Macarchy
 import Observation
@@ -16,71 +15,8 @@ final class AppModel {
     let daemons: DaemonMonitor
     let snapshots: SnapshotBrowser
     let menuBar: MenuBarModel
-    let rc: RCGenerator
     let shortcuts: ShortcutsModel
-    /// Dialogs are presented inside the window rather than as sheets, so the
-    /// page behind one cannot be hovered or clicked while it is open.
-    let modal = ModalRouter()
-
-    /// Whether the command log is showing in its panel on the right. It lives
-    /// here rather than in a view so the palette and the menu can open it.
-    var consoleOpen = false
-
     let backend: Integrations
-
-    var selection: Pane? = AppModel.restoredSelection {
-        didSet {
-            // A pane that has moved to the React window opens there instead,
-            // and this window stays where it was.
-            if let pane = selection, !pane.opensInClassic {
-                selection = oldValue
-                openMigrated?(pane)
-                return
-            }
-            Preferences.store.set(selection?.rawValue, forKey: "selectedPane")
-            guard !navigating, oldValue != selection else { return }
-            if let oldValue { back.append(oldValue) }
-            forward.removeAll()
-        }
-    }
-
-    /// Opens a pane that now lives in the React settings window.
-    var openMigrated: ((Pane) -> Void)?
-
-    private static var restoredSelection: Pane {
-        let saved = Pane(rawValue: Preferences.store.string(forKey: "selectedPane") ?? "home")
-        if let saved, saved.opensInClassic { return saved }
-        return Pane.navigationOrder.first(where: \.opensInClassic) ?? .menuBar
-    }
-
-    /// Where the arrows in the window's bar go. Panes are visited rather than
-    /// opened, so the pair behaves like a browser's: going back banks the
-    /// pane you left, and choosing a new one from the sidebar drops the
-    /// forward trail.
-    private var back: [Pane] = []
-    private var forward: [Pane] = []
-    private var navigating = false
-
-    var canGoBack: Bool { !back.isEmpty }
-    var canGoForward: Bool { !forward.isEmpty }
-
-    func goBack() {
-        guard let previous = back.popLast() else { return }
-        if let current = selection { forward.append(current) }
-        navigate(to: previous)
-    }
-
-    func goForward() {
-        guard let next = forward.popLast() else { return }
-        if let current = selection { back.append(current) }
-        navigate(to: next)
-    }
-
-    private func navigate(to pane: Pane) {
-        navigating = true
-        selection = pane
-        navigating = false
-    }
 
     init(backend: Integrations = Integrations(), settingsStore: SettingsStore = SettingsStore()) {
         let log = CommandLog()
@@ -92,14 +28,7 @@ final class AppModel {
         self.daemons = DaemonMonitor(backend: backend, log: log)
         self.snapshots = SnapshotBrowser()
         self.menuBar = MenuBarModel(backend: backend, log: log)
-        self.rc = RCGenerator(log: log)
         self.shortcuts = ShortcutsModel(log: log)
-    }
-
-    /// Reads a key off whichever theme is currently applied.
-    func currentThemeValue(_ key: String) -> String? {
-        guard let name = themes.current else { return nil }
-        return themes.themes.first { $0.name == name }?.values[key]
     }
 
     var previewTheme: InstalledTheme? {
@@ -117,13 +46,7 @@ final class AppModel {
         return NSWorkspace.shared.desktopImageURL(for: screen)
     }
 
-    var currentThemePalette: GhosttyPalette? { previewTheme?.palette }
-
     var currentThemeWallpaper: URL? { desktopWallpaper ?? previewTheme?.wallpaperURL }
-
-    var interfaceAccent: Color {
-        previewTheme?.accent ?? Color(nsColor: .controlAccentColor)
-    }
 
     var advancedConfiguration: AdvancedConfiguration {
         AdvancedConfiguration(integrations: backend)

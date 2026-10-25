@@ -4,10 +4,10 @@ import type { PaneId, Rect } from "../protocol";
 import type { ServiceId } from "./advanced";
 
 export interface ShellState {
-  /** The React page the sidebar last selected. The classic window keeps its own. */
+  /** The page the sidebar last selected. */
   selectedPane: PaneId;
   sidebarVisible: boolean;
-  /** Settings have never been written; the classic window runs setup. */
+  /** Settings have never been written; the setup flow runs first. */
   setupRequired: boolean;
   appearance: Appearance;
   services: { running: number; total: number };
@@ -50,15 +50,6 @@ export interface ShellMethods {
   "shell.getState": { params: Record<string, never>; result: ShellState };
   "shell.setPreferences": {
     params: { selectedPane?: PaneId; sidebarVisible?: boolean; appearance?: AppearanceMode };
-    result: null;
-  };
-  /**
-   * Opens the SwiftUI window, optionally with its search palette or console
-   * showing. Only the Menu Bar component editor still lives there, so any
-   * other pane leaves the window where it was.
-   */
-  "shell.openClassic": {
-    params: { pane?: PaneId; show?: "search" | "console" };
     result: null;
   };
   /**

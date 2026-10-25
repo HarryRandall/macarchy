@@ -92,12 +92,15 @@ describe("shortcut presentation", () => {
       expect(shortcutLabel(custom, [custom])).toBe(command);
     }
   });
-  it("preserves workspace, swap, media and per-app labels", () => {
+  it("names desktop, swap, media and per-app labels", () => {
     for (const [command, expected] of [
       ["yabai -m window --swap north; yabai -m window --focus north", "Swap up and follow"],
-      ["yabai -m space --focus 20", "Switch to workspace 20"],
-      ["yabai -m window --space 2", "Move to workspace 2"],
-      ["yabai -m window --space 3; yabai -m space --focus 3", "Move to workspace 3 and follow"],
+      ["yabai -m space --focus 20", "Go to desktop 20"],
+      ["yabai -m window --space 2", "Move window to desktop 2"],
+      [
+        "yabai -m window --space 3; yabai -m space --focus 3",
+        "Move window to desktop 3 and follow",
+      ],
       [
         "/usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application \"Spotify\" to playpause'",
         "Play or pause Spotify",
@@ -118,6 +121,28 @@ describe("shortcut presentation", () => {
     const inMode = binding({ id: 2, command: "yabai -m window --focus west", modes: ["resize"] });
     expect(shortcutLabel(enter, [enter, inMode])).toBe("Switch to resize mode");
     expect(shortcutLabel(inMode, [enter, inMode])).toBe("Focus left (resize mode)");
+  });
+
+  it("names the default shortcuts, even with a full path to the tool", () => {
+    for (const [command, expected] of [
+      ["'/opt/homebrew/bin/yabai' -m window --focus west", "Focus left"],
+      ["/usr/local/bin/yabai -m window --swap east", "Swap right"],
+      [
+        "yabai -m window --space 4 && yabai -m space --focus 4",
+        "Move window to desktop 4 and follow",
+      ],
+      ["yabai -m space --rotate 90 && yabai -m space --balance", "Rotate the layout"],
+      ["yabai -m window --ratio rel:-0.05", "Shrink window"],
+      [
+        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next',
+        "Next theme",
+      ],
+      ["macarchy bar toggle", "Show or hide the menu bar"],
+      ["yabai -m window --space 4 && echo moved", "yabai -m window --space 4 && echo moved"],
+    ]) {
+      const item = binding({ command });
+      expect(shortcutLabel(item, [item, binding({ id: 2 })])).toBe(expected);
+    }
   });
   it("filters source groups, scopes, modifier suffixes, keys and commands", () => {
     const all = [

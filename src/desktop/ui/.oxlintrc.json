@@ -34,7 +34,7 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.test.ts", "lint/**/*.test.ts"],
+      "files": ["src/**/*.test.ts", "src/**/*.test.tsx", "lint/**/*.test.ts", "lint/**/*.test.tsx"],
       "rules": {
         "macarchy/no-test-timeout-or-unreasoned-skip": "error",
         "macarchy/no-wall-clock-in-tests": "error",

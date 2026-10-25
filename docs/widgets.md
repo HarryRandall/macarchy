@@ -1,8 +1,9 @@
 # Widgets
 
 A bar widget is a folder with a `widget.json`. The built-in ones ship in
-`resources/widgets`; people's own live in `~/.config/macarchy/widgets`. Both use
-the same format, so anything a built-in does, a person's widget can do.
+`resources/widgets`; people's own live in
+`~/Library/Application Support/Macarchy/widgets`. Both use the same format, so
+anything a built-in does, a person's widget can do.
 
 `macarchy widget list` shows every widget and any folder that could not be
 loaded. `macarchy widget check <id|folder>` checks one and names the line of

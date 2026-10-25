@@ -105,10 +105,50 @@ it("shows preparation and action failures without claiming a copy or open succee
   deps.request.mockRejectedValueOnce(new Error("Clipboard unavailable"));
   await store.copy();
   expect(store.getSnapshot()).toMatchObject({
-    error: "Clipboard unavailable",
+    error: null,
+    actionError: "Clipboard unavailable",
     notice: null,
     busy: false,
   });
+});
+
+it("a failed action keeps a preparation failure and its retry apart", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  deps.request.mockRejectedValueOnce(new Error("Collection unavailable"));
+  await store.load();
+  deps.request.mockRejectedValueOnce(new Error("No browser"));
+  await expect(store.openIssues()).resolves.toBe(false);
+  expect(store.getSnapshot()).toMatchObject({
+    error: "Collection unavailable",
+    stale: true,
+    actionError: "No browser",
+  });
+  await store.load();
+  deps.request.mockResolvedValueOnce(null);
+  await expect(store.copy()).resolves.toBe(true);
+  expect(store.getSnapshot()).toMatchObject({ error: null, stale: false, actionError: null });
+});
+
+it("the window coming back collects again only while the page is showing", async () => {
+  const deps = host();
+  const store = createReportStore(deps as PageHost);
+  const [event, invalidated] = deps.subscribe.mock.calls[0] ?? [];
+  expect(event).toBe("report.invalidated");
+  const settled = () => vi.waitFor(() => expect(store.getSnapshot().preparing).toBe(false));
+  invalidated?.({ type: "report.invalidated" } as never);
+  expect(deps.request).not.toHaveBeenCalled();
+  const close = store.opened();
+  await store.load();
+  invalidated?.({ type: "report.invalidated" } as never);
+  await settled();
+  expect(deps.request.mock.calls.map((call) => call[1])).toEqual([
+    { description: "", refresh: true },
+    { description: "", refresh: true },
+  ]);
+  close();
+  invalidated?.({ type: "report.invalidated" } as never);
+  expect(deps.request).toHaveBeenCalledTimes(2);
 });
 
 it("copy and open can be tried again straight after they fail, but not on a stale preview", async () => {
@@ -120,7 +160,7 @@ it("copy and open can be tried again straight after they fail, but not on a stal
   await expect(store.copy()).resolves.toBe(false);
   deps.request.mockResolvedValueOnce(null);
   await expect(store.copy()).resolves.toBe(true);
-  expect(store.getSnapshot()).toMatchObject({ error: null, notice: "Copied" });
+  expect(store.getSnapshot()).toMatchObject({ actionError: null, notice: "Copied" });
   deps.request.mockRejectedValueOnce(new Error("No browser"));
   await expect(store.open()).resolves.toBe(false);
   deps.request.mockResolvedValueOnce({ copied: false });

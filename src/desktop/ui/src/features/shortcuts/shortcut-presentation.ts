@@ -14,34 +14,81 @@ function actionLabel(binding: ShortcutBinding, all: ShortcutBinding[]): string {
     return binding.section;
   if (binding.activatesMode) return `Switch to ${binding.activatesMode} mode`;
   const command = binding.command;
-  for (const [native, title] of [
-    ["west", "left"],
-    ["east", "right"],
-    ["north", "up"],
-    ["south", "down"],
-  ]) {
-    if (command === `yabai -m window --focus ${native}`) return `Focus ${title}`;
-    if (command === `yabai -m window --swap ${native}; yabai -m window --focus ${native}`)
-      return `Swap ${title} and follow`;
+  return (
+    describeCommand(command) ??
+    (command || (binding.appOverrides.length ? "Per-app action" : "Custom shortcut"))
+  );
+}
+
+/**
+ * The command with a full path to yabai or Macarchy's CLI cut to the tool's
+ * name. Older setups wrote both in full, which hid what every shortcut does.
+ */
+export function plainCommand(command: string): string {
+  return command
+    .replace(/(['"])[^'"]*\/(yabai|macarchy)\1(?=\s)/g, "$2")
+    .replace(/(^|[\s;&|])\/\S*\/(yabai|macarchy)(?=\s)/g, "$1$2");
+}
+
+const directions: Record<string, string> = {
+  west: "left",
+  east: "right",
+  north: "up",
+  south: "down",
+};
+
+const spotify: Record<string, string> = {
+  playpause: "Play or pause Spotify",
+  "next track": "Next track in Spotify",
+  "previous track": "Previous track in Spotify",
+};
+
+/** What a command Macarchy recognises does, in words; null for anything else. */
+export function describeCommand(command: string): string | null {
+  const media =
+    /^\/usr\/bin\/pgrep -x Spotify >\/dev\/null && \/usr\/bin\/osascript -e 'tell application "Spotify" to (playpause|next track|previous track)'$/.exec(
+      command,
+    );
+  if (media) return spotify[media[1]!]!;
+  const parts = plainCommand(command)
+    .trim()
+    .split(/\s*(?:&&|;)\s*/);
+  const [first, second, ...rest] = parts;
+  if (!first || rest.length) return null;
+  let match: RegExpExecArray | null;
+  if ((match = /^yabai -m window --(focus|swap|warp) (west|east|north|south)$/.exec(first))) {
+    const direction = directions[match[2]!]!;
+    const verb = { focus: "Focus", swap: "Swap", warp: "Move window" }[match[1]!]!;
+    if (!second) return `${verb} ${direction}`;
+    if (match[1] !== "focus" && second === `yabai -m window --focus ${match[2]}`)
+      return `${verb} ${direction} and follow`;
+    return null;
   }
-  for (let index = 1; index <= 20; index++) {
-    if (command === `yabai -m space --focus ${index}`) return `Switch to workspace ${index}`;
-    if (command === `yabai -m window --space ${index}`) return `Move to workspace ${index}`;
-    if (command === `yabai -m window --space ${index}; yabai -m space --focus ${index}`)
-      return `Move to workspace ${index} and follow`;
+  if ((match = /^yabai -m window --space (\d+)$/.exec(first))) {
+    if (!second) return `Move window to desktop ${match[1]}`;
+    if (second === `yabai -m space --focus ${match[1]}`)
+      return `Move window to desktop ${match[1]} and follow`;
+    return null;
   }
-  for (const [action, title] of [
-    ["playpause", "Play or pause Spotify"],
-    ["next track", "Next track in Spotify"],
-    ["previous track", "Previous track in Spotify"],
-  ]) {
-    if (
-      command ===
-      `/usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to ${action}'`
-    )
-      return title!;
-  }
-  return command || (binding.appOverrides.length ? "Per-app action" : "Custom shortcut");
+  if (second === "yabai -m space --balance" && first === "yabai -m space --rotate 90")
+    return "Rotate the layout";
+  if (second) return null;
+  if ((match = /^yabai -m space --focus (\d+)$/.exec(first))) return `Go to desktop ${match[1]}`;
+  const single: Record<string, string> = {
+    "yabai -m window --toggle zoom-fullscreen": "Fill the screen",
+    "yabai -m window --toggle float": "Float or tile",
+    "yabai -m window --toggle split": "Flip the split",
+    "yabai -m space --rotate 90": "Rotate the layout",
+    "yabai -m space --balance": "Balance the layout",
+    "macarchy rules toggle": "Float or tile, remembered per app",
+    "macarchy theme next": "Next theme",
+    "macarchy theme prev": "Previous theme",
+    "macarchy bar toggle": "Show or hide the menu bar",
+  };
+  if (single[first]) return single[first];
+  if ((match = /^yabai -m window --ratio rel:(-?)[\d.]+$/.exec(first)))
+    return match[1] ? "Shrink window" : "Grow window";
+  return null;
 }
 
 export interface ShortcutFilters {

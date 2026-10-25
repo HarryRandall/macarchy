@@ -28,7 +28,7 @@ extension WebInterfaceTests {
         @Test("health commands and files are selected by check ID and advice is never copied")
         func health() async throws {
             try await withHarness(tools: []) { harness in
-                try harness.write("{ not json", to: ".config/macarchy/settings.json")
+                try harness.write("{ not json", to: settingsFile)
                 let before = harness.settingsData
                 let router = BridgeRouter()
                 var copied: [String] = []
@@ -60,7 +60,9 @@ extension WebInterfaceTests {
 
                 let settings = try #require(
                     checks.first { $0["id"] as? String == "Configuration/Settings" })
-                #expect(settings["file"] as? String == "~/.config/macarchy/settings.json")
+                #expect(
+                    settings["file"] as? String
+                        == "~/Library/Application Support/Macarchy/settings.json")
                 #expect(settings["command"] is NSNull)
                 #expect((settings["advice"] as? String)?.contains("Correct the file") == true)
                 let adviceOnly = try await overviewReply(

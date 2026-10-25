@@ -18,33 +18,57 @@ extension Setup {
 
     /// Copies bundled themes that are not installed yet. Installed themes,
     /// including edited copies of bundled ones, are never overwritten.
-    static func installThemes() throws -> [String] {
+    /// Each theme is copied into a staging folder and moved into place, so a
+    /// failed copy leaves no partial theme that later runs would skip. The
+    /// line lists the themes installed before any failure.
+    static func installThemes(report: inout [String]) throws {
         let fm = FileManager.default
         guard let source = Paths.resources?.appending(path: "themes") else {
             throw ConfigurationError("Bundled themes are missing. Reinstall Macarchy.")
         }
         var installed: [String] = []
+        defer {
+            if !installed.isEmpty {
+                report.append("Installed themes: \(installed.joined(separator: ", "))")
+            }
+        }
         for theme in try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
         where Theme.load(from: theme) != nil {
             let destination = Paths.themesDirectory.appending(path: theme.lastPathComponent)
             guard !fm.fileExists(atPath: destination.path) else { continue }
-            try fm.copyItem(at: theme, to: destination)
+            let staging = Paths.themesDirectory.appending(path: ".install-\(UUID())")
+            defer { try? fm.removeItem(at: staging) }
+            try fm.copyItem(at: theme, to: staging)
+            try fm.moveItem(at: staging, to: destination)
             installed.append(theme.lastPathComponent)
         }
-        return installed.isEmpty ? [] : ["Installed themes: \(installed.joined(separator: ", "))"]
     }
 
-    /// Writes the default shortcuts with yabai's full path. skhd keeps the PATH
-    /// it was registered with, which from Finder does not include Homebrew.
+    /// skhd's file is only seeded, from the person's own shortcuts or the
+    /// defaults; after that it is theirs, edited on the Shortcuts page.
+    static func seedShortcuts(existing: Existing, report: inout [String]) throws {
+        let shortcuts = skhdrc
+        guard !FileManager.default.fileExists(atPath: shortcuts.path) else { return }
+        if existing == .keep, let source = skhdSource, let text = adoptable(source) {
+            try FileManager.default.createDirectory(
+                at: shortcuts.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try text.write(to: shortcuts, atomically: true, encoding: .utf8)
+            report.append("Copied your shortcuts from \(Paths.display(source))")
+        } else {
+            try installDefaultShortcuts(to: shortcuts)
+            report.append("Installed default shortcuts")
+        }
+    }
+
+    /// Writes the default shortcuts. They run tools by name, since
+    /// Macarchy's skhd agent gives them a PATH that finds yabai and the CLI.
     public static func installDefaultShortcuts(to url: URL = skhdrc) throws {
         guard let source = Paths.resources?.appending(path: "skhd/skhdrc") else {
             throw ConfigurationError("Default shortcuts are missing. Reinstall Macarchy.")
         }
-        let template = try String(contentsOf: source, encoding: .utf8)
-        let text = template.replacingOccurrences(
-            of: " yabai -m ", with: " \(Shell.quote(Paths.yabai)) -m ")
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let text = try String(contentsOf: source, encoding: .utf8)
         try text.write(to: url, atomically: true, encoding: .utf8)
     }
 

@@ -69,16 +69,18 @@ export function SettingsApp({
   const shellSnapshot = useStore(shell);
   const setup = useStore(setupPresentation);
   const seen = useStore(changelogSeen);
+  // Also reopens setup when it is closed while still required, such as after
+  // a run that failed before writing settings, so the window is never blank.
   useEffect(() => {
-    if (shellSnapshot.state?.setupRequired)
+    if (shellSnapshot.state?.setupRequired && !setup)
       setupPresentation.open({ request, subscribe: bridge.subscribe });
-  }, [shellSnapshot.state?.setupRequired]);
+  }, [shellSnapshot.state?.setupRequired, setup]);
   const accent = shellSnapshot.state?.appearance.accent;
   const mode = shellSnapshot.state?.appearance.mode;
   const selected = shellSnapshot.state ? reactPaneFor(shellSnapshot.state.selectedPane) : null;
 
   // History follows the host's selection, which can also change from the
-  // classic window or the setup flow; going back to a page is not a new visit.
+  // setup flow; going back to a page is not a new visit.
   const [navigation, setNavigation] = useState<Navigation>({ history: null, selected: null });
   if (selected && navigation.selected !== selected) {
     setNavigation({

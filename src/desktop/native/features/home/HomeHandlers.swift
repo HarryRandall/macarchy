@@ -17,7 +17,7 @@ extension BridgeRouter {
                     lastChange: state.lastChange?.timeIntervalSince1970,
                     wallpaper: model.currentThemeWallpaper.map {
                         AppScheme.wallpaperURL(file: $0, maxPixels: 1400)
-                    }, subtitle: DesignSettings.shared.values.homeTitle)
+                    }, subtitle: "A space that works for you.")
             } catch {
                 model.log.failure("read home", error.localizedDescription)
                 throw BridgeFailure(.operationFailed, error.localizedDescription)

@@ -4,8 +4,8 @@ import Foundation
 ///
 /// The bar's own clock, CPU and battery items become instances of the
 /// built-in widgets, keeping their place and colours. Command items become
-/// widgets of their own in `~/.config/macarchy/widgets`, whose provider runs
-/// the same command, so there is one way to run a script and it carries the
+/// widgets of their own in `Paths.widgetsDirectory`, whose provider runs the
+/// same command, so there is one way to run a script and it carries the
 /// Script badge. Text items, spacers and items without a widget yet stay as
 /// they are.
 public enum WidgetMigration {

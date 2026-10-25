@@ -15,8 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         repairAppLink()
         WidgetHostController.shared.start()
         WidgetMenuController.shared.start()
-        // The classic SwiftUI window no longer opens itself at launch; this
-        // is where the app's window comes from now.
         Self.showMainWindow()
         #if DEBUG
         // A development build cannot register ⌘⌃Space while an installed copy
@@ -45,15 +43,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Startup files reach the CLI through a link to the app. If the app was
-    /// moved or replaced since setup, point the link at this copy. Before
-    /// setup there is no link, and opening the app changes nothing.
+    /// moved or replaced since setup, or the link went missing, point it at
+    /// this copy. Before setup there is nothing to link, and opening the app
+    /// changes nothing.
     private func repairAppLink() {
         let bundle = Bundle.main.bundleURL
         guard !Self.isDevelopmentRun, bundle.pathExtension == "app",
-            let current = try? FileManager.default.destinationOfSymbolicLink(
-                atPath: Paths.appLink.path),
-            current != bundle.resolvingSymlinksInPath().path
+            FileManager.default.fileExists(atPath: Paths.settings.path)
         else { return }
+        let current = try? FileManager.default.destinationOfSymbolicLink(
+            atPath: Paths.appLink.path)
+        guard current != bundle.resolvingSymlinksInPath().path else { return }
         try? Setup.link(bundle)
     }
 
@@ -88,26 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    /// Shows the settings window: the React one, or the classic one while
-    /// setup has yet to run.
+    /// Shows the settings window.
     static func showMainWindow() {
         SettingsWindow.shared.show()
     }
-
-    /// Opens the SwiftUI window for the editors that have not moved to React,
-    /// optionally at a pane and with its search or console showing.
-    static func showClassicWindow(pane: Pane?, show: OpenClassicParams.Show?) {
-        guard let model else { return }
-        if let pane, pane.opensInClassic { model.selection = pane }
-        ClassicWindow.shared.show(model)
-        switch show {
-        case .search: model.modal.present(inContent: true) { CommandPalette() }
-        case .console: model.consoleOpen = true
-        case nil: break
-        }
-    }
-
-    static weak var model: AppModel?
 
     private static func hideToMenuBar() {
         NSApp.setActivationPolicy(.accessory)

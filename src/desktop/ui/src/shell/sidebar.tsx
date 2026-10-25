@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import { type KeyboardEvent, useId } from "react";
+import type { KeyboardEvent } from "react";
 
 import type { AppearanceMode, PaneId } from "~/bridge/protocol";
 import { Tooltip } from "~/components/ui/tooltip";
@@ -17,8 +17,7 @@ export const RAIL_WIDTH = 57;
 
 /**
  * Arrow keys walk the rows the way a system sidebar does. They move focus
- * rather than selection: most rows open the classic window, and stepping
- * past one must not open it.
+ * rather than selection, so stepping past a page does not open it.
  */
 function walk(event: KeyboardEvent<HTMLElement>) {
   const keys = ["ArrowUp", "ArrowDown", "Home", "End"];
@@ -71,7 +70,6 @@ export function Sidebar({
   onChangelog: () => void;
   onDismissCard: () => void;
 }) {
-  const classicHintId = useId();
   const row = (id: PaneId) => (
     <NavItem
       key={id}
@@ -79,7 +77,6 @@ export function Sidebar({
       active={route === id}
       collapsed={collapsed}
       issues={id === "health" ? issues : null}
-      classicHintId={classicHintId}
       onSelect={onSelect}
     />
   );
@@ -90,9 +87,6 @@ export function Sidebar({
       className="relative z-20 flex shrink-0 flex-col border-r border-hairline bg-side transition-[width] duration-200 ease-out"
       style={{ width: collapsed ? RAIL_WIDTH : SIDEBAR_WIDTH }}
     >
-      <span id={classicHintId} className="sr-only">
-        Opens in the classic window
-      </span>
       <div
         className={cn(
           "px-2 pb-2 transition-[padding] duration-200 ease-out",

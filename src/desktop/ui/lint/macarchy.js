@@ -7,11 +7,20 @@
 /**
  * @typedef {{ type: string, range?: [number, number], start?: number, end?: number } & Record<string, any>} Node
  * @typedef {{ type: "Line" | "Block", value: string, range?: [number, number], start?: number, end?: number }} Comment
- * @typedef {{ comment: Comment, text: string, startLine: number, endLine: number, directive: boolean }} CommentEntry
+ * @typedef {{
+ *   comment: Comment,
+ *   text: string,
+ *   startLine: number,
+ *   endLine: number,
+ *   directive: boolean,
+ *   trailing: boolean,
+ * }} CommentEntry
  * @typedef {{
  *   filename: string,
  *   report(descriptor: { node: Node | Comment, message: string }): void,
  *   sourceCode: {
+ *     text: string,
+ *     visitorKeys: Readonly<Record<string, readonly string[]>>,
  *     getAllComments(): Comment[],
  *     getLocFromIndex(index: number): { line: number, column: number },
  *   },
@@ -37,21 +46,60 @@ function lineOf(context, node) {
 }
 
 const DIRECTIVE =
-  /^\s*\*?\s*(?:(?:oxlint|eslint)-(?:disable|enable)|eslint\s|globals?\s|@ts-|@vitest-environment|prettier-ignore|#(?:end)?region\b|\/\s*<reference\b)/;
+  /^\s*\*?\s*(?:(?:oxlint|eslint)-(?:disable|enable)\b|@ts-|@vitest-environment|prettier-ignore|#(?:end)?region\b|\/\s*<reference\b)/;
+/** `eslint rule: value` in a block comment, which configures rules for the file. */
+const RULE_CONFIG = /^\s*\*?\s*eslint\s+[@\w/-]+\s*:/;
+/** `global name, other: writable` in a block comment, which declares globals. */
+const GLOBALS =
+  /^\s*\*?\s*globals?\s+[\w$]+(?:\s*:\s*\w+)?(?:\s*,\s*[\w$]+(?:\s*:\s*\w+)?)*\s*,?\s*(?:--[^]*)?$/;
+
+/**
+ * True for a comment a tool reads as an instruction rather than prose.
+ * Rule configuration and globals only take effect in block comments, so a
+ * line comment that starts with "global" or "eslint" is ordinary prose.
+ * @param {Comment} comment
+ */
+function isDirective(comment) {
+  if (DIRECTIVE.test(comment.value)) return true;
+  return (
+    comment.type === "Block" && (RULE_CONFIG.test(comment.value) || GLOBALS.test(comment.value))
+  );
+}
+
+/**
+ * The last file's comments, shared by every rule that reads them. oxlint
+ * reuses its `sourceCode` and comment objects from file to file, so the
+ * cache is keyed by the file and its text and keeps its own copy of each
+ * comment.
+ * @type {{ filename: string, text: string, entries: CommentEntry[] } | null}
+ */
+let commentCache = null;
 
 /**
  * @param {Context} context
  * @returns {CommentEntry[]}
  */
 function commentEntries(context) {
-  const { sourceCode } = context;
-  return sourceCode.getAllComments().map((comment) => ({
-    comment,
-    text: comment.value,
-    startLine: sourceCode.getLocFromIndex(startOf(comment)).line,
-    endLine: sourceCode.getLocFromIndex(endOf(comment)).line,
-    directive: DIRECTIVE.test(comment.value),
-  }));
+  const { filename, sourceCode } = context;
+  const source = sourceCode.text;
+  if (commentCache?.filename === filename && commentCache.text === source) {
+    return commentCache.entries;
+  }
+  const entries = sourceCode.getAllComments().map((comment) => {
+    const start = startOf(comment);
+    const end = endOf(comment);
+    const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+    return {
+      comment: { type: comment.type, value: comment.value, range: [start, end] },
+      text: comment.value,
+      startLine: sourceCode.getLocFromIndex(start).line,
+      endLine: sourceCode.getLocFromIndex(end).line,
+      directive: isDirective(comment),
+      trailing: source.slice(lineStart, start).trim() !== "",
+    };
+  });
+  commentCache = { filename, text: source, entries };
+  return entries;
 }
 
 /**
@@ -143,13 +191,18 @@ function testCall(node, throughCalls, modifiers = []) {
   return null;
 }
 
-/** @param {Node} node */
-function isForEach(node) {
+const ITERATING_METHODS = new Set(["forEach", "map", "flatMap"]);
+
+/**
+ * A call such as `cases.map(...)` that runs its callback once per item.
+ * @param {Node} node
+ */
+function iterates(node) {
   return (
     node.callee.type === "MemberExpression" &&
     !node.callee.computed &&
     node.callee.property.type === "Identifier" &&
-    node.callee.property.name === "forEach"
+    ITERATING_METHODS.has(node.callee.property.name)
   );
 }
 
@@ -223,27 +276,70 @@ const noNativeTitleTooltip = {
   },
 };
 
-const CLASS_HELPERS = new Set(["cn", "clsx"]);
+const CLASS_HELPERS = new Set(["cn", "clsx", "twMerge"]);
+const TYPE_WRAPPERS = new Set([
+  "TSAsExpression",
+  "TSSatisfiesExpression",
+  "TSNonNullExpression",
+  "TSTypeAssertion",
+  "ParenthesizedExpression",
+]);
 
 /**
- * The class strings an expression is known to contain without running it.
- * @param {Node} node
+ * The whole classes in a template literal's static text. A class that runs
+ * into an expression, such as `overflow-` in `overflow-${axis}`, is unknown.
+ * @param {Node[]} quasis
+ */
+function templateClasses(quasis) {
+  return quasis.map((quasi, index) => {
+    const text = quasi.value.cooked ?? quasi.value.raw;
+    const words = text.split(/\s+/);
+    if (index > 0 && !/^\s/.test(text)) words.shift();
+    if (index < quasis.length - 1 && !/\s$/.test(text)) words.pop();
+    return words.join(" ");
+  });
+}
+
+/**
+ * The class names an object passed to a class helper can switch on.
+ * @param {Node} property
+ * @returns {string[]}
+ */
+function propertyClasses(property) {
+  if (property.type === "SpreadElement") return staticStrings(property.argument);
+  if (property.type !== "Property") return [];
+  if (property.computed) return staticStrings(property.key);
+  if (property.key.type === "Identifier") return [property.key.name];
+  return staticStrings(property.key);
+}
+
+/**
+ * The class strings an expression may contain, read without running it.
+ * @param {Node | null | undefined} node
  * @returns {string[]}
  */
 function staticStrings(node) {
+  if (!node) return [];
+  if (TYPE_WRAPPERS.has(node.type)) return staticStrings(node.expression);
   switch (node.type) {
     case "Literal":
       return typeof node.value === "string" ? [node.value] : [];
     case "TemplateLiteral":
-      return node.expressions.length === 0
-        ? node.quasis.map((/** @type {Node} */ quasi) => quasi.value.cooked ?? quasi.value.raw)
-        : [];
+      return templateClasses(node.quasis);
     case "JSXExpressionContainer":
       return staticStrings(node.expression);
     case "LogicalExpression":
-      return staticStrings(node.right);
+      return node.operator === "&&"
+        ? staticStrings(node.right)
+        : [...staticStrings(node.left), ...staticStrings(node.right)];
     case "ConditionalExpression":
       return [...staticStrings(node.consequent), ...staticStrings(node.alternate)];
+    case "ArrayExpression":
+      return node.elements.flatMap((/** @type {Node | null} */ element) => staticStrings(element));
+    case "SpreadElement":
+      return staticStrings(node.argument);
+    case "ObjectExpression":
+      return node.properties.flatMap(propertyClasses);
     case "CallExpression":
       return node.callee.type === "Identifier" && CLASS_HELPERS.has(node.callee.name)
         ? node.arguments.flatMap((/** @type {Node} */ argument) => staticStrings(argument))
@@ -411,6 +507,9 @@ function compoundBefore(selector, end) {
   return selector.slice(index + 1, end);
 }
 
+/** Tags that stand for the whole document, as `:root` does. */
+const DOCUMENT_TAGS = new Set(["html", "body"]);
+
 /**
  * Tailwind's `&` is the utility's own generated class, so it anchors too.
  * @param {string} compound
@@ -419,12 +518,12 @@ function isAnchored(compound) {
   const bare = compound.replace(/\((?:[^()]|\([^()]*\))*\)/g, "");
   if (/[&.#[]/.test(bare)) return true;
   const tag = /^[a-z][\w-]*/i.exec(bare)?.[0];
-  return tag !== undefined && tag.toLowerCase() !== "html";
+  return tag !== undefined && !DOCUMENT_TAGS.has(tag.toLowerCase());
 }
 
 /**
  * The first arbitrary variant in `text` whose `:has()` hangs off the
- * document root, `*` or nothing at all.
+ * document root, `html`, `body`, `*` or nothing at all.
  * @param {string} text
  */
 function unscopedHasVariant(text) {
@@ -559,7 +658,7 @@ function repeatsName(text, name) {
 /**
  * @param {CommentEntry} entry
  * @param {Map<number, string>} declared
- * @param {Set<number>} commentLines
+ * @param {Set<number>} commentLines Lines where a comment on its own line ends.
  * @returns {string | null}
  */
 function lowValueReason(entry, declared, commentLines) {
@@ -577,7 +676,8 @@ function lowValueReason(entry, declared, commentLines) {
   if (isLine && CODE.some((pattern) => pattern.test(text))) {
     return "Delete commented-out code; version control keeps it.";
   }
-  const alone = entry.startLine === entry.endLine && !commentLines.has(entry.startLine - 1);
+  const alone =
+    !entry.trailing && entry.startLine === entry.endLine && !commentLines.has(entry.startLine - 1);
   const name = alone ? declared.get(entry.endLine + 1) : undefined;
   if (name && repeatsName(text, name)) {
     return `This comment only repeats the name ${name}. Say why instead, or remove it.`;
@@ -628,7 +728,9 @@ const noLowValueComments = {
       MethodDefinition: declareMember,
       "Program:exit"() {
         const comments = commentEntries(context);
-        const commentLines = new Set(comments.map((entry) => entry.endLine));
+        const commentLines = new Set(
+          comments.filter((entry) => !entry.trailing).map((entry) => entry.endLine),
+        );
         for (const entry of comments) {
           if (entry.directive) continue;
           const message = lowValueReason(entry, declared, commentLines);
@@ -696,23 +798,25 @@ const noWallClockInTests = {
   /** @param {Context} context */
   create(context) {
     let systemTime = 0;
-    /** @param {Node} node */
-    const report = (node) =>
-      context.report({
-        node,
-        message:
-          "Tests must not read the real clock. Use vi.useFakeTimers() with vi.setSystemTime(), or pass a clock in.",
-      });
+    let fakeTimers = false;
+    let pinnedDate = false;
+    /**
+     * Reads of `Date`, which `vi.setSystemTime` pins even without fake
+     * timers, and of the monotonic clocks, which only fake timers replace.
+     * @type {{ date: Node[], monotonic: Node[] }}
+     */
+    const reads = { date: [], monotonic: [] };
     return {
       /** @param {Node} node */
       CallExpression(node) {
+        if (isMember(node.callee, "vi", "useFakeTimers")) fakeTimers = true;
         if (isMember(node.callee, "vi", "setSystemTime")) {
+          pinnedDate = true;
           systemTime++;
-        } else if (
-          systemTime === 0 &&
-          (isMember(node.callee, "Date", "now") || isMember(node.callee, "performance", "now"))
-        ) {
-          report(node);
+        } else if (systemTime === 0 && isMember(node.callee, "Date", "now")) {
+          reads.date.push(node);
+        } else if (systemTime === 0 && isMember(node.callee, "performance", "now")) {
+          reads.monotonic.push(node);
         }
       },
       /** @param {Node} node */
@@ -722,12 +826,25 @@ const noWallClockInTests = {
       /** @param {Node} node */
       NewExpression(node) {
         if (systemTime === 0 && isGlobal(node.callee, "Date") && node.arguments.length === 0) {
-          report(node);
+          reads.date.push(node);
         }
       },
       /** @param {Node} node */
       MemberExpression(node) {
-        if (systemTime === 0 && isMember(node, "process", "hrtime")) report(node);
+        if (systemTime === 0 && isMember(node, "process", "hrtime")) reads.monotonic.push(node);
+      },
+      "Program:exit"() {
+        const real = [
+          ...(fakeTimers || pinnedDate ? [] : reads.date),
+          ...(fakeTimers ? [] : reads.monotonic),
+        ];
+        for (const node of real) {
+          context.report({
+            node,
+            message:
+              "Tests must not read the real clock. Use vi.useFakeTimers() with vi.setSystemTime(), or pass a clock in.",
+          });
+        }
       },
     };
   },
@@ -788,6 +905,61 @@ function rechecks(loop) {
   return loop.type !== "ForStatement" || !loop.update;
 }
 
+const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+
+/**
+ * Every node under `node` that `keep` accepts, without entering nested
+ * functions, which run on their own schedule.
+ * @param {Context} context
+ * @param {Node | null | undefined} node
+ * @param {(node: Node) => boolean} keep
+ * @param {Node[]} [found]
+ * @returns {Node[]}
+ */
+function nodesIn(context, node, keep, found = []) {
+  if (!node || typeof node.type !== "string" || FUNCTIONS.has(node.type)) return found;
+  if (keep(node)) found.push(node);
+  for (const key of context.sourceCode.visitorKeys[node.type] ?? []) {
+    if (node.type === "MemberExpression" && key === "property" && !node.computed) continue;
+    const child = node[key];
+    for (const item of Array.isArray(child) ? child : [child]) nodesIn(context, item, keep, found);
+  }
+  return found;
+}
+
+/**
+ * The variables an assignment target writes, taking `state` for `state.done`.
+ * @param {Node | null | undefined} target
+ * @returns {string[]}
+ */
+function assignedNames(target) {
+  if (!target) return [];
+  switch (target.type) {
+    case "Identifier":
+      return [target.name];
+    case "MemberExpression":
+      return assignedNames(target.object);
+    case "ObjectPattern":
+      return target.properties.flatMap((/** @type {Node} */ property) =>
+        assignedNames(property.type === "Property" ? property.value : property),
+      );
+    case "ArrayPattern":
+      return target.elements.flatMap((/** @type {Node | null} */ element) =>
+        assignedNames(element),
+      );
+    case "AssignmentPattern":
+      return assignedNames(target.left);
+    case "RestElement":
+      return assignedNames(target.argument);
+    default:
+      return [];
+  }
+}
+
+/**
+ * @typedef {{ node: Node, names: Set<string>, fed: Set<number>, waits: boolean }} LoopScope
+ */
+
 const noPollingLoopInTests = {
   meta: {
     type: "suggestion",
@@ -795,15 +967,37 @@ const noPollingLoopInTests = {
   },
   /** @param {Context} context */
   create(context) {
-    /** @type {({ node: Node, awaits: boolean } | null)[]} */
+    /**
+     * Enclosing loops, innermost last, with `null` at each function boundary.
+     * An await feeds a loop when its value is assigned to a variable the
+     * loop's condition reads, as in `({ done } = await reader.read())`;
+     * the loop is then consuming data, not waiting for state to change.
+     * @type {(LoopScope | null)[]}
+     */
     const scopes = [];
+    /** @returns {LoopScope[]} */
+    const enclosingLoops = () => {
+      const loops = [];
+      for (let index = scopes.length - 1; index >= 0; index--) {
+        const scope = scopes[index];
+        if (!scope) break;
+        loops.push(scope);
+      }
+      return loops;
+    };
     /** @param {Node} node */
     const enterLoop = (node) => {
-      scopes.push({ node, awaits: false });
+      const read = nodesIn(context, node.test, (child) => child.type === "Identifier");
+      scopes.push({
+        node,
+        names: new Set(read.map((identifier) => identifier.name)),
+        fed: new Set(),
+        waits: false,
+      });
     };
     const exitLoop = () => {
       const loop = scopes.pop();
-      if (loop?.awaits && rechecks(loop.node)) {
+      if (loop?.waits && rechecks(loop.node)) {
         context.report({
           node: loop.node,
           message:
@@ -830,11 +1024,21 @@ const noPollingLoopInTests = {
       "FunctionExpression:exit": exitFunction,
       ArrowFunctionExpression: enterFunction,
       "ArrowFunctionExpression:exit": exitFunction,
-      AwaitExpression() {
-        for (let index = scopes.length - 1; index >= 0; index--) {
-          const scope = scopes[index];
-          if (!scope) break;
-          scope.awaits = true;
+      /** @param {Node} node */
+      AssignmentExpression(node) {
+        const loops = enclosingLoops().filter((loop) =>
+          assignedNames(node.left).some((name) => loop.names.has(name)),
+        );
+        if (loops.length === 0) return;
+        const awaits = nodesIn(context, node.right, (child) => child.type === "AwaitExpression");
+        for (const loop of loops) {
+          for (const awaited of awaits) loop.fed.add(startOf(awaited));
+        }
+      },
+      /** @param {Node} node */
+      AwaitExpression(node) {
+        for (const loop of enclosingLoops()) {
+          if (!loop.fed.has(startOf(node))) loop.waits = true;
         }
       },
     };
@@ -868,7 +1072,7 @@ const noTestInLoop = {
       "DoWhileStatement:exit": exit,
       /** @param {Node} node */
       CallExpression(node) {
-        if (isForEach(node)) {
+        if (iterates(node)) {
           loops++;
         } else if (loops > 0 && testCall(node.callee, false)) {
           context.report({
@@ -880,7 +1084,7 @@ const noTestInLoop = {
       },
       /** @param {Node} node */
       "CallExpression:exit"(node) {
-        if (isForEach(node)) loops--;
+        if (iterates(node)) loops--;
       },
     };
   },
@@ -919,7 +1123,7 @@ const noDomTestEnvironment = {
     return {
       Program() {
         for (const entry of commentEntries(context)) {
-          if (/@vitest-environment\b/.test(entry.text)) {
+          if (/@vitest-environment\s+(?!node\b)\S/.test(entry.text)) {
             context.report({ node: entry.comment, message });
           }
         }

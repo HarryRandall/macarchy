@@ -38,7 +38,7 @@ extension LayoutState {
 }
 
 extension BridgeEvent {
-    /// Layout changed somewhere else: the CLI, the classic window, a reload.
+    /// Layout changed somewhere else: the CLI, a reload.
     static func layoutChanged(_ state: LayoutState) -> BridgeEvent {
         BridgeEvent("layout.changed", state: state)
     }

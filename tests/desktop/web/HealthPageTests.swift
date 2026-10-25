@@ -58,7 +58,7 @@ extension WebInterfaceTests {
         @Test("advice reads as text, and a broken file offers Open rather than Copy")
         func adviceAndFile() async throws {
             try await withHarness(tools: []) { harness in
-                try harness.write("{ not json", to: ".config/macarchy/settings.json")
+                try harness.write("{ not json", to: settingsFile)
                 let before = harness.settingsData
                 let (_, surface) = try harness.settingsPage(pane: .health)
                 var copied: [String] = []

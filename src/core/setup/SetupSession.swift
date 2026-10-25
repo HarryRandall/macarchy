@@ -17,8 +17,8 @@ public struct SetupSession: Sendable {
     public struct Report: Sendable {
         public var lines: [String]
         public var commands: [CommandResult]
-        /// Why the run stopped early, or nil when every step ran. The lines
-        /// still describe what changed before it stopped.
+        /// Why the run stopped early or left a step out, or nil when every
+        /// step ran. The lines still describe what changed before it stopped.
         public var failure: String?
     }
 
@@ -34,19 +34,27 @@ public struct SetupSession: Sendable {
         var failure: String?
         do {
             lines = try await Setup.run(existing: existing, app: app)
-            if applyToDesktop {
-                commands = await Setup.startServices(integrations: integrations)
+        } catch {
+            if let interrupted = error as? Setup.Interrupted { lines = interrupted.lines }
+            return Report(
+                lines: lines, commands: [],
+                failure: error is Setup.Refused
+                    ? error.localizedDescription
+                    : "Setup did not finish; some files may already have changed. "
+                        + error.localizedDescription)
+        }
+        if applyToDesktop {
+            commands = await Setup.startServices(integrations: integrations)
+            // Every file step has run by now, so only the theme is left out.
+            do {
                 if let theme = try SettingsStore().read().currentTheme {
                     commands.append(await applyTheme(theme))
                 }
+            } catch {
+                failure =
+                    "Setup finished, but the theme was not applied because the settings "
+                    + "could not be read. " + error.localizedDescription
             }
-        } catch {
-            if let interrupted = error as? Setup.Interrupted { lines = interrupted.lines }
-            failure =
-                error is Setup.Refused
-                ? error.localizedDescription
-                : "Setup did not finish; some files may already have changed. "
-                    + error.localizedDescription
         }
         lines += commands.map {
             $0.ok ? $0.summary : "Some changes applied. \($0.command): \($0.summary)"
@@ -57,7 +65,7 @@ public struct SetupSession: Sendable {
     public func restoreOriginals() async throws -> Report {
         do {
             let lines = try await Setup.uninstall(integrations: integrations)
-            let commands = await Setup.startServices(integrations: integrations)
+            let commands = await Setup.returnServices(integrations: integrations)
             return Report(
                 lines: lines
                     + commands.filter { !$0.ok }.map { "Files restored, but \($0.summary)" },

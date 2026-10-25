@@ -22,13 +22,14 @@ struct DesktopIsolationTests {
             #expect(refusal(tool, ["anything"]) != nil, "\(tool)")
         }
         #expect(refusal("/tmp/home/fake-bin/launchctl", ["print", "gui/501/x"]) == nil)
-        #expect(refusal("/tmp/home/.config/macarchy/bin/defaults", ["read", "-g", "x"]) == nil)
+        let bin = "/tmp/home/Library/Application Support/Macarchy/bin"
+        #expect(refusal(bin + "/defaults", ["read", "-g", "x"]) == nil)
     }
 
     @Test("only fake daemons run")
     func fakeDaemons() {
         #expect(refusal("/tmp/home/fake-bin/yabai", ["-m", "config"]) == nil)
-        #expect(refusal("/tmp/home/.config/macarchy/bin/borders") == nil)
+        #expect(refusal("/tmp/home/Library/Application Support/Macarchy/bin/borders") == nil)
         #expect(refusal("/opt/homebrew/bin/yabai", ["-m", "config"]) != nil)
         #expect(refusal("/opt/homebrew/bin/brew", ["services", "start", "sketchybar"]) != nil)
         // A root that is only a prefix of another directory does not count,
@@ -61,7 +62,7 @@ struct DesktopIsolationTests {
         try FileManager.default.createDirectory(at: bar, withIntermediateDirectories: true)
         try "#!/bin/bash\n".write(
             to: bar.appending(path: "bar.sh"), atomically: true, encoding: .utf8)
-        let appLink = root.appending(path: "home/.config/macarchy/Macarchy.app")
+        let appLink = root.appending(path: "home/Library/Application Support/Macarchy/Macarchy.app")
         try FileManager.default.createDirectory(
             at: appLink.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.createSymbolicLink(at: appLink, withDestinationURL: bundle)
