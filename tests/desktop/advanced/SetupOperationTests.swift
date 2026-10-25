@@ -224,6 +224,23 @@ extension WebInterfaceTests {
             }
         }
 
+        /// After a failed setup the old folder's link is still there, so the
+        /// shell would open setup again straight after Done closed it.
+        @Test("setup offers Done only when the shell would not open it again")
+        func doneMatchesSetupRequired() async throws {
+            try await withHarness { harness in
+                #expect(!harness.model.shellState().setupRequired)
+                #expect(harness.model.setupState(existing: .keep).canClose)
+                let fm = FileManager.default
+                try fm.createDirectory(
+                    at: Paths.legacyRoot.deletingLastPathComponent(),
+                    withIntermediateDirectories: true)
+                try fm.createSymbolicLink(at: Paths.legacyRoot, withDestinationURL: harness.root)
+                #expect(harness.model.shellState().setupRequired)
+                #expect(!harness.model.setupState(existing: .keep).canClose)
+            }
+        }
+
         @Test(
             "rebuilding preserves drift as a snapshot and a missing backup leaves settings unchanged"
         )
