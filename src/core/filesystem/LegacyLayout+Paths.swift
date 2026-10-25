@@ -30,7 +30,14 @@ extension LegacyLayout {
     )
         -> (text: String, changed: Int)
     {
-        var scanner = OldPathScanner(text: text, home: home)
+        rewritingOldPaths(text, home: home, mappings: [.legacyRoot])
+    }
+
+    /// `text` with every path a mapping names pointed at its new place.
+    static func rewritingOldPaths(
+        _ text: String, home: String, mappings: [OldPathScanner.Mapping]
+    ) -> (text: String, changed: Int) {
+        var scanner = OldPathScanner(text: text, home: home, mappings: mappings)
         scanner.run()
         return (scanner.text, scanner.changed)
     }
@@ -38,13 +45,14 @@ extension LegacyLayout {
     /// A startup file's lines rewritten as a whole, or left as written when
     /// the result would not parse as bash.
     static func rewritingOldPaths(
-        inScript text: String, home: String = Paths.home.path
+        inScript text: String, home: String = Paths.home.path,
+        mappings: [OldPathScanner.Mapping] = [.legacyRoot], shell: String = "/bin/bash"
     ) async
         -> Rewrite
     {
-        let rewritten = rewritingOldPaths(text, home: home)
+        let rewritten = rewritingOldPaths(text, home: home, mappings: mappings)
         guard rewritten.changed != 0 else { return Rewrite(text: text, changed: 0, unsafe: 0) }
-        guard await Setup.bashSyntaxProblem(rewritten.text) == nil else {
+        guard await Setup.syntaxProblem(rewritten.text, shell: shell) == nil else {
             return Rewrite(text: text, changed: 0, unsafe: rewritten.changed)
         }
         return Rewrite(text: rewritten.text, changed: rewritten.changed, unsafe: 0)
@@ -54,7 +62,8 @@ extension LegacyLayout {
     /// hands a command to the shell, so a command whose rewritten form would
     /// not parse is left as written; the rest of the file is not shell.
     static func rewritingOldPaths(
-        inShortcuts text: String, home: String = Paths.home.path
+        inShortcuts text: String, home: String = Paths.home.path,
+        mappings: [OldPathScanner.Mapping] = [.legacyRoot]
     )
         async -> Rewrite
     {
@@ -71,7 +80,8 @@ extension LegacyLayout {
                 continue
             }
             let command = String(logical[colon...])
-            let rewritten = await rewritingOldPaths(inScript: command, home: home)
+            let rewritten = await rewritingOldPaths(
+                inScript: command, home: home, mappings: mappings)
             output.append(String(logical[..<colon]) + rewritten.text)
             result.changed += rewritten.changed
             result.unsafe += rewritten.unsafe
@@ -83,7 +93,7 @@ extension LegacyLayout {
     /// Where the command starts in one logical skhd line: after the first
     /// `:` outside double quotes, which name applications in a per-app list.
     /// Comments, options and mode declarations have none.
-    private static func commandStart(in line: String) -> String.Index? {
+    static func commandStart(in line: String) -> String.Index? {
         let trimmed = line.drop { $0 == " " || $0 == "\t" }
         guard !trimmed.hasPrefix("#"), !trimmed.hasPrefix("."), !trimmed.hasPrefix("::")
         else { return nil }

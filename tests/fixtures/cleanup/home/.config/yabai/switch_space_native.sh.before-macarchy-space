@@ -1,0 +1,34 @@
+#!/bin/bash
+set -uo pipefail
+
+# Native switching verified with the macOS 27 fork on 2026-09-19.
+#
+# yabai already no-ops on a Space that does not exist yet, so bindings for Spaces
+# you have not created still do nothing and start working once you add them — no
+# validating query needed. Dropping the pre-flight queries takes the plain switch
+# from five processes to one, which is time straight off the front of the
+# perceived switch latency.
+YABAI=/opt/homebrew/bin/yabai
+JQ=/opt/homebrew/bin/jq
+target="${1:-}"
+case "$target" in
+  ''|*[!0-9]*|0) exit 64 ;;
+esac
+
+if [[ "${2:-}" != move ]]; then
+  exec "$YABAI" -m space --focus "$target" 2>/dev/null
+fi
+
+# Move-and-follow: the window id has to be read before the move so focus can be
+# restored to it on the far side. No focused window (empty Space, unmanaged
+# window) must still switch.
+window_id="$("$YABAI" -m query --windows --window 2>/dev/null | "$JQ" -r '.id // empty' 2>/dev/null || true)"
+if [[ -n "$window_id" ]]; then
+  "$YABAI" -m window "$window_id" --space "$target" 2>/dev/null || window_id=""
+fi
+
+"$YABAI" -m space --focus "$target" 2>/dev/null || exit 0
+
+if [[ -n "$window_id" ]]; then
+  "$YABAI" -m window --focus "$window_id" 2>/dev/null || true
+fi

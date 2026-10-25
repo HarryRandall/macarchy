@@ -1,7 +1,8 @@
 import Foundation
 
 /// Walks shell text the way the shell reads it, so a path into
-/// `~/.config/macarchy` is only rewritten where the result means the same.
+/// `~/.config/macarchy`, or another old place a `Mapping` names, is only
+/// rewritten where the result means the same.
 ///
 /// It keeps a stack of contexts, because quotes nest: a double-quoted
 /// string can hold `$( ... )` or backticks, which hold commands with quotes
@@ -13,6 +14,18 @@ import Foundation
 /// Single quotes, quoted here-documents, `${ ... }` and arithmetic are left
 /// as they are, for the link at the old path to serve.
 struct OldPathScanner {
+    /// An old place under the home and the new one's shell spelling, which
+    /// is written inside double quotes. `old` starts with a slash, such as
+    /// `/.config/yabai/launch.sh`, and matches only where a path ends there
+    /// or continues with a slash.
+    struct Mapping: Sendable, Equatable {
+        var old: String
+        var new: String
+
+        /// The folder earlier versions used, as `LegacyLayout` moves it.
+        static let legacyRoot = Mapping(old: "/.config/macarchy", new: LegacyLayout.rootInShell)
+    }
+
     private enum Frame: Equatable {
         /// The top level, `$( ... )` with the parentheses and `case`
         /// statements opened inside it, and backticks: commands, where a
@@ -39,6 +52,8 @@ struct OldPathScanner {
     let scalars: [Unicode.Scalar]
     private let spellings: [[Unicode.Scalar]]
     private let home: [Unicode.Scalar]
+    /// Longest first, so a file inside a mapped folder takes its own mapping.
+    private let mappings: [(old: [Unicode.Scalar], new: [Unicode.Scalar])]
     private(set) var output = String.UnicodeScalarView()
     private(set) var changed = 0
     private var index = 0
@@ -48,19 +63,19 @@ struct OldPathScanner {
     /// word start although the character before it is not a separator.
     private var commandStart = 0
 
-    private static let old = Array("/.config/macarchy".unicodeScalars)
     static let metacharacters = Set(" \t\n;|&()<>\"'`".unicodeScalars)
     private static let separators = Set(" \t\n;|&()<>=".unicodeScalars)
     /// Characters that mean the same inside double quotes as outside, so an
     /// unquoted path can take them into its quotes.
     private static let plain = Set(
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-+,:@%".unicodeScalars)
-    private static let root = Array(LegacyLayout.rootInShell.unicodeScalars)
 
-    init(text: String, home: String) {
+    init(text: String, home: String, mappings: [Mapping] = [.legacyRoot]) {
         scalars = Array(text.unicodeScalars)
         spellings = ["$HOME", "${HOME}"].map { Array($0.unicodeScalars) }
         self.home = Array(home.unicodeScalars)
+        self.mappings = mappings.map { (Array($0.old.unicodeScalars), Array($0.new.unicodeScalars)) }
+            .sorted { $0.old.count > $1.old.count }
     }
 
     var text: String { String(output) }
@@ -86,8 +101,8 @@ struct OldPathScanner {
     private mutating func command() -> Bool {
         if escaped() { return true }
         if wordStart {
-            if let length = match(tilde: true) {
-                rewriteUnquoted(length)
+            if let found = match(tilde: true) {
+                rewriteUnquoted(found)
                 return true
             }
             if startsWord() { return true }
@@ -134,8 +149,8 @@ struct OldPathScanner {
 
     private mutating func doubleQuoted() -> Bool {
         if escaped() { return true }
-        if let length = match(tilde: false) {
-            rewriteQuoted(length)
+        if let found = match(tilde: false) {
+            rewriteQuoted(found)
             return true
         }
         if scalars[index] == "\"" {
@@ -189,8 +204,8 @@ struct OldPathScanner {
         }
         if heredoc.literal { return false }
         if escaped() { return true }
-        if let length = match(tilde: false) {
-            rewriteQuoted(length)
+        if let found = match(tilde: false) {
+            rewriteQuoted(found)
             return true
         }
         if scalars[index] == "`" {
@@ -257,20 +272,23 @@ struct OldPathScanner {
 extension OldPathScanner {
     // MARK: - Rewriting
 
-    private mutating func rewriteQuoted(_ length: Int) {
-        output.append(contentsOf: Self.root)
+    /// A path found at `index`: how long it is and what replaces it.
+    private typealias Found = (length: Int, new: [Unicode.Scalar])
+
+    private mutating func rewriteQuoted(_ found: Found) {
+        output.append(contentsOf: found.new)
         changed += 1
-        index += length
+        index += found.length
     }
 
     /// Quotes the new folder and the plain rest of the word; a glob, brace
     /// or expansion after it stays unquoted, as it was.
-    private mutating func rewriteUnquoted(_ length: Int) {
-        var end = index + length
+    private mutating func rewriteUnquoted(_ found: Found) {
+        var end = index + found.length
         while end < scalars.count, Self.plain.contains(scalars[end]) { end += 1 }
         output.append("\"")
-        output.append(contentsOf: Self.root)
-        output.append(contentsOf: scalars[(index + length)..<end])
+        output.append(contentsOf: found.new)
+        output.append(contentsOf: scalars[(index + found.length)..<end])
         output.append("\"")
         changed += 1
         index = end
@@ -317,21 +335,22 @@ extension OldPathScanner {
             && Array(scalars[position..<position + word.count]) == word
     }
 
-    /// The length of a home spelling and the old folder here, ending where
-    /// the path does. The home folder written out must start a path, and
-    /// `~` only counts where it expands, outside quotes.
-    private func match(tilde: Bool) -> Int? {
+    /// A home spelling and an old place here, ending where the path does,
+    /// and what replaces them. The home folder written out must start a
+    /// path, and `~` only counts where it expands, outside quotes.
+    private func match(tilde: Bool) -> Found? {
         var candidates = spellings
         if index == 0 || !Self.plain.contains(scalars[index - 1]) { candidates.append(home) }
         if tilde { candidates.append(["~"]) }
         for spelling in candidates where starts(with: spelling, at: index) {
             let end = index + spelling.count
-            guard starts(with: Self.old, at: end) else { continue }
-            let after = end + Self.old.count
-            if after == scalars.count || scalars[after] == "/"
-                || Self.metacharacters.contains(scalars[after])
-            {
-                return after - index
+            for mapping in mappings where starts(with: mapping.old, at: end) {
+                let after = end + mapping.old.count
+                if after == scalars.count || scalars[after] == "/"
+                    || Self.metacharacters.contains(scalars[after])
+                {
+                    return (after - index, mapping.new)
+                }
             }
         }
         return nil

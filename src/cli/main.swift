@@ -27,6 +27,11 @@ let usage = """
       uninstall                   Stop Macarchy's services and give the daemons back
                                   the agents and files they had before setup.
       doctor                      Check dependencies, services and configuration.
+      cleanup [--apply] [--restore <archive>]
+                                  Show how old configuration outside Macarchy's folder
+                                  would be cleaned up; --apply does it, archiving
+                                  everything it deletes or changes first; --restore
+                                  puts an archive back.
       apply                       Reapply every saved setting to the desktop.
       theme <name>|next|prev      Switch theme.
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
@@ -129,6 +134,35 @@ do {
     case "doctor":
         _ = try parse()
         try require(await Doctor.check())
+    case "cleanup":
+        let options = try parse(
+            flags: ["--apply", "--restore"], values: 0...1,
+            conflicting: [["--apply", "--restore"]])
+        let restoring = options.flags.contains("--restore")
+        if restoring != (options.values.count == 1) {
+            throw CommandArguments.Invalid(
+                message: restoring
+                    ? "Missing argument: the archive to restore"
+                    : "Unexpected argument \(options.values.first ?? "")",
+                usage: usage(of: command))
+        }
+        guard restoring || options.flags.contains("--apply") else {
+            let plan = await OldConfiguration.plan()
+            print(plan.text)
+            if plan.refusal != nil { exit(1) }
+            if plan.hasChanges { print("\nNothing was changed. Do it with: macarchy cleanup --apply") }
+            break
+        }
+        let report =
+            restoring
+            ? await OldConfiguration.restore(options.values[0])
+            : await OldConfiguration.apply()
+        for line in report.lines { print(line) }
+        for command in report.commands {
+            print(command.ok ? "Restarted: \(command.command)" : "Not restarted: \(command.summary)")
+        }
+        if let failure = report.failure { throw ConfigurationError(failure) }
+        if report.commands.contains(where: { !$0.ok }) { exit(1) }
     case "apply":
         _ = try parse()
         try await DesktopConfiguration.apply()

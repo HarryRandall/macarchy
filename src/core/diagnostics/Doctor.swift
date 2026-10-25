@@ -180,6 +180,7 @@ public enum Doctor {
             ]
         }
         results += layoutChecks()
+        if let old = await oldConfigurationCheck() { results.append(old) }
         let linked = fm.fileExists(
             atPath: Paths.appLink.appending(path: "Contents/MacOS/macarchy").path)
         results.append(

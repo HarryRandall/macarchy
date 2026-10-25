@@ -46,6 +46,36 @@ extension Doctor {
         return results
     }
 
+    /// Files earlier versions left outside Macarchy's folder that cleaning up
+    /// would move or delete, or the link it would replace. A notice, not a
+    /// fault: everything still works until then.
+    static func oldConfigurationCheck() async -> HealthCheck? {
+        let plan = await OldConfiguration.plan(checkSyntax: false)
+        guard plan.refusal == nil, plan.hasChanges else { return nil }
+        var found: [String] = []
+        if !plan.moves.isEmpty {
+            found.append(
+                plan.moves.count == 1 ? "1 script to move" : "\(plan.moves.count) scripts to move")
+        }
+        if !plan.removals.isEmpty {
+            found.append(
+                plan.removals.count == 1
+                    ? "1 old file or folder" : "\(plan.removals.count) old files and folders")
+        }
+        if plan.replacedLink != nil {
+            found.append("the link at \(Paths.display(Paths.launcherDirectory))")
+        } else if !plan.launchers.isEmpty {
+            found.append("launchers to move")
+        }
+        return HealthCheck(
+            .configuration, "Old configuration", .warning,
+            "Can be cleaned up: "
+                + (found.isEmpty ? "paths to point at the new places" : found.joined(separator: ", ")),
+            fix: "Use Clean up old configuration in Advanced to see the plan; everything it "
+                + "deletes or changes is archived first",
+            command: "\(Paths.cliInShell) cleanup")
+    }
+
     /// The old folder still holds settings Macarchy no longer reads, or a
     /// link the person made leads to a folder that does.
     private static func leftoverCheck() -> HealthCheck {

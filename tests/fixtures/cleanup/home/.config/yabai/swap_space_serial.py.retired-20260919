@@ -1,0 +1,17 @@
+import fcntl, json, os, pathlib, subprocess, sys
+state = pathlib.Path.home() / '.local/state/yabai'
+state.mkdir(parents=True, exist_ok=True)
+with (state / 'space-swap.lock').open('a') as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(0)
+    y = os.environ.get('YABAI_BIN', '/opt/homebrew/bin/yabai')
+    target = int(sys.argv[1])
+    spaces = json.loads(subprocess.check_output([y, '-m', 'query', '--spaces']))
+    current = next(s for s in spaces if s['has-focus'])
+    if target == current['index'] or not any(s['index'] == target for s in spaces):
+        sys.exit(0)
+    subprocess.run([y, '-m', 'space', str(current['index']), '--swap', str(target)], check=True)
+    subprocess.run(['/bin/bash', str(pathlib.Path.home() / '.config/sketchybar/plugins/space.sh')], check=True)
+    subprocess.run([os.environ.get('SKETCHYBAR_BIN', '/opt/homebrew/bin/sketchybar'), '--trigger', 'space_windows_change'], check=True)

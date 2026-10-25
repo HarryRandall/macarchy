@@ -59,13 +59,18 @@ extension Setup {
 
     /// bash's own complaint about `text`, or nil when it parses.
     static func bashSyntaxProblem(_ text: String) async -> String? {
+        await syntaxProblem(text, shell: "/bin/bash")
+    }
+
+    /// The same check with another shell's `-n`, such as zsh for a `.zshrc`.
+    static func syntaxProblem(_ text: String, shell: String) async -> String? {
         let file = FileManager.default.temporaryDirectory.appending(
             path: "macarchy-keep-\(UUID()).sh")
         defer { try? FileManager.default.removeItem(at: file) }
         do { try text.write(to: file, atomically: true, encoding: .utf8) } catch {
             return error.localizedDescription
         }
-        let result = await CommandRunner.run("/bin/bash", ["-n", file.path])
+        let result = await CommandRunner.run(shell, ["-n", file.path])
         guard !result.ok else { return nil }
         let message = result.stderr.split(separator: "\n").first.map(String.init) ?? "syntax error"
         // bash names the temporary file; the line number is what helps.
