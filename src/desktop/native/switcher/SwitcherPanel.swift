@@ -33,6 +33,27 @@ final class ThemeSwitcher {
     /// Orders the panel in. Tests replace it, so a reopened page can be
     /// checked without a window appearing on screen.
     var orderIn: @MainActor (NSWindow) -> Void = { $0.makeKeyAndOrderFront(nil) }
+    /// Orders the panel out, and whether it is on screen: replaced in tests
+    /// with `orderIn`, so a closing can run without a window appearing.
+    var orderOut: @MainActor (NSWindow) -> Void = { $0.orderOut(nil) }
+    var onScreen: @MainActor (NSWindow) -> Bool = { $0.isVisible }
+    /// Under Reduce Motion the panel only fades; tests set it either way.
+    var reduceMotion: @MainActor () -> Bool = {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    /// Counts fades, so one that a later fade replaced cannot touch the panel
+    /// when it ends.
+    private var fade = 0
+    /// Resumes whoever awaits the running fade; a replaced fade resumes at once.
+    private var fadeWaiter: CheckedContinuation<Void, Never>?
+
+    /// Quicker than the settings window's motion: the panel is summoned by a
+    /// shortcut and typed into at once, and leaves as soon as a theme is chosen.
+    static let fadeIn: TimeInterval = 0.18
+    static let fadeOut: TimeInterval = 0.12
+    /// Where the arrival's scale-up starts.
+    static let summonScale: CGFloat = 0.97
 
     /// Whether ⌘⌃Space was free to register; the system's Emoji & Symbols
     /// shortcut uses the same keys unless it is turned off.
@@ -65,7 +86,7 @@ final class ThemeSwitcher {
         _ = prepare(model)
     }
 
-    var isVisible: Bool { panel?.isVisible ?? false }
+    var isVisible: Bool { panel.map(onScreen) ?? false }
 
     /// Carbon lets two processes register the same hotkey, so a development
     /// copy running beside the installed app would open its panel too.
@@ -80,9 +101,10 @@ final class ThemeSwitcher {
     func toggle() {
         if opening {
             closeWhenOpened = true
-        } else if isVisible {
+        } else if isVisible, closing == nil {
             close()
         } else {
+            // Closed, or fading out: `show` finishes the close at once.
             Task { await show() }
         }
     }
@@ -92,6 +114,9 @@ final class ThemeSwitcher {
     /// in windows that are off screen, so the render has to happen in a
     /// window that is ordered in, just not yet visible.
     func show() async {
+        // A close still fading out finishes now, so the new opening starts
+        // from a hidden panel rather than waiting for the fade.
+        if closing != nil { endFade() }
         await closing?.value
         guard let model, !opening else { return }
         if isVisible {
@@ -111,11 +136,11 @@ final class ThemeSwitcher {
         await SwitcherBackground.load(model.themes.themes)
         await surface.waitUntilReady(timeout: .seconds(1))
         position(window)
-        window.alphaValue = 0
+        setAlpha(of: window, to: 0)
         orderIn(window)
         window.makeFirstResponder(surface.webView)
         await surface.deliver(.switcherWillOpen(model.switcherState(), error: takeFailure()))
-        window.alphaValue = 1
+        reveal(window)
         opening = false
         log.notice("switcher shown in \(started.duration(to: .now), privacy: .public)")
         if closeWhenOpened {
@@ -126,17 +151,99 @@ final class ThemeSwitcher {
         }
     }
 
+    /// Fades the panel out, dropping input meanwhile so a second Return
+    /// cannot apply again from a panel on its way out.
     func close() {
-        guard let panel, panel.isVisible, closing == nil else { return }
-        // Reset the page while it can still draw, so the next opening never
-        // starts from the previous one's frame.
-        panel.alphaValue = 0
+        guard let panel, onScreen(panel), closing == nil else { return }
+        panel.isDismissing = true
         closing = Task {
+            await fade(panel, to: 0, over: Self.fadeOut, .easeIn)
+            // Also ends a fade that an opening cut short.
+            setAlpha(of: panel, to: 0)
+            // Reset the page while it can still draw, so the next opening
+            // never starts from the previous one's frame.
             await surface?.deliver(.switcherDidClose, timeout: .milliseconds(150))
-            panel.orderOut(nil)
-            panel.alphaValue = 1
+            // Ordering out resigns key, which calls `close()`; still closing,
+            // that call does nothing.
+            orderOut(panel)
+            panel.isDismissing = false
+            setAlpha(of: panel, to: 1)
             closing = nil
         }
+    }
+
+    /// Fades the panel in and, unless Reduce Motion is on, grows it slightly
+    /// into place. Not awaited: a close during it replaces the fade.
+    private func reveal(_ window: SwitcherWindow) {
+        window.contentView?.layer?.removeAnimation(forKey: Self.summonKey)
+        if !reduceMotion(), let view = window.contentView {
+            view.wantsLayer = true
+            // Layer-backed views anchor at their corner, so the scale is
+            // taken about the middle by hand.
+            let middle = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+            let scale = Self.summonScale
+            var start = CATransform3DMakeTranslation(-middle.x, -middle.y, 0)
+            start = CATransform3DConcat(start, CATransform3DMakeScale(scale, scale, 1))
+            start = CATransform3DConcat(start, CATransform3DMakeTranslation(middle.x, middle.y, 0))
+            let summon = CABasicAnimation(keyPath: "transform")
+            summon.fromValue = NSValue(caTransform3D: start)
+            summon.toValue = NSValue(caTransform3D: CATransform3DIdentity)
+            summon.duration = Self.fadeIn
+            summon.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            view.layer?.add(summon, forKey: Self.summonKey)
+        }
+        Task {
+            await fade(window, to: 1, over: Self.fadeIn, .easeOut)
+            // The shadow was taken while the panel was transparent and smaller.
+            window.invalidateShadow()
+        }
+    }
+
+    static let summonKey = "summon"
+
+    /// Runs one fade, replacing any still running, and returns when it ends
+    /// or is itself replaced.
+    private func fade(
+        _ window: NSWindow, to alpha: CGFloat, over duration: TimeInterval,
+        _ timing: CAMediaTimingFunctionName
+    ) async {
+        fade += 1
+        let current = fade
+        fadeWaiter?.resume()
+        fadeWaiter = nil
+        await withCheckedContinuation { continuation in
+            fadeWaiter = continuation
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = duration
+                context.timingFunction = CAMediaTimingFunction(name: timing)
+                window.animator().alphaValue = alpha
+            } completionHandler: {
+                MainActor.assumeIsolated {
+                    guard self.fade == current else { return }
+                    window.alphaValue = alpha
+                    self.fadeWaiter?.resume()
+                    self.fadeWaiter = nil
+                }
+            }
+        }
+    }
+
+    /// A jump rather than a fade. It replaces a running fade, whose animation
+    /// would otherwise go on setting the alpha.
+    private func setAlpha(of window: NSWindow, to alpha: CGFloat) {
+        endFade()
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0
+            window.animator().alphaValue = alpha
+        }
+        window.alphaValue = alpha
+    }
+
+    /// Lets whoever awaits the running fade go on at once.
+    private func endFade() {
+        fade += 1
+        fadeWaiter?.resume()
+        fadeWaiter = nil
     }
 
     private func takeFailure() -> SwitcherFailure? {
@@ -147,7 +254,7 @@ final class ThemeSwitcher {
     /// Closes the panel, then runs a desktop-changing action. The panel goes
     /// first: the action redraws the desktop, and the panel should not sit
     /// over it while that happens. A failure reopens it with the reason on top.
-    private func perform(
+    func perform(
         _ title: String, _ model: AppModel, _ action: @MainActor () async -> CommandResult
     ) async throws {
         close()
@@ -202,60 +309,6 @@ final class ThemeSwitcher {
         return (window, surface)
     }
 
-    /// Not private: the contract tests register the same methods to check
-    /// them against the shared fixtures.
-    func registerMethods(on surface: WebSurface, model: AppModel) {
-        let router = surface.router
-        router.register("switcher.getState") { [weak model] (_: Empty) in
-            guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            return model.switcherState()
-        }
-        router.register("switcher.refresh") { [weak model] (_: Empty) in
-            guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            await model.themes.reloadInBackground()
-            await SwitcherBackground.load(model.themes.themes)
-            return model.switcherState()
-        }
-        router.register("switcher.close") { [weak self] (_: Empty) in
-            self?.close()
-            return Null()
-        }
-        router.register("switcher.openSettings") { [weak self] (_: Empty) in
-            self?.close()
-            SettingsWindow.shared.show()
-            return Null()
-        }
-        router.register("switcher.applyTheme") { [weak self, weak model] (params: ThemeParams) in
-            guard let self, let model else {
-                throw BridgeFailure(.unavailable, "The app is closing.")
-            }
-            guard let theme = model.themes.themes.first(where: { $0.name == params.theme }) else {
-                throw BridgeFailure(.invalidParams, "There is no theme named \(params.theme).")
-            }
-            let apply = actions.apply
-            try await perform("Could not apply \(theme.title)", model) {
-                await apply(model, params.theme)
-            }
-            return Null()
-        }
-        router.register("switcher.useBackground") {
-            [weak self, weak model] (params: BackgroundParams) in
-            guard let self, let model else {
-                throw BridgeFailure(.unavailable, "The app is closing.")
-            }
-            guard let theme = model.themes.themes.first(where: { $0.name == params.theme }),
-                let background = SwitcherBackground.all(in: theme).first(where: {
-                    $0.relativePath == params.path
-                })
-            else { throw BridgeFailure(.invalidParams, "That background is not in this theme.") }
-            let choose = actions.useBackground
-            try await perform("Could not use the \(background.name) background", model) {
-                await choose(model, params.theme, params.path)
-            }
-            return Null()
-        }
-    }
-
     /// Centred horizontally, a little above the middle, on the screen with the pointer.
     private func position(_ window: NSWindow) {
         let mouse = NSEvent.mouseLocation
@@ -279,32 +332,5 @@ final class ThemeSwitcher {
         image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
         image.resizingMode = .stretch
         return image
-    }
-}
-
-/// The switcher's two desktop-changing actions.
-struct ThemeActions {
-    var apply: @MainActor (AppModel, String) async -> CommandResult
-    var useBackground: @MainActor (AppModel, String, String) async -> CommandResult
-
-    static var live: ThemeActions {
-        ThemeActions(
-            apply: { model, name in
-                await ThemeApplication(integrations: model.backend).apply(name: name)
-            },
-            useBackground: { model, name, path in
-                await ThemeApplication(integrations: model.backend).chooseWallpaper(
-                    theme: name, path: path)
-            })
-    }
-}
-
-/// Borderless panels refuse key status by default, which would stop typing.
-final class SwitcherWindow: NSPanel {
-    var onResign: (() -> Void)?
-    override var canBecomeKey: Bool { true }
-    override func resignKey() {
-        super.resignKey()
-        onResign?()
     }
 }

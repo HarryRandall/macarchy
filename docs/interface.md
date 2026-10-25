@@ -48,7 +48,12 @@ an empty frame. The switcher's page is loaded at launch and kept. Each opening
 orders the panel in fully transparent, sends the page fresh state, and reveals
 the panel once that state has been drawn: WebKit does not draw pages in
 windows that are off screen, so rendering while hidden would show the previous
-frame. Closing resets the page the same way before the panel is ordered out.
+frame. The panel then fades in over 0.18 s, growing slightly into place unless
+Reduce Motion is on. Closing fades it out over 0.12 s, dropping clicks and keys
+meanwhile so a second Return cannot apply again, then resets the page the same
+way before the panel is ordered out. An opening during that fade finishes the
+close at once. Opening shows the catalogue already loaded while it is read
+again off the main thread, and works out each theme's wallpapers there too.
 
 The settings window is an AppKit window the app opens itself rather than a
 SwiftUI `Window` scene, which would open on its own at launch.
