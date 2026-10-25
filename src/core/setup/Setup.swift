@@ -13,8 +13,8 @@ public enum Setup {
     /// What to do with configuration a person already has.
     public enum Existing: String, Sendable, CaseIterable {
         /// Start from their configs, layered onto Macarchy's. Their top-level
-        /// yabai settings move into Macarchy; a hand-built bar replaces
-        /// Macarchy's bar.
+        /// yabai settings move into Macarchy. The bar is always Macarchy's
+        /// widgets; a sketchybarrc of their own is left as it is.
         case keep
         /// Start from Macarchy's defaults. Their configs stay where they are, unused.
         case replace
@@ -28,10 +28,12 @@ public enum Setup {
         public var id: String { path.path }
     }
 
-    /// Whether setup has to run: it never has, or it last ran before the
-    /// move to Application Support and has not run since.
+    /// Whether setup has to run: it never has, it last ran before the move
+    /// to Application Support and has not run since, or the bar it set up
+    /// still has to move onto widgets.
     public static var isNeeded: Bool {
         !FileManager.default.fileExists(atPath: Paths.settings.path) || LegacyLayout.awaitingSetup
+            || barNeedsMoving
     }
 
     // MARK: - Locations
@@ -106,13 +108,10 @@ public enum Setup {
                 "Starts from your yabairc: simple layout values move into Macarchy and "
                     + "everything else is kept as written",
                 "Starts tiling with Macarchy's layout and rules"),
-            shortcutsChange(existing),
-            change(
-                StartupConfiguration.sketchybarrc.url, source: sketchybarSource,
-                "Runs your own bar; Macarchy's bar stays off",
-                "Installs Macarchy's menu bar"),
-            bordersChange()
+            shortcutsChange(existing)
         ]
+        changes += barChanges()
+        changes.append(bordersChange())
         changes += launchers.compactMap(\.change)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             changes.append(
@@ -214,8 +213,7 @@ public enum Setup {
         try await seedShortcuts(existing: existing, report: &report)
 
         let sketchybarrc = StartupConfiguration.sketchybarrc.url
-        let bar = try await barRegion(
-            existing: existing, settings: settings, updateSettings: updateSettings)
+        let bar = try await barRegion(settings: settings, updateSettings: updateSettings)
         report += bar.lines
         let barKept = bar.region
         try generate(sketchybarrc, StartupConfiguration().generateSketchybarRC(adopting: barKept))

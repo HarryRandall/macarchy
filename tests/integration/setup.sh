@@ -12,7 +12,7 @@ trap 'rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
 # The repository splits bundled files by kind; stage them in the app bundle's
 # Resources layout, which is what Paths.resources expects.
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
-cp -R "$REPO/resources/themes" "$REPO/resources/integrations/sketchybar" \
+cp -R "$REPO/resources/themes" "$REPO/resources/widgets" "$REPO/resources/integrations/sketchybar" \
   "$REPO/resources/integrations/skhd" "$RESOURCES/"
 export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$RESOURCES"
 export MACARCHY_SEARCH_PATH="$HOME_DIR/fake-bin" MACARCHY_APPLICATIONS="$HOME_DIR/Applications"
@@ -92,20 +92,34 @@ untouched() {
   [ "$(cat "$HOME_DIR/.config/sketchybar/sketchybarrc")" = "$ORIGINAL_BAR" ] || fail "$1: sketchybarrc changed"
 }
 
-"$CLI" setup --keep --no-apply >/dev/null
+OUTPUT="$("$CLI" setup --keep --no-apply)"
 untouched "setup"
+grep -q 'Left ~/.config/sketchybar/sketchybarrc as it is: the menu bar shows Macarchy' <<<"$OUTPUT" \
+  || fail "own bar left unused not reported: $OUTPUT"
 
 "$CLI" uninstall --help >/dev/null
 [ -e "$AGENTS/io.github.harryrandall.macarchy.yabai.plist" ] || fail "uninstall --help uninstalled"
 
+# The bar is Macarchy's widgets whatever setup starts from: a sketchybarrc of
+# the person's own is left as it is and never runs.
 BAR="$CONFIG/sketchybarrc"
-grep -q 'add item after right' "$BAR" || fail "content after a nested region lost"
-[ "$(grep -c 'macarchy:keep' "$BAR")" = 2 ] || fail "nested keep markers adopted"
-[ "$(grep -n 'add item mine' "$BAR" | cut -d: -f1)" -lt "$(grep -n 'startup sketchybar' "$BAR" | cut -d: -f1)" ] \
-  || fail "own bar items must run before startup"
+grep -q 'add item' "$BAR" && fail "own bar adopted into Macarchy's sketchybarrc"
+[ "$(grep -c 'macarchy:keep' "$BAR")" = 2 ] || fail "sketchybarrc keep region missing"
+[ "$(grep -n 'startup sketchybar' "$BAR" | cut -d: -f1)" -lt "$(grep -n 'macarchy:keep yours' "$BAR" | cut -d: -f1)" ] \
+  || fail "the person's commands must run after the widget bar is set up"
 
 SETTINGS="$ROOT/settings.json"
 [ -f "$SETTINGS" ] || fail "settings.json not created"
+python3 - "$SETTINGS" <<'PY2' || fail "new install does not start with the widget layout"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert "bundledBar" not in d
+bar = d["barConfiguration"]
+assert [c["widget"] for c in bar["components"]] == ["spaces", "network", "memory", "gpu", "cpu", "battery", "clock"]
+assert [c["side"] for c in bar["components"]] == ["left"] + ["right"] * 6
+assert bar["geometry"]["height"] == "35" and bar["geometry"]["sticky"] == "on"
+assert bar["geometry"]["padding_left"] == "10" and bar["geometry"]["blur_radius"] == "0"
+PY2
 [ -e "$HOME_DIR/.config/macarchy" ] && fail "the old folder was created"
 grep -q '"window_gap" : 12' "$SETTINGS" || fail "yabai window_gap not adopted"
 grep -q '"layout" : "float"' "$SETTINGS" || fail "yabai layout not adopted"
@@ -283,31 +297,40 @@ rm "$ROOT/backups/"*-config
 [ -e "$AGENTS/io.github.harryrandall.macarchy.yabai.plist" ] || fail "agent removed despite a missing backup"
 rm -rf "$ROOT/backups" "$AGENTS"
 
-# A bar written for another interpreter is not wrapped in bash: --keep stops
-# before changing anything and says what to do.
+# A bar written for another interpreter no longer matters, since the bar is
+# Macarchy's widgets: --keep leaves it as it is.
 rm -rf "$HOME_DIR/.config" "$ROOT"
 mkdir -p "$HOME_DIR/.config/sketchybar" "$HOME_DIR/.config/yabai"
 printf '#!/usr/bin/env lua\nsbar = require("sketchybar")\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
 echo 'yabai -m config window_gap 4' > "$HOME_DIR/.config/yabai/yabairc"
-OUTPUT="$("$CLI" setup --keep --no-apply 2>&1)" && fail "setup kept a Lua sketchybarrc"
-grep -q 'runs with lua' <<<"$OUTPUT" || fail "Lua refusal not explained: $OUTPUT"
-grep -q 'some files may already have changed' <<<"$OUTPUT" && fail "refusal claims changes: $OUTPUT"
+"$CLI" setup --keep --no-apply >/dev/null || fail "a Lua sketchybarrc stopped setup"
 grep -q 'require("sketchybar")' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "Lua bar changed"
-[ "$(cat "$HOME_DIR/.config/yabai/yabairc")" = 'yabai -m config window_gap 4' ] || fail "yabairc changed by a refused setup"
+grep -q 'sbar' "$CONFIG/sketchybarrc" && fail "Lua bar adopted"
+"$CLI" uninstall >/dev/null
+
+# A yabairc written for another interpreter is not wrapped in bash: --keep
+# stops before changing anything and says what to do.
+rm -rf "$HOME_DIR/.config" "$ROOT"
+mkdir -p "$HOME_DIR/.config/yabai"
+printf '#!/bin/zsh\nyabai -m config window_gap 4\n' > "$HOME_DIR/.config/yabai/yabairc"
+OUTPUT="$("$CLI" setup --keep --no-apply 2>&1)" && fail "setup kept a zsh yabairc"
+grep -q 'runs with zsh' <<<"$OUTPUT" || fail "zsh refusal not explained: $OUTPUT"
+grep -q 'some files may already have changed' <<<"$OUTPUT" && fail "refusal claims changes: $OUTPUT"
+grep -q 'window_gap 4' "$HOME_DIR/.config/yabai/yabairc" || fail "yabairc changed by a refused setup"
 [ -e "$ROOT/backups" ] && fail "refused setup wrote backups"
 [ -e "$CONFIG" ] && fail "refused setup wrote configs"
-printf '#!/bin/bash\nif then\n' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
-"$CLI" setup --keep --no-apply >/dev/null 2>&1 && fail "setup kept a sketchybarrc bash cannot parse"
-"$CLI" setup --replace --no-apply >/dev/null || fail "replace refused a non-bash bar"
-bash -n "$CONFIG/sketchybarrc" || fail "replaced sketchybarrc syntax"
-grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replace changed the person's bar"
+printf '#!/bin/bash\nif then\n' > "$HOME_DIR/.config/yabai/yabairc"
+"$CLI" setup --keep --no-apply >/dev/null 2>&1 && fail "setup kept a yabairc bash cannot parse"
+"$CLI" setup --replace --no-apply >/dev/null || fail "replace refused a non-bash yabairc"
+bash -n "$CONFIG/yabairc" || fail "replaced yabairc syntax"
+grep -q 'if then' "$HOME_DIR/.config/yabai/yabairc" || fail "replace changed the person's yabairc"
 "$CLI" uninstall >/dev/null
 
 # A full setup, apply and theme change in the temporary home reach only the
 # fake tools. launchd is reached only through a fake launchctl on the search
-# path; defaults, the appearance, the wallpaper, running apps and the bundled
-# bar scripts are refused (see DesktopIsolation), so the real desktop is left
-# alone even though nothing here is a dry run.
+# path; defaults, the appearance, the wallpaper and running apps are refused
+# (see DesktopIsolation), so the real desktop is left alone even though
+# nothing here is a dry run.
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
 # It keeps a list of loaded jobs, so a job reads as loaded only between its
 # bootstrap and bootout, as with launchd.
@@ -359,7 +382,19 @@ OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $O
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file set no layout: $OUTPUT"
 grep -q '^yabai -m signal --add label=macarchy_window_created ' "$CALLS" || fail "yabai's startup file added no signals"
 OUTPUT="$(run_agent sketchybar 2>&1)" || fail "SketchyBar did not run its startup file: $OUTPUT"
-grep -q '^sketchybar --bar ' "$CALLS" || fail "SketchyBar's startup file set up no bar: $OUTPUT"
+grep -q '^sketchybar --bar height=35 ' "$CALLS" || fail "SketchyBar's startup file set up no bar: $OUTPUT"
+grep -q -- '--load-font .*/sketchybar/sketchybar-app-font.ttf' "$CALLS" || fail "the bar did not load the app font"
+grep -q -- '--add item macarchy.clock right' "$CALLS" || fail "SketchyBar's startup file added no widgets"
+# While no widget host runs, SketchyBar runs the clock's fallback itself; it
+# leaves the clock alone while a host, such as the app, holds its lock.
+grep -q "script=.* widget fallback 'macarchy.clock'" "$CALLS" || fail "the clock has no fallback"
+: > "$CALLS"
+"$CLI" widget fallback macarchy.clock || fail "the clock fallback failed"
+grep -q -- '--set macarchy.clock .*label=' "$CALLS" || fail "the clock fallback did not update the clock"
+: > "$CALLS"
+lockf -t 0 "$ROOT/state/widget-host.lock" "$CLI" widget fallback macarchy.clock \
+  || fail "the clock fallback failed while a host ran"
+grep -q 'macarchy.clock' "$CALLS" && fail "the clock fallback ran while a host held the lock"
 OUTPUT="$(run_agent borders 2>&1)" || fail "borders did not run its startup file: $OUTPUT"
 grep -q '^borders .*active_color=' "$CALLS" || fail "bordersrc did not start borders: $OUTPUT"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"
@@ -377,29 +412,18 @@ grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 rm "$MACARCHY_SEARCH_PATH/launchctl"
 
-# A Space click still reaches a custom yabai in Macarchy's bin, whose path has
-# a space in it. The bar script runs in a home of its own with fake tools.
-BAR_HOME="$HOME_DIR/bar-home"
-BAR_BIN="$BAR_HOME/Library/Application Support/Macarchy/bin"
+# A Space click on the bar runs `macarchy space`, which still reaches a
+# custom yabai whose path has a space in it.
+BAR_BIN="$HOME_DIR/bar home/bin"
 mkdir -p "$BAR_BIN"
 cat > "$BAR_BIN/yabai" <<SH
 #!/bin/sh
-case "\$*" in
-  "-m query"*) echo '[]' ;;
-  *) printf '%s\n' "yabai \$*" >>'$CALLS' ;;
-esac
+printf '%s\n' "yabai \$*" >>'$CALLS'
 SH
-printf '#!/bin/sh\ncat >/dev/null\nprintf "1\\t1\\t\\n"\n' > "$BAR_BIN/jq"
-cat > "$BAR_BIN/sketchybar" <<SH
-#!/bin/sh
-printf '%s\n' "\$@" >'$HOME_DIR/bar-arguments'
-SH
-chmod +x "$BAR_BIN/yabai" "$BAR_BIN/jq" "$BAR_BIN/sketchybar"
+chmod +x "$BAR_BIN/yabai"
 : > "$CALLS"
-HOME="$BAR_HOME" "$REPO/resources/integrations/sketchybar/plugins/spaces.sh" --reconcile
-CLICK="$(grep -m1 '^click_script=' "$HOME_DIR/bar-arguments")" || fail "no Space click script"
-sh -c "${CLICK#click_script=}" || fail "Space click script failed: $CLICK"
-grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach yabai: $CLICK"
+MACARCHY_SEARCH_PATH="$BAR_BIN" "$CLI" space 1 || fail "Space click failed"
+grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach yabai: $(cat "$CALLS")"
 
 echo "setup integration test passed"
 "$REPO/tests/integration/upgrade.sh"

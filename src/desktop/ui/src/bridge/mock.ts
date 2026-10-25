@@ -331,6 +331,7 @@ export function installMockHost() {
   };
 
   const advanced: Omit<AdvancedState, "services"> = {
+    loginItem: "on",
     snapshots: [],
     theme: "awakening",
     installedThemes: themes.length,
@@ -424,6 +425,11 @@ export function installMockHost() {
       archive:
         "~/Library/Application Support/Macarchy/backups/old-configuration-2026-10-25-180000.zip",
     }),
+    "advanced.setLoginItem": ({ enabled }) => {
+      advanced.loginItem = enabled ? "on" : "off";
+      return null;
+    },
+    "advanced.openLoginItems": () => null,
     "setup.getPlan": () => ({
       tools: [],
       changes: [

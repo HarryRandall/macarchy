@@ -106,13 +106,13 @@ extension AppModel {
             })
     }
 
-    /// Whether the shell opens setup: there are no settings yet, or the old
-    /// folder was moved and setup has not run since (`Setup.isNeeded`). Setup
-    /// offers Done only when this is false, or Done would close it and the
-    /// shell would open it again.
+    /// Whether the shell opens setup: there are no settings yet, the old
+    /// folder was moved and setup has not run since, or the bar still has
+    /// to move onto widgets (`Setup.isNeeded`). Setup offers Done only when
+    /// this is false, or Done would close it and the shell would open it again.
     var setupRequired: Bool {
         !FileManager.default.fileExists(atPath: settingsStore.url.path)
-            || LegacyLayout.awaitingSetup
+            || LegacyLayout.awaitingSetup || Setup.barNeedsMoving
     }
 
     /// Setup health shows the same words for a build without a version.

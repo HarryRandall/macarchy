@@ -108,7 +108,10 @@ command log that the logs panel shows, `shell.clearLog` empties it, and
 `shell.revealSettings` and `shell.quit` back the brand menu.
 
 Advanced uses named `advanced.getState`, `restartService`, `stopService`,
-`rebuild`, `restoreSnapshot`, `repairAddition` and `restoreOriginals` requests.
+`rebuild`, `restoreSnapshot`, `repairAddition`, `restoreOriginals`,
+`setLoginItem` and `openLoginItems` requests. Its state's `loginItem` is `on`,
+`off`, `approval` (registered, waiting for System Settings) or `unavailable`
+(a development run, which never registers); tests replace `AppModel.loginItem`.
 `setup.getPlan`, `setup.run` and `setup.openAccessibility` serve setup.
 `advanced.changed` carries a fresh reading; `advanced.invalidated` asks for a
 read after shared service, snapshot or theme changes. The shell's service pill
@@ -177,7 +180,7 @@ to an empty value, makes a run isolated (`Paths.isolated`), unless the only one
 set is `MACARCHY_HOME` naming the real home. An isolated run finds daemons,
 launchctl and defaults only on the search path. `DesktopIsolation` refuses
 them, AppleScript, `pkill` and `open` outside the home and search path, and
-the wallpaper and the bundled bar scripts always. So service restarts and
+the wallpaper always. So service restarts and
 stops are recorded in `launchctl.log` in the temporary home and the Borders
 corner radius is kept in a file there, not the global setting. It never repairs
 the real sudoers rule for the scripting addition, keeps the selected pane and

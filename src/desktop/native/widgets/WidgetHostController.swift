@@ -15,6 +15,10 @@ final class WidgetHostController {
     private var powerSource: CFRunLoopSource?
     private var stream: FSEventStreamRef?
     private var lastBar: Data?
+    private var lastTheme: String?
+    /// Held while the app runs, so the clock's fallback leaves the clock to
+    /// this host (`WidgetHostPresence`).
+    private var presence: Int32?
     /// Keeps App Nap away: napping delays the host's timers and the click
     /// notifications from the bar, which makes widgets and dropdowns lag.
     private var activity: NSObjectProtocol?
@@ -22,6 +26,8 @@ final class WidgetHostController {
     func start() {
         guard observers.isEmpty else { return }
         lastBar = barData()
+        lastTheme = currentTheme()
+        presence = WidgetHostPresence.hold()
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
             reason: "Keeping bar widgets and their dropdowns responsive")
@@ -105,9 +111,10 @@ final class WidgetHostController {
         powerSource = source
     }
 
-    /// Watches Macarchy's folder, so a change to the bar in `settings.json`
-    /// or to any file under `widgets` restarts the host. Other writes to
-    /// settings, such as a theme switch, leave the widgets running.
+    /// Watches Macarchy's folder, so a change to the bar or the theme in
+    /// `settings.json`, or to any file under `widgets`, restarts the host,
+    /// which then draws in the theme's colours. Other writes to settings
+    /// leave the widgets running.
     private func watchFiles() {
         let root = Paths.appRoot.path
         guard FileManager.default.fileExists(atPath: root) else { return }
@@ -140,9 +147,15 @@ final class WidgetHostController {
                 && url.resolvingSymlinksInPath().path.hasPrefix(widgets)
         }
         let bar = barData()
-        guard touchedWidgets || bar != lastBar else { return }
+        let theme = currentTheme()
+        guard touchedWidgets || bar != lastBar || theme != lastTheme else { return }
         lastBar = bar
+        lastTheme = theme
         Task { await host.restart() }
+    }
+
+    private func currentTheme() -> String? {
+        (try? SettingsStore().read())?.currentTheme
     }
 
     /// The bar as saved, to tell an edit to it from other settings changes.

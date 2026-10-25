@@ -44,14 +44,14 @@ struct WidgetMigrationTests {
         return configuration
     }
 
-    @Test("the bar's clock, CPU and battery become built-in widgets in the same places")
+    @Test("the bar's own items become built-in widgets in the same places")
     func builtIns() throws {
         let result = WidgetMigration.migrate(savedBar(), taken: ["clock", "cpu", "battery"])
         let ids = result.configuration.components.map(\.id)
         #expect(
             ids == [
-                "workspaces", "network", "macarchy.gap", "macarchy.cpu", "macarchy.battery",
-                "macarchy.clock", "theme_listener", "macarchy.uptime"
+                "macarchy.spaces", "macarchy.network", "macarchy.gap", "macarchy.cpu",
+                "macarchy.battery", "macarchy.clock", "theme_listener", "macarchy.uptime"
             ])
         let clock = try #require(
             result.configuration.components.first { $0.id == "macarchy.clock" })
@@ -59,7 +59,10 @@ struct WidgetMigrationTests {
         #expect(clock.side == "right" && clock.colour == "0xffa5b4fc")
         let battery = try #require(result.configuration.components.first { $0.widget == "battery" })
         #expect(!battery.visible)
-        #expect(result.configuration.components.first { $0.id == "network" }?.widget == nil)
+        #expect(
+            result.configuration.components.first { $0.id == "macarchy.network" }?.widget
+                == "network")
+        #expect(result.configuration.components.first { $0.id == "theme_listener" }?.widget == nil)
         try result.configuration.validate()
     }
 

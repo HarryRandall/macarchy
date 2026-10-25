@@ -17,6 +17,8 @@ final class AppModel {
     let menuBar: MenuBarModel
     let shortcuts: ShortcutsModel
     let backend: Integrations
+    /// Opening the app at login; tests replace it with a recorder.
+    var loginItem = LoginItem.current
 
     init(backend: Integrations = Integrations(), settingsStore: SettingsStore = SettingsStore()) {
         let log = CommandLog()

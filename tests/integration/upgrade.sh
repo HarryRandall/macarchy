@@ -7,7 +7,8 @@
 # Application Support, with their settings, themes, a widget, snapshots and
 # backups, an skhdrc whose shortcuts run the command through the old folder,
 # startup files whose keep regions hold their own commands and bar, and the
-# earlier borders agent. `@HOME@` stands for the home folder.
+# earlier borders agent. `@HOME@` stands for the home folder. Their own bar
+# moves onto widgets, with nothing lost.
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 swift build --package-path "$REPO" -c debug >/dev/null
@@ -19,12 +20,22 @@ trap 'rm -rf "$WORK"' EXIT
 RESOURCES="$WORK/resources"
 mkdir -p "$RESOURCES"
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
-cp -R "$REPO/resources/themes" "$REPO/resources/integrations/sketchybar" \
+cp -R "$REPO/resources/themes" "$REPO/resources/widgets" "$REPO/resources/integrations/sketchybar" \
   "$REPO/resources/integrations/skhd" "$RESOURCES/"
 export MACARCHY_RESOURCES="$RESOURCES"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 same_json() { python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[1])) != json.load(open(sys.argv[2])))' "$1" "$2"; }
+# Succeeds when every setting but the bar, which setup moves onto widgets, is
+# as it was.
+same_settings() {
+  python3 - "$1" "$2" <<'PY'
+import json, sys
+bar = {"barConfiguration", "bundledBar", "menuBar", "itemOrder", "itemVisibility", "itemLabels"}
+before, after = (json.load(open(path)) for path in sys.argv[1:])
+sys.exit({k: v for k, v in before.items() if k not in bar} != {k: v for k, v in after.items() if k not in bar})
+PY
+}
 # Succeeds when a snapshot record names a file in the old folder. The records
 # are JSON, which escapes each slash, so they are decoded rather than searched.
 records_old_folder() {
@@ -80,25 +91,6 @@ SH
   CONFIG="$ROOT/config"
 }
 
-# Macarchy's own bar scripts look for SketchyBar in its bin before Homebrew's,
-# never on PATH, so they run with a fake there to stay off the real bar.
-with_fake_bar() {
-  local bin="$1/bin"
-  shift
-  mkdir -p "$bin"
-  cp "$MACARCHY_SEARCH_PATH/sketchybar" "$bin/sketchybar"
-  "$@"
-  rm "$bin/sketchybar"
-  rmdir "$bin" 2>/dev/null || true
-}
-
-# The bar the earlier version started keeps running its plugins through the
-# old app link, which now leads to this build's scripts.
-run_old_bar_plugin() {
-  with_fake_bar "$OLD" env HOME="$H" PATH="/usr/bin:/bin" NAME=cpu \
-    bash "$OLD/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1 || true
-}
-
 # Starts a daemon as launchd does: its agent's arguments, run directly with
 # the agent's PATH and no shell in between.
 run_agent() {
@@ -120,8 +112,6 @@ THEME="$(cat "$HOME/.config/macarchy/generated/nvim-colorscheme")"
 grep -q '^THEME=' "$H/.config/borders/bordersrc" || fail "could not add a borders region line"
 cp "$OLD/settings.json" "$WORK/settings.before"
 cp -R "$H/.config/sketchybar" "$WORK/sketchybar.before"
-run_old_bar_plugin
-[ -e "$ROOT" ] && fail "the old bar's plugin created the new folder before migration"
 
 # The first command after the upgrade moves the folder.
 "$CLI" doctor >/dev/null 2>&1 || true
@@ -141,17 +131,45 @@ grep -q 'Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy' <<<
   || fail "doctor does not say the folder moved: $DOCTOR"
 
 OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed: $OUTPUT"
-same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "setup changed settings: $OUTPUT"
-python3 - "$ROOT/settings.json" <<'PY' || fail "owner's settings lost"
+same_settings "$WORK/settings.before" "$ROOT/settings.json" || fail "setup changed settings beyond the bar: $OUTPUT"
+python3 - "$ROOT/settings.json" <<'PY' || fail "owner's bar not moved onto widgets"
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["currentTheme"] == "lumon", d["currentTheme"]
-assert d["bundledBar"] is False
+assert "bundledBar" not in d
 assert d["borders"]["border_width"] == 7
 assert d["menuBar"]["height"] == 35 and d["itemOrder"] == []
-assert d["barConfiguration"]["components"][0]["id"] == "workspaces"
+bar = d["barConfiguration"]
+components = bar["components"]
+# Every item the owner's bar showed is there, in its place, as a widget;
+# their spacer stays, and only the hidden theme listener goes.
+assert [c["id"] for c in components] == [
+    "macarchy.spaces", "macarchy.network", "macarchy.memory", "macarchy.gpu", "macarchy.cpu",
+    "macarchy.battery", "macarchy.clock", "macarchy.a13868e1-3ce6-4625-9bef-5168dc1da5d9"], components
+assert [c.get("widget") for c in components] == [
+    "spaces", "network", "memory", "gpu", "cpu", "battery", "clock", None]
+assert components[7]["kind"] == "spacer"
+assert [c["side"] for c in components] == ["left"] + ["right"] * 7
+assert bar["geometry"]["height"] == "35" and bar["componentSpacing"] == 4
 PY
-grep -q 'Kept your menu bar' <<<"$OUTPUT" || fail "own bar not reported: $OUTPUT"
+grep -q 'Your own bar no longer runs, as the menu bar shows widgets now; its commands are kept in ~/Library/Application Support/Macarchy/config/own-bar-before-widgets.sh' <<<"$OUTPUT" \
+  || fail "own bar not reported: $OUTPUT"
+grep -q 'Moved the menu bar onto widgets: Workspaces, Network, Memory, GPU, CPU, Battery, Clock now show built-in widgets' <<<"$OUTPUT" \
+  || fail "moved items not reported: $OUTPUT"
+grep -q 'Removed hidden items left from the earlier bar: Theme Listener' <<<"$OUTPUT" \
+  || fail "removed items not reported: $OUTPUT"
+# A snapshot holds the bar as it was, and the owner's own bar is kept word for word.
+SNAPSHOT="$(sed -n 's/.*Saved the menu bar as it was in snapshot \([^ ]*\)$/\1/p' <<<"$OUTPUT")"
+[ -n "$SNAPSHOT" ] || fail "no snapshot reported before moving the bar: $OUTPUT"
+same_json "$WORK/settings.before" "$ROOT/snapshots/$SNAPSHOT/0-settings.json" \
+  || fail "the snapshot does not hold the settings from before the move"
+ARCHIVE="$CONFIG/own-bar-before-widgets.sh"
+python3 - "$H/.config/sketchybar/sketchybarrc" "$ARCHIVE" <<'PY' || fail "the owner's own bar was not kept word for word"
+import sys
+source, archive = (open(path).read() for path in sys.argv[1:])
+region = source.split("# >>> macarchy:keep yours\n")[1].split("# <<< macarchy:keep")[0].strip("\n")
+assert region and region in archive
+PY
 grep -q 'Carried your own commands over from ~/.config/yabai/yabairc' <<<"$OUTPUT" \
   || fail "yabai region not reported: $OUTPUT"
 grep -q 'Pointed 4 paths from ~/.config/skhd/skhdrc' <<<"$OUTPUT" \
@@ -165,17 +183,20 @@ grep -q 'Carried your own commands over from ~/.config/borders/bordersrc' <<<"$O
 grep -q 'Pointed 1 path from ~/.config/borders/bordersrc' <<<"$OUTPUT" \
   || fail "borders region path not reported: $OUTPUT"
 
-# Keep regions carry across; the owner's own bar still runs before startup.
+# Keep regions carry across, except the owner's own bar, which no longer runs.
 grep -q '^sudo yabai --load-sa$' "$CONFIG/yabairc" || fail "yabai keep region lost"
 grep -q 'label=restart_borders' "$CONFIG/yabairc" || fail "yabai keep region cut short"
-grep -q 'source "$CONFIG_DIR/colors.sh"' "$CONFIG/sketchybarrc" || fail "bar keep region lost"
-[ "$(grep -n 'source "$ITEM_DIR/spaces.sh"' "$CONFIG/sketchybarrc" | cut -d: -f1)" -lt \
-  "$(grep -n 'startup sketchybar' "$CONFIG/sketchybarrc" | cut -d: -f1)" ] || fail "own bar must run before startup"
+grep -q 'CONFIG_DIR' "$CONFIG/sketchybarrc" && fail "the owner's own bar still runs"
 for rc in yabairc sketchybarrc bordersrc; do
   bash -n "$CONFIG/$rc" || fail "$rc syntax"
   grep -q '.config/macarchy' "$CONFIG/$rc" && fail "$rc still reaches the old folder"
 done
-grep -q 'theme_listener' "$CONFIG/sketchybarrc" || fail "bar region cut short"
+# Running setup again moves nothing twice.
+cp "$ROOT/settings.json" "$WORK/settings.moved"
+OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "second setup failed: $OUTPUT"
+same_json "$WORK/settings.moved" "$ROOT/settings.json" || fail "second setup changed the bar: $OUTPUT"
+grep -q 'widgets' <<<"$OUTPUT" && fail "second setup moved the bar again: $OUTPUT"
+[ -e "$CONFIG/own-bar-before-widgets-2.sh" ] && fail "second setup kept the own bar twice"
 
 # yabai, started as launchd starts it, runs its startup file through sh: the
 # launcher's path has no space, and it hands over to Macarchy's yabairc, which
@@ -213,60 +234,31 @@ for theme, image in json.load(open(os.path.join(root, "settings.json")))["wallpa
         open(path, "a").close()
 PY
 command="$(grep '^cmd + ctrl - 0x18 :' "$CONFIG/skhdrc" | sed 's/^[^:]*: //')"
+: > "$CALLS"
 OUTPUT="$(HOME="$H" sh -c "$command" 2>&1)" || fail "theme shortcut failed: $command: $OUTPUT"
 grep -q '"currentTheme" : "lumon"' "$ROOT/settings.json" && fail "theme shortcut did nothing"
-
-# The owner's own bar runs as it did before. SketchyBar sets $CONFIG_DIR and
-# its working folder to the folder of the file its agent names, links
-# resolved, and passes both to every item script; this runs the bar and the
-# owner's scripts the same way, with fakes first on PATH and every tool the
-# scripts name by full path pointed at a fake.
-AGENTS="$H/Library/LaunchAgents"
-START="$(plutil -extract ProgramArguments.2 raw "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")"
-BAR_FOLDER="$(dirname "$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$START")")"
-[ "$BAR_FOLDER" = "$(cd "$H/.config/sketchybar" && pwd -P)" ] \
-  || fail "SketchyBar would give the owner's items $BAR_FOLDER as CONFIG_DIR"
-grep -q 'Written by Macarchy' "$START" || fail "SketchyBar does not start from Macarchy's launcher"
-rm -rf "$WORK/sketchybar.after"; cp -R "$H/.config/sketchybar" "$WORK/sketchybar.after"
-rm "$WORK/sketchybar.after/macarchy-sketchybarrc"
-diff -r "$WORK/sketchybar.before" "$WORK/sketchybar.after" >/dev/null || fail "setup changed the owner's bar folder"
-echo '{}' > "$WORK/macmon.json"
-as_sketchybar() {
-  (cd "$BAR_FOLDER" && env HOME="$H" CONFIG_DIR="$BAR_FOLDER" PATH="$MACARCHY_SEARCH_PATH:/usr/bin:/bin" \
-    SKETCHYBAR_BIN="$MACARCHY_SEARCH_PATH/sketchybar" YABAI_BIN="$MACARCHY_SEARCH_PATH/yabai" \
-    JQ_BIN="$MACARCHY_SEARCH_PATH/jq" MACMON_DATA_FILE="$WORK/macmon.json" "$@")
-}
-printf '#!/bin/sh\nexit 0\n' > "$MACARCHY_SEARCH_PATH/jq"; chmod +x "$MACARCHY_SEARCH_PATH/jq"
-: > "$CALLS"
-# Started as launchd starts it, through the fake, which runs the file as
-# SketchyBar does and sets $CONFIG_DIR from it.
-OUTPUT="$(as_sketchybar env -u CONFIG_DIR "$(plutil -extract ProgramArguments.0 raw \
-  "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")" --config "$START" 2>&1)" \
-  || fail "the bar did not start: $OUTPUT"
-grep -q 'No such file' <<<"$OUTPUT" && fail "the bar could not find its files: $OUTPUT"
-grep -q "script=$BAR_FOLDER/plugins/battery.sh" "$CALLS" || fail "items not added with the owner's plugins"
-for icon in $(grep -o "background.image=[^ ]*" "$CALLS" | cut -d= -f2 | sort -u); do
-  [ -f "$icon" ] || fail "icon $icon missing"
-done
-grep -q "background.image=$BAR_FOLDER/icons/cpu.png" "$CALLS" || fail "icons not found through CONFIG_DIR"
-grep -q 'sketchybar --add event macarchy_theme_changed' "$CALLS" || fail "the bar stopped before its theme listener"
-[ -d "$BAR_FOLDER/.state" ] || fail "the owner's Space renderer kept no state"
-# Item scripts as SketchyBar runs them later: colours come from the theme
-# Macarchy wrote, read through the owner's colors.sh and the old-folder link.
+# The widget bar is repainted in the new theme's colours in place.
 TEXT="$(sed -n 's/^export TEXT_COLOR="\(.*\)"$/\1/p' "$ROOT/generated/bar-colours.sh")"
 [ -n "$TEXT" ] || fail "no theme colours written"
+grep -q -- "--default icon.color=$TEXT label.color=$TEXT" "$CALLS" || fail "the theme did not recolour the bar"
+
+# SketchyBar, started as launchd starts it, sets up the widget bar. The
+# owner's own bar folder is left as it was, and none of its scripts run.
+AGENTS="$H/Library/LaunchAgents"
+START="$(plutil -extract ProgramArguments.2 raw "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")"
+grep -q 'Written by Macarchy' "$START" || fail "SketchyBar does not start from Macarchy's launcher"
+rm -rf "$WORK/sketchybar.after"; cp -R "$H/.config/sketchybar" "$WORK/sketchybar.after"
+rm -f "$WORK/sketchybar.after/macarchy-sketchybarrc"
+diff -r "$WORK/sketchybar.before" "$WORK/sketchybar.after" >/dev/null || fail "setup changed the owner's bar folder"
 : > "$CALLS"
-as_sketchybar env NAME=battery SENDER=routine "$BAR_FOLDER/plugins/battery.sh" >/dev/null 2>&1
-grep -q '^sketchybar --set battery' "$CALLS" || fail "battery plugin did not run"
-as_sketchybar env NAME=ram.text SENDER=routine "$BAR_FOLDER/plugins/system_metrics.sh" >/dev/null 2>&1
-grep -q -- '--set ram.text' "$CALLS" || fail "metrics plugin did not run"
-: > "$CALLS"
-as_sketchybar env SENDER=macarchy_theme_changed "$BAR_FOLDER/recolor.sh" >/dev/null 2>&1 || fail "recolor failed"
-grep -q "label.color=$TEXT" "$CALLS" || fail "recolor did not use the theme's colours"
-# Macarchy's own bar scripts, reached through the app link, keep their state in the new folder.
-with_fake_bar "$ROOT" as_sketchybar env NAME=cpu \
-  "$ROOT/Macarchy.app/Contents/Resources/sketchybar/plugins/cpu.sh" >/dev/null 2>&1
-[ -d "$ROOT/state/bar" ] || fail "Macarchy's bar scripts keep no state in the new folder"
+OUTPUT="$(env HOME="$H" PATH="$MACARCHY_SEARCH_PATH:/usr/bin:/bin" "$(plutil -extract ProgramArguments.0 raw \
+  "$AGENTS/io.github.harryrandall.macarchy.sketchybar.plist")" --config "$START" 2>&1)" \
+  || fail "the bar did not start: $OUTPUT"
+grep -q '^sketchybar --bar height=35 ' "$CALLS" || fail "the bar was not set up: $OUTPUT"
+for widget in spaces network memory gpu cpu battery clock; do
+  grep -Eq -- "--add item macarchy\.$widget(\.1)? " "$CALLS" || fail "the $widget widget was not added: $OUTPUT"
+done
+grep -q 'plugins/' "$CALLS" && fail "the owner's own bar still ran: $OUTPUT"
 
 # The earlier borders agent becomes Macarchy's, and is not recorded as an original.
 plutil -extract ProgramArguments.0 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.borders.plist" \
@@ -320,7 +312,7 @@ echo 'other colours' > "$ROOT/generated/bar-colours.sh"
 OUTPUT="$("$CLI" setup --no-apply 2>&1)" || fail "setup failed after a clash: $OUTPUT"
 grep -q 'and clashed are in ~/Library/Application Support/Macarchy before migration' <<<"$OUTPUT" \
   || fail "setup does not report the set-aside files: $OUTPUT"
-same_json "$WORK/settings.before" "$ROOT/settings.json" || fail "settings lost after a clash"
+same_settings "$WORK/settings.before" "$ROOT/settings.json" || fail "settings lost after a clash"
 ASIDE="$(ls -d "$ROOT/../Macarchy before migration"* 2>/dev/null | head -1)"
 [ "$(cat "$ASIDE/generated/bar-colours.sh")" = 'other colours' ] || fail "clashing file not kept aside"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"

@@ -31,12 +31,22 @@ public struct WidgetLook: Sendable {
     public static func current(
         catalogue: WidgetCatalogue = WidgetCatalogue(), store: SettingsStore = SettingsStore()
     ) -> WidgetLook {
-        let manifests = Dictionary(
-            catalogue.read().entries.map { ($0.id, $0.manifest) },
-            uniquingKeysWith: { first, _ in first })
         let theme = (try? store.read())?.currentTheme.flatMap {
             Theme.load(from: Paths.themesDirectory.appending(path: $0))
         }
+        return current(catalogue: catalogue, theme: theme)
+    }
+
+    /// The widgets on this Mac in `theme`'s colours, as while a theme is
+    /// being applied and before settings name it.
+    public static func current(
+        catalogue: WidgetCatalogue = WidgetCatalogue(), theme: Theme?
+    )
+        -> WidgetLook
+    {
+        let manifests = Dictionary(
+            catalogue.read().entries.map { ($0.id, $0.manifest) },
+            uniquingKeysWith: { first, _ in first })
         // SketchyBar reads 0xAARRGGBB only; a theme may spell #rrggbb.
         let text = theme?.colors.sketchybarText.map(Theme.argb)
         let muted = text.flatMap {
@@ -171,7 +181,23 @@ public struct WidgetLook: Sendable {
         if let colour = style.textColour.flatMap(colour) {
             properties.append("label.color=\(colour)")
         }
-        return ["--set", component.id] + properties
+        return ["--set", component.id] + properties + fallback(manifest, id: component.id)
+    }
+
+    /// Seconds between the clock's own updates while no widget host runs.
+    public static let fallbackSeconds = 30
+
+    /// A clock keeps time while the app is not running: SketchyBar runs
+    /// `macarchy widget fallback` for it every half minute, which does
+    /// nothing while a widget host runs. Other readings keep their last
+    /// values until the app opens again, which is less wrong than a clock
+    /// that has stopped.
+    private func fallback(_ manifest: WidgetManifest, id: String) -> [String] {
+        guard manifest.source == "date" else { return ["update_freq=0"] }
+        return [
+            "script=\(command) widget fallback \(Shell.quote(id))",
+            "update_freq=\(Self.fallbackSeconds)"
+        ]
     }
 
     /// An empty gap item, an icon item, a lines item whose icon and label

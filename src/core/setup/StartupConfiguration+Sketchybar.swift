@@ -16,23 +16,15 @@ extension StartupConfiguration {
         sketchybarKeys.first { $0.key == key }?.env
     }
 
-    /// With Macarchy's bar, the person's own items run after it is built, so
-    /// they can add to it. With their own bar, their region builds the items
-    /// first and Macarchy then applies geometry and layout edits on top.
+    /// Startup sets up the bar and its widgets; the person's own commands
+    /// run after, so they can add to it.
     @discardableResult
     public func generateSketchybarRC(adopting: String? = nil) -> GeneratedFile.Outcome {
         let file = Self.sketchybarrc
-        // An unreadable settings file must not quietly mean Macarchy's bar,
-        // which would reorder a person's own bar around the startup command.
-        let bundled: Bool
-        do { bundled = try SettingsStore().read().bundledBar ?? true } catch {
-            return .failed(error.localizedDescription)
-        }
-        let startup = "\(Paths.cliInShell) startup sketchybar\n"
-        let yours = region(yours(file, adopting: adopting)) + "\n"
         let content =
-            Self.header("The bar comes from the Menu Bar page and the active theme.")
-            + (bundled ? startup + "\n" + yours : yours + "\n" + startup)
+            Self.header("The bar and its widgets come from the Menu Bar page and the theme.")
+            + "\(Paths.cliInShell) startup sketchybar\n\n"
+            + region(yours(file, adopting: adopting)) + "\n"
             + "\nsketchybar --update\n"
         return file.write(content, reason: "menu bar startup changed")
     }

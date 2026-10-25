@@ -8,9 +8,8 @@ import Foundation
 /// the home points. Every process starts in `CommandRunner`, which asks here
 /// first. In an isolated run, or a test process even without either
 /// variable, session tools and daemons only run as fakes under the home or
-/// the search path, and the bundled bar scripts, which find the real
-/// SketchyBar through `$HOME`, never run. A refused command succeeds with the
-/// reason in `skipped`, so an isolated setup or theme still runs to the end.
+/// the search path. A refused command succeeds with the reason in
+/// `skipped`, so an isolated setup or theme still runs to the end.
 ///
 /// The installed app, the CLI under launchd and skhd's hotkeys set neither
 /// variable and are not test processes, so none of this applies to them.
@@ -45,42 +44,20 @@ public enum DesktopIsolation {
         let allowed =
             [environment["MACARCHY_HOME"]].compactMap { $0 }
             + (environment["MACARCHY_SEARCH_PATH"] ?? "").split(separator: ":").map(String.init)
-        return refusal(
-            executable, arguments, allowedRoots: allowed,
-            bundledScripts: bundledScriptRoots(resources: Paths.resources, appLink: Paths.appLink))
-    }
-
-    /// Every spelling of the bundled bar scripts' folder. `Startup` runs them
-    /// through the app link, which can point at a real installed bundle even
-    /// from a temporary home, so the link and the resolved bundle both count.
-    static func bundledScriptRoots(resources: URL?, appLink: URL) -> [String] {
-        let folders = [
-            resources?.appending(path: "sketchybar"),
-            appLink.appending(path: "Contents/Resources/sketchybar")
-        ].compactMap { $0 }
-        return Array(Set(folders.flatMap { [$0.path, $0.resolvingSymlinksInPath().path] }))
+        return refusal(executable, arguments, allowedRoots: allowed)
     }
 
     /// The rule itself, with its inputs passed in so it can be tested
     /// without changing the process environment.
     static func refusal(
-        _ executable: String, _ arguments: [String], allowedRoots: [String],
-        bundledScripts: [String]
-    ) -> String? {
+        _ executable: String, _ arguments: [String], allowedRoots: [String]
+    )
+        -> String?
+    {
         let name = URL(fileURLWithPath: executable).lastPathComponent
-        let reason = "\(name) was not run: this run is isolated from the desktop"
-        if sessionTools.contains(name) || managedTools.contains(name) {
-            return inside(executable, roots: allowedRoots) ? nil : reason
-        }
-        // Paths are compared as given and with links resolved, so a script
-        // reached through the app link is still recognised. `bash -n` only
-        // checks syntax, so it may run.
-        let shells: Set<String> = ["bash", "sh", "zsh"]
-        let script = shells.contains(name) ? arguments.first { !$0.hasPrefix("-") } : executable
-        if arguments.first != "-n", let script, inside(script, roots: bundledScripts) {
-            return reason
-        }
-        return nil
+        guard sessionTools.contains(name) || managedTools.contains(name) else { return nil }
+        return inside(executable, roots: allowedRoots)
+            ? nil : "\(name) was not run: this run is isolated from the desktop"
     }
 
     /// Whether `path`, as given or with links resolved, is below one of

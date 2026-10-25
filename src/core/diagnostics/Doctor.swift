@@ -83,7 +83,7 @@ public enum Doctor {
     }
 
     static func dependencyChecks() -> [HealthCheck] {
-        var results = Daemon.allCases.map { daemon in
+        Daemon.allCases.map { daemon in
             Paths.isInstalled(daemon.executableName)
                 ? HealthCheck(
                     .dependencies, daemon.displayName, .passed,
@@ -93,16 +93,6 @@ public enum Doctor {
                     .dependencies, daemon.displayName, .failed, "Not installed",
                     command: daemon.installCommand)
         }
-        // The bundled bar's Space labels read yabai's JSON through jq.
-        if (try? SettingsStore().read().bundledBar) ?? true != false {
-            results.append(
-                Paths.isInstalled("jq")
-                    ? HealthCheck(.dependencies, "jq", .passed)
-                    : HealthCheck(
-                        .dependencies, "jq", .warning, "Space labels in the bar need it",
-                        command: "brew install jq"))
-        }
-        return results
     }
 
     static func serviceChecks(integrations: Integrations) async -> [HealthCheck] {

@@ -50,8 +50,6 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var itemOrder: [String] = []
     public var itemVisibility: [String: Bool] = [:]
     public var itemLabels: [String: String] = [:]
-    /// False when setup kept the person's existing bar instead of Macarchy's.
-    public var bundledBar: Bool?
     /// Top-level keys this version does not know, such as those a newer
     /// version added. They are written back unchanged, never dropped.
     public var unknownKeys: [String: JSONValue] = [:]
@@ -59,7 +57,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schema, currentTheme, wallpapers, layout, borders, menuBar, floatingApps
-        case windowRules, barConfiguration, itemOrder, itemVisibility, itemLabels, bundledBar
+        case windowRules, barConfiguration, itemOrder, itemVisibility, itemLabels
     }
 
     /// `schema` is required; every other key may be left out and takes its
@@ -86,7 +84,6 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         itemVisibility =
             try keys.decodeIfPresent([String: Bool].self, forKey: .itemVisibility) ?? [:]
         itemLabels = try keys.decodeIfPresent([String: String].self, forKey: .itemLabels) ?? [:]
-        bundledBar = try keys.decodeIfPresent(Bool.self, forKey: .bundledBar)
         let known = Set(CodingKeys.allCases.map(\.rawValue))
         let all = try decoder.container(keyedBy: AnyCodingKey.self)
         for key in all.allKeys where !known.contains(key.stringValue) {
@@ -108,7 +105,6 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         try keys.encode(itemOrder, forKey: .itemOrder)
         try keys.encode(itemVisibility, forKey: .itemVisibility)
         try keys.encode(itemLabels, forKey: .itemLabels)
-        try keys.encodeIfPresent(bundledBar, forKey: .bundledBar)
         var extra = encoder.container(keyedBy: AnyCodingKey.self)
         for (key, value) in unknownKeys { try extra.encode(value, forKey: AnyCodingKey(key)) }
     }

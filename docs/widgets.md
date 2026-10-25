@@ -66,7 +66,8 @@ output itself draws one box around the whole row.
 The built-in Spaces widget reads Spaces and windows from yabai and draws
 apps with sketchybar-app-font. Its glyphs come from `app-icons.json` in
 its folder, which `tools/app-icons.py` makes from the font's
-`icon_map.sh`. Its settings choose where boxes go, what each Space shows,
+`icon_map.sh`, from the release whose font Macarchy ships. Its settings
+choose where boxes go, what each Space shows,
 names, the most app icons before `+n`, whether empty Spaces show, and the
 colours. Clicking a Space goes straight there through yabai.
 
@@ -76,8 +77,14 @@ widget. It runs as the person, and the interface marks it with a Script badge.
 ## On the bar
 
 A bar component that shows a widget names it in `widget`, with `settings` and
-`menu` holding only what differs from the widget's own. `WidgetMigration`
-turns a bar saved before widgets into one: the clock, CPU and battery items
+`menu` holding only what differs from the widget's own. The bar is widgets
+only. `WidgetMigration` turns a bar saved before widgets into one when setup
+moves it: the Spaces, network, memory, GPU, CPU, battery and clock items
 become built-in widgets, and command items become personal widgets whose
-provider runs the same command. It is not run yet; the bar starts using
-widgets when the runtime that updates them lands.
+provider runs the same command.
+
+The app updates the widgets, and opens at login so it always can. Without it,
+each widget keeps the last thing it showed, except a widget reading the
+`date`: SketchyBar runs `macarchy widget fallback` for it every 30 seconds,
+which does nothing while the app runs. `macarchy widget run` stands in for
+the app when trying widgets.

@@ -12,6 +12,7 @@ const state: AdvancedState = {
   additionExplanation: "Optional",
   wakeHelpers: true,
   backupsDirectory: "~/.config/macarchy/backups",
+  loginItem: "off",
 };
 function harness() {
   const handlers = new Map<string, (event: BridgeEvent) => void>();
@@ -125,6 +126,35 @@ describe("Advanced store", () => {
       "advanced.getState",
       "advanced.repairAddition",
       "advanced.getState",
+    ]);
+  });
+  it("turns opening at login on and off, and opens Login Items without reading again", async () => {
+    const { store, request } = harness();
+    let desktop: AdvancedState = state;
+    request.mockImplementation(async (method, params) => {
+      if (method === "advanced.setLoginItem") {
+        desktop = {
+          ...desktop,
+          loginItem: (params as { enabled: boolean }).enabled ? "on" : "off",
+        };
+      } else if (method !== "advanced.getState" && method !== "advanced.openLoginItems") {
+        throw new Error(`Unexpected ${String(method)}`);
+      }
+      return method === "advanced.getState" ? desktop : null;
+    });
+    await store.load();
+    await store.setLoginItem(true);
+    expect(store.getSnapshot().state?.loginItem).toBe("on");
+    await store.setLoginItem(false);
+    expect(store.getSnapshot().state?.loginItem).toBe("off");
+    await store.openLoginItems();
+    expect(request.mock.calls).toEqual([
+      ["advanced.getState"],
+      ["advanced.setLoginItem", { enabled: true }],
+      ["advanced.getState"],
+      ["advanced.setLoginItem", { enabled: false }],
+      ["advanced.getState"],
+      ["advanced.openLoginItems"],
     ]);
   });
   it("rebuilds every file, keeps going past a failure and names each one that failed", async () => {

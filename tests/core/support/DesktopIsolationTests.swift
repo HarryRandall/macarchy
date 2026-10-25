@@ -8,11 +8,9 @@ import Testing
 @Suite("Desktop isolation")
 struct DesktopIsolationTests {
     let roots = ["/tmp/home", "/tmp/home/fake-bin"]
-    let scripts = ["/repo/resources/sketchybar"]
 
     func refusal(_ executable: String, _ arguments: [String] = []) -> String? {
-        DesktopIsolation.refusal(
-            executable, arguments, allowedRoots: roots, bundledScripts: scripts)
+        DesktopIsolation.refusal(executable, arguments, allowedRoots: roots)
     }
 
     @Test("session tools only run as fakes under the home or search path")
@@ -36,55 +34,15 @@ struct DesktopIsolationTests {
         // and neither does an empty root or the file system root.
         #expect(refusal("/tmp/home-other/sketchybar") != nil)
         #expect(
-            DesktopIsolation.refusal(
-                "/opt/homebrew/bin/yabai", [], allowedRoots: ["", "/"], bundledScripts: [])
-                != nil)
+            DesktopIsolation.refusal("/opt/homebrew/bin/yabai", [], allowedRoots: ["", "/"]) != nil)
         // `..` cannot climb out of an allowed folder.
         #expect(refusal("/tmp/home/fake-bin/../../../opt/homebrew/bin/yabai") != nil)
     }
 
-    @Test("bundled bar scripts are refused but may be syntax checked")
-    func bundledBarScripts() {
-        #expect(refusal(scripts[0] + "/recolor.sh") != nil)
-        #expect(refusal("/bin/bash", [scripts[0] + "/bar.sh"]) != nil)
-        #expect(refusal("/bin/bash", ["-n", scripts[0] + "/bar.sh"]) == nil)
+    @Test("other programs run")
+    func otherPrograms() {
         #expect(refusal("/bin/bash", ["-c", "printf ready"]) == nil)
         #expect(refusal("/bin/sleep", ["1"]) == nil)
-    }
-
-    @Test("bar scripts reached through the app link are refused")
-    func barScriptsThroughTheAppLink() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appending(path: "macarchy-isolation-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: root) }
-        let bundle = root.appending(path: "Installed/Macarchy.app")
-        let bar = bundle.appending(path: "Contents/Resources/sketchybar")
-        try FileManager.default.createDirectory(at: bar, withIntermediateDirectories: true)
-        try "#!/bin/bash\n".write(
-            to: bar.appending(path: "bar.sh"), atomically: true, encoding: .utf8)
-        let appLink = root.appending(path: "home/Library/Application Support/Macarchy/Macarchy.app")
-        try FileManager.default.createDirectory(
-            at: appLink.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try FileManager.default.createSymbolicLink(at: appLink, withDestinationURL: bundle)
-        let linked = appLink.appending(path: "Contents/Resources/sketchybar/bar.sh").path
-
-        // Resources resolved to the bundle itself, as `Paths.resources` does
-        // for the CLI, and resources from the repository with the link
-        // pointing elsewhere.
-        let resolved = DesktopIsolation.bundledScriptRoots(
-            resources: bundle.appending(path: "Contents/Resources"), appLink: appLink)
-        let repository = DesktopIsolation.bundledScriptRoots(
-            resources: URL(fileURLWithPath: "/repo/resources"), appLink: appLink)
-        for scripts in [resolved, repository] {
-            func refusal(_ executable: String, _ arguments: [String] = []) -> String? {
-                DesktopIsolation.refusal(
-                    executable, arguments, allowedRoots: roots, bundledScripts: scripts)
-            }
-            #expect(refusal("/bin/bash", [linked]) != nil)
-            #expect(refusal(linked) != nil)
-            #expect(refusal("/bin/bash", [bar.appending(path: "bar.sh").path]) != nil)
-            #expect(refusal("/bin/bash", ["-n", linked]) == nil)
-        }
     }
 
     /// `MACARCHY_HOME` set to the account's own home relocates nothing, so

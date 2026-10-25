@@ -46,6 +46,8 @@ let usage = """
       widget click <instance>     Run by the bar when a widget is clicked.
       widget trigger <event>      Run by the bar to update the widgets that listen for
                                   an event, such as windows_changed.
+      widget fallback <instance>  Run by the bar to keep a clock going while the app
+                                  is not running.
       switcher                    Open the theme switcher in the running app.
       restore <snapshot> [--apply]
                                   Put back the files in a snapshot; --apply also
@@ -244,7 +246,7 @@ do {
         _ = try parse(values: 1...1, choices: ["toggle"])
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))
     case "widget":
-        let forms = ["list", "check", "run", "click", "trigger"]
+        let forms = ["list", "check", "run", "click", "trigger", "fallback"]
         let form = rest.first ?? ""
         if rest.isEmpty || ["--help", "-h"].contains(form) {
             throw CommandArguments.Help(usage: usage(of: command))
@@ -256,7 +258,7 @@ do {
         // The bar runs click and trigger with names it was given, taken as
         // written; the others are checked like any other command.
         let value: String
-        if ["check", "click", "trigger"].contains(form) {
+        if ["check", "click", "trigger", "fallback"].contains(form) {
             value = try CommandArguments.literal(
                 Array(rest.dropFirst()), usage: usage(of: command))
         } else {
@@ -287,6 +289,10 @@ do {
             look.command =
                 (home.map { "MACARCHY_HOME=\(Shell.quote($0)) " } ?? "") + Shell.quote(executable)
             try await BarCommands.replay(configuration, integrations: Integrations(), widgets: look)
+            // Held until Control-C ends the process, so the clock's fallback
+            // leaves the clock to this host.
+            let presence = WidgetHostPresence.hold()
+            defer { presence.map { _ = close($0) } }
             let host = WidgetHost()
             await host.start()
             print("Updating \(configuration.components.count) widgets. Stop with Control-C.")
@@ -300,6 +306,10 @@ do {
                 }
                 reported = problems
             }
+        case "fallback":
+            // The app updates the clock while it runs; this is for when it does not.
+            guard !WidgetHostPresence.isHeld() else { break }
+            try await WidgetHost.fallback(value)
         case "click":
             let outcome = try await WidgetActions.click(
                 value, configuration: try BarConfigurationStore().load(),

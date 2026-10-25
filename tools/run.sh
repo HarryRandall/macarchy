@@ -8,8 +8,8 @@ EXE="$APP/Contents/MacOS/MacarchySettings"
 # One folder per checkout, so worktrees never stop each other's copies.
 RUN="${TMPDIR:-/tmp}/macarchy-run-$(printf %s "$ROOT" | cksum | cut -d' ' -f1)"
 HOME_DIR="$RUN/home"
-# Macarchy's own bin folder: the app and the bundled bar scripts both look
-# there before Homebrew, so nothing reaches the real daemons.
+# Macarchy's own bin folder: the app looks there before Homebrew, so nothing
+# reaches the real daemons.
 BIN="$HOME_DIR/Library/Application Support/Macarchy/bin"
 
 # PIDs of processes running this build's executable.
@@ -45,7 +45,7 @@ cat >"$HOME_DIR/Library/Application Support/Macarchy/settings.json" <<'JSON'
 {
   "schema": 1, "currentTheme": null, "wallpapers": {}, "layout": {}, "borders": {},
   "menuBar": {}, "floatingApps": [], "windowRules": null, "barConfiguration": null,
-  "itemOrder": [], "itemVisibility": {}, "itemLabels": {}, "bundledBar": null
+  "itemOrder": [], "itemVisibility": {}, "itemLabels": {}
 }
 JSON
 for tool in yabai skhd sketchybar borders; do
@@ -108,8 +108,8 @@ SH
 chmod +x "$BIN/launchctl" "$BIN/defaults"
 
 # open cannot report the PID it starts, so the new one is whichever copy of
-# this build was not already running. HOME reaches the bundled bar scripts,
-# which find their tools through it.
+# this build was not already running. HOME keeps anything that reads it, such
+# as a widget's script, in the temporary home.
 before="$(copies)"
 open -n \
   --env MACARCHY_HOME="$HOME_DIR" \

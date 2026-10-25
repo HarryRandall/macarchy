@@ -1,6 +1,8 @@
 export type ServiceId = "yabai" | "borders" | "sketchybar" | "skhd";
 export type GeneratedFileId = "bordersrc" | "yabairc" | "sketchybarrc";
 export type ExistingSetup = "keep" | "replace";
+/** Whether Macarchy opens at login. `approval` waits on System Settings; `unavailable` is a development run. */
+export type LoginItemState = "on" | "off" | "approval" | "unavailable";
 export interface AdvancedState {
   services: { id: ServiceId; state: "running" | "stopped" | "unknown" }[];
   snapshots: { id: string; created: number; files: number; reason: string }[];
@@ -11,6 +13,7 @@ export interface AdvancedState {
   additionExplanation: string;
   wakeHelpers: boolean;
   backupsDirectory: string;
+  loginItem: LoginItemState;
 }
 export interface SetupState {
   tools: {
@@ -58,6 +61,8 @@ export interface AdvancedMethods {
   "advanced.restoreOriginals": { params: Record<string, never>; result: SetupReport };
   "advanced.getCleanupPlan": { params: Record<string, never>; result: CleanupPlan };
   "advanced.cleanUp": { params: Record<string, never>; result: CleanupReport };
+  "advanced.setLoginItem": { params: { enabled: boolean }; result: null };
+  "advanced.openLoginItems": { params: Record<string, never>; result: null };
   "setup.getPlan": { params: { existing: ExistingSetup }; result: SetupState };
   "setup.run": { params: { existing: ExistingSetup }; result: SetupReport };
   "setup.openAccessibility": { params: Record<string, never>; result: null };

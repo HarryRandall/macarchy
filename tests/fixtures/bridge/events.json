@@ -6,6 +6,7 @@
         "additionExplanation": "yabai was updated, so its sudoers rule needs repairing.",
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
+        "loginItem": "approval",
         "services": [
           {
             "id": "yabai",
