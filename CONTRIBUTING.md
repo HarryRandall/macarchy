@@ -233,19 +233,22 @@ Earlier versions left files in `~/.config/yabai`, `skhd`, `borders` and
 `macarchy cleanup`, then `macarchy cleanup --apply`) shows what it will do
 first, then:
 
-- moves your scripts that your shortcuts or yabai region run into
+- moves your own scripts and the files they use into
   `~/Library/Application Support/Macarchy/scripts`, keeping their names and
-  permissions, and points those shortcuts and scripts at them;
+  permissions, and points your shortcuts, yabai region and the scripts
+  themselves at the new places;
 - points the zsh, Neovim and Ghostty lines that read through
   `~/.config/macarchy` at Application Support, and makes that folder hold just
   the launchers;
 - deletes the startup files, backup copies and old bar Macarchy no longer
   reads, and restarts the tools whose files changed.
 
-A file anything else still uses, and anything it cannot tell is Macarchy's,
-stays where it is and is listed with the reason. Everything it deletes or
+A file something it cannot change still uses, such as a LaunchAgent of your
+own, stays where it is and is listed with the reason. Everything it deletes or
 changes goes into one zip in `backups` first;
-`macarchy cleanup --restore <archive>` puts it all back.
+`macarchy cleanup --restore <archive>` puts it all back. Your own bar's
+commands, kept in `config/own-bar-before-widgets.sh`, name that archive, since
+they relied on `~/.config/sketchybar`.
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
 silently lost.
@@ -328,8 +331,10 @@ for example a patched `borders`.
 ### Uninstall
 
 1. **Advanced → Restore original files** (or `macarchy uninstall`) stops
-   Macarchy's agents, gives each tool back the agent it had and removes
-   Ghostty's include line.
+   Macarchy's agents, gives each tool back the agent and files it had and
+   removes Ghostty's include line. After a cleanup it also puts your scripts
+   and old folders back where your original files expect them; a moved script
+   you edited since stays in `scripts` as well.
 2. Delete Macarchy.app, and `~/Library/Application Support/Macarchy` if you do
    not want your settings and themes.
 

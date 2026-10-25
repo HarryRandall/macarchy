@@ -71,12 +71,12 @@ where people keep scripts their shortcuts run. Cleaning up is explicit:
 Clean up old configuration shows the same plan behind a confirmation.
 `OldConfiguration.plan` only reads. It classifies each entry of those
 folders: Macarchy's startup files, launchers, backup copies, empty folders
-and the bar SketchyBar ran before can go; anything else is unknown and stays.
-An entry that changeable text runs moves to `scripts/`, with its name and
-permissions: the shortcuts, the startup files, the person's zsh and bash
-startup files, and scripts that move with it, followed transitively. Each
-rewritten command or file must still parse (`bash -n`, or `zsh -n` for zsh)
-or what it runs stays put. Anything else that uses an entry keeps it in place:
+and the bar SketchyBar ran before can go; anything else is the person's own
+and moves to `scripts/`, with its name and permissions, so the folders can go
+entirely. References to what moves are pointed at the new places in the
+shortcuts, the startup files, the person's zsh and bash startup files and the
+moved scripts themselves. Each rewritten command or file must still parse
+(`bash -n`, or `zsh -n` for zsh) or what it runs stays put. Anything else that uses an entry keeps it in place:
 a LaunchAgent, Vim script, a widget, a file that stays, a path inside single
 quotes, or a folder named as a whole. The link at `~/.config/macarchy` is
 replaced by the launcher folder only once nothing reads through it: zsh and
@@ -94,6 +94,18 @@ refuses before changing anything when a path it would put back is in use
 again; otherwise it puts every file and the link back, removes the moved
 copies that were not edited since, rewrites the agents and restarts the
 daemons. Doctor shows a warning while there is something to clean up.
+
+Uninstall reads every cleanup archive before restoring setup's backups, then
+puts back what cleaning up moved or deleted wherever the backups left nothing,
+leaving out Macarchy's launchers, and removes the moved copies nobody edited.
+The person's original files then find their scripts and folders where they
+were. A person's own bar kept in `config/own-bar-before-widgets.sh` names the
+archive holding `~/.config/sketchybar`, which it relied on.
+
+Tests never run the person's scripts: `DesktopIsolation` refuses anything in
+`scripts/` or the tools' old folders except `bash -n` or `zsh -n`, and the
+integration test points the owner's scripts' Homebrew paths at fakes and
+runs with a PATH that has no Homebrew in it.
 
 ## Startup
 
