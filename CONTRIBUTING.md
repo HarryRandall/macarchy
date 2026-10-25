@@ -103,7 +103,7 @@ exports. Controls in `components/ui` own their look through `variant` and
 | `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes`, `widgets` |
 | `src/desktop` | `native`, `ui` (React) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
-| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar`, `integrations/skhd` |
+| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar` (the app font), `integrations/skhd` |
 | `packaging/macos` | `Info.plist` |
 
 ## Behaviour
@@ -155,20 +155,38 @@ take a `help` tooltip and controls use the shared `Tooltip`.
 
 ### Existing dotfiles
 
-Setup asks whether to start from existing yabai, skhd and SketchyBar configs.
-It only reads them; Macarchy runs the tools with its own copies.
+Setup asks whether to start from existing yabai and skhd configs. It only
+reads them; Macarchy runs the tools with its own copies.
 
-- **Keep mine and add Macarchy.** Your shortcuts and bar stay as they are. Plain
+- **Keep mine and add Macarchy.** Your shortcuts stay as they are. Plain
   top-level `yabai -m config` lines move into Macarchy's Layout page; every other
   line, including anything inside loops and conditionals, is kept word for word.
-  If you keep your own bar, Macarchy triggers a `macarchy_theme_changed`
-  SketchyBar event on theme changes and writes the colours to
-  `generated/bar-colours.sh` for your items to use. SketchyBar starts it from
-  `macarchy-sketchybarrc`, a small file Macarchy adds beside it, so your items
-  still see that folder as `$CONFIG_DIR`.
 - **Start fresh.** Macarchy starts from its defaults.
 
-Your own files are left as they are either way.
+The menu bar is always Macarchy's widgets, so a `sketchybarrc` of your own is
+not used either way. Your own files are left as they are.
+
+### Menu bar
+
+The bar shows widgets, arranged on the Menu Bar page: Spaces on the left, and
+network, memory, GPU, CPU, battery and the clock on the right to begin with.
+See [widgets](docs/widgets.md) to make your own. Commands in the keep region
+of `config/sketchybarrc` run after the widgets are set up.
+
+The app keeps the widgets up to date, so it opens at login; turn that off
+under **Advanced → Open at login**. While it is not running, readings keep
+their last values and the clock still keeps time.
+
+Earlier versions ran either a bundled bar or your own. Setup moves either onto
+widgets once, after a snapshot, and says what happened to each item: the
+bar's own Spaces, network, memory, GPU, CPU, battery and clock become the
+built-in widgets in the same places, command items become scripted widgets in
+`widgets/`, and hidden items go. Your own bar no longer runs, because it
+removed every item, widgets included; its commands are kept word for word in
+`config/own-bar-before-widgets.sh`, and anything no widget replaces is named.
+
+Theme changes recolour the bar in place, and write the colours to
+`generated/bar-colours.sh` for scripts of your own.
 
 ### Ghostty
 

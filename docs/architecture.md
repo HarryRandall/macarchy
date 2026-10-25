@@ -12,8 +12,9 @@ The settings window and the theme switcher are drawn by a React interface in
 `src/desktop/ui`, hosted in web views; see [the interface guide](interface.md).
 
 `tools/build.sh` builds the interface and copies it to `Contents/Resources/ui`,
-then copies `resources` into `Contents/Resources`, flat: `themes`, `sketchybar`
-(the menu bar scripts and font), `skhd` (the default shortcuts), and `logo.svg`
+then copies `resources` into `Contents/Resources`, flat: `themes`, `widgets`
+(the built-in bar widgets), `sketchybar` (sketchybar-app-font, which the
+Spaces widget draws apps with), `skhd` (the default shortcuts), and `logo.svg`
 and `AppIcon.icns` from `resources/app`. The bundle's `Info.plist` comes from
 `packaging/macos`.
 
@@ -31,16 +32,15 @@ Macarchy owns `~/Library/Application Support/Macarchy`:
 | `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest. |
 | `snapshots/` | Rolling copies taken before each change, for undo. |
 | `bin/` | Optional replacements for daemon executables. |
-| `state/` | Daemon logs and scratch state for the menu bar scripts. |
+| `state/` | Daemon logs, startup records and the widget host's lock. |
 | `Macarchy.app` | A link to the installed app. |
 | `migration.json` | What moving an earlier version's folder did, until setup reports it. |
 
 `MACARCHY_HOME` relocates everything for tests. It and `MACARCHY_SEARCH_PATH`
 also isolate the run from the desktop: `DesktopIsolation` lets launchd,
 `defaults`, AppleScript, signals to running apps, `open` and the daemons run
-only as fakes under the home or the search path, and refuses the wallpaper,
-the bundled bar scripts and notifications to the running app, reporting them
-as skipped. Test processes are isolated even without either variable. A
+only as fakes under the home or the search path, and refuses the wallpaper
+and notifications to the running app, reporting them as skipped. Test processes are isolated even without either variable. A
 `MACARCHY_HOME` that is the account's own home does not isolate.
 
 Earlier versions used `~/.config/macarchy`. `LegacyLayout` moves it on first
@@ -101,6 +101,38 @@ so a daemon that started without running its file reads as a failure, not as
 running. It also fails an agent whose start file is missing or has a space in
 its path, as agents written before the launchers do until setup runs again.
 
+## Menu bar
+
+The bar is widgets only. `macarchy startup sketchybar` sets up the bar itself
+through `BarLook` (geometry from settings, the theme's bar and text colours,
+sketchybar-app-font and item defaults), then replays the saved bar
+(`BarCommands`) and fills each widget in once. A bar never saved is
+`BarConfiguration.widgetDefault`, which setup saves on a new install.
+`sketchybarrc` runs startup first and the person's keep region after it.
+
+The app's `WidgetHost` keeps the widgets up to date, so the first launch after
+setup registers the app as a login item (`LoginItem`, through
+`SMAppService.mainApp`), once; Advanced can turn it off, and that sticks.
+Debug builds and isolated runs never register. While the host runs it holds a
+lock on `state/widget-host.lock` (`WidgetHostPresence`). Clock items ask
+SketchyBar to run `macarchy widget fallback` every half minute, which returns
+at once while the lock is held and otherwise updates that clock, so a bar
+without the app shows its last readings and the right time. Theme changes
+repaint the bar and the widget items in place, and the host restarts when the
+theme in settings changes.
+
+Earlier versions saved `bundledBar`: true for Macarchy's bundled bar, false
+for a person's own sketchybarrc. The key now stays among the settings'
+unknown keys until setup moves the bar onto widgets (`Setup+Bar`,
+`WidgetMigration.moveBar`), and while it is there the app opens setup and
+Doctor warns. Setup snapshots settings and sketchybarrc, turns the bar's own
+items into built-in widgets in place and command items into scripted widgets,
+drops hidden items and names anything else, then removes the key. A person's
+own bar built every item in its keep region, starting by removing them all,
+so the region moves to `config/own-bar-before-widgets.sh` and no longer runs;
+Macarchy's earlier bar keeps its region. Until then, startup shows a bundled
+bar the widgets it is about to move onto, and leaves an own bar as it was.
+
 ## Setup and uninstall
 
 `Setup.plan` lists every change without writing. `Setup.run` writes the files
@@ -146,5 +178,6 @@ bridge and web views against the built interface.
 `corepack pnpm run check` in `src/desktop/ui` covers the interface.
 `tests/integration/setup.sh` runs setup, a repeat setup and uninstall
 in a temporary home against fake tools, and starts each agent as launchd
-would. The fake yabai and SketchyBar run their file as `sh -c <path>`, as the
+would. `tests/integration/upgrade.sh` upgrades a copy of the owner's earlier
+layout and checks their own bar ends on widgets with nothing lost. The fake yabai and SketchyBar run their file as `sh -c <path>`, as the
 real ones do, so a path sh would split fails there too.
