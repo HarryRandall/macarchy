@@ -109,7 +109,10 @@ command log that the logs panel shows, `shell.clearLog` empties it, and
 
 Advanced uses named `advanced.getState`, `restartService`, `stopService`,
 `rebuild`, `restoreSnapshot`, `repairAddition`, `restoreOriginals`,
-`setLoginItem` and `openLoginItems` requests. Its state's `loginItem` is `on`,
+`setLoginItem`, `openLoginItems`, `getCleanupPlan` and `cleanUp` requests.
+Clean up old configuration reads the plan, shows it in the shared
+confirmation dialog and keeps the report visible until dismissed; like
+`setup.run`, `cleanUp` resolves with what it changed when it stops partway. Its state's `loginItem` is `on`,
 `off`, `approval` (registered, waiting for System Settings) or `unavailable`
 (a development run, which never registers); tests replace `AppModel.loginItem`.
 `setup.getPlan`, `setup.run` and `setup.openAccessibility` serve setup.

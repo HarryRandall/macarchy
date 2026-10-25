@@ -218,9 +218,34 @@ Outside the folder it only writes:
 |---|---|
 | `~/Library/LaunchAgents/io.github.harryrandall.macarchy.<tool>.plist` | Starts each tool at login with its config. The tool's own agent is switched off and backed up |
 | `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
-| `~/.config/yabai/macarchy-yabairc` | yabai starts from it, since it cannot start a file whose path has a space. It hands over to `yabairc` |
-| `~/.config/sketchybar/macarchy-sketchybarrc` | SketchyBar starts from it for the same reason, and a bar of your own still sees that folder as `$CONFIG_DIR`. It hands over to `sketchybarrc` |
-| `~/.config/macarchy` | Only after an upgrade: a link to the new folder for files that still name the old one. A link of your own there is left as it is, and what it leads to is copied |
+| `~/.config/macarchy/macarchy-yabairc` | yabai starts from it, since it cannot start a file whose path has a space. It hands over to `yabairc` |
+| `~/.config/macarchy/macarchy-sketchybarrc` | SketchyBar starts from it for the same reason. It hands over to `sketchybarrc` |
+
+`~/.config/macarchy` holds only those two launchers. After an upgrade it is a
+link to the new folder instead, for files that still name the old one, and
+the launchers stay in `~/.config/yabai` and `~/.config/sketchybar` until you
+clean up.
+
+### Cleaning up after an upgrade
+
+Earlier versions left files in `~/.config/yabai`, `skhd`, `borders` and
+`sketchybar`. **Advanced → Clean up old configuration** (or
+`macarchy cleanup`, then `macarchy cleanup --apply`) shows what it will do
+first, then:
+
+- moves your scripts that your shortcuts or yabai region run into
+  `~/Library/Application Support/Macarchy/scripts`, keeping their names and
+  permissions, and points those shortcuts and scripts at them;
+- points the zsh, Neovim and Ghostty lines that read through
+  `~/.config/macarchy` at Application Support, and makes that folder hold just
+  the launchers;
+- deletes the startup files, backup copies and old bar Macarchy no longer
+  reads, and restarts the tools whose files changed.
+
+A file anything else still uses, and anything it cannot tell is Macarchy's,
+stays where it is and is listed with the reason. Everything it deletes or
+changes goes into one zip in `backups` first;
+`macarchy cleanup --restore <archive>` puts it all back.
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
 silently lost.
@@ -264,7 +289,7 @@ The app includes a `macarchy` command, used by the startup files:
 "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" doctor
 ```
 
-`setup`, `uninstall`, `doctor`, `apply`, `theme <name|next|prev>`,
+`setup`, `uninstall`, `doctor`, `cleanup`, `apply`, `theme <name|next|prev>`,
 `wallpaper <theme> <path>`, `rules [toggle]`, `bar toggle` and `restore`.
 Run it with no arguments for details.
 `setup` does what the app's setup does: it writes the files, starts the

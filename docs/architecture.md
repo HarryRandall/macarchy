@@ -29,7 +29,8 @@ Macarchy owns `~/Library/Application Support/Macarchy`:
 | `themes/` | Installed themes. Bundled ones are copied in by setup and never overwritten. |
 | `widgets/` | Bar widgets people made or imported, one folder each; see [widgets](widgets.md). |
 | `generated/` | Rendered from the active theme for other programs: Ghostty colours, bar colours, shell colours, Neovim colourscheme name. |
-| `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest. |
+| `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest, and the archives cleaning up writes (`old-configuration-<date>.zip`). |
+| `scripts/` | The person's own scripts their shortcuts and keep regions run, moved here by cleaning up. |
 | `snapshots/` | Rolling copies taken before each change, for undo. |
 | `bin/` | Optional replacements for daemon executables. |
 | `state/` | Daemon logs, startup records and the widget host's lock. |
@@ -48,8 +49,8 @@ launch when it holds Macarchy's data and the new folder has no settings yet,
 merging into a new folder something else created first (anything that clashes
 is kept aside in `Macarchy before migration <date>` and Doctor reports it).
 Bar scripts never create the new folder. The move leaves a link at the old path
-that stays until uninstall, because earlier startup files, shortcuts and the
-person's own scripts may still name it. When the old path is the person's own
+that stays until the person cleans up (below), because earlier startup files,
+shortcuts and the person's own scripts may still name it. When the old path is the person's own
 link, as dotfiles make it, the folder it leads to is copied instead, and the
 link and that folder are left as they are; Doctor reports the copy left behind.
 Setup also rewrites old paths in the shortcuts and the yabai, SketchyBar and
@@ -60,6 +61,39 @@ says so. Snapshot records are moved to the new paths, and restore maps any it
 missed. The first command after an upgrade usually makes the move unseen, so
 `move` leaves `migration.json` saying what it did; the setup screen, Doctor and
 setup's report show it, and setup clears it.
+
+## Cleaning up
+
+Earlier versions also left startup files, backups and launchers in the
+tools' own folders, `~/.config/yabai`, `skhd`, `borders` and `sketchybar`,
+where people keep scripts their shortcuts run. Cleaning up is explicit:
+`macarchy cleanup` prints the plan, `--apply` carries it out, and Advanced →
+Clean up old configuration shows the same plan behind a confirmation.
+`OldConfiguration.plan` only reads. It classifies each entry of those
+folders: Macarchy's startup files, launchers, backup copies, empty folders
+and the bar SketchyBar ran before can go; anything else is unknown and stays.
+An entry that changeable text runs moves to `scripts/`, with its name and
+permissions: the shortcuts, the startup files, the person's zsh and bash
+startup files, and scripts that move with it, followed transitively. Each
+rewritten command or file must still parse (`bash -n`, or `zsh -n` for zsh)
+or what it runs stays put. Anything else that uses an entry keeps it in place:
+a LaunchAgent, Vim script, a widget, a file that stays, a path inside single
+quotes, or a folder named as a whole. The link at `~/.config/macarchy` is
+replaced by the launcher folder only once nothing reads through it: zsh and
+shell paths go through `OldPathScanner`, Neovim Lua strings that hold only a
+path and Ghostty `config-file` lines are pointed at Application Support, and
+anything else that still names it keeps the link.
+
+`OldConfiguration.apply` replans under the desktop lock, zips everything it
+will delete or change, with a manifest, into `backups/` and checks the zip
+reads back before changing anything, snapshots the configs it rewrites, then
+moves, rewrites, replaces the link and launchers, rewrites the agents that
+name a launcher and deletes. It restarts skhd, yabai, SketchyBar or borders
+when their file or launcher changed, through `Setup.startService`. `restore`
+refuses before changing anything when a path it would put back is in use
+again; otherwise it puts every file and the link back, removes the moved
+copies that were not edited since, rewrites the agents and restarts the
+daemons. Doctor shows a warning while there is something to clean up.
 
 ## Startup
 
@@ -85,15 +119,16 @@ repairs the link when it launches.
 yabai and SketchyBar run the file they are started with as `sh -c <path>`,
 with the path unquoted, so sh splits a path in Application Support at its
 space and the file never runs. Their agents start a `StartLauncher` instead:
-`~/.config/yabai/macarchy-yabairc` and
-`~/.config/sketchybar/macarchy-sketchybarrc`, two-line files that exec the
-quoted path of `config/yabairc` and `config/sketchybarrc`. A link would not
-do: SketchyBar resolves it. SketchyBar also sets `$CONFIG_DIR` and its working
-folder to the launcher's folder, resolving links, and passes them to every
-item script, so a person's own bar finds its plugins, colours and icons as
-before, and SketchyBar watches that folder for changes. Macarchy's bar names
-its scripts in full. Setup backs the launchers up as absent, so uninstall
-removes them. skhd only reads its file, and launchd runs bordersrc itself.
+`~/.config/macarchy/macarchy-yabairc` and `macarchy-sketchybarrc`, two-line
+files that exec the quoted path of `config/yabairc` and `config/sketchybarrc`.
+That folder holds nothing else. It is a real folder, not a link into
+Application Support: SketchyBar resolves links, so neither a linked launcher
+nor a linked folder would do. Earlier versions put each launcher in the
+tool's own folder, `~/.config/<tool>`; one stays there while an upgrade's link
+still stands at `~/.config/macarchy`, or while it is in place and the new one
+is not, so only cleaning up moves it. Setup backs the launchers up as absent,
+so uninstall removes them, and the folder once it is empty. skhd only reads
+its file, and launchd runs bordersrc itself.
 
 `macarchy startup <tool>` records the pid launchd reports for the daemon's
 job in `state/startup/<tool>`. Doctor compares it with the copy running now,
