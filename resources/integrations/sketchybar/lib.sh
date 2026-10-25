@@ -2,8 +2,19 @@
 # Shared by the bundled bar scripts. sketchybar runs plugins with launchd's
 # minimal PATH, so every executable is located explicitly.
 
+# A bar started by an earlier version can run these scripts through its app
+# link before Macarchy has moved ~/.config/macarchy into Application Support.
+# The scripts never create the new folder: Macarchy decides whether to move
+# the old one, and an empty new folder must not look like one already moved.
 MACARCHY_ROOT="$HOME/Library/Application Support/Macarchy"
-MACARCHY_STATE="$MACARCHY_ROOT/state/bar"
+if [ ! -d "$MACARCHY_ROOT" ] && [ -d "$HOME/.config/macarchy" ]; then
+  MACARCHY_ROOT="$HOME/.config/macarchy"
+fi
+if [ -d "$MACARCHY_ROOT" ]; then
+  MACARCHY_STATE="$MACARCHY_ROOT/state/bar"
+else
+  MACARCHY_STATE="${TMPDIR:-/tmp}/macarchy-bar-$UID"
+fi
 mkdir -p "$MACARCHY_STATE"
 
 # Prints the first executable found: Macarchy's own bin, Homebrew on Apple

@@ -8,10 +8,13 @@ import Foundation
 /// backups, which is how a safety net becomes a disk problem.
 public enum SnapshotError: LocalizedError {
     case noMetadata(String)
+    case empty(String)
     public var errorDescription: String? {
         switch self {
         case .noMetadata(let id):
             "Snapshot \(id) has no metadata, so its files can't be placed back."
+        case .empty(let id):
+            "Snapshot \(id) holds no files, so nothing was restored."
         }
     }
 }
@@ -124,26 +127,61 @@ public struct SnapshotStore: Sendable {
 
     public func reason(for snapshot: Snapshot) -> String { meta(for: snapshot)?.reason ?? "" }
 
-    /// Where each file in the snapshot came from.
+    /// Where each file in the snapshot belongs now.
     public func originalPaths(of snapshot: Snapshot) -> [String] {
-        meta(for: snapshot).map { Array($0.paths.values).sorted() } ?? []
+        meta(for: snapshot).map { Array(Self.destinations($0.paths).values).sorted() } ?? []
+    }
+
+    /// Where a recorded path lives now. Snapshots taken before the move to
+    /// Application Support recorded `~/.config/macarchy`; `LegacyLayout` maps
+    /// those records when it moves the folder, and this covers any it missed.
+    /// With `startupFiles`, the earlier places of the startup files and
+    /// shortcuts map to `config/` too. Only the move asks for that, because
+    /// uninstall in this version can snapshot those old places legitimately.
+    static func currentLocation(
+        of path: String, home: URL = Paths.home, root: URL = Paths.appRoot,
+        startupFiles: Bool = false
+    ) -> String {
+        let legacy = home.appending(path: ".config/macarchy").path
+        if path == legacy || path.hasPrefix(legacy + "/") {
+            return root.path + path.dropFirst(legacy.count)
+        }
+        guard startupFiles else { return path }
+        let moved = [
+            ".config/skhd/skhdrc": "skhdrc", ".config/yabai/yabairc": "yabairc",
+            ".config/sketchybar/sketchybarrc": "sketchybarrc",
+            ".config/borders/bordersrc": "bordersrc"
+        ]
+        for (old, name) in moved where path == home.appending(path: old).path {
+            return root.appending(path: "config/\(name)").path
+        }
+        return path
+    }
+
+    private static func destinations(_ paths: [String: String]) -> [String: String] {
+        paths.mapValues { currentLocation(of: $0) }
     }
 
     /// Puts files back where they came from. Takes a snapshot of the current
     /// state first, so restoring is itself undoable.
     /// Restores under the desktop lock, so a concurrent apply cannot write
-    /// over the restored files halfway through.
-    public func restoreLocked(_ snapshot: Snapshot) async throws {
+    /// over the restored files halfway through. Returns the files written.
+    @discardableResult
+    public func restoreLocked(_ snapshot: Snapshot) async throws -> [URL] {
         try await OperationLock.run { try restore(snapshot) }
     }
 
-    public func restore(_ snapshot: Snapshot) throws {
+    /// Returns the files written, never none: a snapshot without files throws.
+    @discardableResult
+    public func restore(_ snapshot: Snapshot) throws -> [URL] {
         let fm = FileManager.default
         guard let meta = meta(for: snapshot) else { throw SnapshotError.noMetadata(snapshot.id) }
+        guard !meta.paths.isEmpty else { throw SnapshotError.empty(snapshot.id) }
 
         // Read every source before capture can prune the selected snapshot.
         // Missing or unreadable files abort before any destination is changed.
-        let contents = try meta.paths.sorted { $0.key < $1.key }.map { stored, original in
+        let contents = try Self.destinations(meta.paths).sorted { $0.key < $1.key }.map {
+            stored, original in
             let source = snapshot.url.appending(path: stored)
             let data = try Data(contentsOf: source)
             let attributes = try fm.attributesOfItem(atPath: source.path)
@@ -163,6 +201,7 @@ public struct SnapshotStore: Sendable {
                     [.posixPermissions: permissions], ofItemAtPath: destination.path)
             }
         }
+        return contents.map { $0.0 }
     }
 
     /// Captures run under different locks, or none, so the app and CLI can

@@ -29,9 +29,9 @@ public enum Setup {
     }
 
     /// Whether setup has to run: it never has, or it last ran before the
-    /// move to Application Support and the old folder still stands in.
+    /// move to Application Support and has not run since.
     public static var isNeeded: Bool {
-        !FileManager.default.fileExists(atPath: Paths.settings.path) || LegacyLayout.linkRemains
+        !FileManager.default.fileExists(atPath: Paths.settings.path) || LegacyLayout.awaitingSetup
     }
 
     // MARK: - Locations
@@ -77,6 +77,12 @@ public enum Setup {
             if isGenerated(url) {
                 return Change(
                     path: url, action: .replace, detail: "Regenerated, keeping your region")
+            }
+            if let source, isGenerated(source) {
+                return Change(
+                    path: url, action: .adopt,
+                    detail: "Carries over the commands in the keep region of "
+                        + "\(Paths.display(source)), written by an earlier version")
             }
             guard let source, let text = adoptable(source) else {
                 return Change(path: url, action: .create, detail: create)
@@ -135,8 +141,14 @@ public enum Setup {
         if FileManager.default.fileExists(atPath: url.path) {
             return Change(path: url, action: .adopt, detail: "Already set up; left as it is")
         }
-        if existing == .keep, let source = skhdSource, adoptable(source) != nil {
-            return Change(path: url, action: .adopt, detail: "Starts from your own shortcuts")
+        if existing == .keep, let source = skhdSource, let text = adoptable(source) {
+            let old = LegacyLayout.mentionsOldFolder(text)
+            return Change(
+                path: url, action: .adopt,
+                detail: old
+                    ? "Starts from your own shortcuts, pointing those that run Macarchy from "
+                        + "\(Paths.display(Paths.legacyRoot)) at its new folder"
+                    : "Starts from your own shortcuts")
         }
         return Change(path: url, action: .create, detail: "Installs Macarchy's default shortcuts")
     }
@@ -147,14 +159,19 @@ public enum Setup {
     /// interleave and back up each other's output as an original.
     /// A failing step throws `Interrupted` with the lines of the steps before it.
     public static func run(existing: Existing, app: URL?) async throws -> [String] {
-        try await OperationLock.run {
+        try checkCarriable()
+        // Before the lock, which lives in the new folder and would create it.
+        let moved = try moveEarlierFolder()
+        return try await OperationLock.run {
             if existing == .keep { try await checkKeepable() }
-            return try runLocked(existing: existing, app: app)
+            return try runLocked(existing: existing, app: app, report: moved)
         }
     }
 
-    static func runLocked(existing: Existing, app: URL?) throws -> [String] {
-        var report: [String] = []
+    static func runLocked(existing: Existing, app: URL?, report lines: [String] = []) throws
+        -> [String]
+    {
+        var report = lines
         do {
             try perform(existing: existing, app: app, report: &report)
         } catch {
@@ -204,10 +221,12 @@ public enum Setup {
         let yabairc = StartupConfiguration.yabairc.url
         var yabaiKept: String?
         if !isGenerated(yabairc) {
-            if existing == .keep, let source = yabaiSource, let text = adoptable(source) {
+            if let source = yabaiSource, isGenerated(source) {
+                yabaiKept = try carriedRegion(from: source, report: &report)
+            } else if existing == .keep, let source = yabaiSource, let text = adoptable(source) {
                 let adopted = StartupConfiguration.adoptYabai(text)
                 try updateSettings { $0.mergeFlat(adopted.values) }
-                yabaiKept = adopted.kept
+                yabaiKept = pointingAtNewFolder(adopted.kept, in: source, report: &report)
                 report.append("Moved \(adopted.values.count) yabai settings into Macarchy")
             } else {
                 yabaiKept = ""
@@ -221,9 +240,24 @@ public enum Setup {
         let sketchybarrc = StartupConfiguration.sketchybarrc.url
         var barKept: String?
         if !isGenerated(sketchybarrc) {
-            if existing == .keep, let source = sketchybarSource, let text = adoptable(source) {
-                barKept = StartupConfiguration.tidy(
+            if let source = sketchybarSource, isGenerated(source) {
+                // The earlier version's setting says whose bar runs; only a
+                // missing one means Macarchy's.
+                let region = try carriedRegion(from: source, report: &report)
+                barKept = keepingBarFolder(region, from: source, report: &report)
+                switch try settings.read().bundledBar {
+                case nil: try updateSettings { $0.bundledBar = true }
+                case false?: report.append("Kept your menu bar")
+                case true?: break
+                }
+            } else if existing == .keep, let source = sketchybarSource,
+                let text = adoptable(source)
+            {
+                let bar = StartupConfiguration.tidy(
                     text.components(separatedBy: "\n").filter { !$0.hasPrefix("#!") })
+                barKept = keepingBarFolder(
+                    pointingAtNewFolder(bar, in: source, report: &report), from: source,
+                    report: &report)
                 try updateSettings { $0.bundledBar = false }
                 report.append("Kept your menu bar")
             } else {
@@ -248,14 +282,6 @@ public enum Setup {
                 try GhosttyConfig.write(updated, to: target)
                 report.append("Added the theme include to Ghostty")
             }
-        }
-
-        // Startup files from before the move to Application Support reached
-        // the app through the old folder; nothing does now.
-        if LegacyLayout.linkRemains {
-            try LegacyLayout.removeLink()
-            report.append(
-                "Removed \(Paths.display(Paths.legacyRoot)), which Macarchy no longer uses")
         }
     }
 
@@ -302,6 +328,10 @@ public enum Setup {
         }
         if (try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path)) != nil {
             try fm.removeItem(at: Paths.appLink)
+        }
+        // Kept until now for files and scripts that still name the old folder.
+        if try LegacyLayout.removeLink() {
+            report.append("Removed the link at \(Paths.display(Paths.legacyRoot))")
         }
     }
 }

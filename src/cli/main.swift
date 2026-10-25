@@ -289,14 +289,17 @@ do {
             throw ConfigurationError(
                 "Snapshot \(options.values[0]) not found. Snapshots are listed in Advanced.")
         }
+        func restoredLine(_ files: [URL]) -> String {
+            "Restored " + files.map { Paths.display($0) }.joined(separator: ", ") + "."
+        }
         if options.flags.contains("--apply") {
-            try await DesktopConfiguration.restore(snapshot, store: store)
-            print("Restored and applied snapshot \(snapshot.id).")
+            let files = try await DesktopConfiguration.restore(snapshot, store: store)
+            print(restoredLine(files) + " Applied snapshot \(snapshot.id).")
         } else {
-            try await store.restoreLocked(snapshot)
+            let files = try await store.restoreLocked(snapshot)
             print(
-                "Files restored. Update the desktop with: macarchy restore \(snapshot.id) --apply,"
-                    + " or macarchy apply if your shortcuts are unchanged.")
+                restoredLine(files) + " Update the desktop with: macarchy restore \(snapshot.id)"
+                    + " --apply, or macarchy apply if your shortcuts are unchanged.")
         }
     case "", "help", "--help", "-h":
         print(usage)

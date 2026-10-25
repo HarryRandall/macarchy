@@ -96,7 +96,7 @@ extension AppModel {
             selectedPane: InterfacePreferences.selectedPane.rawValue,
             sidebarVisible: InterfacePreferences.sidebarVisible,
             setupRequired: !FileManager.default.fileExists(atPath: settingsStore.url.path)
-                || LegacyLayout.linkRemains,
+                || LegacyLayout.awaitingSetup,
             appearance: .init(accent: accentHex, mode: InterfacePreferences.appearance),
             services: .init(running: daemons.runningCount, total: daemons.installed.count),
             version: Self.version,

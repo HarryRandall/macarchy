@@ -42,8 +42,15 @@ the bundled bar scripts and notifications to the running app, reporting them
 as skipped. Test processes are isolated even without either variable. A
 `MACARCHY_HOME` that is the account's own home does not isolate.
 
-Earlier versions used `~/.config/macarchy`; `LegacyLayout` moves it on first
-launch and leaves a link there until setup runs again.
+Earlier versions used `~/.config/macarchy`. `LegacyLayout` moves it on first
+launch when it holds Macarchy's data and the new folder has no settings yet,
+merging into a new folder something else created first (anything that clashes
+is kept aside in `Macarchy before migration <date>` and Doctor reports it).
+Bar scripts never create the new folder. The move leaves a link at the old path
+that stays until uninstall, because earlier startup files, shortcuts and the
+person's own scripts may still name it. Setup also rewrites old command paths
+in the shortcuts and keep regions it carries over, so the link is a fallback.
+Snapshot records are moved to the new paths, and restore maps any it missed.
 
 ## Startup
 

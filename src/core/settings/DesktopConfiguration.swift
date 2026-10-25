@@ -2,24 +2,26 @@ import Foundation
 
 public enum DesktopConfiguration {
     /// Restores a snapshot and reapplies everything it can affect, including
-    /// skhd, which reads its file only at startup.
+    /// skhd, which reads its file only at startup. Returns the files written.
+    @discardableResult
     public static func restore(
         _ snapshot: SnapshotStore.Snapshot, store: SnapshotStore = SnapshotStore(),
         integrations: Integrations = Integrations()
-    ) async throws {
+    ) async throws -> [URL] {
         // Read before restoring: restoring snapshots the current files, and
         // that capture can prune the snapshot being restored.
         let restartsShortcuts = touchesShortcuts(
             store.originalPaths(of: snapshot), linked: SkhdShortcuts().configURL.path)
         // One lock across restoring and reapplying, so a concurrent change
         // cannot land between them and be applied over a half-restored state.
-        try await OperationLock.run {
-            try store.restore(snapshot)
+        return try await OperationLock.run {
+            let restored = try store.restore(snapshot)
             try await applyLocked(integrations: integrations)
             if restartsShortcuts, Paths.isInstalled("skhd") {
                 let result = await integrations.restart(.skhd)
                 guard result.ok else { throw ConfigurationError(result.summary) }
             }
+            return restored
         }
     }
 
