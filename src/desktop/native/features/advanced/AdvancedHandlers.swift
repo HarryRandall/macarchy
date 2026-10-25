@@ -44,6 +44,18 @@ extension BridgeRouter {
             guard result.ok else { throw BridgeFailure(.operationFailed, result.summary) }
             return Null()
         }
+        register("advanced.setLoginItem") { (params: LoginItemParams) in
+            try await Self.maintenance(
+                model, name: params.enabled ? "open at login" : "stop opening at login"
+            ) {
+                try model.loginItem.setEnabled(params.enabled)
+                return Null()
+            }
+        }
+        register("advanced.openLoginItems") { (_: Empty) in
+            model.loginItem.openSettings()
+            return Null()
+        }
         register("advanced.restoreOriginals") { (_: Empty) in
             try await Self.maintenance(model, name: "restored original files") {
                 let report = try await model.setupSession.restoreOriginals()
@@ -68,6 +80,9 @@ extension BridgeRouter {
                 model.log.failure("set up Macarchy", failure)
             } else {
                 model.log.note("set up Macarchy", "Completed")
+                if let problem = model.loginItem.turnOnOnce() {
+                    model.log.failure("open at login", problem)
+                }
             }
             await model.loadEverything()
             StateBroadcast.shared.settingsWritten()
@@ -157,7 +172,8 @@ extension AppModel {
                 theme: themes.current ?? "None", installedThemes: themes.themes.count,
                 addition: addition, additionExplanation: status.explanation,
                 wakeHelpers: await advancedConfiguration.wakeHelpersRegistered(),
-                backupsDirectory: Paths.display(Paths.backupsDirectory))
+                backupsDirectory: Paths.display(Paths.backupsDirectory),
+                loginItem: loginItem.state())
         } catch {
             log.failure("read advanced", error.localizedDescription)
             throw BridgeFailure(.operationFailed, error.localizedDescription)

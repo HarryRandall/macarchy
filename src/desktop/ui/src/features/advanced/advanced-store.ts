@@ -89,6 +89,17 @@ export function createAdvancedStore(host: PageHost) {
     restoreSnapshot: (id: string) =>
       perform(() => host.request("advanced.restoreSnapshot", { id })),
     repair: () => perform(() => host.request("advanced.repairAddition")),
+    setLoginItem: (enabled: boolean) =>
+      perform(() => host.request("advanced.setLoginItem", { enabled })),
+    /** Opens Login Items in System Settings. Changes nothing, so the state is not read again. */
+    async openLoginItems() {
+      set({ error: null });
+      try {
+        await host.request("advanced.openLoginItems");
+      } catch (error) {
+        set({ error: errorMessage(error) });
+      }
+    },
     restoreOriginals: () =>
       perform(async () => {
         set({ report: await host.request("advanced.restoreOriginals") });

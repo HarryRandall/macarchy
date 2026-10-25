@@ -181,7 +181,23 @@ public struct WidgetLook: Sendable {
         if let colour = style.textColour.flatMap(colour) {
             properties.append("label.color=\(colour)")
         }
-        return ["--set", component.id] + properties
+        return ["--set", component.id] + properties + fallback(manifest, id: component.id)
+    }
+
+    /// Seconds between the clock's own updates while no widget host runs.
+    public static let fallbackSeconds = 30
+
+    /// A clock keeps time while the app is not running: SketchyBar runs
+    /// `macarchy widget fallback` for it every half minute, which does
+    /// nothing while a widget host runs. Other readings keep their last
+    /// values until the app opens again, which is less wrong than a clock
+    /// that has stopped.
+    private func fallback(_ manifest: WidgetManifest, id: String) -> [String] {
+        guard manifest.source == "date" else { return ["update_freq=0"] }
+        return [
+            "script=\(command) widget fallback \(Shell.quote(id))",
+            "update_freq=\(Self.fallbackSeconds)"
+        ]
     }
 
     /// An empty gap item, an icon item, a lines item whose icon and label

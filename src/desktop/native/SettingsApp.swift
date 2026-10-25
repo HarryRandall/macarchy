@@ -12,6 +12,11 @@ struct SettingsApp: App {
         LegacyLayout.migrate()
         let model = AppModel()
         _model = State(initialValue: model)
+        // The widgets need the app running, so the first launch after setup
+        // opens it at login from then on, unless the person turns that off.
+        if let problem = model.loginItem.turnOnOnce() {
+            model.log.failure("open at login", problem)
+        }
         // The switcher's hotkey must work before any window has opened.
         ThemeSwitcher.shared.attach(model)
         SettingsWindow.shared.attach(model)

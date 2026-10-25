@@ -396,6 +396,7 @@ const advanced: AdvancedState = {
   additionExplanation: "The scripting addition is loaded.",
   wakeHelpers: true,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
+  loginItem: "on",
 };
 
 const advancedBeforeSetup: AdvancedState = {
@@ -412,6 +413,7 @@ const advancedBeforeSetup: AdvancedState = {
   additionExplanation: "yabai is not installed, so there is no scripting addition to load.",
   wakeHelpers: false,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
+  loginItem: "off",
 };
 
 const tools: SetupState["tools"] = [
@@ -910,6 +912,7 @@ export const methodFixtures: MethodFixtures = {
         ...advanced,
         addition: "unavailable",
         additionExplanation: "Development runs never change the real sudoers rule.",
+        loginItem: "unavailable",
       },
     },
   ],
@@ -931,6 +934,11 @@ export const methodFixtures: MethodFixtures = {
   "advanced.restoreOriginals": [
     { params: {}, result: { lines: ["Restored original files"], failures: [], failure: null } },
   ],
+  "advanced.setLoginItem": [
+    { params: { enabled: true }, result: null },
+    { params: { enabled: false }, result: null },
+  ],
+  "advanced.openLoginItems": [{ params: {}, result: null }],
   "setup.getPlan": [
     { params: { existing: "keep" }, result: keepPlan },
     { params: { existing: "replace" }, result: replacePlan },
@@ -1147,6 +1155,7 @@ export const eventFixtures: EventFixtures = {
         ...advanced,
         addition: "repair",
         additionExplanation: "yabai was updated, so its sudoers rule needs repairing.",
+        loginItem: "approval",
       },
     },
   ],

@@ -7,6 +7,7 @@
         "additionExplanation": "The scripting addition is loaded.",
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
+        "loginItem": "on",
         "services": [
           {
             "id": "yabai",
@@ -44,6 +45,7 @@
         "additionExplanation": "yabai is not installed, so there is no scripting addition to load.",
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 0,
+        "loginItem": "off",
         "services": [
           {
             "id": "yabai",
@@ -74,6 +76,7 @@
         "additionExplanation": "Development runs never change the real sudoers rule.",
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
+        "loginItem": "unavailable",
         "services": [
           {
             "id": "yabai",
@@ -103,6 +106,12 @@
         "theme": "lumon",
         "wakeHelpers": true
       }
+    }
+  ],
+  "advanced.openLoginItems": [
+    {
+      "params": {},
+      "result": null
     }
   ],
   "advanced.rebuild": [
@@ -167,6 +176,20 @@
     {
       "params": {
         "id": "20261021-081500"
+      },
+      "result": null
+    }
+  ],
+  "advanced.setLoginItem": [
+    {
+      "params": {
+        "enabled": true
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "enabled": false
       },
       "result": null
     }

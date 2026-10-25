@@ -331,6 +331,7 @@ export function installMockHost() {
   };
 
   const advanced: Omit<AdvancedState, "services"> = {
+    loginItem: "on",
     snapshots: [],
     theme: "awakening",
     installedThemes: themes.length,
@@ -397,6 +398,11 @@ export function installMockHost() {
       failures: [],
       failure: null,
     }),
+    "advanced.setLoginItem": ({ enabled }) => {
+      advanced.loginItem = enabled ? "on" : "off";
+      return null;
+    },
+    "advanced.openLoginItems": () => null,
     "setup.getPlan": () => ({
       tools: [],
       changes: [

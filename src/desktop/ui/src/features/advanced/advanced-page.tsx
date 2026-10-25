@@ -14,7 +14,7 @@ import { dayStarts } from "./advanced-format";
 import { ServicesCard } from "./advanced-services";
 import type { AdvancedStore } from "./advanced-store";
 import { AdvancedSummary } from "./advanced-summary";
-import { CommandLineCard, DangerZone, ExtrasCard, SetupCard } from "./advanced-system";
+import { CommandLineCard, DangerZone, ExtrasCard, LoginCard, SetupCard } from "./advanced-system";
 
 export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openSetup(): void }) {
   const snapshot = useStore(store);
@@ -102,6 +102,12 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
               busy={busy}
               repairing={pending === "repair"}
               onRepair={() => track("repair", store.repair())}
+            />
+            <LoginCard
+              state={state.loginItem}
+              busy={busy}
+              onChange={(enabled) => void store.setLoginItem(enabled).catch(() => {})}
+              onOpenSettings={() => void store.openLoginItems()}
             />
             <CommandLineCard />
             <SetupCard busy={busy} onOpenSetup={openSetup} />

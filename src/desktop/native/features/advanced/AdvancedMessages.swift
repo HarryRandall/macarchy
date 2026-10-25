@@ -21,6 +21,7 @@ struct AdvancedState: Codable, Sendable {
     var additionExplanation: String
     var wakeHelpers: Bool
     var backupsDirectory: String
+    var loginItem: LoginItem.State
 }
 
 struct ServiceParams: Codable, Sendable {
@@ -48,6 +49,7 @@ struct ServiceParams: Codable, Sendable {
 struct RebuildParams: Codable, Sendable { var file: AdvancedConfiguration.File }
 struct SnapshotParams: Codable, Sendable { var id: String }
 struct RebuildResult: Codable, Sendable { var outcome: String }
+struct LoginItemParams: Codable, Sendable { var enabled: Bool }
 struct SetupParams: Codable, Sendable {
     enum Existing: String, Codable, Sendable { case keep, replace }
     var existing: Existing

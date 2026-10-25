@@ -385,6 +385,16 @@ OUTPUT="$(run_agent sketchybar 2>&1)" || fail "SketchyBar did not run its startu
 grep -q '^sketchybar --bar height=35 ' "$CALLS" || fail "SketchyBar's startup file set up no bar: $OUTPUT"
 grep -q -- '--load-font .*/sketchybar/sketchybar-app-font.ttf' "$CALLS" || fail "the bar did not load the app font"
 grep -q -- '--add item macarchy.clock right' "$CALLS" || fail "SketchyBar's startup file added no widgets"
+# While no widget host runs, SketchyBar runs the clock's fallback itself; it
+# leaves the clock alone while a host, such as the app, holds its lock.
+grep -q "script=.* widget fallback 'macarchy.clock'" "$CALLS" || fail "the clock has no fallback"
+: > "$CALLS"
+"$CLI" widget fallback macarchy.clock || fail "the clock fallback failed"
+grep -q -- '--set macarchy.clock .*label=' "$CALLS" || fail "the clock fallback did not update the clock"
+: > "$CALLS"
+lockf -t 0 "$ROOT/state/widget-host.lock" "$CLI" widget fallback macarchy.clock \
+  || fail "the clock fallback failed while a host ran"
+grep -q 'macarchy.clock' "$CALLS" && fail "the clock fallback ran while a host held the lock"
 OUTPUT="$(run_agent borders 2>&1)" || fail "borders did not run its startup file: $OUTPUT"
 grep -q '^borders .*active_color=' "$CALLS" || fail "bordersrc did not start borders: $OUTPUT"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"

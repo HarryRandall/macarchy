@@ -1,4 +1,4 @@
-import { RotateCcw, SquareTerminal, Wand } from "lucide-react";
+import { Power, RotateCcw, SquareTerminal, Wand } from "lucide-react";
 
 import type { AdvancedState, SetupReport } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
@@ -66,6 +66,56 @@ export function ExtrasCard({
           }
         />
       </CardRows>
+    </Card>
+  );
+}
+
+const loginDescription = {
+  on: null,
+  off: null,
+  approval: "Allow Macarchy in System Settings, under General → Login Items.",
+  unavailable: "Development copies never open at login.",
+} as const;
+
+/** Opening Macarchy at login, which keeps the bar's widgets updating. */
+export function LoginCard({
+  state,
+  busy,
+  onChange,
+  onOpenSettings,
+}: {
+  state: AdvancedState["loginItem"];
+  busy: boolean;
+  onChange: (enabled: boolean) => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <Card>
+      <Row
+        title="Open at login"
+        help="The bar's widgets update while Macarchy runs. Without it, they keep their last values until Macarchy opens."
+        description={loginDescription[state]}
+        leading={
+          <IconTile variant="outline">
+            <Power strokeWidth={1.75} />
+          </IconTile>
+        }
+        control={
+          <>
+            {state === "approval" ? (
+              <Button size="sm" disabled={busy} onClick={onOpenSettings}>
+                Open Login Items
+              </Button>
+            ) : null}
+            <Switch
+              aria-label="Open Macarchy at login"
+              checked={state === "on" || state === "approval"}
+              disabled={busy || state === "unavailable"}
+              onCheckedChange={onChange}
+            />
+          </>
+        }
+      />
     </Card>
   );
 }
