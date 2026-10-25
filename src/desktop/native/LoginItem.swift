@@ -23,6 +23,9 @@ struct LoginItem {
     var state: () -> State
     var setEnabled: (Bool) throws -> Void
     var openSettings: () -> Void
+    /// Whether the first launch after setup has turned it on already.
+    var offered: () -> Bool = { Preferences.store.bool(forKey: LoginItem.offeredKey) }
+    var markOffered: () -> Void = { Preferences.store.set(true, forKey: LoginItem.offeredKey) }
 
     static var current: LoginItem {
         guard !isDevelopmentRun else {
@@ -58,16 +61,16 @@ struct LoginItem {
         #endif
     }
 
-    private static let offeredKey = "loginItemOffered"
+    static let offeredKey = "loginItemOffered"
 
     /// Turns opening at login on the first time the app runs set up, and
     /// never again, so turning it off sticks. Returns why it could not, if so.
     @discardableResult
-    func turnOnOnce(defaults: UserDefaults = Preferences.store) -> String? {
-        guard state() != .unavailable, !defaults.bool(forKey: Self.offeredKey),
+    func turnOnOnce() -> String? {
+        guard state() != .unavailable, !offered(),
             FileManager.default.fileExists(atPath: Paths.settings.path)
         else { return nil }
-        defaults.set(true, forKey: Self.offeredKey)
+        markOffered()
         guard state() == .off else { return nil }
         do {
             try setEnabled(true)

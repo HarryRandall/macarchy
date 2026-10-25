@@ -56,17 +56,16 @@ extension WebInterfaceTests {
         @Test("the first launch after setup opens at login once, and never again")
         func loginItemOnce() async throws {
             try await withHarness { harness in
-                let defaults = try #require(UserDefaults(suiteName: "macarchy-login-\(UUID())"))
                 let recorder = LoginItemRecorder()
                 let saved = harness.settingsData
                 try FileManager.default.removeItem(at: harness.store.url)
-                #expect(recorder.item.turnOnOnce(defaults: defaults) == nil)
+                #expect(recorder.item.turnOnOnce() == nil)
                 #expect(recorder.calls.isEmpty, "Setup has not run, so nothing is turned on")
                 try saved.write(to: harness.store.url)
-                recorder.item.turnOnOnce(defaults: defaults)
+                recorder.item.turnOnOnce()
                 #expect(recorder.calls == [true])
                 recorder.state = .off
-                recorder.item.turnOnOnce(defaults: defaults)
+                recorder.item.turnOnOnce()
                 #expect(recorder.calls == [true], "Turning it off afterwards sticks")
             }
         }
@@ -79,6 +78,7 @@ final class LoginItemRecorder {
     var state: LoginItem.State = .off
     var calls: [Bool] = []
     var opened = 0
+    var offered = false
 
     var item: LoginItem {
         LoginItem(
@@ -87,6 +87,7 @@ final class LoginItemRecorder {
                 self.calls.append(enabled)
                 self.state = enabled ? .on : .off
             },
-            openSettings: { self.opened += 1 })
+            openSettings: { self.opened += 1 }, offered: { self.offered },
+            markOffered: { self.offered = true })
     }
 }
