@@ -60,23 +60,7 @@ extension OldConfiguration {
             try SnapshotStore().capture(changed, reason: "before cleaning up old configuration")
         }
 
-        for move in plan.moves {
-            try fm.createDirectory(at: Paths.scriptsDirectory, withIntermediateDirectories: true)
-            try fm.copyItem(at: move.from, to: move.to)
-            for (relative, text) in move.texts.sorted(by: { $0.key < $1.key }) {
-                try write(text, to: relative.isEmpty ? move.to : move.to.appending(path: relative))
-            }
-            report.lines.append(
-                "Moved \(Paths.display(move.from)) to \(Paths.display(move.to))"
-                    + (move.changed == 0
-                        ? "" : ", pointing \(count(move.changed)) in it at the new places"))
-        }
-        for rewrite in plan.rewrites {
-            try write(rewrite.text, to: rewrite.file)
-            report.lines.append(
-                "Pointed \(count(rewrite.changed)) in \(Paths.display(rewrite.file)) at the new "
-                    + "places")
-        }
+        try moveAndPoint(plan, into: &report.lines)
 
         let backups = Backups()
         if plan.replacedLink != nil {
@@ -108,6 +92,28 @@ extension OldConfiguration {
         return plan.restarts
     }
 
+    /// Moves the scripts, then points every file that names them at their new place.
+    static func moveAndPoint(_ plan: Plan, into lines: inout [String]) throws {
+        let fm = FileManager.default
+        for move in plan.moves {
+            try fm.createDirectory(at: Paths.scriptsDirectory, withIntermediateDirectories: true)
+            try fm.copyItem(at: move.from, to: move.to)
+            for (relative, text) in move.texts.sorted(by: { $0.key < $1.key }) {
+                try write(text, to: relative.isEmpty ? move.to : move.to.appending(path: relative))
+            }
+            lines.append(
+                "Moved \(Paths.display(move.from)) to \(Paths.display(move.to))"
+                    + (move.changed == 0
+                        ? "" : ", pointing \(count(move.changed)) in it at the new places"))
+        }
+        for rewrite in plan.rewrites {
+            try write(rewrite.text, to: rewrite.file)
+            lines.append(
+                "Pointed \(count(rewrite.changed)) in \(Paths.display(rewrite.file)) at the new "
+                    + "places")
+        }
+    }
+
     static func count(_ number: Int) -> String { number == 1 ? "1 path" : "\(number) paths" }
 
     /// Writes through a link and keeps the file's permissions.
@@ -129,155 +135,5 @@ extension OldConfiguration {
             results.append(await Setup.startService(daemon, integrations: integrations))
         }
         return results
-    }
-}
-
-extension OldConfiguration {
-    /// Puts back everything an archive holds. Refuses before changing
-    /// anything when a path it would restore has been used for something else.
-    public static func restore(
-        _ name: String, integrations: Integrations = Integrations()
-    ) async -> Report {
-        let archive = archive(named: name)
-        let outcome: Locked
-        do {
-            outcome = try await OperationLock.run {
-                var report = Report(lines: [], commands: [], archive: archive)
-                do {
-                    let restarts = try await restoreLocked(archive, into: &report)
-                    return Locked(report: report, restarts: restarts)
-                } catch {
-                    report.failure =
-                        report.lines.isEmpty
-                        ? error.localizedDescription
-                        : "Restoring stopped part way: \(error.localizedDescription)"
-                    return Locked(report: report, restarts: [])
-                }
-            }
-        } catch {
-            return Report(lines: [], commands: [], archive: archive, failure: error.localizedDescription)
-        }
-        var report = outcome.report
-        guard report.failure == nil else { return report }
-        report.commands = await restart(outcome.restarts, integrations: integrations)
-        return report
-    }
-
-    static func restoreLocked(_ archive: URL, into report: inout Report) async throws -> [Daemon] {
-        let fm = FileManager.default
-        let work = fm.temporaryDirectory.appending(path: "macarchy-restore-\(UUID())")
-        try fm.createDirectory(at: work, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(at: work) }
-        let (manifest, files) = try await unpack(archive, into: work)
-        let home = Paths.home
-        func place(_ path: String) -> URL { home.appending(path: path) }
-        func copy(_ path: String) -> URL { files.appending(path: path) }
-
-        var conflicts: [String] = []
-        for entry in manifest.entries {
-            let url = place(entry.path)
-            switch entry.action {
-            case .moved, .removed:
-                guard exists(url) else { continue }
-                if !isFolder(url), !isLink(url), fm.contentsEqual(atPath: url.path, andPath: copy(entry.path).path) {
-                    continue
-                }
-                conflicts.append(Paths.display(url))
-            case .link:
-                let allowed = Set(manifest.launchers.map { place($0).lastPathComponent } + [".DS_Store"])
-                if isLink(url) || (exists(url) && !isFolder(url)) {
-                    conflicts.append(Paths.display(url))
-                } else if let names = try? fm.contentsOfDirectory(atPath: url.path),
-                    !names.allSatisfy(allowed.contains)
-                {
-                    conflicts.append(Paths.display(url))
-                }
-            case .rewritten: continue
-            }
-        }
-        guard conflicts.isEmpty else {
-            throw ConfigurationError(
-                "Nothing was restored, because these are in use again: "
-                    + conflicts.joined(separator: ", ")
-                    + ". Move them aside, then restore again.")
-        }
-
-        let rewritten = manifest.entries.filter { $0.action == .rewritten }.map { place($0.path) }
-            .filter { fm.fileExists(atPath: $0.path) }
-        if !rewritten.isEmpty {
-            try SnapshotStore().capture(rewritten, reason: "before restoring old configuration")
-        }
-        var daemons = Set<Daemon>()
-        for entry in manifest.entries where entry.action == .link {
-            let folder = place(entry.path)
-            for launcher in manifest.launchers where exists(place(launcher)) {
-                try fm.removeItem(at: place(launcher))
-            }
-            if exists(folder) { try fm.removeItem(at: folder) }
-            try fm.createSymbolicLink(atPath: folder.path, withDestinationPath: entry.link ?? "")
-            report.lines.append("Put back the link at \(Paths.display(folder))")
-        }
-        if manifest.entries.allSatisfy({ $0.action != .link }) {
-            for launcher in manifest.launchers where exists(place(launcher)) {
-                try fm.removeItem(at: place(launcher))
-                report.lines.append("Deleted \(Paths.display(place(launcher)))")
-            }
-        }
-        for launcher in manifest.launchers {
-            let name = place(launcher).lastPathComponent
-            daemons.formUnion(StartLauncher.all.filter { $0.fileName == name }.map(\.daemon))
-        }
-        // Folders first, so the files inside one that went whole come back with it.
-        let restored = manifest.entries.filter { $0.action == .removed || $0.action == .moved }
-            .sorted { $0.path.split(separator: "/").count < $1.path.split(separator: "/").count }
-        for entry in restored where !exists(place(entry.path)) {
-            let url = place(entry.path)
-            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try fm.copyItem(at: copy(entry.path), to: url)
-            report.lines.append("Put back \(Paths.display(url))")
-        }
-        for entry in manifest.entries where entry.action == .moved {
-            guard let to = entry.to.map(place), exists(to) else { continue }
-            if let recorded = entry.hash, recorded == hash(of: to) {
-                try fm.removeItem(at: to)
-                report.lines.append("Deleted the moved copy \(Paths.display(to))")
-            } else {
-                report.lines.append(
-                    "Left \(Paths.display(to)), which changed after cleaning up; it is now "
-                        + "beside the original")
-            }
-        }
-        if let names = try? fm.contentsOfDirectory(atPath: Paths.scriptsDirectory.path),
-            names.allSatisfy({ $0 == ".DS_Store" })
-        {
-            try fm.removeItem(at: Paths.scriptsDirectory)
-        }
-        for entry in manifest.entries where entry.action == .rewritten {
-            let url = written(place(entry.path))
-            let staged = url.deletingLastPathComponent()
-                .appending(path: ".\(url.lastPathComponent).macarchy-restore")
-            try? fm.removeItem(at: staged)
-            try fm.copyItem(at: copy(entry.path), to: staged)
-            if fm.fileExists(atPath: url.path) {
-                _ = try fm.replaceItemAt(url, withItemAt: staged)
-            } else {
-                try fm.moveItem(at: staged, to: url)
-            }
-            report.lines.append("Put back \(Paths.display(url)) as it was")
-            if url == written(Paths.skhdrc) { daemons.insert(.skhd) }
-            if url == StartupConfiguration.yabairc.url { daemons.insert(.yabai) }
-            if url == StartupConfiguration.sketchybarrc.url { daemons.insert(.sketchybar) }
-            if url == StartupConfiguration.bordersrc.url { daemons.insert(.borders) }
-        }
-        let backups = Backups()
-        for daemon in [Daemon.yabai, .sketchybar] where daemons.contains(daemon) {
-            if DaemonAgents.isInstalled(daemon), Paths.isInstalled(daemon.executableName) {
-                try DaemonAgents.install(daemon, backups: backups, report: &report.lines)
-            }
-        }
-        return Daemon.allCases.filter {
-            daemons.contains($0) && Paths.isInstalled($0.executableName)
-                && DaemonAgents.isInstalled($0)
-        }
     }
 }

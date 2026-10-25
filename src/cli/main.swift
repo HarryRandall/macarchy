@@ -140,31 +140,7 @@ do {
         let options = try parse(
             flags: ["--apply", "--restore"], values: 0...1,
             conflicting: [["--apply", "--restore"]])
-        let restoring = options.flags.contains("--restore")
-        if restoring != (options.values.count == 1) {
-            throw CommandArguments.Invalid(
-                message: restoring
-                    ? "Missing argument: the archive to restore"
-                    : "Unexpected argument \(options.values.first ?? "")",
-                usage: usage(of: command))
-        }
-        guard restoring || options.flags.contains("--apply") else {
-            let plan = await OldConfiguration.plan()
-            print(plan.text)
-            if plan.refusal != nil { exit(1) }
-            if plan.hasChanges { print("\nNothing was changed. Do it with: macarchy cleanup --apply") }
-            break
-        }
-        let report =
-            restoring
-            ? await OldConfiguration.restore(options.values[0])
-            : await OldConfiguration.apply()
-        for line in report.lines { print(line) }
-        for command in report.commands {
-            print(command.ok ? "Restarted: \(command.command)" : "Not restarted: \(command.summary)")
-        }
-        if let failure = report.failure { throw ConfigurationError(failure) }
-        if report.commands.contains(where: { !$0.ok }) { exit(1) }
+        try await cleanUp(options, usage: usage(of: command))
     case "apply":
         _ = try parse()
         try await DesktopConfiguration.apply()
@@ -328,24 +304,7 @@ do {
             announce(WidgetActions.triggerNotification, ["event": value])
         }
     case "restore":
-        let options = try parse(flags: ["--apply"], values: 1...1)
-        let store = SnapshotStore()
-        guard let snapshot = store.list().first(where: { $0.id == options.values[0] }) else {
-            throw ConfigurationError(
-                "Snapshot \(options.values[0]) not found. Snapshots are listed in Advanced.")
-        }
-        func restoredLine(_ files: [URL]) -> String {
-            "Restored " + files.map { Paths.display($0) }.joined(separator: ", ") + "."
-        }
-        if options.flags.contains("--apply") {
-            let files = try await DesktopConfiguration.restore(snapshot, store: store)
-            print(restoredLine(files) + " Applied snapshot \(snapshot.id).")
-        } else {
-            let files = try await store.restoreLocked(snapshot)
-            print(
-                restoredLine(files) + " Update the desktop with: macarchy restore \(snapshot.id)"
-                    + " --apply, or macarchy apply if your shortcuts are unchanged.")
-        }
+        try await restore(try parse(flags: ["--apply"], values: 1...1))
     case "", "help", "--help", "-h":
         print(usage)
     default:

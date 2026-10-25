@@ -20,7 +20,7 @@ extension LegacyLayout {
     /// Earlier defaults ran the command as
     /// `"$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy"`, and
     /// people copied that into their own shortcuts and keep regions. The link
-    /// `move` leaves keeps those working until uninstall, so rewriting is for
+    /// `move` leaves keeps those working until cleaning up, so rewriting is for
     /// the long run, and a spelling it cannot rewrite safely, such as one
     /// inside single quotes, is left for the link to serve. Accepted
     /// spellings: `$HOME`, `${HOME}`, `~` and the home folder itself, quoted

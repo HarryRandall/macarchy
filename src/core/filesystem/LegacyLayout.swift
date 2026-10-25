@@ -4,8 +4,10 @@ import Foundation
 /// Earlier versions kept everything in `~/.config/macarchy`. The first run of
 /// this version moves that folder into Application Support whole, so settings,
 /// themes and history carry over, and leaves a link in its place. The link
-/// stays until uninstall: startup files and shortcuts from the earlier version,
-/// and the person's own scripts, may still name the old folder.
+/// stays until the person cleans up (`OldConfiguration`), which replaces it
+/// with the launcher folder once nothing reads through it: startup files and
+/// shortcuts from the earlier version, and the person's own scripts, may
+/// still name the old folder.
 ///
 /// Whether to move is decided by the data, not by whether the new folder
 /// exists: a bar script or a command that runs first can create the new

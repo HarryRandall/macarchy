@@ -74,8 +74,10 @@ struct OldPathScanner {
         scalars = Array(text.unicodeScalars)
         spellings = ["$HOME", "${HOME}"].map { Array($0.unicodeScalars) }
         self.home = Array(home.unicodeScalars)
-        self.mappings = mappings.map { (Array($0.old.unicodeScalars), Array($0.new.unicodeScalars)) }
-            .sorted { $0.old.count > $1.old.count }
+        self.mappings = mappings.map {
+            (Array($0.old.unicodeScalars), Array($0.new.unicodeScalars))
+        }
+        .sorted { $0.old.count > $1.old.count }
     }
 
     var text: String { String(output) }

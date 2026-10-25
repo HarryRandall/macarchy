@@ -57,7 +57,8 @@ extension OldConfiguration {
             let found = OldConfiguration.entries()
             entries = found.entries
             linkedFolders = found.linkedFolders
-            kinds = Dictionary(uniqueKeysWithValues: entries.map { ($0, OldConfiguration.kind(of: $0)) })
+            kinds = Dictionary(
+                uniqueKeysWithValues: entries.map { ($0, OldConfiguration.kind(of: $0)) })
             fixed = OldConfiguration.liveSources()
         }
 
@@ -97,7 +98,9 @@ extension OldConfiguration {
                     return [Unit(id: source.url.path, source: source, text: source.text)]
                 }
                 return OldConfiguration.commands(in: source.text).enumerated().map {
-                    Unit(id: "\(source.url.path)#\($0.offset)", source: source, text: $0.element.command)
+                    Unit(
+                        id: "\(source.url.path)#\($0.offset)", source: source,
+                        text: $0.element.command)
                 }
             }
         }
@@ -154,7 +157,8 @@ extension OldConfiguration {
                     {
                         guard let name = reference.name else { continue }
                         let entry = Entry(folder: reference.folder, name: name)
-                        guard present.contains(entry), !moving.contains(entry), pinned[entry] == nil,
+                        guard present.contains(entry), !moving.contains(entry),
+                            pinned[entry] == nil,
                             folderPins[entry.folder] == nil
                         else { continue }
                         if let reason = blocker(entry) {
@@ -165,7 +169,9 @@ extension OldConfiguration {
                         grew = true
                         let source = unit.source.url
                         let inOldFolder = OldConfiguration.homeRelative(source).map { path in
-                            OldConfiguration.folderNames.contains { path.hasPrefix(".config/\($0)/") }
+                            OldConfiguration.folderNames.contains {
+                                path.hasPrefix(".config/\($0)/")
+                            }
                         }
                         movedBy[entry] =
                             inOldFolder == true
@@ -259,7 +265,7 @@ extension OldConfiguration {
                 ).compactMap { reference in
                     reference.name.map { Entry(folder: reference.folder, name: $0) }
                 }
-                    .filter { moving.contains($0) }
+                .filter { moving.contains($0) }
                 if named.isEmpty {
                     failed.insert(unit.id)
                 } else {
@@ -291,7 +297,8 @@ extension OldConfiguration {
             case (_, .all):
                 return LegacyLayout.rewritingOldPaths(unit.text, home: home, mappings: mappings)
             case (_, .legacyRoot):
-                return LegacyLayout.rewritingOldPaths(unit.text, home: home, mappings: [.legacyRoot])
+                return LegacyLayout.rewritingOldPaths(
+                    unit.text, home: home, mappings: [.legacyRoot])
             }
         }
     }

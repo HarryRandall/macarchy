@@ -68,10 +68,13 @@ extension OldConfiguration {
         }
         for rewrite in plan.rewrites {
             entries.append(
-                .init(path: try relative(rewrite.file), action: .rewritten, hash: hash(of: rewrite.text)))
+                .init(
+                    path: try relative(rewrite.file), action: .rewritten,
+                    hash: hash(of: rewrite.text)))
         }
         if let link = plan.replacedLink {
-            entries.append(.init(path: try relative(Paths.launcherDirectory), action: .link, link: link))
+            entries.append(
+                .init(path: try relative(Paths.launcherDirectory), action: .link, link: link))
         }
         for launcher in plan.launchers {
             entries.append(.init(path: try relative(launcher.from), action: .removed))
@@ -80,7 +83,8 @@ extension OldConfiguration {
             entries.append(.init(path: try relative(item.path), action: .removed))
         }
         let launchers = try plan.launchers.map {
-            try relative(Paths.launcherDirectory.appending(path: "macarchy-\($0.daemon.rawValue)rc"))
+            try relative(
+                Paths.launcherDirectory.appending(path: "macarchy-\($0.daemon.rawValue)rc"))
         }
         return Manifest(created: stamp(), entries: entries, launchers: launchers)
     }
@@ -144,7 +148,8 @@ extension OldConfiguration {
     /// The archives cleaning up has written, newest first.
     public static var archives: [URL] {
         let names =
-            (try? FileManager.default.contentsOfDirectory(atPath: Paths.backupsDirectory.path)) ?? []
+            (try? FileManager.default.contentsOfDirectory(atPath: Paths.backupsDirectory.path))
+            ?? []
         return names.filter { $0.hasPrefix(archivePrefix) && $0.hasSuffix(".zip") }.sorted()
             .reversed().map { Paths.backupsDirectory.appending(path: $0) }
     }

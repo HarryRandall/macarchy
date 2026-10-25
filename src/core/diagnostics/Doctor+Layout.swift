@@ -77,7 +77,8 @@ extension Doctor {
         return HealthCheck(
             .configuration, "Old configuration", .warning,
             "Can be cleaned up: "
-                + (found.isEmpty ? "paths to point at the new places" : found.joined(separator: ", ")),
+                + (found.isEmpty
+                    ? "paths to point at the new places" : found.joined(separator: ", ")),
             fix: "Use Clean up old configuration in Advanced to see the plan; everything it "
                 + "deletes or changes is archived first",
             command: "\(Paths.cliInShell) cleanup")
