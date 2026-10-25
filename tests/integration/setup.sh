@@ -293,4 +293,28 @@ grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 rm "$MACARCHY_SEARCH_PATH/launchctl"
 
+# A Space click still reaches a custom yabai in Macarchy's bin, whose path has
+# a space in it. The bar script runs in a home of its own with fake tools.
+BAR_HOME="$HOME_DIR/bar-home"
+BAR_BIN="$BAR_HOME/Library/Application Support/Macarchy/bin"
+mkdir -p "$BAR_BIN"
+cat > "$BAR_BIN/yabai" <<SH
+#!/bin/sh
+case "\$*" in
+  "-m query"*) echo '[]' ;;
+  *) printf '%s\n' "yabai \$*" >>'$CALLS' ;;
+esac
+SH
+printf '#!/bin/sh\ncat >/dev/null\nprintf "1\\t1\\t\\n"\n' > "$BAR_BIN/jq"
+cat > "$BAR_BIN/sketchybar" <<SH
+#!/bin/sh
+printf '%s\n' "\$@" >'$HOME_DIR/bar-arguments'
+SH
+chmod +x "$BAR_BIN/yabai" "$BAR_BIN/jq" "$BAR_BIN/sketchybar"
+: > "$CALLS"
+HOME="$BAR_HOME" "$REPO/resources/integrations/sketchybar/plugins/spaces.sh" --reconcile
+CLICK="$(grep -m1 '^click_script=' "$HOME_DIR/bar-arguments")" || fail "no Space click script"
+sh -c "${CLICK#click_script=}" || fail "Space click script failed: $CLICK"
+grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach yabai: $CLICK"
+
 echo "setup integration test passed"
