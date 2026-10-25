@@ -101,4 +101,22 @@ struct DesktopIsolationTests {
         #expect(!result.skipped.isEmpty)
         #expect(try Wallpaper.set(URL(fileURLWithPath: "/System")) == .skipped)
     }
+
+    @Test("the person's own scripts are only ever checked, never run")
+    func personalScripts() {
+        let mine = [
+            "/tmp/home/Library/Application Support/Macarchy/scripts", "/tmp/home/.config/yabai"
+        ]
+        func refusal(_ executable: String, _ arguments: [String] = []) -> String? {
+            DesktopIsolation.refusal(
+                executable, arguments, allowedRoots: ["/tmp/home"], personalScripts: mine)
+        }
+        let script = "/tmp/home/.config/yabai/switch_space_native.sh"
+        #expect(refusal(script, ["3"]) != nil)
+        #expect(refusal("/bin/bash", [script, "3"]) != nil)
+        #expect(refusal("/bin/sh", ["-e", mine[0] + "/launch.sh"]) != nil)
+        #expect(refusal("/bin/bash", ["-n", script]) == nil)
+        #expect(refusal("/bin/zsh", ["-n", script]) == nil)
+        #expect(refusal("/bin/bash", ["/tmp/home/other.sh"]) == nil)
+    }
 }

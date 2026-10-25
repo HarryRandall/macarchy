@@ -44,17 +44,34 @@ public enum DesktopIsolation {
         let allowed =
             [environment["MACARCHY_HOME"]].compactMap { $0 }
             + (environment["MACARCHY_SEARCH_PATH"] ?? "").split(separator: ":").map(String.init)
-        return refusal(executable, arguments, allowedRoots: allowed)
+        let personal =
+            [Paths.scriptsDirectory.path]
+            + ["yabai", "skhd", "borders", "sketchybar"].map {
+                Paths.home.appending(path: ".config/\($0)").path
+            }
+        return refusal(
+            executable, arguments, allowedRoots: allowed, personalScripts: personal)
     }
 
     /// The rule itself, with its inputs passed in so it can be tested
     /// without changing the process environment.
+    ///
+    /// The person's own scripts, in `personalScripts`, may only have their
+    /// syntax checked: they often name Homebrew's daemons in full, so
+    /// running one would drive the real desktop whatever the home is.
     static func refusal(
-        _ executable: String, _ arguments: [String], allowedRoots: [String]
+        _ executable: String, _ arguments: [String], allowedRoots: [String],
+        personalScripts: [String] = []
     )
         -> String?
     {
         let name = URL(fileURLWithPath: executable).lastPathComponent
+        let shells: Set<String> = ["bash", "sh", "zsh"]
+        let script = shells.contains(name) ? arguments.first { !$0.hasPrefix("-") } : executable
+        if arguments.first != "-n", let script, inside(script, roots: personalScripts) {
+            return "\(URL(fileURLWithPath: script).lastPathComponent) was not run: a script of "
+                + "your own is only checked in a run isolated from the desktop"
+        }
         guard sessionTools.contains(name) || managedTools.contains(name) else { return nil }
         return inside(executable, roots: allowedRoots)
             ? nil : "\(name) was not run: this run is isolated from the desktop"
