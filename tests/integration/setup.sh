@@ -120,7 +120,11 @@ assert [c["side"] for c in bar["components"]] == ["left"] + ["right"] * 6
 assert bar["geometry"]["height"] == "35" and bar["geometry"]["sticky"] == "on"
 assert bar["geometry"]["padding_left"] == "10" and bar["geometry"]["blur_radius"] == "0"
 PY2
-[ -e "$HOME_DIR/.config/macarchy" ] && fail "the old folder was created"
+# A new install keeps its launchers in a real folder, with nothing else in it.
+[ -d "$HOME_DIR/.config/macarchy" ] && [ ! -L "$HOME_DIR/.config/macarchy" ] \
+  || fail "the launcher folder is missing or a link"
+[ "$(ls -A "$HOME_DIR/.config/macarchy" | tr '\n' ' ')" = "macarchy-sketchybarrc macarchy-yabairc " ] \
+  || fail "the launcher folder holds more than the launchers: $(ls -A "$HOME_DIR/.config/macarchy")"
 grep -q '"window_gap" : 12' "$SETTINGS" || fail "yabai window_gap not adopted"
 grep -q '"layout" : "float"' "$SETTINGS" || fail "yabai layout not adopted"
 grep -q 'for app in Calculator Finder; do' "$CONFIG/yabairc" || fail "loop not kept"
@@ -152,10 +156,10 @@ done
 # they start from launchers in their own folders, whose paths have no space,
 # and each hands over to Macarchy's file. The kept bar's items also see its
 # folder as $CONFIG_DIR.
-YABAI_LAUNCHER="$HOME_DIR/.config/yabai/macarchy-yabairc"
-LAUNCHER="$HOME_DIR/.config/sketchybar/macarchy-sketchybarrc"
+YABAI_LAUNCHER="$HOME_DIR/.config/macarchy/macarchy-yabairc"
+LAUNCHER="$HOME_DIR/.config/macarchy/macarchy-sketchybarrc"
 [ "$(argument yabai 2)" = "$YABAI_LAUNCHER" ] || fail "yabai agent does not start from its launcher"
-[ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start the kept bar from its folder"
+[ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start from its launcher"
 grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/yabairc" "$@"$' "$YABAI_LAUNCHER" \
   || fail "launcher does not hand over to Macarchy's yabairc"
 grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"$' "$LAUNCHER" \
@@ -189,6 +193,7 @@ for daemon in yabai skhd sketchybar borders; do
 done
 [ -e "$YABAI_LAUNCHER" ] && fail "uninstall left the yabai launcher"
 [ -e "$LAUNCHER" ] && fail "uninstall left the bar launcher"
+[ -e "$HOME_DIR/.config/macarchy" ] && fail "uninstall left the launcher folder"
 [ -f "$SETTINGS" ] || fail "uninstall removed settings"
 
 # A replaced setup starts from defaults and still leaves the person's files alone.
@@ -427,3 +432,4 @@ grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach 
 
 echo "setup integration test passed"
 "$REPO/tests/integration/upgrade.sh"
+"$REPO/tests/integration/cleanup.sh"
