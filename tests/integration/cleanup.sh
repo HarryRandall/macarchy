@@ -34,6 +34,8 @@ make_home() {
   cp -R "$REPO/tests/fixtures/upgrade/home/." "$H/"
   cp -R "$REPO/tests/fixtures/cleanup/home/." "$H/"
   mkdir -p "$H/.config/yabai/examples"
+  # Git keeps only whether a file is executable; the owner's state file is private.
+  chmod 600 "$H/.config/yabai/float_state.json"
   grep -rlI '@HOME@' "$H" | while IFS= read -r file; do
     sed -i '' "s#@HOME@#$H#g" "$file"
   done
@@ -152,7 +154,7 @@ grep -qx '  ~/.config/zsh/.zshrc' <<<"$PLAN" || fail "plan does not point the zs
 grep -qx '  ~/.config/nvim/lua/config/theme.lua' <<<"$PLAN" || fail "plan does not point the Neovim line: $PLAN"
 grep -q 'Make ~/.config/macarchy a folder for Macarchy' <<<"$PLAN" || fail "plan keeps the link: $PLAN"
 grep -qx '  ~/.config/yabai/space_cycle.sh' <<<"$PLAN" || fail "plan does not leave an unused script: $PLAN"
-grep -q 'reads it through \$CONFIG_DIR' <<<"$PLAN" || fail "plan does not keep the bar the owner still runs: $PLAN"
+grep -qx '  ~/.config/sketchybar' <<<"$PLAN" || fail "plan does not delete the old bar: $PLAN"
 grep -q 'Nothing was changed' <<<"$PLAN" || fail "dry run does not say nothing changed"
 
 # skhd's restart reads the real Secure Keyboard Entry state, which a locked
@@ -182,7 +184,7 @@ bash -n "$CONFIG/yabairc" || fail "yabairc no longer parses"
 # never run: running one would drive the real desktop.
 for script in "$ROOT"/scripts/*; do bash -n "$script" || fail "$script no longer parses"; done
 
-# Unused scripts and what they use stay, and so does the bar the owner runs.
+# Unused scripts and what they use stay.
 for file in space_cycle.sh switch_space_macos27.sh sync_float_rules.sh toggle_float_persist.sh \
   apply_float_state.sh float_state.json; do
   [ -e "$H/.config/yabai/$file" ] || fail "$file was removed although nothing moved it"
@@ -194,21 +196,24 @@ for gone in yabairc macarchy-yabairc examples swap_space_and_refresh.sh.backup-2
 done
 [ -e "$H/.config/skhd" ] && fail "the old shortcuts folder was not deleted"
 [ -e "$H/.config/borders" ] && fail "the old borders folder was not deleted"
-[ -f "$H/.config/sketchybar/plugins/battery.sh" ] || fail "the bar the owner runs was deleted"
-grep -q '.config/macarchy' "$H/.config/sketchybar/colors.sh" && fail "the bar's colours still read through the link"
+[ -e "$H/.config/sketchybar" ] && fail "the old bar was not deleted"
 
 # The launcher folder is real and holds only the launchers, which the
 # daemons run through sh as the real ones do.
 [ -d "$LINK" ] && [ ! -L "$LINK" ] || fail "~/.config/macarchy is still a link"
-[ "$(ls -A "$LINK")" = macarchy-yabairc ] || fail "the launcher folder holds more than its launcher: $(ls -A "$LINK")"
+[ "$(ls -A "$LINK" | tr '\n' ' ')" = "macarchy-sketchybarrc macarchy-yabairc " ] \
+  || fail "the launcher folder does not hold just the launchers: $(ls -A "$LINK")"
 YABAI_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist")"
 [ "$YABAI_START" = "$LINK/macarchy-yabairc" ] || fail "yabai does not start from the launcher folder: $YABAI_START"
 BAR_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.sketchybar.plist")"
-[ "$BAR_START" = "$H/.config/sketchybar/macarchy-sketchybarrc" ] || fail "the bar's launcher moved from its folder: $BAR_START"
+[ "$BAR_START" = "$LINK/macarchy-sketchybarrc" ] || fail "the bar does not start from the launcher folder: $BAR_START"
 : > "$CALLS"
 OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file did not apply the layout: $OUTPUT"
 grep -qx 'sudo yabai --load-sa' "$CALLS" || fail "the owner's yabai region did not run: $OUTPUT"
+: > "$CALLS"
+OUTPUT="$(run_agent sketchybar 2>&1)" || fail "the bar did not run its startup file: $OUTPUT"
+grep -q '^sketchybar --update' "$CALLS" || fail "the bar's startup file did not run: $OUTPUT"
 
 # zsh and Neovim read the new folder.
 VALUE="$(HOME="$H" zsh -fc "$(grep '^_MACARCHY_SHELL_ENV=' "$H/.config/zsh/.zshrc"); print -r -- \$_MACARCHY_SHELL_ENV")"
@@ -240,25 +245,24 @@ AFTER="$(tree)"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"
 grep -q 'warn Old configuration' <<<"$DOCTOR" || fail "doctor does not offer the cleanup again: $DOCTOR"
 
-# Once Macarchy's widget bar is the only bar, the old bar goes too and the
-# bar's launcher joins yabai's.
-make_home widgets
+# A region of Macarchy's sketchybarrc that still reads $CONFIG_DIR keeps
+# the old bar folder, and the bar's launcher in it, since SketchyBar gives
+# that variable the launcher's folder.
+make_home bar
 python3 - "$CONFIG/sketchybarrc" <<'PY'
-import re, sys
+import sys
 path = sys.argv[1]
-text = open(path).read()
-text = re.sub(r"(# >>> macarchy:keep yours\n).*?(# <<< macarchy:keep)", r"\1\2", text, flags=re.S)
+text = open(path).read().replace(
+    "# >>> macarchy:keep yours\n", '# >>> macarchy:keep yours\nsource "$CONFIG_DIR/colors.sh"\n')
 open(path, "w").write(text)
 PY
+OUTPUT="$("$CLI" cleanup)"
+grep -q 'reads it through \$CONFIG_DIR' <<<"$OUTPUT" || fail "plan does not keep the bar folder: $OUTPUT"
 apply
-[ -e "$H/.config/sketchybar" ] && fail "the old bar was not deleted: $OUTPUT"
-[ "$(ls -A "$LINK" | tr '\n' ' ')" = "macarchy-sketchybarrc macarchy-yabairc " ] \
-  || fail "the launcher folder does not hold both launchers: $(ls -A "$LINK")"
-BAR_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.sketchybar.plist")"
-[ "$BAR_START" = "$LINK/macarchy-sketchybarrc" ] || fail "the bar does not start from the launcher folder: $BAR_START"
-: > "$CALLS"
-OUTPUT="$(run_agent sketchybar 2>&1)" || fail "the bar did not run its startup file: $OUTPUT"
-grep -q '^sketchybar --update' "$CALLS" || fail "the bar's startup file did not run: $OUTPUT"
+[ -f "$H/.config/sketchybar/colors.sh" ] || fail "the bar folder its region reads was deleted"
+grep -q '.config/macarchy' "$H/.config/sketchybar/colors.sh" && fail "the bar's colours still read through the link"
+[ -f "$H/.config/sketchybar/macarchy-sketchybarrc" ] || fail "the bar's launcher left its folder"
+[ "$(ls -A "$LINK")" = macarchy-yabairc ] || fail "the launcher folder: $(ls -A "$LINK")"
 
 # A link at ~/.config/macarchy that something cleanup cannot change still
 # reads through stays, and so do the launchers.

@@ -117,13 +117,15 @@ extension OldConfiguration.Plan {
             link.append(
                 Line(
                     path: Paths.display(Paths.launcherDirectory),
-                    detail: "now a link to \(Paths.display(URL(fileURLWithPath: replacedLink)))"))
+                    detail: "replaces the link to "
+                        + Paths.display(URL(fileURLWithPath: replacedLink))))
         }
         link += launchers.map {
             Line(
                 path: Paths.display(
                     Paths.launcherDirectory.appending(path: "macarchy-\($0.daemon.rawValue)rc")),
-                detail: "\($0.daemon.displayName) starts here, moved from \(Paths.display($0.from))")
+                detail: "\($0.daemon.displayName) starts here, moved from \(Paths.display($0.from))"
+            )
         }
         add(
             replacedLink == nil
@@ -137,7 +139,8 @@ extension OldConfiguration.Plan {
         add(
             "Restart",
             restarts.isEmpty
-                ? [] : [Line(path: restarts.map(\.displayName).joined(separator: ", "), detail: "")])
+                ? [] : [Line(path: restarts.map(\.displayName).joined(separator: ", "), detail: "")]
+        )
         return sections
     }
 

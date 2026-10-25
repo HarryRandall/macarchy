@@ -103,7 +103,8 @@ extension OldConfiguration.Planner {
                     return $0.element.prefix + rewritten.text
                 }.joined(separator: "\n")
             } else {
-                let rewritten = rewrite(Unit(id: source.url.path, source: source, text: source.text))
+                let rewritten = rewrite(
+                    Unit(id: source.url.path, source: source, text: source.text))
                 changed = rewritten.changed
                 text = rewritten.text
             }
@@ -167,7 +168,9 @@ extension OldConfiguration.Planner {
             return false
         }
         parts += startup.map { "the old \($0.name)" }
-        if inside.contains(where: { kinds[$0] == .launcher }) { parts.append("Macarchy's launcher") }
+        if inside.contains(where: { kinds[$0] == .launcher }) {
+            parts.append("Macarchy's launcher")
+        }
         let backups = inside.filter { kinds[$0] == .backup }.count
         if backups > 0 { parts.append(backups == 1 ? "a backup copy" : "\(backups) backup copies") }
         let empty = inside.filter { kinds[$0] == .empty }.count
@@ -181,7 +184,8 @@ extension OldConfiguration.Planner {
             : parts.dropLast().joined(separator: ", ")
                 + (parts.count > 1 ? " and " : "") + (parts.last ?? "")
         if moved > 0 {
-            text = "once \(moved == 1 ? "1 script moves" : "\(moved) scripts move"), only "
+            text =
+                "once \(moved == 1 ? "1 script moves" : "\(moved) scripts move"), only "
                 + text + " is left"
         }
         return text + "; Macarchy reads none of it"
@@ -196,7 +200,8 @@ extension OldConfiguration.Planner {
             items.append(
                 .init(
                     path: folder,
-                    reason: "a link to \(target.map { Paths.display($0.standardizedFileURL) } ?? "a folder"), "
+                    reason:
+                        "a link to \(target.map { Paths.display($0.standardizedFileURL) } ?? "a folder"), "
                         + "as dotfiles make it; cleanup leaves what is there"))
         }
         let pinnedFolders = Set(folderPins.keys)
@@ -226,7 +231,8 @@ extension OldConfiguration.Planner {
         let written = Set(plan.rewrites.map(\.file.path))
         if written.contains(OldConfiguration.written(Paths.skhdrc).path) { daemons.insert(.skhd) }
         let files: [(GeneratedFile, Daemon)] = [
-            (StartupConfiguration.yabairc, .yabai), (StartupConfiguration.sketchybarrc, .sketchybar),
+            (StartupConfiguration.yabairc, .yabai),
+            (StartupConfiguration.sketchybarrc, .sketchybar),
             (StartupConfiguration.bordersrc, .borders)
         ]
         for (file, daemon) in files where written.contains(file.url.path) { daemons.insert(daemon) }

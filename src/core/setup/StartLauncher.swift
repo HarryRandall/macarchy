@@ -17,9 +17,8 @@ import Foundation
 /// one is not, or while an upgrade's link still stands at the launcher
 /// folder; only `OldConfiguration` moves it, with that link.
 ///
-/// SketchyBar sets `$CONFIG_DIR`, and its working folder, to the folder of
-/// the file it starts with and passes both to every item script. Macarchy's
-/// bar names its scripts in full and does not mind where that is.
+/// SketchyBar sets `$CONFIG_DIR` to the folder of the file it starts with;
+/// Macarchy's bar names everything in full and does not mind where that is.
 ///
 /// borders needs none: launchd runs bordersrc itself, with no shell between.
 /// skhd only reads its file.
@@ -70,35 +69,27 @@ public struct StartLauncher: Sendable, Equatable {
 
     /// Identifies the file as Macarchy's, so setup may replace it and
     /// uninstall remove it. SketchyBar's matches what earlier versions wrote.
-    var marker: String { "# Written by Macarchy for its \(daemon.displayName) agent." }
+    var marker: String { Self.marker(daemon) }
 
-    var content: String { content(at: url) }
+    static func marker(_ daemon: Daemon) -> String {
+        "# Written by Macarchy for its \(daemon.displayName) agent."
+    }
 
-    /// The launcher as written at `place`. One left in a tool's own folder
-    /// still says why SketchyBar's is there.
-    func content(at place: URL) -> String {
+    /// The launcher, the same wherever it is.
+    var content: String {
         let home = Paths.home.path
         let path = target.path
         let spelled = path.hasPrefix(home + "/") ? "$HOME" + path.dropFirst(home.count) : path
-        let why: String
-        switch daemon {
-        case .sketchybar where place == legacyURL:
-            why = """
-                # SketchyBar runs the file it starts with through sh, which splits a path
-                # with a space, and gives your items this folder as $CONFIG_DIR, as it did
-                # before Macarchy. The bar itself, with your own region:
-                """
-        case .sketchybar:
-            why = """
-                # SketchyBar runs the file it starts with through sh, which splits a path
-                # with a space, so it starts here. The bar and your own region:
-                """
-        default:
-            why = """
-                # yabai runs the file it starts with through sh, which splits a path with
-                # a space, so it starts here. Layout, rules and your own region:
-                """
-        }
+        let why =
+            daemon == .sketchybar
+            ? """
+            # SketchyBar runs the file it starts with through sh, which splits a path
+            # with a space, so it starts here. The bar and your own region:
+            """
+            : """
+            # yabai runs the file it starts with through sh, which splits a path with
+            # a space, so it starts here. Layout, rules and your own region:
+            """
         return """
             #!/bin/bash
             \(marker)
@@ -114,8 +105,7 @@ public struct StartLauncher: Sendable, Equatable {
     public var isMacarchys: Bool { Self.isMacarchys(at: url, daemon: daemon) }
 
     static func isMacarchys(at url: URL, daemon: Daemon) -> Bool {
-        let marker = "# Written by Macarchy for its \(daemon.displayName) agent."
-        return (try? String(contentsOf: url, encoding: .utf8))?.contains(marker) == true
+        (try? String(contentsOf: url, encoding: .utf8))?.contains(marker(daemon)) == true
     }
 
     /// Whether setup still has to write it.
@@ -126,11 +116,8 @@ public struct StartLauncher: Sendable, Equatable {
         guard !isCurrent else { return nil }
         let exists = FileManager.default.fileExists(atPath: url.path)
         let reason =
-            daemon == .sketchybar && url == legacyURL
-            ? "SketchyBar cannot start a file in Application Support, whose name has a space, "
-                + "and your bar's items find their files in this folder"
-            : "\(daemon.displayName) cannot start a file in Application Support, whose name "
-                + "has a space"
+            "\(daemon.displayName) cannot start a file in Application Support, whose name has a "
+            + "space"
         return Setup.Change(
             path: url, action: exists ? .replace : .create,
             detail: "Starts \(daemon.displayName) here and hands over to "
@@ -146,7 +133,6 @@ public struct StartLauncher: Sendable, Equatable {
     /// Writes the launcher at `destination`, which cleanup uses to move it
     /// into the launcher folder.
     func place(at destination: URL, backups: Backups) throws -> [String] {
-        let content = content(at: destination)
         guard (try? String(contentsOf: destination, encoding: .utf8)) != content else { return [] }
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path),

@@ -43,8 +43,9 @@ extension OldConfiguration {
 
         func reason(_ entry: Entry) -> String {
             switch self {
-            case .launcher: "Macarchy's launcher, which now goes in "
-                + Paths.display(Paths.launcherDirectory)
+            case .launcher:
+                "Macarchy's launcher, which now goes in "
+                    + Paths.display(Paths.launcherDirectory)
             case .startupFile(true):
                 "written by an earlier version; Macarchy runs config/\(entry.name) now"
             case .startupFile(false):
@@ -132,7 +133,8 @@ extension OldConfiguration {
             for name in folderNames {
                 let suffix = Array("/.config/\(name)".unicodeScalars)
                 for end in occurrences(of: suffix, in: scalars, home: home) {
-                    found.formUnion(reference(after: end, in: scalars, folder: name).map { [$0] } ?? [])
+                    found.formUnion(
+                        reference(after: end, in: scalars, folder: name).map { [$0] } ?? [])
                 }
             }
         }
@@ -141,12 +143,15 @@ extension OldConfiguration {
 
     /// What follows a folder's path at `end`: an entry, the whole folder, or
     /// nothing when the name only starts the same, as `yabai-old` does.
-    private static func reference(after end: Int, in scalars: [Unicode.Scalar], folder: String)
+    private static func reference(
+        after end: Int, in scalars: [Unicode.Scalar], folder: String
+    )
         -> Reference?
     {
         guard end < scalars.count else { return Reference(folder: folder, name: nil) }
         if scalars[end] != "/" {
-            return nameCharacters.contains(scalars[end]) ? nil : Reference(folder: folder, name: nil)
+            return nameCharacters.contains(scalars[end])
+                ? nil : Reference(folder: folder, name: nil)
         }
         var cursor = end + 1
         var name = String.UnicodeScalarView()

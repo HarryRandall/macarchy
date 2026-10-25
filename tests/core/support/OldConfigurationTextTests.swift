@@ -29,8 +29,12 @@ struct OldConfigurationTextTests {
                 == [Reference(folder: "yabai", name: "float_state.json")])
         #expect(found("cd ~/.config/yabai && ./x") == [Reference(folder: "yabai", name: nil)])
         #expect(
-            found("source \"$HOME/.config/yabai/$NAME.sh\"") == [Reference(folder: "yabai", name: nil)])
-        #expect(found("x \"$HOME/.config/yabai/lib/*.sh\"") == [Reference(folder: "yabai", name: "lib")])
+            found("source \"$HOME/.config/yabai/$NAME.sh\"") == [
+                Reference(folder: "yabai", name: nil)
+            ])
+        #expect(
+            found("x \"$HOME/.config/yabai/lib/*.sh\"") == [Reference(folder: "yabai", name: "lib")]
+        )
         // Comments, other folders and paths that only start the same are not references.
         #expect(found("# Original config: ~/.config/skhd/skhdrc.backup").isEmpty)
         #expect(found("x : ~/.config/yabai-old/run.sh").isEmpty)
@@ -61,7 +65,9 @@ struct OldConfigurationTextTests {
             LegacyLayout.rewritingOldPaths(text, home: "/Users/a", mappings: [mapping, .legacyRoot])
         }
         let new = "$HOME/Library/Application Support/Macarchy/scripts/launch.sh"
-        #expect(rewritten("x : /bin/bash \"$HOME/.config/yabai/launch.sh\" 1").text == "x : /bin/bash \"\(new)\" 1")
+        #expect(
+            rewritten("x : /bin/bash \"$HOME/.config/yabai/launch.sh\" 1").text
+                == "x : /bin/bash \"\(new)\" 1")
         #expect(rewritten("x : ~/.config/yabai/launch.sh 1").text == "x : \"\(new)\" 1")
         #expect(rewritten("x : /Users/a/.config/yabai/launch.sh").text == "x : \"\(new)\"")
         #expect(
@@ -82,10 +88,16 @@ struct OldConfigurationTextTests {
         }
         #expect(
             rewritten("M.f = vim.fn.expand(\"~/.config/macarchy/generated/nvim-colorscheme\")")
-                == ("M.f = vim.fn.expand(\"~/Library/Application Support/Macarchy/generated/nvim-colorscheme\")", 1))
+                == (
+                    "M.f = vim.fn.expand(\"~/Library/Application Support/Macarchy/generated/nvim-colorscheme\")",
+                    1
+                ))
         #expect(
             rewritten("local f = os.getenv('HOME') .. '/.config/macarchy/generated/x'")
-                == ("local f = os.getenv('HOME') .. '/Library/Application Support/Macarchy/generated/x'", 1))
+                == (
+                    "local f = os.getenv('HOME') .. '/Library/Application Support/Macarchy/generated/x'",
+                    1
+                ))
         #expect(
             rewritten("io.open(\"/Users/a/.config/macarchy\")")
                 == ("io.open(\"/Users/a/Library/Application Support/Macarchy\")", 1))
@@ -147,6 +159,7 @@ struct OldConfigurationTextTests {
         #expect(OldConfiguration.shell(of: url, text: "#!/usr/bin/env python3\n") == nil)
         #expect(OldConfiguration.shell(of: url, text: "[]\n") == nil)
         #expect(
-            OldConfiguration.shell(of: URL(fileURLWithPath: "/tmp/x.sh"), text: "echo") == "/bin/bash")
+            OldConfiguration.shell(of: URL(fileURLWithPath: "/tmp/x.sh"), text: "echo")
+                == "/bin/bash")
     }
 }
