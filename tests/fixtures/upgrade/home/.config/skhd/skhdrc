@@ -1,0 +1,132 @@
+# Launch terminal
+ctrl - return : /bin/bash "$HOME/.config/yabai/launch_ghostty.sh"
+
+# Open Brave profile picker
+cmd + shift - m : open -na "Brave Browser" --args --profile-picker
+
+# Quit the application attached to the yabai-focused window.
+cmd - q : /bin/bash "$HOME/.config/yabai/quit_focused_window.sh"
+
+# In Messages, TablePlus, and Obsidian, Cmd+W should quit the app instead of just closing the window.
+cmd - w -> [
+    "Messages"  : osascript -e 'tell application "Messages" to quit'
+    "TablePlus" : osascript -e 'tell application "TablePlus" to quit'
+    "Obsidian"  : osascript -e 'tell application "Obsidian" to quit'
+    *           : "$HOME/.config/yabai/close_firefox_selector.sh"
+]
+
+# Media keys only control Spotify when Spotify is already running.
+play     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to playpause'
+next     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+fast     : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+previous : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+rewind   : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+
+# Toggle fullscreen
+ctrl - f : yabai -m window --toggle zoom-fullscreen
+
+# Open home folder in Finder
+cmd + shift - f : open "$HOME"
+
+# Toggle SketchyBar visibility
+cmd + shift - space : /bin/bash "$HOME/.config/yabai/toggle_sketchybar_visibility.sh"
+
+# Focus windows
+cmd - left  : yabai -m window --focus west
+cmd - down  : yabai -m window --focus south
+cmd - up    : yabai -m window --focus north
+cmd - right : yabai -m window --focus east
+ctrl - left  : yabai -m window --focus west
+ctrl - down  : yabai -m window --focus south
+ctrl - up    : yabai -m window --focus north
+ctrl - right : yabai -m window --focus east
+
+# Reorder windows
+cmd + shift - left  : yabai -m window --swap west; yabai -m window --focus west
+cmd + shift - down  : yabai -m window --swap south; yabai -m window --focus south
+cmd + shift - up    : yabai -m window --swap north; yabai -m window --focus north
+cmd + shift - right : yabai -m window --swap east; yabai -m window --focus east
+ctrl + shift - left  : yabai -m window --swap west; yabai -m window --focus west
+ctrl + shift - down  : yabai -m window --swap south; yabai -m window --focus south
+ctrl + shift - up    : yabai -m window --swap north; yabai -m window --focus north
+ctrl + shift - right : yabai -m window --swap east; yabai -m window --focus east
+
+# Switch workspaces
+# Native switching and move-and-follow verified with the macOS 27 fork.
+# Numbers above the current Space count are a silent no-op and begin working
+# on their own once you create that Space.
+cmd - 1 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 1
+cmd - 2 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 2
+cmd - 3 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 3
+cmd - 4 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 4
+cmd - 5 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 5
+cmd - 6 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 6
+cmd - 7 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 7
+cmd - 8 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 8
+cmd - 9 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 9
+cmd - 0 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 10
+ctrl - 1 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 1
+ctrl - 2 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 2
+ctrl - 3 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 3
+ctrl - 4 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 4
+ctrl - 5 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 5
+ctrl - 6 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 6
+ctrl - 7 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 7
+ctrl - 8 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 8
+ctrl - 9 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 9
+ctrl - 0 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 10
+
+# Swap current workspace with target workspace
+cmd + ctrl - 1 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 1
+cmd + ctrl - 2 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 2
+cmd + ctrl - 3 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 3
+cmd + ctrl - 4 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 4
+cmd + ctrl - 5 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 5
+cmd + ctrl - 6 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 6
+cmd + ctrl - 7 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 7
+cmd + ctrl - 8 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 8
+cmd + ctrl - 9 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 9
+cmd + ctrl - 0 : /bin/bash "$HOME/.config/yabai/swap_space_and_refresh.sh" 10
+
+# Move window to workspace and follow focus
+cmd + shift - 1 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 1 move
+cmd + shift - 2 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 2 move
+cmd + shift - 3 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 3 move
+cmd + shift - 4 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 4 move
+cmd + shift - 5 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 5 move
+cmd + shift - 6 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 6 move
+cmd + shift - 7 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 7 move
+cmd + shift - 8 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 8 move
+cmd + shift - 9 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 9 move
+cmd + shift - 0 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 10 move
+ctrl + shift - 1 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 1 move
+ctrl + shift - 2 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 2 move
+ctrl + shift - 3 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 3 move
+ctrl + shift - 4 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 4 move
+ctrl + shift - 5 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 5 move
+ctrl + shift - 6 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 6 move
+ctrl + shift - 7 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 7 move
+ctrl + shift - 8 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 8 move
+ctrl + shift - 9 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 9 move
+ctrl + shift - 0 : /bin/bash "$HOME/.config/yabai/switch_space_native.sh" 10 move
+
+# Toggle focused window floating / tiled and persist per-app preference
+ctrl - t : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" rules toggle
+
+# Toggle split direction
+ctrl - j : yabai -m window --toggle split
+
+# Rotate and rebalance current BSP layout
+ctrl - l : yabai -m space --rotate 90; yabai -m space --balance
+
+# Resize focused window
+ctrl - 0x18 : yabai -m window --ratio rel:0.05
+ctrl - 0x1B : yabai -m window --ratio rel:-0.05
+
+# Screenshot (interactive, to clipboard)
+ctrl + shift - s : screencapture -i -c -x
+
+# Cycle Macarchy themes directly
+cmd + ctrl - 0x18 : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next
+cmd + ctrl + shift - 0x18 : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme next
+cmd + ctrl - 0x1B : "$HOME/.config/macarchy/Macarchy.app/Contents/MacOS/macarchy" theme prev

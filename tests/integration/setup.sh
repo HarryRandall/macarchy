@@ -193,8 +193,9 @@ grep -q 'config-file' "$HOME_DIR/.config/ghostty/config" && fail "include in an 
 cp "$SETTINGS" "$HOME_DIR/settings.saved"
 rm -rf "$SUPPORT" "$HOME_DIR/.config" "$ROOT"
 
-# An install from before Application Support moves across, keeps working
-# through a link until setup runs, and setup then retires the old folder.
+# An install from before Application Support moves across and keeps working
+# through a link, which setup keeps for files that still name the old folder
+# and uninstall removes. tests/integration/upgrade.sh covers a full upgrade.
 OLD="$HOME_DIR/.config/macarchy"
 mkdir -p "$OLD/themes/mine" "$HOME_DIR/.config/ghostty"
 cp "$HOME_DIR/settings.saved" "$OLD/settings.json"
@@ -204,11 +205,13 @@ echo "config-file = ?$OLD/generated/ghostty.conf" > "$HOME_DIR/.config/ghostty/c
 [ -d "$ROOT/themes/mine" ] || fail "themes not moved"
 [ -L "$OLD" ] || fail "no link left at the old folder"
 "$CLI" setup --keep --no-apply >/dev/null
-[ -e "$OLD" ] && fail "old folder link kept after setup"
+[ -L "$OLD" ] || fail "old folder link removed by setup"
+grep -q 'Set up before Macarchy moved' <<<"$("$CLI" doctor 2>&1 || true)" && fail "setup still needed after setup"
 grep -q "$OLD" "$HOME_DIR/.config/ghostty/config" && fail "old Ghostty include kept"
 grep -q 'Application Support/Macarchy/generated/ghostty.conf' "$HOME_DIR/.config/ghostty/config" \
   || fail "Ghostty include not moved"
 "$CLI" uninstall >/dev/null
+[ -e "$OLD" ] && fail "old folder link kept after uninstall"
 
 # An uninstall that stops part way says what it had already restored, and a
 # second run finishes. Backups are restored in path order, so Ghostty's
@@ -287,3 +290,4 @@ grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 rm "$MACARCHY_SEARCH_PATH/launchctl"
 
 echo "setup integration test passed"
+"$REPO/tests/integration/upgrade.sh"

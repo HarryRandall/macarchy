@@ -1,0 +1,39 @@
+{
+  "entries" : {
+    "@HOME@/.config/borders/bordersrc" : {
+      "file" : {
+        "_0" : "2-bordersrc"
+      }
+    },
+    "@HOME@/.config/sketchybar/sketchybarrc" : {
+      "file" : {
+        "_0" : "1-sketchybarrc"
+      }
+    },
+    "@HOME@/.config/yabai/yabairc" : {
+      "file" : {
+        "_0" : "0-yabairc"
+      }
+    },
+    "@HOME@/Library/Application Support/com.mitchellh.ghostty/config.ghostty" : {
+      "file" : {
+        "_0" : "3-config.ghostty"
+      }
+    },
+    "@HOME@/Library/LaunchAgents/homebrew.mxcl.borders.plist" : {
+      "absent" : {
+
+      }
+    },
+    "@HOME@/Library/LaunchAgents/io.github.harryrandall.macarchy.borders.plist" : {
+      "absent" : {
+
+      }
+    },
+    "@HOME@/Library/LaunchAgents/sh.brew.borders.plist" : {
+      "file" : {
+        "_0" : "5-sh.brew.borders.plist"
+      }
+    }
+  }
+}

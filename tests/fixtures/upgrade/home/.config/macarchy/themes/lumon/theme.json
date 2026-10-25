@@ -1,0 +1,14 @@
+{
+  "apps" : {
+    "ghosttyConfig" : "ghostty.conf",
+    "nvimColorscheme" : "lumon"
+  },
+  "colors" : {
+    "borderActive" : "0xfff2fcff",
+    "borderInactive" : "0x00000000"
+  },
+  "dark" : true,
+  "name" : "lumon",
+  "schema" : 1,
+  "wallpaper" : "backgrounds/02-opinions-equally.jpg"
+}
