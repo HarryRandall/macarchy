@@ -104,8 +104,11 @@ final class ThemeSwitcher {
         opening = true
         closeWhenOpened = false
         let started = ContinuousClock.now
-        model.themes.reload()
+        // Opens on the catalogue already loaded; `themes.changed` brings in
+        // anything the read finds. Reading first held the panel back.
+        Task { await model.themes.reloadInBackground() }
         let (window, surface) = prepare(model)
+        await SwitcherBackground.load(model.themes.themes)
         await surface.waitUntilReady(timeout: .seconds(1))
         position(window)
         window.alphaValue = 0
@@ -150,7 +153,7 @@ final class ThemeSwitcher {
         close()
         let result = await action()
         model.log.record(result)
-        model.themes.reload()
+        await model.themes.reloadInBackground()
         guard !result.ok else { return }
         let summary = result.summary.trimmingCharacters(in: .whitespacesAndNewlines)
         let reason =
@@ -209,7 +212,8 @@ final class ThemeSwitcher {
         }
         router.register("switcher.refresh") { [weak model] (_: Empty) in
             guard let model else { throw BridgeFailure(.unavailable, "The app is closing.") }
-            model.themes.reload()
+            await model.themes.reloadInBackground()
+            await SwitcherBackground.load(model.themes.themes)
             return model.switcherState()
         }
         router.register("switcher.close") { [weak self] (_: Empty) in

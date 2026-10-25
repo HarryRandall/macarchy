@@ -2,7 +2,7 @@ import Foundation
 import Synchronization
 
 /// One wallpaper a theme offers, named the way the Raycast switcher named it.
-struct SwitcherBackground: Identifiable, Hashable {
+struct SwitcherBackground: Identifiable, Hashable, Sendable {
     let url: URL
     /// Path inside the theme folder, which is what settings record.
     let relativePath: String
@@ -28,6 +28,16 @@ struct SwitcherBackground: Identifiable, Hashable {
         let result = scan(theme)
         cache.withLock { $0[key] = result }
         return result
+    }
+
+    /// Works out each theme's backgrounds off the main thread, so building
+    /// the switcher's state afterwards only finds them in the cache. The first
+    /// scan compares same-sized copies byte for byte, tens of megabytes for
+    /// desktop wallpapers, and the switcher builds its state on the main thread.
+    static func load(_ themes: [InstalledTheme]) async {
+        await Task.detached(priority: .userInitiated) {
+            for theme in themes { _ = all(in: theme) }
+        }.value
     }
 
     private static let cache = Mutex<[String: [SwitcherBackground]]>([:])

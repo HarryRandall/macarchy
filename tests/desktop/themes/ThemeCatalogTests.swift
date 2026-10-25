@@ -13,6 +13,45 @@ private final class Changes: @unchecked Sendable {
     var recorded: Int { lock.withLock { count } }
 }
 
+/// Holds the second read of the theme folders until the test lets it go, so a
+/// background read can be made to finish after a newer one.
+private final class HeldRead: @unchecked Sendable {
+    private let condition = NSCondition()
+    private var reads = 0
+    private var released = false
+    private var arrived: CheckedContinuation<Void, Never>?
+
+    /// The snapshot for each read: the held one sees the folders as they were.
+    func read() -> ThemeCollection.Snapshot {
+        condition.lock()
+        reads += 1
+        let number = reads
+        if number == 2 {
+            arrived?.resume()
+            arrived = nil
+            while !released { condition.wait() }
+        }
+        condition.unlock()
+        return ThemeCollection.Snapshot(
+            themes: [], current: number == 3 ? "newer" : "older", wallpapers: [:], warnings: [])
+    }
+
+    func untilHeld() async {
+        await withCheckedContinuation { continuation in
+            condition.lock()
+            if reads >= 2 { continuation.resume() } else { arrived = continuation }
+            condition.unlock()
+        }
+    }
+
+    func release() {
+        condition.lock()
+        released = true
+        condition.broadcast()
+        condition.unlock()
+    }
+}
+
 @MainActor
 struct ThemeCatalogTests {
     private func temporary() throws -> (URL, ThemeCatalog) {
@@ -76,5 +115,32 @@ struct ThemeCatalogTests {
         #expect(try changes(catalog) { try catalog.refresh() } == 1)
         #expect(catalog.revision == revision + 1)
         #expect(catalog.themes.first?.manifest?.dark == manifest.dark)
+    }
+
+    @Test("a background read that finishes after a newer read is dropped")
+    func lateBackgroundRead() async throws {
+        let held = HeldRead()
+        let catalog = ThemeCatalog(
+            backend: Integrations { _, _ in CommandResult(command: "fake", status: 1) },
+            log: CommandLog(), read: { held.read() })
+        try catalog.refresh()
+        #expect(catalog.current == "older")
+        let late = Task { await catalog.reloadInBackground() }
+        await held.untilHeld()
+        try catalog.refresh()
+        #expect(catalog.current == "newer")
+        held.release()
+        await late.value
+        #expect(catalog.current == "newer")
+    }
+
+    @Test("a background read publishes what it finds")
+    func backgroundRead() async throws {
+        let (root, catalog) = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(catalog.themes.isEmpty)
+        await catalog.reloadInBackground()
+        #expect(catalog.themes.map(\.name) == ["lumon"])
+        #expect(catalog.current == "lumon")
     }
 }

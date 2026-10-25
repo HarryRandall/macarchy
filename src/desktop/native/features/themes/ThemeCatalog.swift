@@ -16,11 +16,15 @@ final class ThemeCatalog {
     private(set) var warnings: [String] = []
     private let backend: Integrations
     private let log: CommandLog
-    private let read: @MainActor () throws -> ThemeCollection.Snapshot
+    private let read: @Sendable () throws -> ThemeCollection.Snapshot
+    /// Counts reads as they start, so a background read that finishes after
+    /// a newer one never publishes its older result over it.
+    private var reads = 0
+    private var published = 0
 
     init(
         backend: Integrations, log: CommandLog,
-        read: @escaping @MainActor () throws -> ThemeCollection.Snapshot = {
+        read: @escaping @Sendable () throws -> ThemeCollection.Snapshot = {
             try ThemeCollection().read()
         }
     ) {
@@ -30,18 +34,41 @@ final class ThemeCatalog {
     }
 
     func reload() {
-        do { try refresh() } catch {
-            let message = error.localizedDescription
-            if lastError != message { lastError = message }
-            log.failure("Settings unreadable", error.localizedDescription)
+        do { try refresh() } catch { report(error) }
+    }
+
+    /// `reload`, with settings and every theme folder read off the main
+    /// thread. The switcher uses it, so opening and applying never wait on
+    /// the disk with the main thread held.
+    func reloadInBackground() async {
+        reads += 1
+        let started = reads
+        let read = self.read
+        let outcome = await Task.detached(priority: .userInitiated) { Result { try read() } }.value
+        guard started > published else { return }
+        published = started
+        switch outcome {
+        case .success(let snapshot): publish(snapshot)
+        case .failure(let error): report(error)
         }
+    }
+
+    private func report(_ error: any Error) {
+        let message = error.localizedDescription
+        if lastError != message { lastError = message }
+        log.failure("Settings unreadable", error.localizedDescription)
     }
 
     /// A throwing read lets a first page load report failure instead of stale defaults.
     /// Pages read through here, and every assignment notifies `StateBroadcast` even when
     /// the value is the same, so properties are set only when they change.
     func refresh() throws {
-        let snapshot = try read()
+        reads += 1
+        published = reads
+        publish(try read())
+    }
+
+    private func publish(_ snapshot: ThemeCollection.Snapshot) {
         if current != snapshot.current { current = snapshot.current }
         let next = snapshot.themes.map {
             InstalledTheme(
