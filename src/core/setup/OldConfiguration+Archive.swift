@@ -21,8 +21,9 @@ extension OldConfiguration {
             var action: Action
             /// Where a moved entry went.
             var to: String?
-            /// A hash of the moved or rewritten file as cleanup left it, so
-            /// restoring can tell whether it was edited since.
+            /// A hash of the moved or rewritten file as cleanup left it, or
+            /// of a moved folder's tree (`treeHash`), so restoring can tell
+            /// whether it was edited since.
             var hash: String?
             var link: String?
         }
@@ -69,11 +70,14 @@ extension OldConfiguration {
         }
         var entries: [Manifest.Entry] = []
         for move in plan.moves {
-            let hash = move.texts[""].map { hash(of: $0) } ?? hash(of: move.from)
+            let hash =
+                isFolder(move.from)
+                ? treeHash(of: move.from, replacing: move.texts)
+                : move.texts[""].map { hash(of: $0) } ?? hash(of: move.from)
             entries.append(
                 .init(
                     path: try relative(move.from), action: .moved, to: try relative(move.to),
-                    hash: isFolder(move.from) ? nil : hash))
+                    hash: hash))
         }
         for rewrite in plan.rewrites {
             entries.append(

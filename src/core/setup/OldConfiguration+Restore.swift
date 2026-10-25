@@ -156,9 +156,14 @@ extension OldConfiguration {
         func dropMovedCopies(into lines: inout [String]) throws {
             for entry in entries(.moved) {
                 guard let to = entry.to.map(place), exists(to) else { continue }
-                if let recorded = entry.hash, recorded == hash(of: to) {
+                let now = isFolder(to) ? treeHash(of: to) : hash(of: to)
+                if let recorded = entry.hash, recorded == now {
                     try fm.removeItem(at: to)
                     lines.append("Deleted the moved copy \(Paths.display(to))")
+                } else if entry.hash == nil {
+                    lines.append(
+                        "Left \(Paths.display(to)): this archive does not record how cleaning up "
+                            + "left it, so it stays beside the original")
                 } else {
                     lines.append(
                         "Left \(Paths.display(to)), which changed after cleaning up; it is now "
@@ -183,6 +188,13 @@ extension OldConfiguration {
             ]
             for entry in entries(.rewritten) {
                 let url = written(place(entry))
+                if let recorded = entry.hash, exists(url), hash(of: url) != recorded {
+                    let beside = try keepBeside(url, copy: copy(entry.path))
+                    lines.append(
+                        "Kept \(Paths.display(url)), which changed after cleaning up; the version "
+                            + "from before cleaning up is in \(Paths.display(beside))")
+                    continue
+                }
                 let staged = url.deletingLastPathComponent()
                     .appending(path: ".\(url.lastPathComponent).macarchy-restore")
                 try? fm.removeItem(at: staged)
@@ -196,6 +208,21 @@ extension OldConfiguration {
                 daemons.formUnion(readers.filter { $0.0 == url }.map(\.1))
             }
             return daemons
+        }
+
+        /// Puts the archived copy of a file edited since cleaning up beside
+        /// it, under a name no other file has.
+        func keepBeside(_ url: URL, copy: URL) throws -> URL {
+            var beside = url.deletingLastPathComponent()
+                .appending(path: url.lastPathComponent + ".before-cleanup")
+            var suffix = 2
+            while exists(beside) {
+                beside = url.deletingLastPathComponent()
+                    .appending(path: url.lastPathComponent + ".before-cleanup-\(suffix)")
+                suffix += 1
+            }
+            try fm.copyItem(at: copy, to: beside)
+            return beside
         }
     }
 }
