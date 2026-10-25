@@ -16,6 +16,7 @@ BAR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "$BAR_DIR/lib.sh"
 YABAI_BIN="$(macarchy_find yabai)"
+YABAI_QUOTED="$(macarchy_quote "$YABAI_BIN")"
 SKETCHYBAR_BIN="$(macarchy_find sketchybar)"
 JQ_BIN="$(macarchy_find jq)"
 STATE_DIR="$MACARCHY_STATE"
@@ -47,7 +48,7 @@ append_static_props() {
   set_args[${#set_args[@]}]="label.font=sketchybar-app-font:Regular:13.0"
   set_args[${#set_args[@]}]="label.padding_right=20"
   set_args[${#set_args[@]}]="label.y_offset=-1"
-  set_args[${#set_args[@]}]="click_script=$YABAI_BIN -m space --focus $sid"
+  set_args[${#set_args[@]}]="click_script=$YABAI_QUOTED -m space --focus $sid"
 }
 
 # index <TAB> is-visible <TAB> app<US>app<US>app  — one line per existing space.

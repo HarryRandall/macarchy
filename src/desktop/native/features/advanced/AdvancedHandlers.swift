@@ -124,7 +124,7 @@ extension AppModel {
                 .init(path: Paths.display($0.path), action: $0.action.rawValue, detail: $0.detail)
             },
             hasExisting: plan.contains { $0.action == .adopt || $0.action == .replace },
-            canClose: FileManager.default.fileExists(atPath: settingsStore.url.path))
+            canClose: !setupRequired)
     }
 
     func advancedState() async throws -> AdvancedState {

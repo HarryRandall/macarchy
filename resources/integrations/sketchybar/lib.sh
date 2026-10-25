@@ -30,6 +30,13 @@ macarchy_find() {
   command -v "$name" 2>/dev/null || printf '%s\n' "/opt/homebrew/bin/$name"
 }
 
+# Quotes a value for the `sh -c` SketchyBar runs scripts with. Paths under
+# Application Support contain a space.
+macarchy_quote() {
+  local escaped=${1//\'/\'\\\'\'}
+  printf "'%s'" "$escaped"
+}
+
 # Theme colours, written by Macarchy whenever a theme is applied.
 ACCENT_COLOR=0xffffffff
 TEXT_COLOR=0xffffffff

@@ -59,6 +59,10 @@ Macarchy runs yabai, skhd, SketchyBar and borders from its own LaunchAgents
 `config/` (`yabai -c`, `skhd -c`, `sketchybar --config`, and bordersrc run
 directly), so nothing is written where the tools look by default. `DaemonAgents`
 writes the agents and switches off the ones the tools' installers made.
+Starting a daemon reloads its job when the agent on disk no longer matches what
+`launchctl print` reports. If Macarchy's job does not stay running and an
+installer's job was running before, that one is loaded again and Macarchy's
+agent moves to `state/agents` until the next start, so only one loads at login.
 
 The yabai, SketchyBar and borders files are short startup files. Each runs
 `macarchy startup <tool>` through the app link, which reads `settings.json` and

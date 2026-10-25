@@ -182,6 +182,23 @@ grep -q 'config-file = ?.*Application Support/Macarchy/generated/ghostty.conf' "
 "$CLI" uninstall >/dev/null
 [ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "Ghostty not restored"
 
+# A Ghostty config linked from a dotfiles folder stays a link; the include is
+# written into the file it points at and removed again on uninstall.
+rm -rf "$HOME_DIR/.config"
+mkdir -p "$HOME_DIR/.config/ghostty" "$HOME_DIR/dotfiles"
+echo 'font-size = 14' > "$HOME_DIR/dotfiles/ghostty-config"
+chmod 600 "$HOME_DIR/dotfiles/ghostty-config"
+ln -s "$HOME_DIR/dotfiles/ghostty-config" "$HOME_DIR/.config/ghostty/config"
+"$CLI" setup --keep --no-apply >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link replaced with a copy"
+grep -q 'config-file = ?' "$HOME_DIR/dotfiles/ghostty-config" || fail "include not in the link target"
+[ "$(stat -f %Lp "$HOME_DIR/dotfiles/ghostty-config")" = 600 ] || fail "Ghostty permissions changed"
+"$CLI" uninstall >/dev/null
+[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link not kept on uninstall"
+[ "$(cat "$HOME_DIR/dotfiles/ghostty-config")" = 'font-size = 14' ] || fail "include left in the link target"
+rm -rf "$HOME_DIR/dotfiles" "$HOME_DIR/.config/ghostty/config"
+echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
+
 # With an Application Support config, the include goes there, loaded last.
 SUPPORT="$HOME_DIR/Library/Application Support/com.mitchellh.ghostty"
 mkdir -p "$SUPPORT"
@@ -266,11 +283,18 @@ grep -q 'if then' "$HOME_DIR/.config/sketchybar/sketchybarrc" || fail "replace c
 # bar scripts are refused (see DesktopIsolation), so the real desktop is left
 # alone even though nothing here is a dry run.
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
+# It keeps a list of loaded jobs, so a job reads as loaded only between its
+# bootstrap and bootout, as with launchd.
+LOADED="$HOME_DIR/loaded.log"
 cat > "$MACARCHY_SEARCH_PATH/launchctl" <<SH
 #!/bin/sh
 printf '%s\n' "launchctl \$*" >>'$CALLS'
+touch '$LOADED'
 case "\$1" in
-  print) printf 'state = running\npid = 4242\n' ;;
+  print) grep -qx "\${2##*/}" '$LOADED' || exit 113
+    printf 'state = running\npid = 4242\n' ;;
+  bootstrap) basename "\$3" .plist >>'$LOADED' ;;
+  bootout) grep -vx "\${2##*/}" '$LOADED' >'$LOADED.next'; mv '$LOADED.next' '$LOADED' ;;
 esac
 SH
 chmod +x "$MACARCHY_SEARCH_PATH/launchctl"
@@ -288,6 +312,30 @@ grep -q 'may already have applied' <<<"$OUTPUT" && fail "untouched desktop repor
 grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
 rm "$MACARCHY_SEARCH_PATH/launchctl"
+
+# A Space click still reaches a custom yabai in Macarchy's bin, whose path has
+# a space in it. The bar script runs in a home of its own with fake tools.
+BAR_HOME="$HOME_DIR/bar-home"
+BAR_BIN="$BAR_HOME/Library/Application Support/Macarchy/bin"
+mkdir -p "$BAR_BIN"
+cat > "$BAR_BIN/yabai" <<SH
+#!/bin/sh
+case "\$*" in
+  "-m query"*) echo '[]' ;;
+  *) printf '%s\n' "yabai \$*" >>'$CALLS' ;;
+esac
+SH
+printf '#!/bin/sh\ncat >/dev/null\nprintf "1\\t1\\t\\n"\n' > "$BAR_BIN/jq"
+cat > "$BAR_BIN/sketchybar" <<SH
+#!/bin/sh
+printf '%s\n' "\$@" >'$HOME_DIR/bar-arguments'
+SH
+chmod +x "$BAR_BIN/yabai" "$BAR_BIN/jq" "$BAR_BIN/sketchybar"
+: > "$CALLS"
+HOME="$BAR_HOME" "$REPO/resources/integrations/sketchybar/plugins/spaces.sh" --reconcile
+CLICK="$(grep -m1 '^click_script=' "$HOME_DIR/bar-arguments")" || fail "no Space click script"
+sh -c "${CLICK#click_script=}" || fail "Space click script failed: $CLICK"
+grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach yabai: $CLICK"
 
 echo "setup integration test passed"
 "$REPO/tests/integration/upgrade.sh"

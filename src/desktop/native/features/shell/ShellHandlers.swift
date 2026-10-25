@@ -95,8 +95,7 @@ extension AppModel {
         ShellState(
             selectedPane: InterfacePreferences.selectedPane.rawValue,
             sidebarVisible: InterfacePreferences.sidebarVisible,
-            setupRequired: !FileManager.default.fileExists(atPath: settingsStore.url.path)
-                || LegacyLayout.awaitingSetup,
+            setupRequired: setupRequired,
             appearance: .init(accent: accentHex, mode: InterfacePreferences.appearance),
             services: .init(running: daemons.runningCount, total: daemons.installed.count),
             version: Self.version,
@@ -105,6 +104,15 @@ extension AppModel {
                     id: .init($0), name: $0.displayName,
                     state: ShellState.Service.State(daemons.states[$0]))
             })
+    }
+
+    /// Whether the shell opens setup: there are no settings yet, or the old
+    /// folder was moved and setup has not run since (`Setup.isNeeded`). Setup
+    /// offers Done only when this is false, or Done would close it and the
+    /// shell would open it again.
+    var setupRequired: Bool {
+        !FileManager.default.fileExists(atPath: settingsStore.url.path)
+            || LegacyLayout.awaitingSetup
     }
 
     /// Setup health shows the same words for a build without a version.
