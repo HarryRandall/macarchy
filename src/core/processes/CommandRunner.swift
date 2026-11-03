@@ -146,7 +146,7 @@ public enum CommandRunner {
 }
 
 /// Cancellation crosses the task/Dispatch boundary; every access holds the lock.
-private final class CancellationFlag: @unchecked Sendable {
+final class CancellationFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
     var isCancelled: Bool { lock.withLock { cancelled } }

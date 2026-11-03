@@ -19,9 +19,12 @@ extension Setup {
     static let earlierBarKey = "bundledBar"
 
     /// Whether setup still has to move an earlier bar onto widgets. Settings
-    /// that cannot be read count as no: Doctor and setup report those.
+    /// that cannot be read count as no: Doctor and setup report those. A
+    /// setup that left SketchyBar out never moves it.
     public static var barNeedsMoving: Bool {
-        (try? SettingsStore().read())?.barBeforeWidgets != nil
+        guard let settings = try? SettingsStore().read(), settings.barBeforeWidgets != nil
+        else { return false }
+        return settings.tools.map { $0.contains(Daemon.sketchybar.rawValue) } ?? true
     }
 
     /// Where a person's own bar's commands are kept once the bar is widgets.

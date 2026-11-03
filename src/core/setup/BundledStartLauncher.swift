@@ -9,8 +9,10 @@ enum BundledStartLauncher {
             .resolvingSymlinksInPath()
     }
 
-    static func validate() throws {
-        for daemon in [Daemon.yabai, .sketchybar] where Paths.isInstalled(daemon.executableName) {
+    /// Checks the launchers of the chosen `tools` that are installed.
+    static func validate(_ tools: Set<Daemon> = Setup.chosenTools) throws {
+        for daemon in [Daemon.yabai, .sketchybar]
+        where tools.contains(daemon) && Paths.isInstalled(daemon.executableName) {
             let file = url(daemon)
             // The agents name this file where it is now, so a copy that is
             // about to move or vanish would leave them pointing at nothing.

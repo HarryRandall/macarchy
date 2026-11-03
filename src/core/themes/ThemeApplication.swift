@@ -123,14 +123,15 @@ public struct ThemeApplication: Sendable {
             // borders applies new arguments to a running instance. With none
             // running it would become the daemon itself and never return, so
             // a stopped service just picks the theme up when it starts.
-            if Paths.isInstalled("borders"), await integrations.state(of: .borders).isRunning {
+            if Daemon.borders.isManaged, await integrations.state(of: .borders).isRunning {
                 let borders = await integrations.borders(
                     BorderCommand.arguments(values: settings.flatValues, theme: theme))
                 guard borders.ok else { return partial(borders) }
             } else {
                 skipped.append("borders")
             }
-            if Paths.isInstalled("sketchybar"), await integrations.state(of: .sketchybar).isRunning
+            if Daemon.sketchybar.isManaged,
+                await integrations.state(of: .sketchybar).isRunning
             {
                 let result = await recolourBar(theme: theme, colours: BarLook.Colours(outputs))
                 guard result.ok else { return partial(result) }

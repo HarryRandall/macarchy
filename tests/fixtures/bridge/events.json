@@ -7,6 +7,16 @@
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "loginItem": "approval",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
         "services": [
           {
             "id": "yabai",
@@ -151,6 +161,48 @@
         "message": "Your saved rules could not be read: settings.json is not valid JSON."
       },
       "type": "rules.unavailable"
+    }
+  ],
+  "setup.progress": [
+    {
+      "state": {
+        "line": null,
+        "status": "installing",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": "==> Pouring sketchybar",
+        "status": "output",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
+        "status": "installed",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": "Error: No available formula",
+        "status": "failed",
+        "tool": "skhd"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
+        "status": "configuring",
+        "tool": null
+      },
+      "type": "setup.progress"
     }
   ],
   "shell.changed": [

@@ -16,11 +16,11 @@ extension WebInterfaceTests {
                     let original = "yabai -m config window_gap 17\necho mine\n"
                     try harness.write(original, to: ".config/yabai/yabairc")
                     let before = harness.settingsData
-                    let plan = Setup.plan(existing: .keep)
+                    let plan = Setup.plan(.init(all: .keep))
                     #expect(plan.contains { $0.action == .adopt })
                     #expect(harness.settingsData == before)
                     #expect(await harness.desktop.calls.isEmpty)
-                    let first = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let first = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(first.failure == nil)
                     let yabairc = Paths.display(StartupConfiguration.yabairc.url)
                     #expect(first.lines.contains("Wrote \(yabairc)"))
@@ -29,7 +29,7 @@ extension WebInterfaceTests {
                     #expect(
                         try String(contentsOf: StartupConfiguration.yabairc.url, encoding: .utf8)
                             .contains("echo mine"))
-                    let repeated = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let repeated = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(repeated.failure == nil)
                     #expect(
                         !repeated.lines.contains {
@@ -54,7 +54,7 @@ extension WebInterfaceTests {
                     try harness.write(
                         "yabai -m config window_gap 29\n", to: ".config/yabai/yabairc")
                     let report = await harness.model.setupSession.run(
-                        existing: .replace, app: nil)
+                        .init(all: .replace), app: nil)
                     #expect(report.failure == nil)
                     #expect(try harness.store.read().flatValues["YABAI_WINDOW_GAP"] != "29")
                     #expect(report.commands.contains { !$0.ok })
@@ -77,7 +77,7 @@ extension WebInterfaceTests {
                         integrations: harness.model.backend,
                         applyTheme: { await themes.record($0) })
                     let report = await session.run(
-                        existing: .keep, app: nil, applyToDesktop: false)
+                        .init(all: .keep), app: nil, applyToDesktop: false)
                     #expect(report.failure == nil)
                     #expect(report.commands.isEmpty)
                     #expect(await harness.desktop.calls.isEmpty)
@@ -93,7 +93,7 @@ extension WebInterfaceTests {
                     let session = SetupSession(
                         integrations: harness.model.backend,
                         applyTheme: { await themes.record($0) })
-                    let full = await session.run(existing: .keep, app: nil)
+                    let full = await session.run(.init(all: .keep), app: nil)
                     #expect(full.failure == nil)
                     #expect(await bootstrapped(.yabai, harness))
                     #expect(await themes.names.count == 1)
@@ -115,7 +115,7 @@ extension WebInterfaceTests {
                     try FileManager.default.createDirectory(
                         at: StartupConfiguration.sketchybarrc.url,
                         withIntermediateDirectories: true)
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(report.lines.contains { $0.hasPrefix("Moved") })
                     #expect(report.lines.contains("Installed default shortcuts"))
                     let yabairc = Paths.display(StartupConfiguration.yabairc.url)
@@ -152,7 +152,7 @@ extension WebInterfaceTests {
                         try? fm.setAttributes([.posixPermissions: 0o644], ofItemAtPath: locked.path)
                     }
 
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(report.failure?.hasPrefix("Setup did not finish") == true)
                     let names = order.dropLast().map(\.lastPathComponent)
                     #expect(report.lines == ["Installed themes: \(names.joined(separator: ", "))"])
@@ -173,7 +173,7 @@ extension WebInterfaceTests {
                         try? "{".write(to: settings, atomically: true, encoding: .utf8)
                         return .success()
                     }
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     let failure = try #require(report.failure)
                     #expect(failure.hasPrefix("Setup finished, but the theme was not applied"))
                     #expect(!report.lines.isEmpty)
@@ -192,7 +192,12 @@ extension WebInterfaceTests {
                     let router = BridgeRouter()
                     router.registerAdvanced(model: harness.model)
                     let reply = await router.handle(
-                        ["method": "setup.run", "params": ["existing": "keep"]])
+                        [
+                            "method": "setup.run",
+                            "params": [
+                                "tools": ["yabai", "skhd", "sketchybar", "borders"], "existing": [:]
+                            ]
+                        ])
                     let parsed = try #require(
                         JSONSerialization.jsonObject(with: Data(reply.utf8)) as? [String: Any])
                     #expect(parsed["ok"] as? Bool == true)
@@ -214,7 +219,12 @@ extension WebInterfaceTests {
                 for body in [
                     ["method": "advanced.restartService", "params": ["daemon": "anything"]],
                     ["method": "advanced.rebuild", "params": ["file": "../../settings.json"]],
-                    ["method": "setup.run", "params": ["existing": "anything"]]
+                    ["method": "setup.run", "params": ["tools": ["anything"], "existing": [:]]],
+                    [
+                        "method": "setup.run",
+                        "params": ["tools": ["yabai"], "existing": ["yabai": "anything"]]
+                    ],
+                    ["method": "advanced.restoreOriginals", "params": ["removeTools": ["yabai"]]]
                 ] {
                     let reply = await router.handle(body)
                     #expect(reply.contains("invalid_params"))
@@ -230,14 +240,14 @@ extension WebInterfaceTests {
         func doneMatchesSetupRequired() async throws {
             try await withHarness { harness in
                 #expect(!harness.model.shellState().setupRequired)
-                #expect(harness.model.setupState(existing: .keep).canClose)
+                #expect(harness.model.setupState(.init(all: .keep)).canClose)
                 let fm = FileManager.default
                 try fm.createDirectory(
                     at: Paths.legacyRoot.deletingLastPathComponent(),
                     withIntermediateDirectories: true)
                 try fm.createSymbolicLink(at: Paths.legacyRoot, withDestinationURL: harness.root)
                 #expect(harness.model.shellState().setupRequired)
-                #expect(!harness.model.setupState(existing: .keep).canClose)
+                #expect(!harness.model.setupState(.init(all: .keep)).canClose)
             }
         }
 

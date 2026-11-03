@@ -14,20 +14,43 @@ export interface AdvancedState {
   wakeHelpers: boolean;
   backupsDirectory: string;
   loginItem: LoginItemState;
+  /** Tools Macarchy installed with Homebrew and still there, which restoring may also remove. */
+  removableTools: { id: string; name: string }[];
+}
+export interface SetupTool {
+  id: ServiceId;
+  name: string;
+  /** One line on what it does. */
+  description: string;
+  installed: boolean;
+  /** Ticked to begin with: chosen in the last setup, or every tool before the first. */
+  chosen: boolean;
+  /** The person's own config the tool can start from, home-relative. */
+  ownConfig: string | null;
+}
+/** What setup is asked to do. */
+export interface SetupChoices {
+  /** The tools to configure and start; the others are left alone. */
+  tools: ServiceId[];
+  /** How each tool with a config of its own starts; `keep` for any not given. */
+  existing: Partial<Record<ServiceId, ExistingSetup>>;
 }
 export interface SetupState {
-  tools: {
-    id: ServiceId;
-    name: string;
-    role: string;
-    installed: boolean;
-    installCommand: string;
-  }[];
+  tools: SetupTool[];
+  /** Whether Homebrew is installed, so setup can install missing tools. */
+  homebrew: boolean;
   changes: { path: string; action: string; detail: string }[];
-  hasExisting: boolean;
   canClose: boolean;
   /** What moving an earlier version's folder did, until setup reports it. */
   notices: string[];
+}
+/** One step of installing tools during `setup.run`, sent as it happens. */
+export interface SetupProgress {
+  /** The tool being installed, or null once setup moves on to its files. */
+  tool: ServiceId | null;
+  status: "installing" | "output" | "installed" | "failed" | "configuring";
+  /** A line of Homebrew's output, or why installing failed. */
+  line: string | null;
 }
 export interface SetupReport {
   lines: string[];
@@ -58,14 +81,19 @@ export interface AdvancedMethods {
   "advanced.rebuild": { params: { file: GeneratedFileId }; result: { outcome: string } };
   "advanced.restoreSnapshot": { params: { id: string }; result: null };
   "advanced.repairAddition": { params: Record<string, never>; result: null };
-  "advanced.restoreOriginals": { params: Record<string, never>; result: SetupReport };
+  "advanced.restoreOriginals": { params: { removeTools: string[] }; result: SetupReport };
   "advanced.getCleanupPlan": { params: Record<string, never>; result: CleanupPlan };
   "advanced.cleanUp": { params: Record<string, never>; result: CleanupReport };
   "advanced.setLoginItem": { params: { enabled: boolean }; result: null };
   "advanced.openLoginItems": { params: Record<string, never>; result: null };
-  "setup.getPlan": { params: { existing: ExistingSetup }; result: SetupState };
-  "setup.run": { params: { existing: ExistingSetup }; result: SetupReport };
+  "setup.getPlan": { params: SetupChoices; result: SetupState };
+  /** Installs chosen tools that are missing, then sets up; see `setup.progress`. */
+  "setup.run": { params: SetupChoices; result: SetupReport };
+  /** Opens Homebrew's own installer in Terminal, which asks for a password. */
+  "setup.installHomebrew": { params: Record<string, never>; result: null };
   "setup.openAccessibility": { params: Record<string, never>; result: null };
 }
 export type AdvancedEvent =
-  { type: "advanced.changed"; state: AdvancedState } | { type: "advanced.invalidated" };
+  | { type: "advanced.changed"; state: AdvancedState }
+  | { type: "advanced.invalidated" }
+  | { type: "setup.progress"; state: SetupProgress };

@@ -19,6 +19,20 @@ final class AppModel {
     let backend: Integrations
     /// Opening the app at login; tests replace it with a recorder.
     var loginItem = LoginItem.current
+    /// Opens a script in Terminal, returning why it could not. Tests replace
+    /// it; an isolated run never opens anything.
+    var openInTerminal: @MainActor (URL) -> String? = { script in
+        guard !DesktopIsolation.isActive else {
+            return "This run is isolated from the desktop, so Terminal was not opened"
+        }
+        guard
+            let terminal = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: "com.apple.Terminal")
+        else { return "Terminal could not be found" }
+        NSWorkspace.shared.open(
+            [script], withApplicationAt: terminal, configuration: NSWorkspace.OpenConfiguration())
+        return nil
+    }
 
     init(backend: Integrations = Integrations(), settingsStore: SettingsStore = SettingsStore()) {
         let log = CommandLog()

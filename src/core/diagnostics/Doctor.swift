@@ -82,22 +82,9 @@ public enum Doctor {
             stderr: failures == 0 ? "" : "Desktop checks failed")
     }
 
-    static func dependencyChecks() -> [HealthCheck] {
-        Daemon.allCases.map { daemon in
-            Paths.isInstalled(daemon.executableName)
-                ? HealthCheck(
-                    .dependencies, daemon.displayName, .passed,
-                    Paths.display(
-                        URL(fileURLWithPath: daemon.executable)))
-                : HealthCheck(
-                    .dependencies, daemon.displayName, .failed, "Not installed",
-                    command: daemon.installCommand)
-        }
-    }
-
     static func serviceChecks(integrations: Integrations) async -> [HealthCheck] {
         var results: [HealthCheck] = []
-        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+        for daemon in Daemon.allCases where daemon.isManaged {
             guard daemon.isRegistered else {
                 results.append(
                     HealthCheck(
@@ -133,7 +120,7 @@ public enum Doctor {
                 }
             }
         }
-        if Paths.isInstalled("yabai") {
+        if Daemon.yabai.isManaged {
             let registered = await windowSignalsRegistered(integrations: integrations)
             results.append(
                 HealthCheck(
@@ -189,7 +176,7 @@ public enum Doctor {
                     file: Paths.settings))
         }
         results += await startupFileChecks(integrations: integrations)
-        for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
+        for daemon in Daemon.allCases where daemon.isManaged {
             if DaemonAgents.isSetAside(daemon) {
                 results.append(
                     HealthCheck(
@@ -235,12 +222,13 @@ public enum Doctor {
     static func startupFileChecks(integrations: Integrations) async -> [HealthCheck] {
         let fm = FileManager.default
         var results: [HealthCheck] = []
-        let tools: [(GeneratedFile, String)] = [
-            (StartupConfiguration.yabairc, "yabai"),
-            (StartupConfiguration.sketchybarrc, "sketchybar"),
-            (StartupConfiguration.bordersrc, "borders")
+        let tools: [(GeneratedFile, Daemon)] = [
+            (StartupConfiguration.yabairc, .yabai),
+            (StartupConfiguration.sketchybarrc, .sketchybar),
+            (StartupConfiguration.bordersrc, .borders)
         ]
-        for (file, tool) in tools where Paths.isInstalled(tool) {
+        for (file, daemon) in tools where daemon.isManaged {
+            let tool = daemon.rawValue
             let name = file.url.lastPathComponent
             guard fm.fileExists(atPath: file.url.path) else {
                 results.append(
@@ -286,16 +274,17 @@ public enum Doctor {
 
     static func optionalChecks() -> [HealthCheck] {
         var results: [HealthCheck] = []
-        if Setup.ghosttyWanted {
+        if GhosttyConfig.isPresent {
             let text = (try? String(contentsOf: GhosttyConfig.targetURL, encoding: .utf8)) ?? ""
             results.append(
                 GhosttyConfig.hasInclude(text)
                     ? HealthCheck(.optional, "Ghostty theme", .passed)
                     : HealthCheck(
                         .optional, "Ghostty theme", .warning, "Ghostty is not following the theme",
-                        fix: "Run setup again to add the include line", command: setupCommand))
+                        fix: "Add this line to \(Paths.display(GhosttyConfig.targetURL)): "
+                            + GhosttyConfig.includeLine))
         }
-        if Paths.isInstalled("yabai") {
+        if Daemon.yabai.isManaged {
             let addition = ScriptingAddition.status()
             results.append(
                 HealthCheck(
@@ -310,4 +299,28 @@ public enum Doctor {
 extension Daemon {
     /// The executable's file name, for discovery.
     public var executableName: String { rawValue }
+}
+
+extension Doctor {
+    /// A tool left out of setup is listed as left alone, so the page says
+    /// why nothing else mentions it.
+    static func dependencyChecks() -> [HealthCheck] {
+        let chosen = Setup.chosenTools
+        return Daemon.allCases.map { daemon in
+            guard chosen.contains(daemon) else {
+                return HealthCheck(
+                    .dependencies, daemon.displayName, .passed,
+                    "Left out of setup, so Macarchy leaves it alone",
+                    fix: "Choose it when you run setup again to configure it")
+            }
+            return Paths.isInstalled(daemon.executableName)
+                ? HealthCheck(
+                    .dependencies, daemon.displayName, .passed,
+                    Paths.display(
+                        URL(fileURLWithPath: daemon.executable)))
+                : HealthCheck(
+                    .dependencies, daemon.displayName, .failed, "Not installed",
+                    command: daemon.installCommand)
+        }
+    }
 }

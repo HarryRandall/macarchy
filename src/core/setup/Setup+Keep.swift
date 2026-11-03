@@ -21,7 +21,7 @@ extension Setup {
             let name = Paths.display(url)
             let advice =
                 "Setup did not change anything. Convert it to bash, move it aside, or set up "
-                + "with --replace (Start from defaults), which leaves it as it is."
+                + "with --replace=yabai (Use Macarchy's defaults), which leaves it as it is."
             if let interpreter = foreignInterpreter(text) {
                 throw Refused(
                     reason: "Your \(name) runs with \(interpreter), and keeping it only works for "

@@ -17,15 +17,25 @@ func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any] = [:]) {
 let usage = """
     Usage: macarchy <command>
 
-      setup [--keep|--replace] [--no-apply]
+      setup [--tools=<list>] [--keep[=<list>]|--replace[=<list>]] [--install] [--no-apply]
                                   Set up this Mac, start the services and apply the
-                                  theme. --keep layers onto your existing configs
-                                  (default); --replace starts from defaults.
-                                  --no-apply only writes the files: no services are
-                                  started and no theme is applied.
-      services                    Start or restart yabai, skhd, SketchyBar and borders.
-      uninstall                   Stop Macarchy's services and give the daemons back
+                                  theme. --tools names the tools to configure, from
+                                  yabai, skhd, sketchybar and borders, separated by
+                                  commas (default: those chosen last time, or all
+                                  four); the others are left alone. --keep layers
+                                  onto your existing yabai and skhd configs
+                                  (default); --replace starts from defaults. Either
+                                  can name tools, as in --replace=skhd, to choose
+                                  for those alone. --install first installs chosen
+                                  tools that are missing with Homebrew. --no-apply
+                                  only writes the files: no services are started
+                                  and no theme is applied.
+      services                    Start or restart the tools setup configured.
+      uninstall [--remove-tools]  Stop Macarchy's services and give the daemons back
                                   the agents and files they had before setup.
+                                  --remove-tools also removes the tools Macarchy
+                                  installed with Homebrew; tools you had before are
+                                  never removed.
       doctor                      Check dependencies, services and configuration.
       cleanup [--apply] [--restore <archive>]
                                   Show how old configuration outside Macarchy's folder
@@ -85,34 +95,19 @@ let command = args.first ?? ""
 let rest = Array(args.dropFirst())
 do {
     func parse(
-        flags: Set<String> = [], values: ClosedRange<Int> = 0...0, choices: [String]? = nil,
-        conflicting: [Set<String>] = []
+        flags: Set<String> = [], options: Set<String> = [], values: ClosedRange<Int> = 0...0,
+        choices: [String]? = nil, conflicting: [Set<String>] = []
     ) throws -> CommandArguments {
         try CommandArguments(
-            rest, usage: usage(of: command), flags: flags, values: values, choices: choices,
-            conflicting: conflicting)
+            rest, usage: usage(of: command), flags: flags, options: options, values: values,
+            choices: choices, conflicting: conflicting)
     }
     switch command {
     case "setup":
         let options = try parse(
-            flags: ["--keep", "--replace", "--no-apply"], conflicting: [["--keep", "--replace"]])
-        let existing: Setup.Existing = options.flags.contains("--replace") ? .replace : .keep
-        // The CLI lives inside the app bundle, so its bundle is the app to link.
-        let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
-        let applyToDesktop = !options.flags.contains("--no-apply")
-        let report = await SetupSession().run(
-            existing: existing, app: app, applyToDesktop: applyToDesktop)
-        // Failed commands are already among the lines, worded as the app shows them.
-        for line in report.lines where !line.isEmpty { print(line) }
-        if let failure = report.failure { throw ConfigurationError(failure) }
-        if report.commands.contains(where: { !$0.ok }) {
-            throw ConfigurationError(
-                "The files are set up, but not everything started. Check with: macarchy doctor")
-        }
-        print(
-            applyToDesktop
-                ? "Done. Check everything with: macarchy doctor"
-                : "Files are set up. Start the services with: macarchy services")
+            flags: ["--keep", "--replace", "--no-apply", "--install"],
+            options: ["--tools", "--keep", "--replace"], conflicting: [["--keep", "--replace"]])
+        try await setUp(options, usage: usage(of: command))
     case "services":
         _ = try parse()
         var failed = false
@@ -126,13 +121,7 @@ do {
         }
         if failed { exit(1) }
     case "uninstall":
-        _ = try parse()
-        let report = try await SetupSession().restoreOriginals()
-        for line in report.lines where !line.isEmpty { print(line) }
-        if report.lines.allSatisfy(\.isEmpty) {
-            print("Nothing to restore: setup has not changed any files.")
-        }
-        if report.commands.contains(where: { !$0.ok }) { exit(1) }
+        try await uninstall(try parse(flags: ["--remove-tools"]))
     case "doctor":
         _ = try parse()
         try require(await Doctor.check())

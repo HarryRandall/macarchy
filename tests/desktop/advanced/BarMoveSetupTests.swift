@@ -88,11 +88,11 @@ extension WebInterfaceTests {
                     try saveOwnBar(harness, region: region)
                     #expect(Setup.barNeedsMoving && harness.model.shellState().setupRequired)
                     #expect(
-                        Setup.plan(existing: .keep).contains {
+                        Setup.plan(.init(all: .keep)).contains {
                             $0.path == Paths.settings && $0.detail.contains("onto widgets")
                         })
 
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(report.failure == nil)
                     expectReported(report.lines)
 
@@ -115,7 +115,7 @@ extension WebInterfaceTests {
                     #expect(try settingsBeforeMove().contains("\"bundledBar\""))
                     #expect(!Setup.barNeedsMoving && !harness.model.shellState().setupRequired)
 
-                    let again = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let again = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(again.failure == nil)
                     #expect(!again.lines.contains { $0.contains("widget") })
                     #expect(try harness.store.read().barConfiguration?.components == components)
@@ -131,7 +131,7 @@ extension WebInterfaceTests {
                     try harness.write(
                         earlierRC("sketchybar --add item mine right"),
                         to: "Library/Application Support/Macarchy/config/sketchybarrc")
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(report.failure == nil)
                     let bar = try #require(try harness.store.read().barConfiguration)
                     #expect(
@@ -154,7 +154,7 @@ extension WebInterfaceTests {
                     let own = "#!/usr/bin/env lua\nsbar = require(\"sketchybar\")\n"
                     try harness.write(own, to: ".config/sketchybar/sketchybarrc")
                     #expect(!Setup.barNeedsMoving)
-                    let report = await harness.model.setupSession.run(existing: .keep, app: nil)
+                    let report = await harness.model.setupSession.run(.init(all: .keep), app: nil)
                     #expect(report.failure == nil)
                     let bar = try #require(try harness.store.read().barConfiguration)
                     #expect(

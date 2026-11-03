@@ -29,6 +29,13 @@ public enum GhosttyConfig {
     }
     public static var themeURL: URL { Paths.generatedDirectory.appending(path: "ghostty.conf") }
 
+    /// Whether Ghostty is installed or already configured, so following the
+    /// theme matters.
+    public static var isPresent: Bool {
+        loadedFiles.contains { FileManager.default.fileExists(atPath: $0.path) }
+            || Paths.hasApplication("Ghostty") || Paths.isInstalled("ghostty")
+    }
+
     static let comment = "# Theme colours from Macarchy"
 
     /// `?` makes the include optional, so Ghostty still starts if the file is gone.

@@ -161,11 +161,11 @@ extension WebInterfaceTests {
                     let (_, surface) = try harness.settingsPage()
                     try await waitFor(
                         surface, "existing setup choices",
-                        #"return !!document.querySelector('[role=radio][value=replace]') || page.text().includes("Start fresh with Macarchy's defaults");"#
+                        #"return !!document.querySelector('[role=radio][value=replace]') || page.text().includes("Use Macarchy's defaults");"#
                     )
                     try await run(
                         surface,
-                        #"[...document.querySelectorAll('label')].find(e => e.textContent.includes("Start fresh with Macarchy's defaults")).click();"#
+                        #"[...document.querySelectorAll('label')].find(e => e.textContent.includes("Use Macarchy's defaults")).click();"#
                     )
                     try await waitFor(
                         surface, "replacement plan",
@@ -191,7 +191,7 @@ extension WebInterfaceTests {
                     try harness.write(original, to: ".config/yabai/yabairc")
                     let own = harness.home.appending(path: ".config/yabai/yabairc")
                     let agent = DaemonAgents.plist(.yabai)
-                    _ = await harness.model.setupSession.run(existing: .replace, app: nil)
+                    _ = await harness.model.setupSession.run(.init(all: .replace), app: nil)
                     #expect(FileManager.default.fileExists(atPath: agent.path))
                     let (_, surface) = try harness.settingsPage(pane: .advanced)
                     try await waitFor(

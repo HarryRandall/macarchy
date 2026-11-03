@@ -61,14 +61,15 @@ extension Setup {
     /// A keep region without its end marker cannot be carried: where the
     /// person's lines stop cannot be told. Setup stops before changing
     /// anything and says how to fix it.
-    static func checkCarriable() throws {
+    /// Only the chosen `tools` are checked: the others' files are not carried.
+    static func checkCarriable(_ tools: Set<Daemon>) throws {
         let candidates = [
-            (StartupConfiguration.yabairc.url, yabaiSource),
-            (StartupConfiguration.sketchybarrc.url, sketchybarSource),
-            (StartupConfiguration.bordersrc.url, bordersSource)
+            (Daemon.yabai, StartupConfiguration.yabairc.url, yabaiSource),
+            (.sketchybar, StartupConfiguration.sketchybarrc.url, sketchybarSource),
+            (.borders, StartupConfiguration.bordersrc.url, bordersSource)
         ]
-        for case (let target, let source?) in candidates
-        where !isGenerated(target) && isGenerated(source) {
+        for case (let daemon, let target, let source?) in candidates
+        where tools.contains(daemon) && !isGenerated(target) && isGenerated(source) {
             let text = try String(contentsOf: source, encoding: .utf8)
             guard GeneratedFile.hasUnterminatedRegion(text) else { continue }
             throw Refused(

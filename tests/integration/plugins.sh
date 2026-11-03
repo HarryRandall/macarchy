@@ -12,10 +12,18 @@ export MACARCHY_SEARCH_PATH= MACARCHY_APPLICATIONS="$TEST_ROOT/applications"
 mkdir -p "$MACARCHY_HOME"
 "$CLI" setup --no-apply > "$TEST_ROOT/setup.log"
 PLUGIN="$MACARCHY_HOME/Library/Application Support/Macarchy/plugins/neovim"
-[ -f "$PLUGIN/config/nvim/init.lua" ]
-[ -f "$PLUGIN/config/nvim/lazy-lock.json" ]
+# Setup leaves Neovim and the shell alone; they are plugins of their own.
+[ ! -e "$PLUGIN" ]
+[ ! -e "$MACARCHY_HOME/.zshenv" ]
+[ ! -e "$MACARCHY_HOME/.zshrc" ]
 [ ! -e "$MACARCHY_HOME/.config" ]
+# What an earlier setup seeded: the editable configuration and the PATH line.
+mkdir -p "$PLUGIN"
+cp -R "$REPO/resources/plugins/neovim/config" "$PLUGIN/config"
 printf '\n-- preserved local edit\n' >> "$PLUGIN/config/nvim/init.lua"
+PATH_LINE='export PATH="$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS:$PATH"'
+printf '%s\n' "$PATH_LINE" > "$MACARCHY_HOME/.zshenv"
+printf '%s\n' "$PATH_LINE" > "$MACARCHY_HOME/.zshrc"
 "$CLI" setup --no-apply > "$TEST_ROOT/setup-again.log"
 grep -q 'preserved local edit' "$PLUGIN/config/nvim/init.lua"
 [ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshenv")" = 1 ]
@@ -68,4 +76,4 @@ grep -q 'preserved local edit' "$BACKUP_INIT"
 [ ! -e "$MACARCHY_HOME/.zshenv" ]
 grep -qx "alias ll='ls -l'" "$MACARCHY_HOME/.zshrc"
 [ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshrc")" = 0 ]
-echo 'Plugin setup, launcher, migration, preservation and shell restoration checks passed.'
+echo 'Plugin launcher, migration, preservation and shell restoration checks passed.'

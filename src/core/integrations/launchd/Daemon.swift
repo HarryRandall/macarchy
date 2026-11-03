@@ -55,15 +55,18 @@ public enum Daemon: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// How to install the daemon with Homebrew.
-    public var installCommand: String {
+    /// One line on what it does for the desktop, for setup's list.
+    public var summary: String {
         switch self {
-        case .yabai: "brew install asmvik/formulae/yabai"
-        case .skhd: "brew install asmvik/formulae/skhd"
-        case .sketchybar: "brew install FelixKratz/formulae/sketchybar"
-        case .borders: "brew install FelixKratz/formulae/borders"
+        case .yabai: "Tiles windows and moves them between desktops"
+        case .borders: "Outlines the focused window in the theme's colours"
+        case .sketchybar: "Draws the menu bar with Macarchy's widgets"
+        case .skhd: "Runs the keyboard shortcuts"
         }
     }
+
+    /// How to install the daemon with Homebrew.
+    public var installCommand: String { package.command }
 
     /// How to register the LaunchAgent: Macarchy's own, for every daemon.
     /// The CLI is named in full, since it is not on PATH.

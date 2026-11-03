@@ -120,7 +120,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         surface.router.registerShell(model: model, surface: surface)
         surface.router.registerLayout(model: model)
         surface.router.registerRules(model: model)
-        surface.router.registerAdvanced(model: model)
+        surface.router.registerAdvanced(model: model) { [weak surface] in surface?.send($0) }
         surface.router.registerBorders(model: model)
         surface.router.registerHome(model: model)
         surface.router.registerHealth(model: model)

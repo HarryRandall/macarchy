@@ -1,9 +1,11 @@
 import { Power, RotateCcw, SquareTerminal, Wand } from "lucide-react";
+import { useState } from "react";
 
 import type { AdvancedState, SetupReport } from "~/bridge/protocol";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardHeader, CardRows, Row, SectionLabel } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { CopyButton } from "~/components/ui/copy-button";
 import { IconTile } from "~/components/ui/icon-tile";
@@ -171,17 +173,21 @@ export function SetupCard({ busy, onOpenSetup }: { busy: boolean; onOpenSetup: (
 /** Putting back the files from before Macarchy, behind a confirmation, and what it did. */
 export function DangerZone({
   directory,
+  removableTools,
   busy,
   report,
   onRestore,
   onDismissReport,
 }: {
   directory: string;
+  /** Tools Macarchy installed, offered for removal, unticked to begin with. */
+  removableTools: AdvancedState["removableTools"];
   busy: boolean;
   report: SetupReport | null;
-  onRestore: () => Promise<void>;
+  onRestore: (removeTools: string[]) => Promise<void>;
   onDismissReport: () => void;
 }) {
+  const [removing, setRemoving] = useState<string[]>([]);
   const description = `Puts back the configs you had before Macarchy, from ${directory}. Setup backed up every file it replaced.`;
   return (
     <section aria-labelledby="advanced-danger">
@@ -204,7 +210,10 @@ export function DangerZone({
                 confirmLabel="Restore"
                 busyLabel="Restoring…"
                 tone="danger"
-                onConfirm={onRestore}
+                onConfirm={() => onRestore(removing)}
+                onOpenChange={(open) => {
+                  if (open) setRemoving([]);
+                }}
                 trigger={
                   <Button
                     disabled={busy}
@@ -213,7 +222,30 @@ export function DangerZone({
                     Restore originals
                   </Button>
                 }
-              />
+              >
+                {removableTools.length ? (
+                  <fieldset className="flex flex-col gap-2">
+                    <legend className="mb-2 text-detail text-fg-secondary">
+                      Macarchy installed these with Homebrew. Also remove:
+                    </legend>
+                    {removableTools.map((tool) => (
+                      <label key={tool.id} className="flex items-center gap-2 text-body text-fg">
+                        <Checkbox
+                          checked={removing.includes(tool.id)}
+                          onCheckedChange={(checked) =>
+                            setRemoving((current) =>
+                              checked
+                                ? [...current, tool.id]
+                                : current.filter((id) => id !== tool.id),
+                            )
+                          }
+                        />
+                        {tool.name}
+                      </label>
+                    ))}
+                  </fieldset>
+                ) : null}
+              </ConfirmDialog>
             }
           />
         </div>

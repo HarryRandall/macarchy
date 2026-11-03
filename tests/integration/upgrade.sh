@@ -33,6 +33,9 @@ same_settings() {
 import json, sys
 bar = {"barConfiguration", "bundledBar", "menuBar", "itemOrder", "itemVisibility", "itemLabels"}
 before, after = (json.load(open(path)) for path in sys.argv[1:])
+# Setup saves the tools it configured: every one, as the earlier version did.
+if after.pop("tools", ["yabai", "borders", "sketchybar", "skhd"]) != ["yabai", "borders", "sketchybar", "skhd"]:
+    sys.exit(1)
 sys.exit({k: v for k, v in before.items() if k not in bar} != {k: v for k, v in after.items() if k not in bar})
 PY
 }

@@ -15,6 +15,7 @@ export const setupPresentation = {
     void store.load();
   },
   close() {
+    store?.dispose();
     store = null;
     listeners.notify();
   },

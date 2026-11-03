@@ -16,7 +16,7 @@ interface RadioOption<V extends string> {
 
 /**
  * A short list of exclusive choices that need their words, as setup's "Keep
- * mine and add Macarchy" or "Start fresh". For terse choices in a row, use
+ * mine and add Macarchy" or "Use Macarchy's defaults". For terse choices in a row, use
  * `SegmentedControl` or `Select`.
  */
 function RadioGroup<V extends string>({

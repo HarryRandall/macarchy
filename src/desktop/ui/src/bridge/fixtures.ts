@@ -399,6 +399,10 @@ const advanced: AdvancedState = {
   wakeHelpers: true,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   loginItem: "on",
+  removableTools: [
+    { id: "sketchybar", name: "SketchyBar" },
+    { id: "neovim", name: "Neovim" },
+  ],
 };
 
 const advancedBeforeSetup: AdvancedState = {
@@ -416,41 +420,47 @@ const advancedBeforeSetup: AdvancedState = {
   wakeHelpers: false,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   loginItem: "off",
+  removableTools: [],
 };
 
 const tools: SetupState["tools"] = [
   {
     id: "yabai",
     name: "yabai",
-    role: "Tiles windows",
+    description: "Tiles windows and moves them between desktops",
     installed: true,
-    installCommand: "brew install koekeishiya/formulae/yabai",
+    chosen: true,
+    ownConfig: "~/.config/yabai/yabairc",
   },
   {
     id: "borders",
-    name: "JankyBorders",
-    role: "Draws window borders",
+    name: "borders",
+    description: "Outlines the focused window in the theme's colours",
     installed: true,
-    installCommand: "brew install FelixKratz/formulae/borders",
+    chosen: false,
+    ownConfig: null,
   },
   {
     id: "sketchybar",
     name: "SketchyBar",
-    role: "Shows the menu bar",
+    description: "Draws the menu bar with Macarchy's widgets",
     installed: false,
-    installCommand: "brew install FelixKratz/formulae/sketchybar",
+    chosen: true,
+    ownConfig: null,
   },
   {
     id: "skhd",
     name: "skhd",
-    role: "Runs keyboard shortcuts",
+    description: "Runs the keyboard shortcuts",
     installed: false,
-    installCommand: "brew install koekeishiya/formulae/skhd",
+    chosen: true,
+    ownConfig: "~/.skhdrc",
   },
 ];
 
 const keepPlan: SetupState = {
   tools,
+  homebrew: true,
   changes: [
     {
       path: "~/Library/Application Support/Macarchy/config/yabairc",
@@ -463,13 +473,13 @@ const keepPlan: SetupState = {
       detail: "Keeps your shortcuts and adds Macarchy's",
     },
   ],
-  hasExisting: true,
   canClose: true,
   notices: ["Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"],
 };
 
 const replacePlan: SetupState = {
   tools,
+  homebrew: false,
   changes: [
     {
       path: "~/Library/Application Support/Macarchy/config/skhdrc",
@@ -477,7 +487,6 @@ const replacePlan: SetupState = {
       detail: "Backs up your shortcuts and starts from Macarchy's defaults",
     },
   ],
-  hasExisting: true,
   canClose: false,
   notices: [],
 };
@@ -989,7 +998,18 @@ export const methodFixtures: MethodFixtures = {
   "advanced.restoreSnapshot": [{ params: { id: "20261021-081500" }, result: null }],
   "advanced.repairAddition": [{ params: {}, result: null }],
   "advanced.restoreOriginals": [
-    { params: {}, result: { lines: ["Restored original files"], failures: [], failure: null } },
+    {
+      params: { removeTools: [] },
+      result: { lines: ["Restored original files"], failures: [], failure: null },
+    },
+    {
+      params: { removeTools: ["sketchybar"] },
+      result: {
+        lines: ["Restored original files", "Removed SketchyBar with Homebrew"],
+        failures: [],
+        failure: null,
+      },
+    },
   ],
   "advanced.getCleanupPlan": [
     { params: {}, result: cleanupPlan },
@@ -1005,13 +1025,20 @@ export const methodFixtures: MethodFixtures = {
   ],
   "advanced.openLoginItems": [{ params: {}, result: null }],
   "setup.getPlan": [
-    { params: { existing: "keep" }, result: keepPlan },
-    { params: { existing: "replace" }, result: replacePlan },
+    { params: { tools: ["yabai", "sketchybar", "skhd"], existing: {} }, result: keepPlan },
+    {
+      params: { tools: ["yabai", "skhd"], existing: { yabai: "keep", skhd: "replace" } },
+      result: replacePlan,
+    },
   ],
   "setup.run": [
-    { params: { existing: "keep" }, result: setupCompleted },
-    { params: { existing: "replace" }, result: setupStopped },
+    { params: { tools: ["yabai", "sketchybar", "skhd"], existing: {} }, result: setupCompleted },
+    {
+      params: { tools: ["yabai", "skhd"], existing: { yabai: "keep", skhd: "replace" } },
+      result: setupStopped,
+    },
   ],
+  "setup.installHomebrew": [{ params: {}, result: null }],
   "setup.openAccessibility": [{ params: {}, result: null }],
 
   "borders.getState": [
@@ -1226,6 +1253,19 @@ export const eventFixtures: EventFixtures = {
     },
   ],
   "advanced.invalidated": [{ type: "advanced.invalidated" }],
+  "setup.progress": [
+    { type: "setup.progress", state: { tool: "sketchybar", status: "installing", line: null } },
+    {
+      type: "setup.progress",
+      state: { tool: "sketchybar", status: "output", line: "==> Pouring sketchybar" },
+    },
+    { type: "setup.progress", state: { tool: "sketchybar", status: "installed", line: null } },
+    {
+      type: "setup.progress",
+      state: { tool: "skhd", status: "failed", line: "Error: No available formula" },
+    },
+    { type: "setup.progress", state: { tool: null, status: "configuring", line: null } },
+  ],
   "borders.changed": [{ type: "borders.changed", state: borders }],
   "home.changed": [{ type: "home.changed" }],
   "health.changed": [{ type: "health.changed" }],

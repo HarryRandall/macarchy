@@ -8,7 +8,8 @@ CLI="$(swift build --package-path "$REPO" --show-bin-path)/macarchy"
 
 HOME_DIR="$(mktemp -d -t macarchy-setup-test)"
 RESOURCES="$(mktemp -d -t macarchy-setup-resources)"
-trap 'rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
+# The partial uninstall check locks a file; unlock everything before removing.
+trap 'chflags -R nouchg "$HOME_DIR" 2>/dev/null; rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
 # The repository splits bundled files by kind; stage them in the app bundle's
 # Resources layout, which is what Paths.resources expects.
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
@@ -211,53 +212,29 @@ echo 'cmd - j : echo dotfile' > "$HOME_DIR/.skhdrc"
 "$CLI" uninstall >/dev/null
 rm -f "$HOME_DIR/.skhdrc"
 
-# A clean Mac with Ghostty configured gets defaults and the include line.
+# Setup leaves Ghostty alone; the Plugins page themes it. An include an
+# earlier version added is still taken out by uninstall.
 rm -rf "$HOME_DIR/.config" "$CONFIG"
 mkdir -p "$HOME_DIR/.config/ghostty"
 echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
 "$CLI" setup --replace --no-apply >/dev/null
 grep -q '^ctrl - left : ' "$CONFIG/skhdrc" || fail "default shortcuts missing"
-grep -q '^font-size = 13$' "$HOME_DIR/.config/ghostty/config" || fail "Ghostty settings lost"
-grep -q 'config-file = ?.*Application Support/Macarchy/generated/ghostty.conf' "$HOME_DIR/.config/ghostty/config" \
-  || fail "Ghostty include missing"
+[ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "setup changed Ghostty's config"
+[ -e "$ROOT/plugins" ] && fail "setup seeded plugins"
+[ -e "$HOME_DIR/.zshenv" ] && fail "setup changed zsh's startup files"
+printf '\n# Theme colours from Macarchy\nconfig-file = ?%s\n' "$ROOT/generated/ghostty.conf" \
+  >> "$HOME_DIR/.config/ghostty/config"
 "$CLI" uninstall >/dev/null
-[ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "Ghostty not restored"
-
-# A Ghostty config linked from a dotfiles folder stays a link; the include is
-# written into the file it points at and removed again on uninstall.
-rm -rf "$HOME_DIR/.config"
-mkdir -p "$HOME_DIR/.config/ghostty" "$HOME_DIR/dotfiles"
-echo 'font-size = 14' > "$HOME_DIR/dotfiles/ghostty-config"
-chmod 600 "$HOME_DIR/dotfiles/ghostty-config"
-ln -s "$HOME_DIR/dotfiles/ghostty-config" "$HOME_DIR/.config/ghostty/config"
-"$CLI" setup --keep --no-apply >/dev/null
-[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link replaced with a copy"
-grep -q 'config-file = ?' "$HOME_DIR/dotfiles/ghostty-config" || fail "include not in the link target"
-[ "$(stat -f %Lp "$HOME_DIR/dotfiles/ghostty-config")" = 600 ] || fail "Ghostty permissions changed"
-"$CLI" uninstall >/dev/null
-[ -L "$HOME_DIR/.config/ghostty/config" ] || fail "Ghostty link not kept on uninstall"
-[ "$(cat "$HOME_DIR/dotfiles/ghostty-config")" = 'font-size = 14' ] || fail "include left in the link target"
-rm -rf "$HOME_DIR/dotfiles" "$HOME_DIR/.config/ghostty/config"
-echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
-
-# With an Application Support config, the include goes there, loaded last.
-SUPPORT="$HOME_DIR/Library/Application Support/com.mitchellh.ghostty"
-mkdir -p "$SUPPORT"
-echo 'theme = something' > "$SUPPORT/config"
-"$CLI" setup --keep --no-apply >/dev/null
-grep -q 'config-file = ?' "$SUPPORT/config" || fail "include not in the last-loaded file"
-grep -q 'config-file' "$HOME_DIR/.config/ghostty/config" && fail "include in an earlier file"
-"$CLI" uninstall >/dev/null
+[ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "earlier Ghostty include not removed"
 cp "$SETTINGS" "$HOME_DIR/settings.saved"
-rm -rf "$SUPPORT" "$HOME_DIR/.config" "$ROOT"
+rm -rf "$HOME_DIR/.config" "$ROOT"
 
 # An install from before Application Support moves across and keeps working
 # through a link, which setup keeps for files that still name the old folder
 # and uninstall removes. tests/integration/upgrade.sh covers a full upgrade.
 OLD="$HOME_DIR/.config/macarchy"
-mkdir -p "$OLD/themes/mine" "$HOME_DIR/.config/ghostty"
+mkdir -p "$OLD/themes/mine"
 cp "$HOME_DIR/settings.saved" "$OLD/settings.json"
-echo "config-file = ?$OLD/generated/ghostty.conf" > "$HOME_DIR/.config/ghostty/config"
 "$CLI" doctor >/dev/null 2>&1 || true
 [ -f "$ROOT/settings.json" ] || fail "settings not moved"
 [ -d "$ROOT/themes/mine" ] || fail "themes not moved"
@@ -265,36 +242,40 @@ echo "config-file = ?$OLD/generated/ghostty.conf" > "$HOME_DIR/.config/ghostty/c
 "$CLI" setup --keep --no-apply >/dev/null
 [ -L "$OLD" ] || fail "old folder link removed by setup"
 grep -q 'Set up before Macarchy moved' <<<"$("$CLI" doctor 2>&1 || true)" && fail "setup still needed after setup"
-grep -q "$OLD" "$HOME_DIR/.config/ghostty/config" && fail "old Ghostty include kept"
-grep -q 'Application Support/Macarchy/generated/ghostty.conf' "$HOME_DIR/.config/ghostty/config" \
-  || fail "Ghostty include not moved"
 "$CLI" uninstall >/dev/null
 [ -e "$OLD" ] && fail "old folder link kept after uninstall"
 
 # An uninstall that stops part way says what it had already restored, and a
-# second run finishes. Backups are restored in path order, so Ghostty's
-# config comes back before the agents, whose folder cannot be changed.
+# second run finishes. Backups are restored in path order, so the installer's
+# yabai agent comes back before Macarchy's, which cannot be removed.
 rm -rf "$HOME_DIR/.config" "$CONFIG"
-mkdir -p "$HOME_DIR/.config/ghostty"
-echo 'font-size = 14' > "$HOME_DIR/.config/ghostty/config"
+mkdir -p "$AGENTS"
+echo 'installer agent' > "$AGENTS/com.asmvik.yabai.plist"
 "$CLI" setup --replace --no-apply >/dev/null
-chmod 555 "$AGENTS"
-OUTPUT="$("$CLI" uninstall 2>&1)" && fail "uninstall from a read-only agents folder succeeded"
-chmod 755 "$AGENTS"
+chflags uchg "$AGENTS/io.github.harryrandall.macarchy.yabai.plist"
+OUTPUT="$("$CLI" uninstall 2>&1)" && fail "uninstall past a locked agent succeeded"
+chflags nouchg "$AGENTS/io.github.harryrandall.macarchy.yabai.plist"
+# The snapshot taken before restoring copied the flag too.
+chflags -R nouchg "$ROOT/snapshots"
 grep -q 'Uninstall stopped part way' <<<"$OUTPUT" || fail "partial uninstall not reported: $OUTPUT"
-grep -q 'Restored ~/.config/ghostty/config' <<<"$OUTPUT" || fail "restored files not listed: $OUTPUT"
-"$CLI" uninstall >/dev/null || fail "second uninstall did not finish"
-[ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 14' ] || fail "Ghostty not restored on retry"
+grep -q 'Restored ~/Library/LaunchAgents/com.asmvik.yabai.plist' <<<"$OUTPUT" \
+  || fail "restored files not listed: $OUTPUT"
+# Handing yabai back to its installer's agent needs launchctl, which is not
+# faked here, so only the files are checked.
+OUTPUT="$("$CLI" uninstall 2>&1)" || true
+grep -q 'Uninstall stopped part way' <<<"$OUTPUT" && fail "second uninstall did not finish: $OUTPUT"
+grep -q 'Removed ~/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist' <<<"$OUTPUT" \
+  || fail "second uninstall did not remove the locked agent: $OUTPUT"
+[ "$(cat "$AGENTS/com.asmvik.yabai.plist")" = 'installer agent' ] || fail "installer agent not restored on retry"
 for daemon in yabai skhd sketchybar borders; do
   [ -e "$AGENTS/io.github.harryrandall.macarchy.$daemon.plist" ] && fail "$daemon agent left after retry"
 done
 
 # A missing backup stops uninstall before anything changes.
 "$CLI" setup --replace --no-apply >/dev/null
-INCLUDED="$(cat "$HOME_DIR/.config/ghostty/config")"
-rm "$ROOT/backups/"*-config
+rm "$ROOT/backups/"*-com.asmvik.yabai.plist
 "$CLI" uninstall >/dev/null 2>&1 && fail "uninstall succeeded with a missing backup"
-[ "$(cat "$HOME_DIR/.config/ghostty/config")" = "$INCLUDED" ] || fail "file changed despite a missing backup"
+[ "$(cat "$AGENTS/com.asmvik.yabai.plist")" = 'installer agent' ] || fail "file changed despite a missing backup"
 [ -e "$AGENTS/io.github.harryrandall.macarchy.yabai.plist" ] || fail "agent removed despite a missing backup"
 rm -rf "$ROOT/backups" "$AGENTS"
 
@@ -326,6 +307,69 @@ printf '#!/bin/bash\nif then\n' > "$HOME_DIR/.config/yabai/yabairc"
 bash -n "$CONFIG/yabairc" || fail "replaced yabairc syntax"
 grep -q 'if then' "$HOME_DIR/.config/yabai/yabairc" || fail "replace changed the person's yabairc"
 "$CLI" uninstall >/dev/null
+
+# Only the chosen tools are configured, each from its own config or the
+# defaults, and the choice is remembered for the next setup.
+rm -rf "$HOME_DIR/.config" "$ROOT"
+mkdir -p "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/skhd"
+echo 'yabai -m config window_gap 21' > "$HOME_DIR/.config/yabai/yabairc"
+echo 'cmd - k : echo kept' > "$HOME_DIR/.config/skhd/skhdrc"
+[ "$(status "$CLI" setup --tools=yabai,dock)" = 2 ] || fail "unknown tool accepted"
+[ "$(status "$CLI" setup --keep=skhd --replace=skhd)" = 2 ] || fail "a tool both kept and replaced"
+[ -e "$ROOT/settings.json" ] && fail "a rejected setup changed files"
+"$CLI" setup --tools=yabai,skhd --replace=skhd --no-apply >/dev/null
+grep -q '"window_gap" : 21' "$SETTINGS" || fail "kept yabairc not adopted"
+grep -q '^ctrl - left : ' "$CONFIG/skhdrc" || fail "replaced skhd did not start from defaults"
+grep -q 'echo kept' "$CONFIG/skhdrc" && fail "replaced skhd kept the person's shortcuts"
+for daemon in sketchybar borders; do
+  [ -e "$AGENTS/io.github.harryrandall.macarchy.$daemon.plist" ] && fail "$daemon set up though left out"
+  [ -e "$CONFIG/${daemon}rc" ] && fail "${daemon}rc written though $daemon was left out"
+done
+python3 - "$SETTINGS" <<'PY3' || fail "chosen tools not saved"
+import json, sys
+assert json.load(open(sys.argv[1]))["tools"] == ["yabai", "skhd"]
+PY3
+DOCTOR="$("$CLI" doctor 2>&1 || true)"
+grep -q 'ok   SketchyBar: Left out of setup' <<<"$DOCTOR" || fail "doctor does not say SketchyBar is left alone: $DOCTOR"
+grep -q 'SketchyBar agent' <<<"$DOCTOR" && fail "doctor checks SketchyBar though it is left out: $DOCTOR"
+"$CLI" setup --keep --no-apply >/dev/null
+[ -e "$AGENTS/io.github.harryrandall.macarchy.borders.plist" ] && fail "a later setup forgot the chosen tools"
+"$CLI" uninstall >/dev/null
+
+# --install installs chosen tools that are missing with Homebrew first, and
+# uninstall --remove-tools removes only those. A fake brew installs a tool by
+# putting a fake beside itself.
+rm -rf "$HOME_DIR/.config" "$ROOT" "$AGENTS"
+cp "$MACARCHY_SEARCH_PATH/brew" "$HOME_DIR/brew.saved"
+cp "$MACARCHY_SEARCH_PATH/borders" "$HOME_DIR/borders.saved"
+rm "$MACARCHY_SEARCH_PATH/borders"
+cat > "$MACARCHY_SEARCH_PATH/brew" <<SH
+#!/bin/sh
+printf '%s\n' "brew \$*" >>'$CALLS'
+name="\${2##*/}"
+case "\$1" in
+  install) echo "==> Pouring \$name"; cp '$HOME_DIR/borders.saved' "$MACARCHY_SEARCH_PATH/\$name" ;;
+  uninstall) rm -f "$MACARCHY_SEARCH_PATH/\$name" ;;
+esac
+SH
+chmod +x "$MACARCHY_SEARCH_PATH/brew"
+OUTPUT="$("$CLI" setup --tools=yabai,borders --install --no-apply)" || fail "setup --install failed: $OUTPUT"
+grep -q 'Installing borders with Homebrew' <<<"$OUTPUT" || fail "install not announced: $OUTPUT"
+grep -q '  ==> Pouring borders' <<<"$OUTPUT" || fail "Homebrew's output not shown: $OUTPUT"
+grep -q 'Installed borders with Homebrew' <<<"$OUTPUT" || fail "install not reported: $OUTPUT"
+grep -q 'brew install.*yabai' "$CALLS" && fail "an installed tool was installed again"
+[ -x "$MACARCHY_SEARCH_PATH/borders" ] || fail "borders not installed"
+[ -e "$AGENTS/io.github.harryrandall.macarchy.borders.plist" ] || fail "installed borders not set up"
+OUTPUT="$("$CLI" uninstall)"
+grep -q 'macarchy uninstall --remove-tools' <<<"$OUTPUT" || fail "removing installed tools not offered: $OUTPUT"
+[ -x "$MACARCHY_SEARCH_PATH/borders" ] || fail "uninstall removed a tool without --remove-tools"
+OUTPUT="$("$CLI" uninstall --remove-tools)"
+grep -q 'Removed borders with Homebrew' <<<"$OUTPUT" || fail "borders not removed: $OUTPUT"
+[ -e "$MACARCHY_SEARCH_PATH/borders" ] && fail "borders still installed"
+[ -x "$MACARCHY_SEARCH_PATH/yabai" ] || fail "uninstall removed a tool Macarchy did not install"
+grep -q 'brew uninstall.*yabai' "$CALLS" && fail "a tool that was there before was removed"
+mv "$HOME_DIR/brew.saved" "$MACARCHY_SEARCH_PATH/brew"
+mv "$HOME_DIR/borders.saved" "$MACARCHY_SEARCH_PATH/borders"
 
 # A full setup, apply and theme change in the temporary home reach only the
 # fake tools. launchd and the global defaults the default borders' window

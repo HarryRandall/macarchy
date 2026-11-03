@@ -196,10 +196,10 @@ public struct SkhdShortcuts: Sendable {
                     }
                 }
             }
-            guard Paths.isInstalled("skhd") else {
+            guard Daemon.skhd.isManaged else {
                 return CommandResult(
                     command: reason, status: 0,
-                    stdout: "Saved. skhd is not installed; reload was skipped.")
+                    stdout: "Saved. skhd is not installed or not set up; reload was skipped.")
             }
             let reload = await integrations.restart(.skhd)
             guard reload.ok else {

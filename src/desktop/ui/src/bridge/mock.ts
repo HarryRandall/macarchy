@@ -11,6 +11,9 @@
  *   ?fail=restart        Restart All leaves skhd stopped
  *   ?source=saved        yabai is "not running"; layout is read-only
  *   ?setup               settings have never been written
+ *   ?fail=setup          setup stops part way
+ *   ?fail=install        installing SketchyBar with Homebrew fails
+ *   ?brew=missing        Homebrew is not installed
  *
  * `window.macarchyMock` drives events from the console: openSwitcher(),
  * closeSwitcher(), changeLayout({ windowGap: 20 }), setAccent("#ff9f0a"),
@@ -36,6 +39,8 @@ import type {
   RulesState,
   ResultOf,
   ServiceId,
+  SetupProgress,
+  SetupTool,
   ShellState,
   SwitcherFailure,
   SwitcherState,
@@ -339,7 +344,46 @@ export function installMockHost() {
     additionExplanation: "The scripting addition is optional.",
     wakeHelpers: true,
     backupsDirectory: "~/Library/Application Support/Macarchy/backups",
+    removableTools: [{ id: "sketchybar", name: "SketchyBar" }],
   };
+  const setupTools: SetupTool[] = [
+    {
+      id: "yabai",
+      name: "yabai",
+      description: "Tiles windows and moves them between desktops",
+      installed: true,
+      chosen: true,
+      ownConfig: "~/.config/yabai/yabairc",
+    },
+    {
+      id: "skhd",
+      name: "skhd",
+      description: "Runs the keyboard shortcuts",
+      installed: true,
+      chosen: true,
+      ownConfig: "~/.config/skhd/skhdrc",
+    },
+    {
+      id: "sketchybar",
+      name: "SketchyBar",
+      description: "Draws the menu bar with Macarchy's widgets",
+      installed: false,
+      chosen: true,
+      ownConfig: null,
+    },
+    {
+      id: "borders",
+      name: "borders",
+      description: "Outlines the focused window in the theme's colours",
+      installed: false,
+      chosen: true,
+      ownConfig: null,
+    },
+  ];
+  let homebrew = query.get("brew") !== "missing";
+  function progress(state: SetupProgress) {
+    deliver({ type: "setup.progress", state });
+  }
   let borders: BordersState = {
     appearance: {
       width: 6,
@@ -393,8 +437,11 @@ export function installMockHost() {
     "advanced.rebuild": () => ({ outcome: "Rebuilt" }),
     "advanced.restoreSnapshot": () => null,
     "advanced.repairAddition": () => null,
-    "advanced.restoreOriginals": () => ({
-      lines: ["Restored original files"],
+    "advanced.restoreOriginals": ({ removeTools }) => ({
+      lines: [
+        "Restored original files",
+        ...removeTools.map((id) => `Removed ${title(id)} with Homebrew`),
+      ],
       failures: [],
       failure: null,
     }),
@@ -430,20 +477,37 @@ export function installMockHost() {
       return null;
     },
     "advanced.openLoginItems": () => null,
-    "setup.getPlan": () => ({
-      tools: [],
-      changes: [
-        {
-          path: "~/Library/Application Support/Macarchy/config/yabairc",
-          action: "create",
-          detail: "Starts tiling with Macarchy's layout and rules",
-        },
-      ],
-      hasExisting: true,
+    "setup.getPlan": ({ tools, existing }) => ({
+      tools: setupTools,
+      homebrew,
+      changes: tools.map((id) => ({
+        path: `~/Library/Application Support/Macarchy/config/${id}rc`,
+        action: existing[id] === "replace" ? "create" : "adopt",
+        detail:
+          existing[id] === "replace"
+            ? "Starts from Macarchy's defaults"
+            : `Sets up ${title(id)} with Macarchy`,
+      })),
       canClose: !shell.setupRequired,
       notices: [],
     }),
-    "setup.run": () => {
+    "setup.run": async ({ tools }) => {
+      const missing = setupTools.filter((tool) => !tool.installed && tools.includes(tool.id));
+      for (const tool of homebrew ? missing : []) {
+        progress({ tool: tool.id, status: "installing", line: null });
+        for (const line of [`==> Fetching ${tool.id}`, `==> Pouring ${tool.id}`]) {
+          await sleep(400);
+          progress({ tool: tool.id, status: "output", line });
+        }
+        if (failures.has("install") && tool.id === "sketchybar") {
+          progress({ tool: tool.id, status: "failed", line: "Error: No available formula" });
+        } else {
+          tool.installed = true;
+          progress({ tool: tool.id, status: "installed", line: null });
+        }
+      }
+      progress({ tool: null, status: "configuring", line: null });
+      await sleep(400);
       if (failures.has("setup")) {
         return {
           lines: ["Installed themes", "Installed default shortcuts"],
@@ -455,6 +519,10 @@ export function installMockHost() {
       shell = { ...shell, setupRequired: false };
       deliver({ type: "shell.changed", state: shell });
       return { lines: ["Installed themes", "Prepared startup files"], failures: [], failure: null };
+    },
+    "setup.installHomebrew": () => {
+      homebrew = true;
+      return null;
     },
     "setup.openAccessibility": () => null,
     "borders.getState": () => {

@@ -45,9 +45,15 @@ public actor WidgetHost {
         self.integrations = integrations
         self.runner = runner
         self.sources = sources
+        // A setup that left SketchyBar out leaves the person's own bar alone,
+        // so there are no widgets to send it.
         self.load =
             load ?? {
-                (try? BarConfigurationStore().load(), WidgetCatalogue().read())
+                (
+                    Setup.chosenTools.contains(.sketchybar)
+                        ? try? BarConfigurationStore().load() : nil,
+                    WidgetCatalogue().read()
+                )
             }
     }
 

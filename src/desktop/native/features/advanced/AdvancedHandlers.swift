@@ -3,8 +3,11 @@ import Foundation
 import Macarchy
 
 extension BridgeRouter {
-    func registerAdvanced(model: AppModel) {
-        registerSetup(model: model)
+    /// `send` reaches the page that asked, for setup's progress.
+    func registerAdvanced(
+        model: AppModel, send: @escaping @MainActor (BridgeEvent) -> Void = { _ in }
+    ) {
+        registerSetup(model: model, send: send)
         registerCleanup(model: model)
         register("advanced.getState") { (_: Empty) in
             try await model.advancedState()
@@ -57,9 +60,20 @@ extension BridgeRouter {
             model.loginItem.openSettings()
             return Null()
         }
-        register("advanced.restoreOriginals") { (_: Empty) in
-            try await Self.maintenance(model, name: "restored original files") {
-                let report = try await model.setupSession.restoreOriginals()
+        registerRestore(model: model)
+    }
+
+    private func registerRestore(model: AppModel) {
+        register("advanced.restoreOriginals") { (params: RestoreParams) in
+            // Only tools Macarchy installed and still there are ever removed.
+            let removable = model.setupSession.installer.removable()
+            let removing = removable.filter { params.removeTools.contains($0.id) }
+            guard Set(removing.map(\.id)) == Set(params.removeTools) else {
+                throw BridgeFailure(
+                    .invalidParams, "Only tools Macarchy installed can be removed")
+            }
+            return try await Self.maintenance(model, name: "restored original files") {
+                let report = try await model.setupSession.restoreOriginals(removing: removing)
                 for command in report.commands { model.log.record(command) }
                 return SetupReport(report)
             }
@@ -87,16 +101,24 @@ extension BridgeRouter {
         }
     }
 
-    private func registerSetup(model: AppModel) {
+    private func registerSetup(model: AppModel, send: @escaping @MainActor (BridgeEvent) -> Void) {
         register("setup.getPlan") { (params: SetupParams) in
-            model.setupState(existing: params.existing)
+            model.setupState(params.choices)
         }
         // A partial run resolves rather than rejects, so the page can show the
         // steps that already changed files next to the reason it stopped.
+        // Missing tools are installed first, each step sent as it happens.
         register("setup.run") { (params: SetupParams) in
             let app = Bundle.main.bundleURL.pathExtension == "app" ? Bundle.main.bundleURL : nil
+            // Without Homebrew the page has said the missing tools wait for it.
             let report = await model.setupSession.run(
-                existing: params.existing == .keep ? .keep : .replace, app: app)
+                params.choices, app: app, install: ToolInstaller.homebrew != nil
+            ) { step in
+                // The main queue keeps Homebrew's lines in the order they came.
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { send(.setupProgress(SetupProgress(step))) }
+                }
+            }
             for command in report.commands { model.log.record(command) }
             if let failure = report.failure {
                 model.log.failure("set up Macarchy", failure)
@@ -110,6 +132,21 @@ extension BridgeRouter {
             StateBroadcast.shared.settingsWritten()
             StateBroadcast.shared.advancedChanged()
             return SetupReport(report)
+        }
+        // Homebrew's installer asks for the person's password, so it runs in
+        // Terminal where they can answer; the page checks again afterwards.
+        register("setup.installHomebrew") { (_: Empty) in
+            do {
+                let script = try ToolInstaller.homebrewInstaller()
+                if let problem = model.openInTerminal(script) {
+                    throw ConfigurationError(problem)
+                }
+                model.log.note("install Homebrew", "Opened the installer in Terminal")
+                return Null()
+            } catch {
+                model.log.failure("install Homebrew", error.localizedDescription)
+                throw BridgeFailure(.operationFailed, error.localizedDescription)
+            }
         }
         register("setup.openAccessibility") { (_: Empty) in
             if let url = URL(
@@ -169,19 +206,23 @@ extension CleanupReport {
 }
 
 extension AppModel {
-    func setupState(existing: SetupParams.Existing) -> SetupState {
-        let plan = Setup.plan(existing: existing == .keep ? .keep : .replace)
+    /// The plan for `choices`, with every tool and whether it was chosen
+    /// last time, so the page starts from the earlier answers.
+    func setupState(_ choices: Setup.Choices) -> SetupState {
+        let plan = Setup.plan(choices)
+        let chosen = Setup.chosenTools
         return SetupState(
-            tools: Daemon.allCases.map {
+            // Window management first, then what draws on top of it.
+            tools: [Daemon.yabai, .skhd, .sketchybar, .borders].map {
                 .init(
-                    id: $0.rawValue, name: $0.displayName, role: $0.role,
-                    installed: Paths.isInstalled($0.executableName),
-                    installCommand: $0.installCommand)
+                    id: $0.rawValue, name: $0.displayName, description: $0.summary,
+                    installed: Paths.isInstalled($0.executableName), chosen: chosen.contains($0),
+                    ownConfig: Setup.ownConfig($0).map(Paths.display))
             },
+            homebrew: ToolInstaller.homebrew != nil,
             changes: plan.map {
                 .init(path: Paths.display($0.path), action: $0.action.rawValue, detail: $0.detail)
             },
-            hasExisting: plan.contains { $0.action == .adopt || $0.action == .replace },
             canClose: !setupRequired,
             notices: LegacyLayout.note?.lines ?? [])
     }
@@ -216,7 +257,10 @@ extension AppModel {
                 addition: addition, additionExplanation: status.explanation,
                 wakeHelpers: await advancedConfiguration.wakeHelpersRegistered(),
                 backupsDirectory: Paths.display(Paths.backupsDirectory),
-                loginItem: loginItem.state())
+                loginItem: loginItem.state(),
+                removableTools: setupSession.installer.removable().map {
+                    .init(id: $0.id, name: $0.name)
+                })
         } catch {
             log.failure("read advanced", error.localizedDescription)
             throw BridgeFailure(.operationFailed, error.localizedDescription)

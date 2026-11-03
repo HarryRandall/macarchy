@@ -85,6 +85,16 @@
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "loginItem": "on",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
         "services": [
           {
             "id": "yabai",
@@ -123,6 +133,7 @@
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 0,
         "loginItem": "off",
+        "removableTools": [],
         "services": [
           {
             "id": "yabai",
@@ -154,6 +165,16 @@
         "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
         "installedThemes": 8,
         "loginItem": "unavailable",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
         "services": [
           {
             "id": "yabai",
@@ -239,12 +260,29 @@
   ],
   "advanced.restoreOriginals": [
     {
-      "params": {},
+      "params": {
+        "removeTools": []
+      },
       "result": {
         "failure": null,
         "failures": [],
         "lines": [
           "Restored original files"
+        ]
+      }
+    },
+    {
+      "params": {
+        "removeTools": [
+          "sketchybar"
+        ]
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Restored original files",
+          "Removed SketchyBar with Homebrew"
         ]
       }
     }
@@ -1421,7 +1459,12 @@
   "setup.getPlan": [
     {
       "params": {
-        "existing": "keep"
+        "existing": {},
+        "tools": [
+          "yabai",
+          "sketchybar",
+          "skhd"
+        ]
       },
       "result": {
         "canClose": true,
@@ -1437,45 +1480,56 @@
             "path": "~/Library/Application Support/Macarchy/config/skhdrc"
           }
         ],
-        "hasExisting": true,
+        "homebrew": true,
         "notices": [
           "Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"
         ],
         "tools": [
           {
+            "chosen": true,
+            "description": "Tiles windows and moves them between desktops",
             "id": "yabai",
-            "installCommand": "brew install koekeishiya/formulae/yabai",
             "installed": true,
             "name": "yabai",
-            "role": "Tiles windows"
+            "ownConfig": "~/.config/yabai/yabairc"
           },
           {
+            "chosen": false,
+            "description": "Outlines the focused window in the theme's colours",
             "id": "borders",
-            "installCommand": "brew install FelixKratz/formulae/borders",
             "installed": true,
-            "name": "JankyBorders",
-            "role": "Draws window borders"
+            "name": "borders",
+            "ownConfig": null
           },
           {
+            "chosen": true,
+            "description": "Draws the menu bar with Macarchy's widgets",
             "id": "sketchybar",
-            "installCommand": "brew install FelixKratz/formulae/sketchybar",
             "installed": false,
             "name": "SketchyBar",
-            "role": "Shows the menu bar"
+            "ownConfig": null
           },
           {
+            "chosen": true,
+            "description": "Runs the keyboard shortcuts",
             "id": "skhd",
-            "installCommand": "brew install koekeishiya/formulae/skhd",
             "installed": false,
             "name": "skhd",
-            "role": "Runs keyboard shortcuts"
+            "ownConfig": "~/.skhdrc"
           }
         ]
       }
     },
     {
       "params": {
-        "existing": "replace"
+        "existing": {
+          "skhd": "replace",
+          "yabai": "keep"
+        },
+        "tools": [
+          "yabai",
+          "skhd"
+        ]
       },
       "result": {
         "canClose": false,
@@ -1486,39 +1540,49 @@
             "path": "~/Library/Application Support/Macarchy/config/skhdrc"
           }
         ],
-        "hasExisting": true,
+        "homebrew": false,
         "notices": [],
         "tools": [
           {
+            "chosen": true,
+            "description": "Tiles windows and moves them between desktops",
             "id": "yabai",
-            "installCommand": "brew install koekeishiya/formulae/yabai",
             "installed": true,
             "name": "yabai",
-            "role": "Tiles windows"
+            "ownConfig": "~/.config/yabai/yabairc"
           },
           {
+            "chosen": false,
+            "description": "Outlines the focused window in the theme's colours",
             "id": "borders",
-            "installCommand": "brew install FelixKratz/formulae/borders",
             "installed": true,
-            "name": "JankyBorders",
-            "role": "Draws window borders"
+            "name": "borders",
+            "ownConfig": null
           },
           {
+            "chosen": true,
+            "description": "Draws the menu bar with Macarchy's widgets",
             "id": "sketchybar",
-            "installCommand": "brew install FelixKratz/formulae/sketchybar",
             "installed": false,
             "name": "SketchyBar",
-            "role": "Shows the menu bar"
+            "ownConfig": null
           },
           {
+            "chosen": true,
+            "description": "Runs the keyboard shortcuts",
             "id": "skhd",
-            "installCommand": "brew install koekeishiya/formulae/skhd",
             "installed": false,
             "name": "skhd",
-            "role": "Runs keyboard shortcuts"
+            "ownConfig": "~/.skhdrc"
           }
         ]
       }
+    }
+  ],
+  "setup.installHomebrew": [
+    {
+      "params": {},
+      "result": null
     }
   ],
   "setup.openAccessibility": [
@@ -1530,7 +1594,12 @@
   "setup.run": [
     {
       "params": {
-        "existing": "keep"
+        "existing": {},
+        "tools": [
+          "yabai",
+          "sketchybar",
+          "skhd"
+        ]
       },
       "result": {
         "failure": null,
@@ -1543,7 +1612,14 @@
     },
     {
       "params": {
-        "existing": "replace"
+        "existing": {
+          "skhd": "replace",
+          "yabai": "keep"
+        },
+        "tools": [
+          "yabai",
+          "skhd"
+        ]
       },
       "result": {
         "failure": "Setup did not finish; some files may already have changed. The menu bar file could not be written.",

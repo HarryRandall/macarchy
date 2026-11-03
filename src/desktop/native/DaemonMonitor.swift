@@ -11,10 +11,11 @@ final class DaemonMonitor {
     private let backend: Integrations
     private let log: CommandLog
 
-    /// Every integration is optional, so a tool that is not installed is left
-    /// out of the counts and of Restart All rather than shown as stopped.
-    /// Replaceable so tests do not depend on what this Mac has installed.
-    var isInstalled: @MainActor (Daemon) -> Bool = { Paths.isInstalled($0.executableName) }
+    /// Every integration is optional, so a tool that is not installed, or
+    /// was left out of setup, is left out of the counts and of Restart All
+    /// rather than shown as stopped. Replaceable so tests do not depend on
+    /// what this Mac has installed.
+    var isInstalled: @MainActor (Daemon) -> Bool = { $0.isManaged }
 
     /// Starts one service for Restart All. The live start is the one
     /// `macarchy services` uses; tests replace it so they never read or change

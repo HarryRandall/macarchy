@@ -50,6 +50,9 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
     public var itemOrder: [String] = []
     public var itemVisibility: [String: Bool] = [:]
     public var itemLabels: [String: String] = [:]
+    /// The tools setup configures and starts, by name; nil before setup has
+    /// asked, which means every tool. See `Setup.chosenTools`.
+    public var tools: [String]?
     /// Top-level keys this version does not know, such as those a newer
     /// version added. They are written back unchanged, never dropped.
     public var unknownKeys: [String: JSONValue] = [:]
@@ -57,7 +60,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schema, currentTheme, wallpapers, layout, borders, menuBar, floatingApps
-        case windowRules, barConfiguration, itemOrder, itemVisibility, itemLabels
+        case windowRules, barConfiguration, itemOrder, itemVisibility, itemLabels, tools
     }
 
     /// `schema` is required; every other key may be left out and takes its
@@ -84,6 +87,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         itemVisibility =
             try keys.decodeIfPresent([String: Bool].self, forKey: .itemVisibility) ?? [:]
         itemLabels = try keys.decodeIfPresent([String: String].self, forKey: .itemLabels) ?? [:]
+        tools = try keys.decodeIfPresent([String].self, forKey: .tools)
         let known = Set(CodingKeys.allCases.map(\.rawValue))
         let all = try decoder.container(keyedBy: AnyCodingKey.self)
         for key in all.allKeys where !known.contains(key.stringValue) {
@@ -105,6 +109,7 @@ public struct SettingsDocument: Codable, Sendable, Equatable {
         try keys.encode(itemOrder, forKey: .itemOrder)
         try keys.encode(itemVisibility, forKey: .itemVisibility)
         try keys.encode(itemLabels, forKey: .itemLabels)
+        try keys.encodeIfPresent(tools, forKey: .tools)
         var extra = encoder.container(keyedBy: AnyCodingKey.self)
         for (key, value) in unknownKeys { try extra.encode(value, forKey: AnyCodingKey(key)) }
     }

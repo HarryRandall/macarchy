@@ -111,9 +111,10 @@ export function createAdvancedStore(host: PageHost) {
         set({ error: errorMessage(error) });
       }
     },
-    restoreOriginals: () =>
+    /** Puts the original files back, also removing `removeTools`, which Macarchy installed. */
+    restoreOriginals: (removeTools: string[] = []) =>
       perform(async () => {
-        set({ report: await host.request("advanced.restoreOriginals") });
+        set({ report: await host.request("advanced.restoreOriginals", { removeTools }) });
       }),
     dismissReport() {
       set({ report: null });

@@ -124,9 +124,10 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
             />
             <DangerZone
               directory={state.backupsDirectory}
+              removableTools={state.removableTools}
               busy={busy}
               report={snapshot.report}
-              onRestore={() => store.restoreOriginals()}
+              onRestore={(removeTools) => store.restoreOriginals(removeTools)}
               onDismissReport={() => store.dismissReport()}
             />
           </>

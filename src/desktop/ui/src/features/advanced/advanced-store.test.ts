@@ -13,6 +13,7 @@ const state: AdvancedState = {
   wakeHelpers: true,
   backupsDirectory: "~/.config/macarchy/backups",
   loginItem: "off",
+  removableTools: [],
 };
 function harness() {
   const handlers = new Map<string, (event: BridgeEvent) => void>();
@@ -55,6 +56,25 @@ describe("Advanced store", () => {
     request.mockRejectedValueOnce(new Error("Restore refused"));
     await expect(store.restoreSnapshot("backup")).rejects.toThrow("Restore refused");
     expect(store.getSnapshot()).toMatchObject({ state, busy: false, error: "Restore refused" });
+  });
+  it("restores originals, removing only the tools ticked, and keeps the report", async () => {
+    const { store, request } = harness();
+    await store.load();
+    const report = {
+      lines: ["Restored original files", "Removed SketchyBar with Homebrew"],
+      failures: [],
+      failure: null,
+    };
+    request.mockResolvedValueOnce(report);
+    await store.restoreOriginals(["sketchybar"]);
+    expect(request.mock.calls[1]).toEqual([
+      "advanced.restoreOriginals",
+      { removeTools: ["sketchybar"] },
+    ]);
+    expect(store.getSnapshot().report).toEqual(report);
+    request.mockResolvedValueOnce(report);
+    await store.restoreOriginals();
+    expect(request.mock.calls.at(-2)).toEqual(["advanced.restoreOriginals", { removeTools: [] }]);
   });
   it("uses named actions and shows the state read after each one", async () => {
     const { store, request } = harness();

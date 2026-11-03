@@ -17,7 +17,7 @@ public enum DesktopConfiguration {
         return try await OperationLock.run {
             let restored = try store.restore(snapshot)
             try await applyLocked(integrations: integrations)
-            if restartsShortcuts, Paths.isInstalled("skhd") {
+            if restartsShortcuts, Daemon.skhd.isManaged {
                 let result = await integrations.restart(.skhd)
                 guard result.ok else { throw ConfigurationError(result.summary) }
             }
@@ -32,7 +32,8 @@ public enum DesktopConfiguration {
     }
 
     /// Reapplies every saved setting under one desktop lock, skipping tools
-    /// that are not installed rather than failing halfway.
+    /// that are not installed or were left out of setup rather than failing
+    /// halfway.
     public static func apply(integrations: Integrations = Integrations()) async throws {
         try await OperationLock.run { try await applyLocked(integrations: integrations) }
     }
@@ -45,10 +46,10 @@ public enum DesktopConfiguration {
                 name: name)
             guard result.ok else { throw ConfigurationError(result.stderr) }
         }
-        if Paths.isInstalled("yabai") {
+        if Daemon.yabai.isManaged {
             try await Startup.apply("yabai", integrations: integrations)
         }
-        if Paths.isInstalled("sketchybar") {
+        if Daemon.sketchybar.isManaged {
             try await Startup.apply("sketchybar", integrations: integrations)
         }
         try await Startup.applyCorners(integrations: integrations)
