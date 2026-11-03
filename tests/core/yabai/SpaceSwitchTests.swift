@@ -12,7 +12,7 @@ struct SpaceSwitchTests {
         private var current: Int
         private var queue: [Int] = []
         private var sinceSent = 0
-        private var looks = 0
+        private var looksSoFar = 0
         private var presses: [Int: Int]
         private(set) var sent: [Int] = []
 
@@ -34,36 +34,79 @@ struct SpaceSwitchTests {
         /// One look later; returns a press due now.
         func tick() -> Int? {
             lock.withLock {
-                looks += 1
+                looksSoFar += 1
                 sinceSent += 1
                 if !queue.isEmpty, sinceSent >= 3 {
                     current = queue.removeFirst()
                     sinceSent = 0
                 }
-                return presses.removeValue(forKey: looks)
+                return presses.removeValue(forKey: looksSoFar)
             }
         }
     }
 
-    private static func switcher(_ desk: Desk, in directory: URL) -> SpaceSwitch {
+    /// Holds every switch's work open, as InstantSpaceSwitcher's tool stays
+    /// running after its switch lands, until a second switch has been sent.
+    private actor Settling {
+        private var open = false
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+        private(set) var sentWhileHeld: [Int] = []
+
+        func hold() async {
+            guard !open else { return }
+            await withCheckedContinuation { waiting.append($0) }
+        }
+
+        func note(_ sent: [Int]) {
+            guard !open else { return }
+            sentWhileHeld = sent
+            if sent.count >= 2 { release() }
+        }
+
+        func release() {
+            open = true
+            waiting.forEach { $0.resume() }
+            waiting = []
+        }
+    }
+
+    private static func switcher(
+        _ desk: Desk, in directory: URL, settling: Settling? = nil
+    ) -> SpaceSwitch {
         SpaceSwitch(
             spaces: { Dictionary(uniqueKeysWithValues: (1...5).map { ($0, $0 * 10) }) },
             showing: { desk.showing() },
-            focus: { desk.focus($0) },
+            // Sent before returning, as the real tools are started at once;
+            // only their settling afterwards is left running.
+            focus: { index in
+                desk.focus(index)
+                return Task { await settling?.hold() }
+            },
             pause: {
+                await settling?.note(desk.sent)
                 if let press = desk.tick() {
-                    await switcher(desk, in: directory).go(to: press)
+                    await switcher(desk, in: directory, settling: settling).go(to: press)
                 }
             },
             directory: directory, patience: 20)
     }
 
-    private func run(_ desk: Desk, going to: Int) async throws {
+    private func run(_ desk: Desk, going to: Int, settling: Settling? = nil) async throws {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-space-switch-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        await Self.switcher(desk, in: directory).go(to: to)
+        await Self.switcher(desk, in: directory, settling: settling).go(to: to)
+        await settling?.release()
+    }
+
+    @Test("the next switch is sent once the last one shows, while its tool is still settling")
+    func doesNotWaitForSettling() async throws {
+        let desk = Desk(on: 2, presses: [1: 2])
+        let settling = Settling()
+        try await run(desk, going: 4, settling: settling)
+        #expect(await settling.sentWhileHeld == [4, 2])
+        #expect(desk.space == 2)
     }
 
     /// From 2, 4 then 2 then 4 then 2: yabai would queue every slide and

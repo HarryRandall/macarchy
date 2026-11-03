@@ -61,6 +61,19 @@ struct SpacesReading: Equatable, Sendable {
         return ids.isEmpty ? nil : Set(ids)
     }
 
+    /// Space ids by index, numbered as yabai does, from the window server
+    /// at once rather than from yabai, which answers slowly mid-switch. Nil
+    /// with several displays, whose order yabai decides.
+    static func indicesFromWindowServer() -> [Int: Int]? {
+        guard let displays = copyManagedDisplaySpaces(mainConnection()) as? [[String: Any]],
+            displays.count == 1, let spaces = displays[0]["Spaces"] as? [[String: Any]]
+        else { return nil }
+        let ids = spaces.compactMap { $0["ManagedSpaceID"] as? Int }
+        guard !ids.isEmpty, ids.count == spaces.count else { return nil }
+        return Dictionary(
+            uniqueKeysWithValues: ids.enumerated().map { ($0.offset + 1, $0.element) })
+    }
+
     /// The Spaces in order, each with the apps of the windows a person would
     /// count: standard windows that are not minimised, hidden or on every Space.
     static func parse(spaces: Data, windows: Data?) -> SpacesReading? {

@@ -9,12 +9,18 @@ import Foundation
 /// only records its Space. The press that holds the lock sends one switch,
 /// waits for it to land, then goes on to whichever Space was asked for last,
 /// skipping the ones pressed in between.
+///
+/// The next switch is sent as soon as the last one shows, without waiting
+/// for whatever sent it to finish: InstantSpaceSwitcher's tool lands at
+/// once but stays running for 0.3 s to let its swipe settle, which would
+/// otherwise hold up every press after it.
 public struct SpaceSwitch: Sendable {
     /// Space ids by index, as yabai numbers them.
     var spaces: @Sendable () async -> [Int: Int]
     /// The ids of the Spaces showing now, which change once a slide ends.
     var showing: @Sendable () -> Set<Int>
-    var focus: @Sendable (Int) async -> Void
+    /// Starts a switch, returning the work still running for it.
+    var focus: @Sendable (Int) -> Task<Void, Never>
     /// A short wait between looks at whether a switch has landed.
     var pause: @Sendable () async -> Void
     let directory: URL
@@ -25,13 +31,18 @@ public struct SpaceSwitch: Sendable {
     public static var live: SpaceSwitch {
         let integrations = Integrations()
         return SpaceSwitch(
-            spaces: { await indices(integrations) },
+            spaces: {
+                if let ids = SpacesReading.indicesFromWindowServer() { return ids }
+                return await indices(integrations)
+            },
             showing: { SpacesReading.currentSpaceIDs() ?? [] },
             focus: { index in
-                guard await !InstantSpaceSwitcher.focus(index, integrations: integrations)
-                else { return }
-                _ = await integrations.execute(
-                    Paths.yabai, ["-m", "space", "--focus", String(index)])
+                Task {
+                    guard await !InstantSpaceSwitcher.focus(index, integrations: integrations)
+                    else { return }
+                    _ = await integrations.execute(
+                        Paths.yabai, ["-m", "space", "--focus", String(index)])
+                }
             },
             pause: { try? await Task.sleep(for: .milliseconds(10)) },
             directory: Paths.stateDirectory)
@@ -46,13 +57,20 @@ public struct SpaceSwitch: Sendable {
         record(index)
         guard var held = take() else { return }
         var wanted = index
+        var sent: [Task<Void, Never>] = []
         // A Space that does not exist is left alone, as yabai does;
         // InstantSpaceSwitcher would go to the last one instead.
         let ids = await spaces()
         while true {
-            guard let id = ids[wanted] else { break }
-            await focus(wanted)
-            guard await landed(on: id) else { break }
+            guard let id = ids[wanted] else {
+                release(held)
+                break
+            }
+            sent.append(focus(wanted))
+            guard await landed(on: id) else {
+                release(held)
+                break
+            }
             if let next = recorded(), next != wanted, let nextID = ids[next],
                 !showing().contains(nextID)
             {
@@ -64,11 +82,13 @@ public struct SpaceSwitch: Sendable {
             release(held)
             guard let next = recorded(), next != wanted, let nextID = ids[next],
                 !showing().contains(nextID), let again = take()
-            else { return }
+            else { break }
             held = again
             wanted = next
         }
-        release(held)
+        // Switching is over and the lock let go; the tools that switched
+        // finish settling before this process ends.
+        for task in sent { await task.value }
     }
 
     private func landed(on id: Int) async -> Bool {
