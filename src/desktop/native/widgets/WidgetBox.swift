@@ -7,6 +7,14 @@ struct WidgetBox {
     struct Background: Equatable {
         var drawing: String
         var colour: String
+        var borderWidth: Int = 0
+        var borderColour: String = "0x00000000"
+
+        var highlighted: Background {
+            Background(
+                drawing: "on", colour: WidgetMenuController.highlightColour,
+                borderWidth: drawing == "on" ? borderWidth : 0, borderColour: borderColour)
+        }
     }
 
     /// The bracket or item that draws the box.
@@ -30,13 +38,17 @@ struct WidgetBox {
         return WidgetBox(
             name: name, frame: frame(item.boundingRects),
             background: Background(
-                drawing: background?.drawing ?? "off", colour: background?.color ?? "0x0"))
+                drawing: background?.drawing ?? "off", colour: background?.color ?? "0x0",
+                borderWidth: background?.borderWidth ?? 0,
+                borderColour: background?.borderColour ?? "0x00000000"))
     }
 
     static func paint(_ name: String, _ background: Background) async {
         _ = await Integrations().sketchybar([
             "--set", name, "background.drawing=\(background.drawing)",
-            "background.color=\(background.colour)"
+            "background.color=\(background.colour)",
+            "background.border_width=\(background.borderWidth)",
+            "background.border_color=\(background.borderColour)"
         ])
     }
 
@@ -59,6 +71,14 @@ struct WidgetBox {
 private struct QueriedBackground: Decodable {
     let drawing: String?
     let color: String?
+    let borderWidth: Int?
+    let borderColour: String?
+
+    enum CodingKeys: String, CodingKey {
+        case drawing, color
+        case borderWidth = "border_width"
+        case borderColour = "border_color"
+    }
 }
 
 private struct QueriedItem: Decodable {

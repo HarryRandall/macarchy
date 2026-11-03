@@ -1248,6 +1248,17 @@
       "result": null
     }
   ],
+  "menuBar.previewWidget": [
+    {
+      "params": {
+        "settings": {
+          "twentyFourHour": true
+        },
+        "widget": "clock"
+      },
+      "result": "Sun 25 Oct 22:42"
+    }
+  ],
   "menuBar.revealWidget": [
     {
       "params": {

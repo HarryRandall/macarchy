@@ -550,7 +550,7 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
               }
             />
             <Row
-              title="Padding"
+              title="Side padding"
               description="At each end of the bar"
               controlId={paddingId}
               control={
@@ -562,6 +562,79 @@ export function MenuBarPage({ store, context }: { store: MenuBarStore; context: 
                   max={64}
                   unit="pt"
                   onValueChange={(padding) => patchBar({ padding })}
+                />
+              }
+            />
+            <Row
+              title="Widget gap"
+              description="Between neighbouring widgets"
+              control={
+                <ValueSlider
+                  label="Widget gap"
+                  value={draft.bar.widgetGap ?? 6}
+                  min={0}
+                  max={40}
+                  unit="pt"
+                  onValueChange={(widgetGap) => patchBar({ widgetGap })}
+                />
+              }
+            />
+            <Row
+              title="Widget side padding"
+              description="Inside single widgets; Spaces keeps its own layout"
+              control={
+                <ValueSlider
+                  label="Widget side padding"
+                  value={draft.bar.widgetInset ?? 8}
+                  min={0}
+                  max={40}
+                  unit="pt"
+                  onValueChange={(widgetInset) => patchBar({ widgetInset })}
+                />
+              }
+            />
+            <Row
+              title="Widget height"
+              description="Single widget boxes; Spaces keeps its own height"
+              control={
+                <ValueSlider
+                  label="Widget height"
+                  value={draft.bar.widgetHeight ?? 24}
+                  min={16}
+                  max={64}
+                  unit="pt"
+                  onValueChange={(widgetHeight) => patchBar({ widgetHeight })}
+                />
+              }
+            />
+            <Row
+              title="Top and bottom padding"
+              description="Space around the widget boxes; adjusts the bar height"
+              control={
+                <ValueSlider
+                  label="Top and bottom padding"
+                  value={Math.max(0, (draft.bar.height - (draft.bar.widgetHeight ?? 24)) / 2)}
+                  min={0}
+                  max={Math.max(0, (64 - (draft.bar.widgetHeight ?? 24)) / 2)}
+                  step={0.5}
+                  unit="pt"
+                  onValueChange={(padding) =>
+                    patchBar({ height: (draft.bar.widgetHeight ?? 24) + Math.round(padding * 2) })
+                  }
+                />
+              }
+            />
+            <Row
+              title="Screen edge gap"
+              description="Above a top bar or below a bottom bar"
+              control={
+                <ValueSlider
+                  label="Screen edge gap"
+                  value={draft.bar.offset ?? 0}
+                  min={0}
+                  max={64}
+                  unit="pt"
+                  onValueChange={(offset) => patchBar({ offset })}
                 />
               }
             />

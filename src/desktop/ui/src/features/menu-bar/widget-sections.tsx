@@ -409,6 +409,22 @@ export function LookSection({ item, widget, onChange }: SectionProps) {
         onValue={(textColour) => set({ textColour })}
       />
       {widget.icon ? (
+        <ControlRow
+          title="Show icon"
+          control={
+            <Switch
+              aria-label="Show icon"
+              checked={style.showIcon !== false}
+              onCheckedChange={(showIcon) =>
+                set({
+                  showIcon: showIcon === (widget.style?.showIcon !== false) ? undefined : showIcon,
+                })
+              }
+            />
+          }
+        />
+      ) : null}
+      {widget.icon && style.showIcon !== false ? (
         <ColourChoiceRow
           title="Icon colour"
           value={style.iconColour}

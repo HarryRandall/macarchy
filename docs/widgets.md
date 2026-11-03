@@ -32,7 +32,7 @@ not used in its place.
 | `provider` | A script in the folder. A widget has a source or a provider, or neither. |
 | `label` | What the bar shows, with readings and settings in braces. |
 | `settings` | Things a person can change, each drawn as a control in the editor: `text`, `number`, `toggle`, `choice`, `colour` or `format`. |
-| `style` | `box` (`none`, `outline`, `fill`), `size`, colours (`text`, `accent`, `muted` or a hex value), `radius` and padding. `lines: 2` stacks the label's two lines beside the icon; `row: n` draws up to n items instead of one, from the output's `items`. |
+| `style` | `box` (`none`, `outline`, `fill`), `size`, colours (`text`, `accent`, `muted` or a hex value), `radius`, padding and `showIcon` (`false` hides the icon). `lines: 2` stacks the label's two lines beside the icon; `row: n` draws up to n items instead of one, from the output's `items`. |
 | `update` | `every` (`2s`, `5m`, `1h`, `second` or `minute`) and `events` (`system_woke`, `power_source_changed`, `timezone_changed`, `space_changed`, `front_app_switched`, `display_changed`, `windows_changed`). The bar passes events on with `macarchy widget trigger <event>`. |
 | `click` | One of `open` (an app or URL), `run` (a command) or `dropdown` (rows). |
 | `samples` | `widest` and `unavailable`, for the editor's previews. |

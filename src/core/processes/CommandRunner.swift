@@ -88,11 +88,16 @@ public enum CommandRunner {
             if let environment = setup.environment { process.environment = environment }
             if let directory = setup.directory { process.currentDirectoryURL = directory }
             process.standardOutput = out; process.standardError = err
+            // Woken the moment the process exits. Polling `isRunning` and then
+            // `waitUntilExit` added about 70 ms to every command, which the
+            // bar showed as lag on each Space switch and dropdown highlight.
+            let exited = DispatchSemaphore(value: 0)
+            process.terminationHandler = { _ in exited.signal() }
             if cancellation.isCancelled { throw CancellationError() }
             try process.run()
             let deadline = ProcessInfo.processInfo.systemUptime + timeout
             var interrupted = false
-            while process.isRunning {
+            while exited.wait(timeout: .now() + 0.01) == .timedOut {
                 if cancellation.isCancelled || ProcessInfo.processInfo.systemUptime >= deadline {
                     interrupted = true
                     // A shell helper's children would otherwise keep changing
@@ -103,11 +108,10 @@ public enum CommandRunner {
                     Thread.sleep(forTimeInterval: 0.1)
                     tree.forEach { kill($0, SIGKILL) }
                     if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                    exited.wait()
                     break
                 }
-                Thread.sleep(forTimeInterval: 0.01)
             }
-            process.waitUntilExit()
             let stdout = try readOutput(outURL)
             let stderr = try readOutput(errURL)
             return CommandResult(

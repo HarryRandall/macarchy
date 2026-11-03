@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import type { CSSProperties } from "react";
+import { useClockPreview } from "./use-clock-preview";
 
 import type { WidgetInfo, WidgetMenuRow, WidgetStyle } from "~/bridge/protocol";
 import { cn } from "~/lib/cn";
@@ -48,20 +49,25 @@ export function WidgetChip({
   sample,
   look,
   className,
+  height = 24,
+  inset = 8,
 }: {
   item: BarItem;
   widget: WidgetInfo | null;
   sample: Sample;
   look: BarLook;
   className?: string;
+  height?: number;
+  inset?: number;
 }) {
+  const preview = useClockPreview(item, widget, sample);
   const style = lookOf(item, widget);
   if (style.row) {
     return (
       <RowChip item={item} widget={widget} sample={sample} look={look} className={className} />
     );
   }
-  const text = sampleText(item, widget, sample);
+  const text = preview ?? sampleText(item, widget, sample);
   const lines = sampleLines(text, style);
   const size = Math.max(9, (style.size ?? 12) - 1);
   // The bar's own numbers (WidgetLook): a 24pt box, 8pt inside each edge
@@ -71,12 +77,13 @@ export function WidgetChip({
       className={cn("flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap", className)}
       style={{
         ...boxStyle(style, look),
-        paddingLeft: Math.min(style.paddingLeft ?? 8, 14),
-        paddingRight: Math.min(style.paddingRight ?? 8, 14),
+        height,
+        paddingLeft: style.paddingLeft ?? inset,
+        paddingRight: style.paddingRight ?? inset,
         color: paintOf(style.textColour, look),
       }}
     >
-      {widget?.icon ? (
+      {widget?.icon && style.showIcon !== false ? (
         <span
           aria-hidden
           className="font-sans"
@@ -205,7 +212,13 @@ function RowChip({
           <span
             key={index}
             className="mr-[5px] ml-[2px] flex h-6 items-center gap-1 pr-2.5 pl-2.5"
-            style={{ ...boxed, borderRadius: radius, color: entry.current ? active : other }}
+            style={{
+              ...boxed,
+              paddingLeft: lookOf(item, widget).paddingLeft ?? 10,
+              paddingRight: lookOf(item, widget).paddingRight ?? 20,
+              borderRadius: radius,
+              color: entry.current ? active : other,
+            }}
           >
             {entry.icon ? <span className="text-[12px] font-semibold">{entry.icon}</span> : null}
             {entry.label ? (

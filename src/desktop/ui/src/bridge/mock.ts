@@ -571,6 +571,8 @@ export function installMockHost() {
     "report.copy": () => null,
     "report.openIssue": () => ({ copied: false }),
     "report.openIssues": () => null,
+    "menuBar.previewWidget": ({ settings }) =>
+      settings.twentyFourHour ? "Fri 23 Oct 15:41" : "Fri 23 Oct 03:41 PM",
     "menuBar.getState": () => menuBar.getState(),
     "menuBar.apply": ({ items, bar }) => {
       if (failures.has("menu-bar")) {

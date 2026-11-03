@@ -36,7 +36,7 @@ extension WidgetLook {
                 "icon.padding_left=\(Int(style.paddingLeft ?? 10))", "icon.padding_right=4",
                 "label.padding_left=4", "label.padding_right=\(Int(style.paddingRight ?? 20))",
                 "icon.y_offset=0", "label.y_offset=-1", "padding_left=2", "padding_right=5",
-                "width=dynamic", "background.height=\(Self.boxHeight)",
+                "width=dynamic", "background.height=24",
                 "background.corner_radius=\(Int(style.radius ?? 5))",
                 spaces ? "click_script=\(command) space \(slot)" : click
             ]
@@ -52,7 +52,7 @@ extension WidgetLook {
             }
         }
         arguments += [
-            "--set", Self.boxID(component.id), "background.height=\(Self.boxHeight)",
+            "--set", Self.boxID(component.id), "background.height=24",
             "background.corner_radius=\(Int(style.radius ?? 5))", "background.padding_left=0",
             "background.padding_right=0", "background.color=0x00000000"
         ]

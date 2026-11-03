@@ -3,6 +3,9 @@ import Foundation
 public struct BarConfiguration: Codable, Equatable, Sendable {
     public var components: [BarComponent] = []
     public var geometry: [String: String] = [:]
+    public var widgetGap: Int?
+    public var widgetInset: Int?
+    public var widgetHeight: Int?
     public var componentPadding: Double?
     public var componentSpacing: Double?
     /// Whether the editor offers the centre zone, which a notch hides.
@@ -34,6 +37,9 @@ public struct BarConfiguration: Codable, Equatable, Sendable {
                     "\(component.title) needs a command and an interval of 1 to 86400 seconds")
             }
         }
+        guard (0...40).contains(widgetGap ?? 6), (0...40).contains(widgetInset ?? 8),
+            (16...64).contains(widgetHeight ?? 24)
+        else { throw ConfigurationError("Widget spacing or height is out of range") }
         try validateWidgets()
         let properties: Set<String> = [
             "align", "icon.width", "label.width", "icon.align", "label.align",

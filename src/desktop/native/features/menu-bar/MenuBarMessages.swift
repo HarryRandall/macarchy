@@ -49,6 +49,10 @@ struct MenuBarSettings: Codable, Sendable, Equatable {
     var padding: Int
     /// Whether the page offers the centre zone, for displays without a notch.
     var centre: Bool
+    var widgetGap: Int?
+    var widgetInset: Int?
+    var widgetHeight: Int?
+    var offset: Int?
 }
 
 struct MenuBarState: Codable, Sendable, Equatable {
@@ -115,6 +119,11 @@ struct WidgetSettingInfo: Codable, Sendable, Equatable {
     var step: Double?
     var unit: String?
     var hint: String?
+}
+
+struct WidgetPreviewParams: Codable, Sendable {
+    var widget: String
+    var settings: [String: SettingValue]
 }
 
 struct WidgetParams: Codable, Sendable {

@@ -113,6 +113,7 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
 
     public var box: String?
     public var size: Double?
+    public var showIcon: Bool?
     public var iconColour: String?
     public var textColour: String?
     public var radius: Double?
@@ -126,7 +127,8 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
     public var row: Int?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case box, size, iconColour, textColour, radius, paddingLeft, paddingRight, lines, row
+        case box, size, showIcon, iconColour, textColour, radius, paddingLeft, paddingRight, lines,
+            row
     }
 
     public init() {}
@@ -137,6 +139,7 @@ public struct WidgetStyle: Codable, Equatable, Sendable {
         var merged = self
         merged.box = box ?? base.box
         merged.size = size ?? base.size
+        merged.showIcon = showIcon ?? base.showIcon
         merged.iconColour = iconColour ?? base.iconColour
         merged.textColour = textColour ?? base.textColour
         merged.radius = radius ?? base.radius

@@ -16,6 +16,7 @@ export interface WidgetStyle {
   box?: "none" | "outline" | "fill";
   /** Points, 8 to 24. */
   size?: number;
+  showIcon?: boolean;
   /** `text`, `accent`, `muted` or a `#rrggbb` colour. */
   iconColour?: string;
   textColour?: string;
@@ -170,6 +171,10 @@ export interface MenuBarSettings {
   padding: number;
   /** Whether the page offers the centre zone, for displays without a notch. */
   centre: boolean;
+  widgetGap?: number;
+  widgetInset?: number;
+  widgetHeight?: number;
+  offset?: number;
 }
 
 export interface MenuBarState {
@@ -183,7 +188,13 @@ export interface MenuBarState {
   unavailableReason: string | null;
 }
 
+export type MenuBarEvent = { type: "menuBar.changed" };
+
 export interface MenuBarMethods {
+  "menuBar.previewWidget": {
+    params: { widget: string; settings: Record<string, SettingValue> };
+    result: string;
+  };
   /** Reads the bar afresh from SketchyBar and the saved configuration. */
   "menuBar.getState": { params: Record<string, never>; result: MenuBarState };
   /**

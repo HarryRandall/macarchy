@@ -115,6 +115,7 @@ struct BridgeContractFixtureTests {
             "advanced.changed": { try .advancedChanged(JSON.decode(AdvancedState.self, $0)) },
             "advanced.invalidated": { _ in .advancedInvalidated },
             "borders.changed": { try .bordersChanged(JSON.decode(BordersState.self, $0)) },
+            "menuBar.changed": { _ in BridgeEvent("menuBar.changed") },
             "home.changed": { _ in .homeChanged },
             "health.changed": { _ in .healthChanged },
             "report.invalidated": { _ in .reportInvalidated },

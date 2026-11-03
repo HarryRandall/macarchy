@@ -66,6 +66,11 @@ final class StateBroadcast {
         publishOverview()
     }
 
+    func menuBarWritten() {
+        settingsWritten()
+        settings()?.send(BridgeEvent("menuBar.changed"))
+    }
+
     func rulesWritten(_ model: AppModel) async {
         settingsWritten()
         await publishRules(model)
@@ -207,6 +212,7 @@ final class StateBroadcast {
             let data = try? Data(contentsOf: model.settingsStore.url)
             guard data != self.lastSettings else { return }
             self.lastSettings = data
+            self.settings()?.send(BridgeEvent("menuBar.changed"))
             self.overviewHolds += 1
             self.overviewDue = true
             self.advancedChanged()

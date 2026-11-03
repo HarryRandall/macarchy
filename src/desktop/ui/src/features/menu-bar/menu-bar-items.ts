@@ -192,7 +192,11 @@ export function sameBar(a: MenuBarSettings, b: MenuBarSettings): boolean {
     a.height === b.height &&
     a.padding === b.padding &&
     a.position === b.position &&
-    a.centre === b.centre
+    a.centre === b.centre &&
+    (a.widgetGap ?? 6) === (b.widgetGap ?? 6) &&
+    (a.widgetInset ?? 8) === (b.widgetInset ?? 8) &&
+    (a.widgetHeight ?? 24) === (b.widgetHeight ?? 24) &&
+    (a.offset ?? 0) === (b.offset ?? 0)
   );
 }
 

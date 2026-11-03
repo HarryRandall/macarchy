@@ -57,6 +57,7 @@ function ValueSlider({
           value={value}
           min={min}
           max={max}
+          decimals={String(step).split(".")[1]?.length ?? 0}
           disabled={disabled}
           onValueChange={onValueChange}
         />

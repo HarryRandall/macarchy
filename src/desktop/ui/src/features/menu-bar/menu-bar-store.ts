@@ -1,6 +1,5 @@
 import { errorMessage } from "~/bridge/client";
 import type {
-  BridgeEvent,
   MenuBarItemEdit,
   MenuBarSettings,
   MenuBarState,
@@ -58,10 +57,7 @@ export interface MenuBarStoreDeps {
   reveal(widget: string | null): Promise<null>;
   openFile(widget: string, file: string): Promise<null>;
   duplicate(widget: string): Promise<{ state: MenuBarState; widget: string }>;
-  subscribe(
-    type: "themes.changed",
-    handler: (event: Extract<BridgeEvent, { type: "themes.changed" }>) => void,
-  ): () => void;
+  subscribe(type: "themes.changed" | "menuBar.changed", handler: () => void): () => void;
 }
 
 /**
@@ -151,6 +147,10 @@ export function createMenuBarStore(deps: MenuBarStoreDeps) {
   deps.subscribe("themes.changed", () => {
     if (snapshot.status === "loading") return;
     void readLook().then((look) => set({ look }));
+  });
+
+  deps.subscribe("menuBar.changed", () => {
+    if (snapshot.status === "ready" && !snapshot.applying) void load();
   });
 
   return {

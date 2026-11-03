@@ -16,6 +16,17 @@ public struct WidgetLook: Sendable {
     public var text: String?
     /// How the bar reaches the CLI when a widget is clicked.
     public var command = Paths.cliInShell
+    var gap = 6
+    var inset = 8.0
+    var boxHeight = 24
+
+    public func configured(_ configuration: BarConfiguration) -> WidgetLook {
+        var look = self
+        look.gap = configuration.widgetGap ?? 6
+        look.inset = Double(configuration.widgetInset ?? 8)
+        look.boxHeight = configuration.widgetHeight ?? 24
+        return look
+    }
 
     public init(
         manifests: [String: WidgetManifest] = [:], accent: String? = nil, muted: String? = nil,
@@ -87,21 +98,16 @@ public struct WidgetLook: Sendable {
 
     /// A two-line widget's items, left to right.
     public static func stackedMembers(_ id: String) -> [String] {
-        [gapID(id), id, linesID(id)]
+        [Self.gapID(id), id, linesID(id)]
     }
 
     /// The items a widget's box goes around: all but its gap.
     public static func boxed(_ component: BarComponent) -> [String] {
-        component.members.filter { $0 != gapID(component.id) }
+        component.members.filter { $0 != Self.gapID(component.id) }
     }
 
-    /// Points left of each widget's box, so neighbouring boxes sit this far apart.
-    static let gap = 6
-    /// Points between a box's edge and what is inside it.
-    static let inset = 8.0
     /// Points between a widget's icon and its text.
     static let spacing = 6
-    static let boxHeight = 24
 
     /// How wide a character of the stacked lines' font is, in points.
     static let characterWidth = 6
@@ -143,7 +149,7 @@ public struct WidgetLook: Sendable {
     public func arguments(for component: BarComponent) -> [String] {
         guard let widget = component.widget, let manifest = manifests[widget] else { return [] }
         let style = (component.style ?? WidgetStyle()).over(manifest.style)
-        let icon = manifest.icon ?? ""
+        let icon = style.showIcon == false ? "" : (manifest.icon ?? "")
         let size = style.size ?? 12
         let clicks = (component.click ?? manifest.click) != nil
         let click =
@@ -163,17 +169,15 @@ public struct WidgetLook: Sendable {
         if isStacked(component) {
             return stackedArguments(component, manifest: manifest, style: style, icon: properties)
         }
-        // Every widget is laid out the same, whatever the bar's own defaults
-        // say: the same gap between boxes and the same inset inside them.
-        let left = Int(style.paddingLeft ?? Self.inset)
-        let right = Int(style.paddingRight ?? Self.inset)
+        let left = Int(style.paddingLeft ?? inset)
+        let right = Int(style.paddingRight ?? inset)
         properties += [
             "label.font=SF Pro:Semibold:\(Self.points(size))", "width=dynamic",
-            "padding_left=\(Self.gap)", "padding_right=0", "icon.padding_left=\(left)",
+            "padding_left=\(gap)", "padding_right=0", "icon.padding_left=\(left)",
             "icon.padding_right=\(Self.spacing)",
             "label.padding_left=\(icon.isEmpty ? left : 0)", "label.padding_right=\(right)",
             "icon.y_offset=0", "label.y_offset=1",
-            "background.height=\(Self.boxHeight)",
+            "background.height=\(boxHeight)",
             "background.corner_radius=\(Int(style.radius ?? 5))"
         ]
         properties += box(style)
@@ -215,9 +219,10 @@ public struct WidgetLook: Sendable {
         // slot; negative padding would push the lines out of view.
         let column = Self.columnCharacters(manifest) * Self.characterWidth
         let font = "Menlo:Bold:10.0"
-        let right = Int(style.paddingRight ?? Self.inset)
+        let right = Int(style.paddingRight ?? inset)
         var lines = [
-            "icon.font=\(font)", "label.font=\(font)", "icon.width=\(column + right)",
+            "icon.font=\(font)", "label.font=\(font)",
+            "icon.width=\(column + right + (style.showIcon == false ? Int(style.paddingLeft ?? inset) : 0))",
             "label.width=0", "icon.align=right", "label.align=right", "icon.y_offset=6",
             "label.y_offset=-5", "icon.padding_left=0", "icon.padding_right=\(right)",
             "label.padding_left=0", "label.padding_right=\(right)", "padding_left=0",
@@ -230,12 +235,14 @@ public struct WidgetLook: Sendable {
         let glyph =
             icon + [
                 "label.drawing=off", "background.drawing=off", "padding_left=0",
-                "padding_right=0", "icon.padding_left=\(Int(style.paddingLeft ?? Self.inset))",
-                "icon.padding_right=\(Self.spacing)", "icon.y_offset=0"
+                "padding_right=0", "icon.padding_left=\(Int(style.paddingLeft ?? inset))",
+                "icon.padding_right=\(style.showIcon == false ? 0 : Self.spacing)",
+                "icon.y_offset=0",
+                "width=\(style.showIcon == false ? "0" : "dynamic")"
             ]
         let box =
             [
-                "background.height=\(Self.boxHeight)",
+                "background.height=\(boxHeight)",
                 "background.corner_radius=\(Int(style.radius ?? 5))",
                 "background.padding_left=0", "background.padding_right=0"
             ]
@@ -244,11 +251,11 @@ public struct WidgetLook: Sendable {
             // SketchyBar may hand a click to the bracket rather than the item
             // under it, so the box clicks the same as the widget's items.
             + [icon.first { $0.hasPrefix("click_script=") } ?? "click_script="]
-        let gap = [
-            "width=\(Self.gap)", "icon.drawing=off", "label.drawing=off", "background.drawing=off",
+        let gapProperties = [
+            "width=\(gap)", "icon.drawing=off", "label.drawing=off", "background.drawing=off",
             "padding_left=0", "padding_right=0", "script=", "click_script="
         ]
-        return ["--set", Self.gapID(component.id)] + gap + ["--set", component.id] + glyph
+        return ["--set", Self.gapID(component.id)] + gapProperties + ["--set", component.id] + glyph
             + ["--set", Self.linesID(component.id)] + lines + ["--set", Self.boxID(component.id)]
             + box
     }

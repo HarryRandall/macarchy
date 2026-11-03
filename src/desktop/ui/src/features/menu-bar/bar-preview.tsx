@@ -71,7 +71,7 @@ export function BarPreview({
         aria-pressed={item.id === active}
         onClick={() => onSelect(item.id)}
         className={cn(
-          "flex h-6 shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
+          "flex shrink-0 items-center gap-1 rounded-[5px] whitespace-nowrap transition-[background-color,opacity] hover:bg-white/10",
           // A widget's chip is its box, so boxes sit the bar's 6pt apart.
           item.kind !== "widget" && "border border-white/20 px-1.5",
           focus && focus !== item.id && "opacity-35",
@@ -80,6 +80,10 @@ export function BarPreview({
           focusRing,
         )}
         style={{
+          height:
+            item.kind === "widget" && widgetOf(item, widgets)?.style?.row
+              ? 24
+              : (bar.widgetHeight ?? 24),
           color: look.foreground,
           background: item.id === active ? "rgba(255,255,255,0.12)" : undefined,
           boxShadow: item.id === active ? `0 0 0 1px ${look.accent}` : undefined,
@@ -102,7 +106,14 @@ export function BarPreview({
         ) : item.kind === "spacer" ? (
           <span aria-hidden className="block w-5" />
         ) : item.kind === "widget" ? (
-          <WidgetChip item={item} widget={widgetOf(item, widgets)} sample={sample} look={look} />
+          <WidgetChip
+            item={item}
+            widget={widgetOf(item, widgets)}
+            sample={sample}
+            look={look}
+            height={bar.widgetHeight ?? 24}
+            inset={bar.widgetInset ?? 8}
+          />
         ) : (
           <>
             {item.kind === null ? (
@@ -124,6 +135,8 @@ export function BarPreview({
         transform: scale < 1 ? `scale(${scale})` : undefined,
         transformOrigin: "left top",
         height: bar.height,
+        marginTop: bar.position === "top" ? (bar.offset ?? 0) : undefined,
+        marginBottom: bar.position === "bottom" ? (bar.offset ?? 0) : undefined,
         paddingInline: bar.padding,
         background: `color-mix(in srgb, ${look.background} 92%, transparent)`,
         borderBottom: bar.position === "top" ? "1px solid rgba(255,255,255,0.06)" : undefined,
@@ -134,7 +147,8 @@ export function BarPreview({
         ref={(element) => {
           parts.current[0] = element;
         }}
-        className="flex w-max items-center gap-1.5 justify-self-start"
+        className="flex w-max items-center justify-self-start"
+        style={{ gap: bar.widgetGap ?? 6 }}
       >
         {zone("left")}
       </div>
@@ -142,7 +156,8 @@ export function BarPreview({
         ref={(element) => {
           parts.current[1] = element;
         }}
-        className="flex w-max items-center justify-center gap-1.5 px-2"
+        className="flex w-max items-center justify-center px-2"
+        style={{ gap: bar.widgetGap ?? 6 }}
       >
         {shown("centre").length > 0 ? (
           zone("centre")
@@ -154,7 +169,8 @@ export function BarPreview({
         ref={(element) => {
           parts.current[2] = element;
         }}
-        className="flex w-max items-center gap-1.5 justify-self-end"
+        className="flex w-max items-center justify-self-end"
+        style={{ gap: bar.widgetGap ?? 6 }}
       >
         {zone("right")}
       </div>
@@ -162,7 +178,11 @@ export function BarPreview({
   );
 
   const held = (
-    <div ref={holder} className="overflow-hidden" style={{ height: bar.height * scale }}>
+    <div
+      ref={holder}
+      className="overflow-hidden"
+      style={{ height: (bar.height + (bar.offset ?? 0)) * scale }}
+    >
       {strip}
     </div>
   );

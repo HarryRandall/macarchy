@@ -6,6 +6,7 @@ extension BarCommands {
         _ configuration: BarConfiguration, from previous: BarConfiguration,
         baseline: [String: [String: String]], widgets: WidgetLook = WidgetLook()
     ) -> [String] {
+        let widgets = widgets.configured(configuration)
         var args: [String] = []
         let geometry = configuration.geometry.filter { previous.geometry[$0.key] != $0.value }
         if !geometry.isEmpty {
@@ -43,7 +44,11 @@ extension BarCommands {
             {
                 args += customSettings(component)
             }
-            if component.isWidget && old != component {
+            if component.isWidget
+                && (old != component || previous.widgetGap != configuration.widgetGap
+                    || previous.widgetInset != configuration.widgetInset
+                    || previous.widgetHeight != configuration.widgetHeight)
+            {
                 args += widgets.arguments(for: component)
             }
             for member in edits.keys.sorted() {

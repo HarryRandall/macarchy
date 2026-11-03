@@ -6,6 +6,24 @@ extension BridgeRouter {
     /// The widget library's files: showing a folder, opening one of its
     /// files, and copying a built-in into the person's widgets to edit.
     func registerMenuBarWidgets(model: AppModel) {
+        register("menuBar.previewWidget") { (params: WidgetPreviewParams) in
+            guard let entry = WidgetCatalogue().read().entry(params.widget),
+                entry.manifest.source == "date",
+                let source = WidgetHost.builtInSources["date"]
+            else { throw BridgeFailure(.invalidParams, "That widget has no text preview.") }
+            var configuration = BarConfiguration()
+            var component = BarComponent(
+                id: "preview", title: "Preview", side: "right", members: ["preview"])
+            component.widget = params.widget
+            component.settings = params.settings
+            configuration.components = [component]
+            let resolved = WidgetInstance.resolve(
+                configuration, catalogue: WidgetCatalogue().read())
+            guard let instance = resolved.instances.first else {
+                throw BridgeFailure(.invalidParams, "That widget cannot be previewed.")
+            }
+            return await source(instance, Date())?.label ?? ""
+        }
         register("menuBar.revealWidget") { (params: WidgetFolderParams) in
             let folder: URL
             if let id = params.widget {

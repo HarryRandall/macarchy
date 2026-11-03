@@ -89,6 +89,25 @@ const reads = {
 };
 
 describe("createMenuBarStore", () => {
+  it("refreshes settings changed from a widget dropdown", async () => {
+    let changed = vi.fn<() => void>();
+    const getState = vi.fn<() => Promise<MenuBarState>>().mockResolvedValue(bar);
+    const store = createMenuBarStore({
+      ...reads,
+      getState,
+      getThemes: () => Promise.resolve(state("lumon")),
+      subscribe: (type, handler) => {
+        if (type === "menuBar.changed") changed = vi.fn<() => void>(handler);
+        return () => {};
+      },
+    });
+    await store.load();
+    const next = { ...bar, items: [] };
+    getState.mockResolvedValue(next);
+    changed();
+    await vi.waitFor(() => expect(store.getSnapshot().state).toBe(next));
+  });
+
   it("is ready even when the themes cannot be read", async () => {
     const store = createMenuBarStore({
       ...reads,
@@ -146,8 +165,8 @@ describe("createMenuBarStore", () => {
     const store = createMenuBarStore({
       ...reads,
       getThemes,
-      subscribe: (_type, handler) => {
-        changed = handler;
+      subscribe: (type, handler) => {
+        if (type === "themes.changed") changed = handler;
         return () => {};
       },
     });

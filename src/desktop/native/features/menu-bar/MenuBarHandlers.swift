@@ -17,6 +17,7 @@ extension BridgeRouter {
             let configuration = try MenuBarEdits.configuration(
                 from: params, over: bar.applied, catalogue: WidgetCatalogue().read())
             bar.edit { $0 = configuration }
+            await WidgetMenuController.shared.closeAndWait()
             await bar.apply()
             StateBroadcast.shared.settingsWritten()
             if let error = bar.error {
@@ -89,7 +90,11 @@ extension AppModel {
                 height: Int(Double(geometry["height"] ?? "") ?? 35),
                 position: geometry["position"] == "bottom" ? "bottom" : "top",
                 padding: Int(Double(geometry["padding_left"] ?? "") ?? 10),
-                centre: configuration.showsCentre == true),
+                centre: configuration.showsCentre == true,
+                widgetGap: configuration.widgetGap ?? 6,
+                widgetInset: configuration.widgetInset ?? 8,
+                widgetHeight: configuration.widgetHeight ?? 24,
+                offset: min(max(Int(Double(geometry["y_offset"] ?? "") ?? 0), 0), 64)),
             widgets: MenuBarWidgets.info(), widgetProblems: MenuBarWidgets.problems(),
             unavailableReason: menuBar.error)
     }
@@ -115,6 +120,10 @@ enum MenuBarEdits {
         catalogue: WidgetCatalogue.Snapshot
     ) throws -> BarConfiguration {
         guard (16...64).contains(params.bar.height), (0...64).contains(params.bar.padding),
+            (0...40).contains(params.bar.widgetGap ?? 6),
+            (0...40).contains(params.bar.widgetInset ?? 8),
+            (16...64).contains(params.bar.widgetHeight ?? 24),
+            (0...64).contains(params.bar.offset ?? 0),
             ["top", "bottom"].contains(params.bar.position)
         else { throw BridgeFailure(.invalidParams, "Those bar settings are out of range.") }
         var configuration = current
@@ -166,6 +175,10 @@ enum MenuBarEdits {
         configuration.geometry["position"] = params.bar.position
         configuration.geometry["padding_left"] = String(params.bar.padding)
         configuration.geometry["padding_right"] = String(params.bar.padding)
+        configuration.geometry["y_offset"] = String(params.bar.offset ?? 0)
+        configuration.widgetGap = params.bar.widgetGap
+        configuration.widgetInset = params.bar.widgetInset
+        configuration.widgetHeight = params.bar.widgetHeight
         configuration.showsCentre = params.bar.centre ? true : nil
         let manifests = Dictionary(
             catalogue.entries.map { ($0.id, $0.manifest) }, uniquingKeysWith: { first, _ in first })

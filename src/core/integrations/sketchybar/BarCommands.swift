@@ -85,6 +85,7 @@ public enum BarCommands {
     public static func settings(
         _ configuration: BarConfiguration, startup: Bool = false, widgets: WidgetLook = WidgetLook()
     ) -> [String] {
+        let widgets = widgets.configured(configuration)
         var args: [String] = []
         if !configuration.geometry.isEmpty {
             args +=

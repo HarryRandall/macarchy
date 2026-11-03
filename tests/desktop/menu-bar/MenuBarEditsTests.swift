@@ -62,6 +62,23 @@ struct MenuBarEditsTests {
 
     private let bar = MenuBarSettings(height: 30, position: "bottom", padding: 6, centre: true)
 
+    @Test("global layout settings persist and reject values outside the slider ranges")
+    func globalLayout() throws {
+        var settings = bar
+        settings.widgetGap = 12
+        settings.widgetInset = 14
+        settings.widgetHeight = 30
+        settings.offset = 8
+        let result = try configuration(MenuBarApplyParams(items: [], bar: settings))
+        #expect(result.widgetGap == 12 && result.widgetInset == 14 && result.widgetHeight == 30)
+        #expect(result.geometry["y_offset"] == "8")
+        settings.widgetHeight = 100
+        let invalid = settings
+        #expect(throws: BridgeFailure.self) {
+            try configuration(MenuBarApplyParams(items: [], bar: invalid))
+        }
+    }
+
     @Test("the page's order, zones and visibility apply over every authored detail")
     func keepsAuthoredDetail() throws {
         let params = MenuBarApplyParams(

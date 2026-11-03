@@ -23,7 +23,9 @@ extension WidgetHost {
             ?? style.iconColour.flatMap(look.colour) ?? look.text
         let drawing = "drawing=\(output?.drawing == false ? "off" : "on")"
         var icon: [String] = []
-        if let glyph = output?.icon.map({ clean($0) }) {
+        if style.showIcon == false {
+            icon += ["icon=", "icon.drawing=off"]
+        } else if let glyph = output?.icon.map({ clean($0) }) {
             icon += ["icon=\(glyph)", "icon.drawing=\(glyph.isEmpty ? "off" : "on")"]
         }
         if let iconColour { icon.append("icon.color=\(iconColour)") }
@@ -71,7 +73,7 @@ extension WidgetHost {
                     return (id, ["drawing=off"])
                 }
                 let entry = entries[slot - 1]
-                let icon = clean(entry.icon ?? "")
+                let icon = instance.style.showIcon == false ? "" : clean(entry.icon ?? "")
                 // Leading spaces are kept: a row lines its items up with them.
                 let label = clean(entry.label ?? "", trimmingLeading: false)
                 var properties = [

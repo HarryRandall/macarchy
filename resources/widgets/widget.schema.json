@@ -27,6 +27,7 @@
       "properties": {
         "box": { "enum": ["none", "outline", "fill"] },
         "size": { "type": "number", "minimum": 8, "maximum": 24 },
+        "showIcon": { "type": "boolean" },
         "iconColour": { "$ref": "#/$defs/colour" },
         "textColour": { "$ref": "#/$defs/colour" },
         "radius": { "type": "number", "minimum": 0, "maximum": 20 },

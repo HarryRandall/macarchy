@@ -21,9 +21,6 @@ final class WidgetMenuController {
     /// Where each widget's item was last seen, so a dropdown opens without
     /// waiting to ask SketchyBar. Checked again after it opens.
     private var frames: [String: NSRect] = [:]
-    /// Each widget's box and its usual background, so a click turns it grey
-    /// at once.
-    private var boxes: [String: WidgetBox] = [:]
     private var refresher: Task<Void, Never>?
     /// The latest click asking for a dropdown; an earlier one still looking
     /// up its rows gives way to it.
@@ -33,7 +30,7 @@ final class WidgetMenuController {
     /// Highlighting and putting back, one after the other, so a quick close
     /// cannot leave a widget grey.
     private var highlighting: Task<Void, Never>?
-    static let highlightColour = "0x33ffffff"
+    nonisolated static let highlightColour = "0x33ffffff"
     private var observers: [NSObjectProtocol] = []
 
     private var host: WidgetHost { WidgetHostController.shared.host }
@@ -80,11 +77,6 @@ final class WidgetMenuController {
         for instance in await host.instances {
             guard let box = await WidgetBox.find(instance.id) else { continue }
             if let frame = box.frame { frames[instance.id] = frame }
-            // A box read while grey, even one being put back, would be learnt
-            // as its usual look and then put back grey.
-            if highlighted?.id != instance.id && box.background.colour != Self.highlightColour {
-                boxes[instance.id] = box
-            }
         }
     }
 
@@ -220,6 +212,7 @@ final class WidgetMenuController {
                 switch try await host.pick(row, option: option, in: id) {
                 case .open, .run: close()
                 case .set:
+                    StateBroadcast.shared.menuBarWritten()
                     if let items = await host.menu(for: id) { model.items = items }
                 case .nothing: break
                 }
@@ -255,18 +248,20 @@ final class WidgetMenuController {
     private func highlight(_ id: String) async {
         guard highlighted?.id != id else { return }
         await unhighlight()
-        var box = boxes[id]
-        if box == nil { box = await WidgetBox.find(id) }
-        guard var box else { return }
+        guard var box = await WidgetBox.find(id) else { return }
         if box.background.colour == Self.highlightColour {
             // Read while grey, so its usual look is not known: no box.
             box = WidgetBox(
                 name: box.name, frame: box.frame,
                 background: .init(drawing: box.background.drawing, colour: "0x00000000"))
         }
-        boxes[id] = box
         highlighted = (id, box)
-        await WidgetBox.paint(box.name, .init(drawing: "on", colour: Self.highlightColour))
+        await WidgetBox.paint(box.name, box.background.highlighted)
+    }
+
+    func closeAndWait() async {
+        close()
+        await highlighting?.value
     }
 
     private func unhighlight() async {

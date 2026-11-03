@@ -21,6 +21,12 @@ struct CommandRunnerTests {
         #expect(result.stdout == "ready")
         #expect(result.stderr.utf8.count == 200000)
     }
+    @Test func reportsExitStatus() async {
+        let result = await CommandRunner.run("/bin/sh", ["-c", "echo out; echo err >&2; exit 3"])
+        #expect(result.status == 3)
+        #expect(result.stdout == "out")
+        #expect(result.stderr == "err")
+    }
     @Test func timeoutStopsProcess() async {
         let result = await CommandRunner.run("/bin/sleep", ["10"], timeout: 0.1)
         #expect(!result.ok)

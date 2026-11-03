@@ -792,6 +792,9 @@ const shortcutsAfterDisable: ShortcutsState = {
 };
 
 export const methodFixtures: MethodFixtures = {
+  "menuBar.previewWidget": [
+    { params: { widget: "clock", settings: { twentyFourHour: true } }, result: "Sun 25 Oct 22:42" },
+  ],
   "app.ready": [
     { params: { surface: "settings" }, result: null },
     { params: { surface: "switcher" }, result: null },
@@ -1149,6 +1152,7 @@ export const methodFixtures: MethodFixtures = {
 };
 
 export const eventFixtures: EventFixtures = {
+  "menuBar.changed": [{ type: "menuBar.changed" }],
   "shell.changed": [
     {
       type: "shell.changed",
