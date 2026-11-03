@@ -19,8 +19,18 @@ echo "==> Building the interface"
 # The interface is built here and bundled; the app itself never needs Node or
 # a development server.
 UI="$ROOT/src/desktop/ui"
-command -v corepack >/dev/null || { echo "error: Node.js 22.12 or later is required to build the interface" >&2; exit 1; }
-(cd "$UI" && corepack pnpm install --frozen-lockfile && corepack pnpm run build)
+command -v node >/dev/null || { echo "error: Node.js 22.12 or later is required to build the interface" >&2; exit 1; }
+# Node 25 stopped shipping corepack, so a pnpm on PATH, such as Homebrew's,
+# stands in for it there.
+if command -v corepack >/dev/null; then
+  PNPM=(corepack pnpm)
+elif command -v pnpm >/dev/null; then
+  PNPM=(pnpm)
+else
+  echo "error: pnpm is required to build the interface: brew install pnpm, or use Node 22 or 24, which include corepack" >&2
+  exit 1
+fi
+(cd "$UI" && "${PNPM[@]}" install --frozen-lockfile && "${PNPM[@]}" run build)
 
 echo "==> Building ($CONFIG)"
 cd "$ROOT"

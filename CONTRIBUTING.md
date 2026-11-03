@@ -8,7 +8,8 @@ Read [the architecture guide](docs/architecture.md) for the shared app and CLI d
 
 Requires an Apple Silicon Mac with macOS 26 or later, Xcode 27,
 [Homebrew](https://brew.sh) and Node.js 22.12 or later (for building the
-interface; pnpm comes through Node's corepack). Open Xcode once to finish
+interface; pnpm comes through Node's corepack, or from `brew install pnpm` on
+Node 25 and later, which no longer include corepack). Open Xcode once to finish
 installing its components.
 
 ```sh
