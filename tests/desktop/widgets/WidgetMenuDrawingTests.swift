@@ -26,7 +26,8 @@ struct WidgetMenuDrawingTests {
         sample.temperatures = temperatures
         let output = ReadingOutputs.cpu(
             sample, processor: ProcessorInfo(chip: "Apple M4 Pro", performance: 10, efficiency: 4),
-            top: TopProcesses.parse("72.8 1 Firefox\n44.8 1 WindowServer\n31.4 1 MacarchySettings"),
+            top: TopProcesses.parse(
+                "72.8 1 Firefox\n44.8 1 WindowServer\n31.4 1 MacarchySettings", cores: 1),
             settings: [:])
         return WidgetMenu.items(instance: instance, component: nil, output: output, label: "")
     }

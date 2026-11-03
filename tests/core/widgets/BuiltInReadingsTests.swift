@@ -53,10 +53,16 @@ struct BuiltInReadingsTests {
               20.0  2048 Firefox GPU Helper
               25.0   512 Claude Helper (Renderer)
                1.0 99999 WindowServer
-            """)
+            """, cores: 1)
         #expect(top.byCPU(2) == "Firefox:50.0%,Claude:25.0%")
         #expect(top.byMemory(1).hasPrefix("WindowServer:"))
         #expect(TopProcesses.appName("Code Helper (Plugin)") == "Code")
+    }
+
+    @Test("a process's CPU is its share of every core, not of one")
+    func processShare() {
+        let top = TopProcesses.parse("1017.8 1 swift-frontend\n56.8 1 WindowServer", cores: 14)
+        #expect(top.byCPU() == "swift-frontend:72.7%,WindowServer:4.1%")
     }
 
     @Test("the clock's settings build its format, and the dropdown's zones are read")
