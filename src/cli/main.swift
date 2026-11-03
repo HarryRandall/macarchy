@@ -200,11 +200,7 @@ do {
         // Heard by the running app, which repaints the bar from what it already
         // knows; then yabai switches, which takes a moment to animate.
         announce(WidgetActions.spaceNotification, ["space": space])
-        let yabai = Paths.yabai
-        var argv: [UnsafeMutablePointer<CChar>?] =
-            [yabai, "-m", "space", "--focus", String(space)].map { strdup($0) } + [nil]
-        execv(yabai, &argv)
-        throw ConfigurationError("yabai could not be started")
+        await SpaceSwitch.live.go(to: space)
     case "bar":
         _ = try parse(values: 1...1, choices: ["toggle"])
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))

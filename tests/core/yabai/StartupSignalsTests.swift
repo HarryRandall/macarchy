@@ -26,13 +26,17 @@ struct StartupSignalsTests {
     /// `arrived` is the Space id yabai passes the action. Returns its focus
     /// commands.
     private func focusCommands(
-        _ event: String, window: (id: Int, space: Int)?, visible: [Int], arrived: Int? = nil
+        _ event: String, window: (id: Int, space: Int)?, visible: [Int], arrived: Int? = nil,
+        pressed: Int? = nil
     ) async throws -> [String] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-signals-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let log = root.appending(path: "focus.log")
+        // `pressed` is a Space `macarchy space` has just been asked for.
+        let target = SpaceSwitch.targetURL(in: root)
+        if let pressed { try "\(pressed)\n".write(to: target, atomically: true, encoding: .utf8) }
         let spaces = root.appending(path: "spaces")
         try visible.map(String.init).joined(separator: "\n")
             .appending("\n").write(to: spaces, atomically: true, encoding: .utf8)
@@ -57,6 +61,10 @@ struct StartupSignalsTests {
         let action = try #require(Startup.signals.first { $0.contains("event=\(event)") }?.last)
         let script = String(action.dropFirst("action=".count))
             .replacingOccurrences(of: Shell.quote(Paths.yabai), with: Shell.quote(fake.path))
+            .replacingOccurrences(
+                of: Shell.quote(SpaceSwitch.targetURL(in: Paths.stateDirectory).path),
+                with: Shell.quote(target.path)
+            )
             .replacingOccurrences(
                 of: Shell.quote(Paths.appLink.appending(path: "Contents/MacOS/macarchy").path),
                 with: "true"
@@ -120,6 +128,19 @@ struct StartupSignalsTests {
     func refocusesWhenFocusLeaves(event: String) async throws {
         #expect(try await focusCommands(event, window: (42, 4), visible: [3]) == ["first"])
         #expect(try await focusCommands(event, window: nil, visible: [3]) == ["first"])
+    }
+
+    /// Focusing a window on the Space a slide is leaving switches back to it.
+    @Test(
+        "no window is focused while a switch to another Space is still on its way",
+        arguments: ["application_front_switched", "space_changed"])
+    func waitsForPressedSpace(event: String) async throws {
+        #expect(
+            try await focusCommands(event, window: (42, 4), visible: [3], arrived: 3, pressed: 2)
+                .isEmpty)
+        #expect(
+            try await focusCommands(event, window: (42, 4), visible: [3], arrived: 3, pressed: 3)
+                == ["first"])
     }
 
     @Test("an app taking focus with its window here is left alone")

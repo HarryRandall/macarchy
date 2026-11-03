@@ -107,14 +107,24 @@ public enum Startup {
         // such as moving a window and following it, yabai briefly reports the
         // window on the new Space while the old one is still current, and
         // focusing a window there would switch back.
+        // Grouped, so a first look that finds focus here skips the second.
         let lost =
-            "space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
+            "{ space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
             + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
-            + " [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]"
+            + " [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]; }"
+        // `macarchy space` records the Space last pressed. While a switch to
+        // another one is still on its way, `--focus first` would act on the
+        // Space being left, and focusing there switches back to it. A record
+        // more than a moment old is from an earlier switch, as when the
+        // trackpad has moved Spaces since.
+        let target = Shell.quote(SpaceSwitch.targetURL(in: Paths.stateDirectory).path)
+        let settled =
+            "{ [ -z \"$(/usr/bin/find \(target) -mtime -2s 2>/dev/null)\" ]"
+            + " || [ \"$(/bin/cat \(target) 2>/dev/null)\" = \"$space\" ]; }"
         let refocus =
             "sleep 0.35; \(lost) && first=$space && sleep 0.35 && \(lost)"
-            + " && [ \"$space\" = \"$first\" ] && \(yabai) -m window --focus first >/dev/null 2>&1;"
-            + " true"
+            + " && [ \"$space\" = \"$first\" ] && \(settled)"
+            + " && \(yabai) -m window --focus first >/dev/null 2>&1; true"
         // After Mission Control, yabai can still believe a window is focused
         // while macOS has handed focus elsewhere and no border is drawn, so
         // focus is re-asserted rather than only filled in. Only a window on the
@@ -145,7 +155,7 @@ public enum Startup {
             + " || exit 0;"
             + " space=$(printf '%s\\n' \"$current\" | \(field("index")));"
             + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
-            + " if [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]; then"
+            + " if [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ] && \(settled); then"
             + " \(yabai) -m window --focus first >/dev/null 2>&1; fi"
         return [
             ("macarchy_mission_control_exit", "mission_control_exit", missionControl),
