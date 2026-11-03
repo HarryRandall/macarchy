@@ -21,6 +21,14 @@ const plan: SetupState = {
     tool("sketchybar", { installed: false }),
     tool("borders"),
   ],
+  extras: [
+    {
+      id: "instant-space-switcher",
+      name: "InstantSpaceSwitcher",
+      description: "",
+      installed: false,
+    },
+  ],
   homebrew: true,
   changes: [{ path: "~/yabairc", action: "adopt", detail: "Kept" }],
   canClose: false,
@@ -133,6 +141,24 @@ describe("Setup store", () => {
       report: { failures: ["sketchybar was not installed"] },
       log: ["==> Pouring sketchybar", "Error: No available formula"],
     });
+  });
+  it("a ticked extra is installed with the tools and changes no plan", async () => {
+    const { store, request } = harness();
+    await store.load();
+    const planned = request.mock.calls.length;
+    store.toggleExtra("instant-space-switcher", true);
+    expect(request.mock.calls.length).toBe(planned);
+    request.mockResolvedValueOnce({ lines: [], failures: [], failure: null });
+    const running = store.run();
+    expect(store.getSnapshot().installs).toMatchObject({
+      sketchybar: { status: "waiting" },
+      "instant-space-switcher": { status: "waiting" },
+    });
+    await running;
+    expect(request.mock.calls.at(-1)).toEqual([
+      "setup.run",
+      { ...every, extras: ["instant-space-switcher"] },
+    ]);
   });
   it("ignores progress when no run is going", async () => {
     const { store, progress } = harness();

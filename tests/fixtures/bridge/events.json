@@ -199,6 +199,14 @@
     {
       "state": {
         "line": null,
+        "status": "installed",
+        "tool": "instant-space-switcher"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
         "status": "configuring",
         "tool": null
       },

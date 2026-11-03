@@ -28,15 +28,27 @@ export interface SetupTool {
   /** The person's own config the tool can start from, home-relative. */
   ownConfig: string | null;
 }
+/** An app setup can install, which Macarchy uses when it is there. */
+export type SetupExtraId = "instant-space-switcher";
+export interface SetupExtra {
+  id: SetupExtraId;
+  name: string;
+  /** One line on what it does and where it goes. */
+  description: string;
+  installed: boolean;
+}
 /** What setup is asked to do. */
 export interface SetupChoices {
   /** The tools to configure and start; the others are left alone. */
   tools: ServiceId[];
   /** How each tool with a config of its own starts; `keep` for any not given. */
   existing: Partial<Record<ServiceId, ExistingSetup>>;
+  /** Extras to install if missing; none when left out. */
+  extras?: SetupExtraId[];
 }
 export interface SetupState {
   tools: SetupTool[];
+  extras: SetupExtra[];
   /** Whether Homebrew is installed, so setup can install missing tools. */
   homebrew: boolean;
   changes: { path: string; action: string; detail: string }[];
@@ -46,8 +58,8 @@ export interface SetupState {
 }
 /** One step of installing tools during `setup.run`, sent as it happens. */
 export interface SetupProgress {
-  /** The tool being installed, or null once setup moves on to its files. */
-  tool: ServiceId | null;
+  /** The tool or extra being installed, or null once setup moves on to its files. */
+  tool: ServiceId | SetupExtraId | null;
   status: "installing" | "output" | "installed" | "failed" | "configuring";
   /** A line of Homebrew's output, or why installing failed. */
   line: string | null;

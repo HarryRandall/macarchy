@@ -39,6 +39,7 @@ import type {
   RulesState,
   ResultOf,
   ServiceId,
+  SetupExtra,
   SetupProgress,
   SetupTool,
   ShellState,
@@ -380,6 +381,15 @@ export function installMockHost() {
       ownConfig: null,
     },
   ];
+  const setupExtras: SetupExtra[] = [
+    {
+      id: "instant-space-switcher",
+      name: "InstantSpaceSwitcher",
+      description:
+        "Switches Spaces at once instead of sliding. Installed in Applications from jurplel's Homebrew tap; macOS may ask to allow it under Accessibility.",
+      installed: false,
+    },
+  ];
   let homebrew = query.get("brew") !== "missing";
   function progress(state: SetupProgress) {
     deliver({ type: "setup.progress", state });
@@ -479,6 +489,7 @@ export function installMockHost() {
     "advanced.openLoginItems": () => null,
     "setup.getPlan": ({ tools, existing }) => ({
       tools: setupTools,
+      extras: setupExtras,
       homebrew,
       changes: tools.map((id) => ({
         path: `~/Library/Application Support/Macarchy/config/${id}rc`,
@@ -491,8 +502,11 @@ export function installMockHost() {
       canClose: !shell.setupRequired,
       notices: [],
     }),
-    "setup.run": async ({ tools }) => {
-      const missing = setupTools.filter((tool) => !tool.installed && tools.includes(tool.id));
+    "setup.run": async ({ tools, extras = [] }) => {
+      const missing = [
+        ...setupTools.filter((tool) => !tool.installed && tools.includes(tool.id)),
+        ...setupExtras.filter((extra) => !extra.installed && extras.includes(extra.id)),
+      ];
       for (const tool of homebrew ? missing : []) {
         progress({ tool: tool.id, status: "installing", line: null });
         for (const line of [`==> Fetching ${tool.id}`, `==> Pouring ${tool.id}`]) {

@@ -1480,6 +1480,14 @@
             "path": "~/Library/Application Support/Macarchy/config/skhdrc"
           }
         ],
+        "extras": [
+          {
+            "description": "Switches Spaces at once instead of sliding.",
+            "id": "instant-space-switcher",
+            "installed": false,
+            "name": "InstantSpaceSwitcher"
+          }
+        ],
         "homebrew": true,
         "notices": [
           "Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"
@@ -1538,6 +1546,14 @@
             "action": "replace",
             "detail": "Backs up your shortcuts and starts from Macarchy's defaults",
             "path": "~/Library/Application Support/Macarchy/config/skhdrc"
+          }
+        ],
+        "extras": [
+          {
+            "description": "Switches Spaces at once instead of sliding.",
+            "id": "instant-space-switcher",
+            "installed": true,
+            "name": "InstantSpaceSwitcher"
           }
         ],
         "homebrew": false,
@@ -1599,6 +1615,25 @@
           "yabai",
           "sketchybar",
           "skhd"
+        ]
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Installed themes",
+          "Prepared startup files"
+        ]
+      }
+    },
+    {
+      "params": {
+        "existing": {},
+        "extras": [
+          "instant-space-switcher"
+        ],
+        "tools": [
+          "yabai"
         ]
       },
       "result": {

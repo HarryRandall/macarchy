@@ -68,6 +68,8 @@ struct SetupParams: Codable, Sendable {
     /// How each tool with a config of its own starts, by tool id; `keep`
     /// for any not given.
     var existing: [String: Existing]
+    /// Ids of the extras to install; none when not given.
+    var extras: [String]?
 
     var choices: Setup.Choices {
         var existing: [Daemon: Setup.Existing] = [:]
@@ -75,7 +77,8 @@ struct SetupParams: Codable, Sendable {
             guard let daemon = Daemon(rawValue: id) else { continue }
             existing[daemon] = choice == .keep ? .keep : .replace
         }
-        return Setup.Choices(tools: Set(tools.map(\.daemon)), existing: existing)
+        return Setup.Choices(
+            tools: Set(tools.map(\.daemon)), existing: existing, extras: Set(extras ?? []))
     }
 }
 struct SetupState: Codable, Sendable {
@@ -109,7 +112,15 @@ struct SetupState: Codable, Sendable {
         var action: String
         var detail: String
     }
+    /// An app setup can install, which Macarchy uses when it is there.
+    struct Extra: Codable, Sendable {
+        var id: String
+        var name: String
+        var description: String
+        var installed: Bool
+    }
     var tools: [Tool]
+    var extras: [Extra]
     /// Whether Homebrew is installed, so setup can install missing tools.
     var homebrew: Bool
     var changes: [Change]

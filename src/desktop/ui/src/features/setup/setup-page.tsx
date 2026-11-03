@@ -1,6 +1,6 @@
 import { CircleCheck } from "lucide-react";
 
-import type { SetupState, SetupTool } from "~/bridge/protocol";
+import type { SetupExtra, SetupState, SetupTool } from "~/bridge/protocol";
 import { TopBarActions } from "~/components/layout/page-chrome";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -19,7 +19,7 @@ import type { SetupStore, ToolInstall } from "./setup-store";
 const accessibilityNote =
   "macOS asks for Accessibility access the first time each runs. Turn both on, then restart them from Advanced.";
 
-function names(tools: SetupTool[]) {
+function names(tools: { name: string }[]) {
   const list = tools.map((tool) => tool.name);
   return list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : (list[0] ?? "");
 }
@@ -147,7 +147,10 @@ function Plan({ store, state }: { store: SetupStore; state: SetupState }) {
   const snapshot = useStore(store);
   const chosen = state.tools.filter((tool) => snapshot.tools.includes(tool.id));
   const missing = chosen.filter((tool) => !tool.installed);
-  const installing = state.homebrew ? missing : [];
+  const extras = state.extras.filter(
+    (extra) => !extra.installed && snapshot.extras.includes(extra.id),
+  );
+  const installing = state.homebrew ? [...missing, ...extras] : [];
   const footer = !chosen.length
     ? "Choose at least one tool to set up."
     : installing.length
@@ -178,6 +181,21 @@ function Plan({ store, state }: { store: SetupStore; state: SetupState }) {
                 <ToolRow key={tool.id} store={store} tool={tool} homebrew={state.homebrew} />
               ))}
             </div>
+            {state.extras.length ? (
+              <>
+                <p className="mt-4 mb-2 text-small text-fg-secondary">Optional</p>
+                <div className="overflow-hidden rounded-tile border border-hairline">
+                  {state.extras.map((extra) => (
+                    <ExtraRow
+                      key={extra.id}
+                      store={store}
+                      extra={extra}
+                      homebrew={state.homebrew}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : null}
             {missing.length && !state.homebrew ? (
               <Notice.Root variant="warning" className="mt-3">
                 <Notice.Title>Homebrew installs {names(missing)}</Notice.Title>
@@ -290,6 +308,44 @@ function ToolRow({
   );
 }
 
+/** An app Macarchy uses when it is there; ticking it only installs it. */
+function ExtraRow({
+  store,
+  extra,
+  homebrew,
+}: {
+  store: SetupStore;
+  extra: SetupExtra;
+  homebrew: boolean;
+}) {
+  const snapshot = useStore(store);
+  const chosen = extra.installed || snapshot.extras.includes(extra.id);
+  return (
+    <Row
+      title={extra.name}
+      description={extra.description}
+      className="px-3.5 py-3 not-first:border-t not-first:border-hairline"
+      leading={
+        <Checkbox
+          aria-label={`Install ${extra.name}`}
+          checked={chosen}
+          disabled={extra.installed || snapshot.busy || snapshot.planning || !homebrew}
+          onCheckedChange={(checked) => store.toggleExtra(extra.id, checked)}
+        />
+      }
+      control={
+        extra.installed ? (
+          <Badge tone="ok">Installed</Badge>
+        ) : chosen ? (
+          <Badge tone="accent">Will be installed</Badge>
+        ) : (
+          <Badge>Not installed</Badge>
+        )
+      }
+    />
+  );
+}
+
 const installLabels: Record<ToolInstall["status"], string> = {
   waiting: "Waiting",
   installing: "Installing…",
@@ -300,7 +356,7 @@ const installLabels: Record<ToolInstall["status"], string> = {
 /** Each tool being installed, Homebrew's output, then writing the files. */
 function Progress({ store, state }: { store: SetupStore; state: SetupState }) {
   const snapshot = useStore(store);
-  const installs = state.tools.flatMap((tool) => {
+  const installs = [...state.tools, ...state.extras].flatMap((tool) => {
     const install = snapshot.installs[tool.id];
     return install ? [{ tool, install }] : [];
   });

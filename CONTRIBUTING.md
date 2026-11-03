@@ -288,6 +288,21 @@ Shortcuts page.
 | ⌘ W | Also quits Messages, TablePlus and Obsidian |
 | ⌘⇧ M | Open the Brave profile picker |
 
+### Instant Space switching
+
+yabai's Space switch slides for about half a second on macOS 27, and a
+switch pressed during a slide waits for it. `macarchy space` sends one
+switch at a time and then goes straight to the last desktop pressed, so
+pressing quickly never stops on one in between.
+
+With [InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher)
+installed, switches have no slide at all. Setup offers it under Optional and
+installs it with Homebrew from jurplel's tap, trusting only that cask. It
+stays in Applications, where macOS keeps its permissions; Macarchy only runs
+its `ISSCli` from skhd, so skhd's Accessibility covers it. With several
+displays, or if it cannot switch, yabai switches instead. Health says which
+is in use.
+
 ### Do I need to disable SIP?
 
 No. Everything Macarchy does works with System Integrity Protection on, using

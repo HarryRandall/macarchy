@@ -467,12 +467,15 @@ grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 rm "$MACARCHY_SEARCH_PATH/launchctl" "$MACARCHY_SEARCH_PATH/defaults"
 
 # A Space click on the bar runs `macarchy space`, which still reaches a
-# custom yabai whose path has a space in it.
+# custom yabai whose path has a space in it. It asks which Spaces there are
+# first, so a number with no Space is left alone.
 BAR_BIN="$HOME_DIR/bar home/bin"
 mkdir -p "$BAR_BIN"
 cat > "$BAR_BIN/yabai" <<SH
 #!/bin/sh
 printf '%s\n' "yabai \$*" >>'$CALLS'
+[ "\$*" = "-m query --spaces" ] && printf '[{"id":42,"index":1}]\n'
+exit 0
 SH
 chmod +x "$BAR_BIN/yabai"
 : > "$CALLS"

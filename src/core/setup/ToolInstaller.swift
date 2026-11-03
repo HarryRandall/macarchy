@@ -36,6 +36,18 @@ public struct ToolInstaller: Sendable {
         }
 
         var installArguments: [String] { ["install"] + (cask ? ["--cask"] : []) + [formula] }
+
+        /// The commands that let Homebrew load a package from a tap of its
+        /// own, such as `jurplel/tap`: newer Homebrew refuses one it has not
+        /// been told to trust. Only this package is trusted, not its tap.
+        var trustSteps: [[String]] {
+            let parts = formula.split(separator: "/")
+            guard parts.count == 3 else { return [] }
+            return [
+                ["tap", "\(parts[0])/\(parts[1])"],
+                ["trust", cask ? "--cask" : "--formula", formula]
+            ]
+        }
         var uninstallArguments: [String] { ["uninstall"] + (cask ? ["--cask"] : []) + [formula] }
 
         /// The command a person could run instead, for help text and Doctor.
@@ -132,6 +144,11 @@ public struct ToolInstaller: Sendable {
                 continue
             }
             progress(.started(package))
+            // An older Homebrew has no `trust` and loads any tap; if one of
+            // these fails, the install below says why.
+            for step in package.trustSteps {
+                _ = await run(brew, step) { progress(.output(package, $0)) }
+            }
             let result = await run(brew, package.installArguments) {
                 progress(.output(package, $0))
             }

@@ -3,6 +3,7 @@ import type {
   ExistingSetup,
   ServiceId,
   SetupChoices,
+  SetupExtraId,
   SetupProgress,
   SetupReport,
   SetupState,
@@ -27,13 +28,15 @@ export function createSetupStore(host: PageHost) {
     /** The ticked tools. Every tool until the first plan says what was chosen before. */
     tools: allTools,
     existing: {} as Partial<Record<ServiceId, ExistingSetup>>,
+    /** The ticked extras to install. None until the person ticks one. */
+    extras: [] as SetupExtraId[],
     busy: false,
     planning: false,
     error: null as string | null,
     report: null as SetupReport | null,
     /** What a run is doing: installing tools, then writing files. */
     phase: null as "installing" | "configuring" | null,
-    installs: {} as Partial<Record<ServiceId, ToolInstall>>,
+    installs: {} as Partial<Record<ServiceId | SetupExtraId, ToolInstall>>,
     /** Homebrew's output during the last run, in order. */
     log: [] as string[],
     /** Terminal was opened to install Homebrew, so checking again is next. */
@@ -47,7 +50,8 @@ export function createSetupStore(host: PageHost) {
     listeners.notify();
   }
   function choices(): SetupChoices {
-    return { tools: snapshot.tools, existing: snapshot.existing };
+    const { tools, existing, extras } = snapshot;
+    return extras.length ? { tools, existing, extras } : { tools, existing };
   }
   async function load() {
     const reading = ++generation;
@@ -115,6 +119,12 @@ export function createSetupStore(host: PageHost) {
       set({ tools });
       void load();
     },
+    /** Ticks or unticks an extra. It changes no files, so the plan stays as it is. */
+    toggleExtra(extra: SetupExtraId, chosen: boolean) {
+      if (snapshot.busy) return;
+      const others = snapshot.extras.filter((id) => id !== extra);
+      set({ extras: chosen ? [...others, extra] : others });
+    },
     /** Keeps a tool's own config or starts it from Macarchy's defaults. */
     choose(tool: ServiceId, existing: ExistingSetup) {
       if (snapshot.busy) return;
@@ -125,7 +135,12 @@ export function createSetupStore(host: PageHost) {
       const state = snapshot.state;
       if (snapshot.busy || snapshot.planning || !state || !snapshot.tools.length) return;
       const missing = state.homebrew
-        ? state.tools.filter((tool) => !tool.installed && snapshot.tools.includes(tool.id))
+        ? [
+            ...state.tools.filter((tool) => !tool.installed && snapshot.tools.includes(tool.id)),
+            ...state.extras.filter(
+              (extra) => !extra.installed && snapshot.extras.includes(extra.id),
+            ),
+          ]
         : [];
       set({
         busy: true,

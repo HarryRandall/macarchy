@@ -294,6 +294,7 @@ public enum Doctor {
                     .optional, "yabai scripting addition",
                     addition.isPermitted ? .passed : .unknown,
                     addition.explanation))
+            results.append(InstantSpaceSwitcher.healthCheck)
         }
         return results
     }

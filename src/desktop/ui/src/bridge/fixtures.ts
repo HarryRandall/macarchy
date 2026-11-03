@@ -458,8 +458,16 @@ const tools: SetupState["tools"] = [
   },
 ];
 
+const instantSpaces: SetupState["extras"][number] = {
+  id: "instant-space-switcher",
+  name: "InstantSpaceSwitcher",
+  description: "Switches Spaces at once instead of sliding.",
+  installed: false,
+};
+
 const keepPlan: SetupState = {
   tools,
+  extras: [instantSpaces],
   homebrew: true,
   changes: [
     {
@@ -479,6 +487,7 @@ const keepPlan: SetupState = {
 
 const replacePlan: SetupState = {
   tools,
+  extras: [{ ...instantSpaces, installed: true }],
   homebrew: false,
   changes: [
     {
@@ -1034,6 +1043,10 @@ export const methodFixtures: MethodFixtures = {
   "setup.run": [
     { params: { tools: ["yabai", "sketchybar", "skhd"], existing: {} }, result: setupCompleted },
     {
+      params: { tools: ["yabai"], existing: {}, extras: ["instant-space-switcher"] },
+      result: setupCompleted,
+    },
+    {
       params: { tools: ["yabai", "skhd"], existing: { yabai: "keep", skhd: "replace" } },
       result: setupStopped,
     },
@@ -1263,6 +1276,10 @@ export const eventFixtures: EventFixtures = {
     {
       type: "setup.progress",
       state: { tool: "skhd", status: "failed", line: "Error: No available formula" },
+    },
+    {
+      type: "setup.progress",
+      state: { tool: "instant-space-switcher", status: "installed", line: null },
     },
     { type: "setup.progress", state: { tool: null, status: "configuring", line: null } },
   ],

@@ -34,7 +34,7 @@ public enum DesktopIsolation {
 
     /// Daemons and helpers that drive the real desktop.
     static let managedTools: Set<String> = [
-        "yabai", "skhd", "sketchybar", "borders", "brew", "ghostty"
+        "yabai", "skhd", "sketchybar", "borders", "brew", "ghostty", "ISSCli"
     ]
 
     /// Why `executable` may not run in this process, or nil when it may.

@@ -80,7 +80,13 @@ extension WebInterfaceTests {
                 #expect(report.unchanged == [Daemon.skhd.package])
                 #expect(report.failures.isEmpty)
                 #expect(Paths.isInstalled("yabai"))
-                #expect(harness.brewCalls == ["brew install asmvik/formulae/yabai"])
+                // Newer Homebrew loads a tap's formula only once it is trusted.
+                #expect(
+                    harness.brewCalls == [
+                        "brew tap asmvik/formulae",
+                        "brew trust --formula asmvik/formulae/yabai",
+                        "brew install asmvik/formulae/yabai"
+                    ])
                 let yabai = Daemon.yabai.package
                 #expect(
                     log.events == [
@@ -176,6 +182,16 @@ extension WebInterfaceTests {
             #expect(ToolInstaller.Package.neovim.command == "brew install neovim")
             #expect(
                 Daemon.sketchybar.installCommand == "brew install FelixKratz/formulae/sketchybar")
+        }
+
+        @Test("a package from a tap trusts only itself; one from Homebrew needs nothing")
+        func trust() {
+            #expect(
+                InstantSpaceSwitcher.package.trustSteps == [
+                    ["tap", "jurplel/tap"],
+                    ["trust", "--cask", "jurplel/tap/instant-space-switcher"]
+                ])
+            #expect(ToolInstaller.Package.ghostty.trustSteps.isEmpty)
         }
     }
 }

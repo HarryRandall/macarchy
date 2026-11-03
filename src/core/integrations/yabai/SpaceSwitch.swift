@@ -28,6 +28,8 @@ public struct SpaceSwitch: Sendable {
             spaces: { await indices(integrations) },
             showing: { SpacesReading.currentSpaceIDs() ?? [] },
             focus: { index in
+                guard await !InstantSpaceSwitcher.focus(index, integrations: integrations)
+                else { return }
                 _ = await integrations.execute(
                     Paths.yabai, ["-m", "space", "--focus", String(index)])
             },
@@ -44,11 +46,13 @@ public struct SpaceSwitch: Sendable {
         record(index)
         guard var held = take() else { return }
         var wanted = index
-        var ids: [Int: Int] = [:]
+        // A Space that does not exist is left alone, as yabai does;
+        // InstantSpaceSwitcher would go to the last one instead.
+        let ids = await spaces()
         while true {
+            guard let id = ids[wanted] else { break }
             await focus(wanted)
-            if ids[wanted] == nil { ids = await spaces() }
-            guard let id = ids[wanted], await landed(on: id) else { break }
+            guard await landed(on: id) else { break }
             if let next = recorded(), next != wanted, let nextID = ids[next],
                 !showing().contains(nextID)
             {

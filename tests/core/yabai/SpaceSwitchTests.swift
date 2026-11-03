@@ -88,7 +88,7 @@ struct SpaceSwitchTests {
     func missingSpace() async throws {
         let desk = Desk(on: 1)
         try await run(desk, going: 9)
-        #expect(desk.sent == [9])
+        #expect(desk.sent.isEmpty)
         #expect(desk.space == 1)
     }
 }

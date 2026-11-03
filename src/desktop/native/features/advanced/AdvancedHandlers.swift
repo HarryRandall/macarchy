@@ -206,6 +206,12 @@ extension CleanupReport {
 }
 
 extension AppModel {
+    static let extraDescriptions = [
+        InstantSpaceSwitcher.package.id:
+            "Switches Spaces at once instead of sliding. Installed in Applications from "
+            + "jurplel's Homebrew tap; macOS may ask to allow it under Accessibility."
+    ]
+
     /// The plan for `choices`, with every tool and whether it was chosen
     /// last time, so the page starts from the earlier answers.
     func setupState(_ choices: Setup.Choices) -> SetupState {
@@ -218,6 +224,11 @@ extension AppModel {
                     id: $0.rawValue, name: $0.displayName, description: $0.summary,
                     installed: Paths.isInstalled($0.executableName), chosen: chosen.contains($0),
                     ownConfig: Setup.ownConfig($0).map(Paths.display))
+            },
+            extras: Setup.extras.map {
+                .init(
+                    id: $0.id, name: $0.name, description: Self.extraDescriptions[$0.id] ?? "",
+                    installed: $0.isInstalled)
             },
             homebrew: ToolInstaller.homebrew != nil,
             changes: plan.map {

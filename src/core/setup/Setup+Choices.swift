@@ -10,10 +10,17 @@ extension Setup {
         public var tools: Set<Daemon>
         /// How each tool starts; `keep` for any not given.
         public var existing: [Daemon: Existing]
+        /// Ids of `Setup.extras` to install if missing. They need no files
+        /// or services, so nothing else about setup changes for them.
+        public var extras: Set<String> = []
 
-        public init(tools: Set<Daemon> = Set(Daemon.allCases), existing: [Daemon: Existing] = [:]) {
+        public init(
+            tools: Set<Daemon> = Set(Daemon.allCases), existing: [Daemon: Existing] = [:],
+            extras: Set<String> = []
+        ) {
             self.tools = tools
             self.existing = existing
+            self.extras = extras
         }
 
         /// Every tool starting the same way, as `--keep` or `--replace` alone do.
@@ -28,6 +35,10 @@ extension Setup {
         /// The chosen tools in their usual order, as settings saves them.
         var ordered: [Daemon] { Daemon.allCases.filter(tools.contains) }
     }
+
+    /// Apps setup can install that Macarchy uses when they are there, with
+    /// nothing to configure.
+    public static let extras: [ToolInstaller.Package] = [InstantSpaceSwitcher.package]
 
     /// The tools the last setup was told to configure. Every tool before
     /// setup has asked, as earlier versions configured them all, and when

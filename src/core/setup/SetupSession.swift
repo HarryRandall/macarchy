@@ -54,9 +54,11 @@ public struct SetupSession: Sendable {
         var lines: [String] = []
         var failed: [CommandResult] = []
         if install {
-            let missing = choices.ordered.filter { !Paths.isInstalled($0.executableName) }
+            let missing =
+                choices.ordered.filter { !Paths.isInstalled($0.executableName) }.map(\.package)
+                + Setup.extras.filter { choices.extras.contains($0.id) && !$0.isInstalled }
             if !missing.isEmpty {
-                let installed = await installer.install(missing.map(\.package)) {
+                let installed = await installer.install(missing) {
                     progress(.homebrew($0))
                 }
                 lines += installed.changed.map { "Installed \($0.name) with Homebrew" }

@@ -5,7 +5,8 @@ import Testing
 @testable import Macarchy
 
 /// Homebrew in place of the real one: installing puts an executable for the
-/// formula's last part in `bin`, printing one line; removing deletes it.
+/// formula's last part in `bin`, printing one line; removing deletes it, and
+/// trusting a tap does nothing.
 func fakeHomebrew(_ bin: URL) -> ToolInstaller.Run {
     { _, arguments, line in
         let name = arguments.last.map { URL(fileURLWithPath: $0).lastPathComponent } ?? ""
@@ -15,7 +16,7 @@ func fakeHomebrew(_ bin: URL) -> ToolInstaller.Run {
             try? Data("#!/bin/sh\nexit 1\n".utf8).write(to: file)
             try? FileManager.default.setAttributes(
                 [.posixPermissions: 0o755], ofItemAtPath: file.path)
-        } else {
+        } else if arguments.first == "uninstall" {
             try? FileManager.default.removeItem(at: file)
         }
         return CommandResult(command: "brew " + arguments.joined(separator: " "), status: 0)
