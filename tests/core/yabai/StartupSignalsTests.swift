@@ -12,7 +12,6 @@ struct StartupSignalsTests {
         #expect(
             Set(labels) == [
                 "macarchy_mission_control_exit", "macarchy_refocus_space",
-                "macarchy_window_created", "macarchy_window_deminimized",
                 "macarchy_refocus_destroyed", "macarchy_refocus_terminated"
             ])
         let missionControl = Startup.signals.first { $0.contains("event=mission_control_exit") }
@@ -20,10 +19,17 @@ struct StartupSignalsTests {
         #expect(missionControl?.last?.contains("widget trigger space_changed") == true)
     }
 
-    /// Runs the Mission Control action against a fake yabai that reports the
-    /// given focused window and visible Space, and returns its focus commands.
     private func missionControlFocus(
         window: (id: Int, space: Int)?, visible: Int
+    ) async throws -> [String] {
+        try await focus(after: "mission_control_exit", window: window, visible: visible)
+    }
+
+    /// Runs a signal's action against a fake yabai whose visible Space has id
+    /// 3 and the given index, with the given focused window, and returns its
+    /// focus commands. `arrived` is the Space id yabai passes the action.
+    private func focus(
+        after event: String, window: (id: Int, space: Int)?, visible: Int, arrived: Int? = nil
     ) async throws -> [String] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-signals-\(UUID().uuidString)")
@@ -44,8 +50,7 @@ struct StartupSignalsTests {
         """.write(to: fake, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fake.path)
 
-        let action = try #require(
-            Startup.signals.first { $0.contains("event=mission_control_exit") }?.last)
+        let action = try #require(Startup.signals.first { $0.contains("event=\(event)") }?.last)
         let script = String(action.dropFirst("action=".count))
             .replacingOccurrences(of: Shell.quote(Paths.yabai), with: Shell.quote(fake.path))
             .replacingOccurrences(
@@ -53,7 +58,9 @@ struct StartupSignalsTests {
                 with: "true"
             )
             .replacingOccurrences(of: "sleep 0.25", with: "true")
-        let result = await CommandRunner.run("/bin/sh", ["-c", script])
+            .replacingOccurrences(of: "sleep 0.35", with: "true")
+        let space = arrived.map { "YABAI_SPACE_ID=\($0); " } ?? ""
+        let result = await CommandRunner.run("/bin/sh", ["-c", space + script])
         #expect(result.ok, "\(result.stderr)")
         let focused = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
         return focused.split(separator: "\n").map(String.init)
@@ -74,5 +81,24 @@ struct StartupSignalsTests {
     @Test("leaving Mission Control with nothing focused focuses a window here")
     func fillsInFocus() async throws {
         #expect(try await missionControlFocus(window: nil, visible: 3) == ["first"])
+    }
+
+    @Test("arriving on a Space focuses a window here when focus stayed behind")
+    func refocusesOnArrival() async throws {
+        #expect(
+            try await focus(after: "space_changed", window: (42, 1), visible: 2, arrived: 3)
+                == ["first"])
+        #expect(
+            try await focus(after: "space_changed", window: (42, 2), visible: 2, arrived: 3)
+                .isEmpty)
+    }
+
+    /// Switching quickly queues one of these per switch; only the Space still
+    /// showing may move focus.
+    @Test("a Space already left again by the time the action runs is left alone")
+    func ignoresSpaceLeftAgain() async throws {
+        #expect(
+            try await focus(after: "space_changed", window: (42, 1), visible: 2, arrived: 5)
+                .isEmpty)
     }
 }

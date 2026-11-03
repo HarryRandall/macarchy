@@ -56,10 +56,10 @@ struct DiagnosticsTests {
                     CommandResult(command: "mock", status: 0, stdout: list)
                 }))
         }
-        #expect(!(await registered(#"[{"label":"macarchy_window_created"}]"#)))
+        #expect(!(await registered(#"[{"label":"macarchy_refocus_space"}]"#)))
         #expect(
             await registered(
-                #"[{"label":"macarchy_window_created"},{"label":"macarchy_refocus_destroyed"}]"#))
-        #expect(!(await registered("macarchy_window_created macarchy_refocus_destroyed")))
+                #"[{"label":"macarchy_refocus_space"},{"label":"macarchy_refocus_destroyed"}]"#))
+        #expect(!(await registered("macarchy_refocus_space macarchy_refocus_destroyed")))
     }
 }

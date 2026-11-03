@@ -64,6 +64,18 @@ public actor BuiltInReadings {
         return history
     }
 
+    private var sensorRead: (task: Task<SMCSensors.Temperatures, Never>, at: Date)?
+
+    /// The temperature sensors, read once for every widget due in the same
+    /// update and away from this actor, so the Spaces reading never waits
+    /// behind the SMC.
+    private func sensors(now: Date) async -> SMCSensors.Temperatures {
+        if let sensorRead, sensorRead.at == now { return await sensorRead.task.value }
+        let task = Task.detached { SMCSensors.shared.read() }
+        sensorRead = (task, now)
+        return await task.value
+    }
+
     /// The process list, read at most every few seconds however many
     /// widgets ask for it.
     private func topProcesses(now: Date) async -> TopProcesses {
@@ -105,7 +117,7 @@ public actor BuiltInReadings {
         let loads = CoreTicks.loads(from: ticks.isEmpty ? current : ticks, to: current)
         ticks = current
         let load = loads.isEmpty ? 0 : loads.reduce(0, +) / Double(loads.count)
-        let temperature = smoothed(SMCSensors.shared.read().cpu, as: "cpu")
+        let temperature = smoothed(await sensors(now: now).cpu, as: "cpu")
         var sample = ReadingOutputs.CPUSample(
             load: load, cores: loads, temperature: temperature,
             history: remember(load, as: "cpu"))
@@ -115,19 +127,22 @@ public actor BuiltInReadings {
             top: await topProcesses(now: now), settings: instance.settings)
     }
 
-    func gpu(_ instance: WidgetInstance, now: Date) -> WidgetOutput {
-        let reading = GPUReading.read()
-        let load = reading?.load ?? 0
-        var top = ""
-        if let reading, let earlier = gpuTime {
-            top = GPUReading.apps(
+    func gpu(_ instance: WidgetInstance, now: Date) async -> WidgetOutput {
+        let earlier = gpuTime
+        // Walking every app's GPU connection is the slowest reading here.
+        let (reading, top) = await Task.detached { () -> (GPUReading?, String) in
+            let reading = GPUReading.read()
+            guard let reading, let earlier else { return (reading, "") }
+            let top = GPUReading.apps(
                 from: earlier.time, to: reading.time, seconds: now.timeIntervalSince(earlier.at)
             )
             .prefix(3).map { "\($0.name):\(String(format: "%.1f%%", $0.share))" }
             .joined(separator: ",")
-        }
+            return (reading, top)
+        }.value
+        let load = reading?.load ?? 0
         if let reading { gpuTime = (reading.time, now) }
-        let temperature = smoothed(SMCSensors.shared.read().gpu, as: "gpu")
+        let temperature = smoothed(await sensors(now: now).gpu, as: "gpu")
         var sample = ReadingOutputs.GPUSample(
             load: load, temperature: temperature, history: remember(load, as: "gpu"),
             memory: reading?.memory, memoryLimit: GPUReading.memoryLimit, cores: reading?.cores,
@@ -144,7 +159,7 @@ public actor BuiltInReadings {
             top: await topProcesses(now: now))
     }
 
-    func network(_ instance: WidgetInstance, now: Date) -> WidgetOutput {
+    func network(_ instance: WidgetInstance, now: Date) async -> WidgetOutput {
         let reading = NetworkCounters.read()
         var down = 0.0
         var up = 0.0
@@ -156,12 +171,14 @@ public actor BuiltInReadings {
             up = Double(reading.sent - counters.reading.sent) / seconds
         }
         counters = (reading, now)
+        // CoreWLAN and the network configuration each wait on a daemon.
+        let (wifi, router) = await Task.detached { (WiFiReading.read(), WiFiReading.router()) }
+            .value
         return ReadingOutputs.network(
             reading,
             .init(
                 down: down, up: up, history: remember(down / 1024, as: "network"),
-                upHistory: remember(up / 1024, as: "network.up"), wifi: WiFiReading.read(),
-                router: WiFiReading.router()))
+                upHistory: remember(up / 1024, as: "network.up"), wifi: wifi, router: router))
     }
 
     func battery(_ instance: WidgetInstance, now: Date) async -> WidgetOutput? {

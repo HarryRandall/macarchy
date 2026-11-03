@@ -13,14 +13,28 @@ public enum Startup {
         }
         switch name {
         case "yabai":
-            for setting in StartupConfiguration.yabaiKeys {
-                try require(
-                    await integrations.yabaiWrite(
-                        setting.key, value: values[setting.env] ?? setting.fallback))
+            // Each key and signal is its own yabai process and none depends on
+            // another, so they go together rather than one after another.
+            let results = await withTaskGroup(of: (Int, CommandResult).self) { group in
+                for (order, setting) in StartupConfiguration.yabaiKeys.enumerated() {
+                    let value = values[setting.env] ?? setting.fallback
+                    group.addTask {
+                        (order, await integrations.yabaiWrite(setting.key, value: value))
+                    }
+                }
+                for (order, signal) in signals.enumerated() {
+                    group.addTask {
+                        (
+                            StartupConfiguration.yabaiKeys.count + order,
+                            await integrations.execute(Paths.yabai, signal)
+                        )
+                    }
+                }
+                var collected: [(Int, CommandResult)] = []
+                for await result in group { collected.append(result) }
+                return collected.sorted { $0.0 < $1.0 }.map(\.1)
             }
-            for signal in signals {
-                try require(await integrations.execute(Paths.yabai, signal))
-            }
+            for result in results { try require(result) }
             try await WindowRules.apply(
                 settings.floatingApps, customRules: settings.windowRules ?? [],
                 integrations: integrations)
@@ -32,12 +46,8 @@ public enum Startup {
             let configuration = try bar(settings)
             try await BarCommands.replay(configuration, integrations: integrations)
             await fillWidgets(configuration, integrations: integrations)
-        case "borders":
-            let theme = settings.currentTheme.flatMap {
-                Theme.load(from: Paths.themesDirectory.appending(path: $0))
-            }
-            try require(
-                await integrations.borders(BorderCommand.arguments(values: values, theme: theme)))
+        // borders is started by `macarchy startup borders` itself, which
+        // replaces its own process with borders rather than calling this.
         default: throw ConfigurationError("Unknown integration: \(name)")
         }
     }
@@ -111,17 +121,21 @@ public enum Startup {
         // Arriving on a Space, yabai first still reports the previous Space's
         // window as focused; a moment later macOS activates Finder or another
         // app with no window here, and no border is drawn. So wait for it to
-        // settle, then focus a window here unless one already is.
+        // settle, then focus a window here unless one already is. A Space
+        // left again while waiting, as when switching quickly, is left alone:
+        // focusing there would only pull focus about behind the newer switch.
         let spaceRefocus =
-            "sleep 0.35; space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
+            "sleep 0.35; current=$(\(yabai) -m query --spaces --space 2>/dev/null);"
+            + " [ -z \"$YABAI_SPACE_ID\" ]"
+            + " || [ \"$(printf '%s\\n' \"$current\" | \(field("id")))\" = \"$YABAI_SPACE_ID\" ]"
+            + " || exit 0;"
+            + " space=$(printf '%s\\n' \"$current\" | \(field("index")));"
             + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
             + " if [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]; then"
             + " \(yabai) -m window --focus first >/dev/null 2>&1; fi"
         return [
             ("macarchy_mission_control_exit", "mission_control_exit", missionControl),
             ("macarchy_refocus_space", "space_changed", spaceRefocus),
-            ("macarchy_window_created", "window_created", "\(cli) rules window-created"),
-            ("macarchy_window_deminimized", "window_deminimized", "\(cli) rules window-created"),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),
             ("macarchy_refocus_terminated", "application_terminated", refocus)
         ].map { label, event, action in

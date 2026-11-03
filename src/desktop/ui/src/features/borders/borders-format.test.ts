@@ -44,8 +44,6 @@ describe("bordersArguments", () => {
   it("writes the width with one decimal and the colours as saved", () => {
     expect(bordersArguments(appearance)).toEqual([
       "width=10.0",
-      "hidpi=on",
-      "background_color=0x00000000",
       'blacklist="iPhone Mirroring,Messages"',
       "active_color=0x80112233",
       "inactive_color=0x00000000",

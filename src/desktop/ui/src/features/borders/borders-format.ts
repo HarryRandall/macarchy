@@ -60,15 +60,14 @@ export function presetColours(colours: readonly (string | null | undefined)[]): 
 
 /**
  * The arguments Macarchy passes to `borders` for this appearance, in the
- * order the core writes them. `style` comes from settings this page does not
- * edit, so it is left out rather than guessed.
+ * order the core writes them. `style`, and `hidpi`, which follows it, come
+ * from settings this page does not edit, so they are left out rather than
+ * guessed.
  */
 export function bordersArguments(appearance: BorderAppearance): string[] {
   const visible = appearance.visible;
   return [
     `width=${visible ? appearance.width.toFixed(1) : "0.0"}`,
-    "hidpi=on",
-    "background_color=0x00000000",
     `blacklist="${appearance.excludedApps.join(",")}"`,
     `active_color=${visible ? (appearance.activeColour ?? "0xff45e8ff") : "0x00000000"}`,
     `inactive_color=${visible ? (appearance.inactiveColour ?? "0x00000000") : "0x00000000"}`,

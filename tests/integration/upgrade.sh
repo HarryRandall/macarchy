@@ -209,7 +209,7 @@ YABAI_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/i
 : > "$CALLS"
 OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file did not apply the layout: $OUTPUT"
-grep -q '^yabai -m signal --add label=macarchy_window_created ' "$CALLS" || fail "yabai's signals not added: $OUTPUT"
+grep -q '^yabai -m signal --add label=macarchy_refocus_space ' "$CALLS" || fail "yabai's signals not added: $OUTPUT"
 grep -qx 'sudo yabai --load-sa' "$CALLS" || fail "the owner's yabai region did not run: $OUTPUT"
 grep -q 'label=restart_borders' "$CALLS" || fail "the owner's yabai region stopped early: $OUTPUT"
 grep -qxF 'THEME="$(cat "$HOME/Library/Application Support/Macarchy/generated/nvim-colorscheme")"' \

@@ -12,10 +12,15 @@ import Observation
 @MainActor
 final class StateBroadcast {
     static let shared = StateBroadcast(
-        settings: { SettingsWindow.shared.surface }, switcher: { ThemeSwitcher.shared.surface })
+        settings: { SettingsWindow.shared.surface }, switcher: { ThemeSwitcher.shared.surface },
+        showing: { SettingsWindow.shared.isVisible })
 
     private let settings: @MainActor () -> WebSurface?
     private let switcher: @MainActor () -> WebSurface?
+    /// Whether the settings page is on screen. Its surface is kept while the
+    /// window is closed, and polling for it then would read files every
+    /// second all day for a page nobody sees.
+    private let showing: @MainActor () -> Bool
     private var model: AppModel?
     private var lastThemes: SwitcherState?
     private var lastThemeRevision = -1
@@ -32,10 +37,12 @@ final class StateBroadcast {
 
     init(
         settings: @escaping @MainActor () -> WebSurface?,
-        switcher: @escaping @MainActor () -> WebSurface?
+        switcher: @escaping @MainActor () -> WebSurface?,
+        showing: @escaping @MainActor () -> Bool = { true }
     ) {
         self.settings = settings
         self.switcher = switcher
+        self.showing = showing
     }
 
     func start(_ model: AppModel) {
@@ -46,9 +53,13 @@ final class StateBroadcast {
         lastShell = model.shellState()
         observe()
         watchSettings()
-        homeFiles.start { [weak self] in self?.publishOverview() }
+        let watched: @MainActor () -> Bool = { [weak self] in
+            guard let self else { return false }
+            return self.settings() != nil && self.showing()
+        }
+        homeFiles.start(watched: watched) { [weak self] in self?.publishOverview() }
         shortcutsBroadcast.start(
-            integrations: model.backend, watched: { [weak self] in self?.settings() != nil },
+            integrations: model.backend, watched: watched,
             send: { [weak self] event in self?.settings()?.send(event) })
         logBroadcast.start(model.log) { [weak self] in self?.settings()?.send(.shellLogChanged) }
     }

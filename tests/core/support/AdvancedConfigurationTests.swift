@@ -64,7 +64,7 @@ struct AdvancedConfigurationTests {
             integrations: Integrations { _, _ in
                 CommandResult(
                     command: "signals", status: 0,
-                    stdout: "[{\"label\":\"macarchy_window_created\"}]")
+                    stdout: "[{\"label\":\"macarchy_refocus_space\"}]")
             })
         #expect(await !incomplete.wakeHelpersRegistered())
         let complete = AdvancedConfiguration(
@@ -72,7 +72,7 @@ struct AdvancedConfigurationTests {
                 CommandResult(
                     command: "signals", status: 0,
                     stdout:
-                        "[{\"label\":\"macarchy_window_created\"},{\"label\":\"macarchy_refocus_destroyed\"}]"
+                        "[{\"label\":\"macarchy_refocus_space\"},{\"label\":\"macarchy_refocus_destroyed\"}]"
                 )
             })
         #expect(await complete.wakeHelpersRegistered())

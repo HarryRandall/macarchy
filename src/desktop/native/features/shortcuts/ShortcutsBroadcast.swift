@@ -3,8 +3,9 @@ import Macarchy
 
 /// Polling also follows symlinks and skhd's dotfile fallback after an atomic replacement.
 ///
-/// The desktop count is asked of yabai less often than skhdrc is read, and only
-/// while a page is open, since it costs a process each time.
+/// Nothing is read while no page is showing, since the page reads afresh each
+/// time it comes forward. The desktop count is asked of yabai less often than
+/// skhdrc is read, since it costs a process each time.
 @MainActor
 final class ShortcutsBroadcast {
     private var task: Task<Void, Never>?
@@ -38,11 +39,12 @@ final class ShortcutsBroadcast {
         integrations: Integrations, watched: @MainActor () -> Bool,
         send: @MainActor (BridgeEvent) -> Void
     ) async {
+        guard watched() else { return }
         do {
             let snapshot = try SkhdShortcuts().read()
             defer { ticks += 1 }
             var desktops = lastDesktops
-            if watched(), snapshot.revision != lastRevision || ticks % Self.desktopEvery == 0 {
+            if snapshot.revision != lastRevision || ticks % Self.desktopEvery == 0 {
                 desktops = await integrations.desktopCount()
             }
             let state = ShortcutsState(snapshot, desktops: desktops)

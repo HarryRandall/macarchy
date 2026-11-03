@@ -169,11 +169,9 @@ do {
                 theme: options.values[0], path: options.values[1]))
         print("Saved the wallpaper for \(options.values[0]).")
     case "rules":
-        // `window-created` is run by yabai's signals and is not listed.
-        let options = try parse(values: 0...1, choices: ["toggle", "window-created"])
+        let options = try parse(values: 0...1, choices: ["toggle"])
         switch options.values.first {
         case "toggle": try await WindowRules.toggle()
-        case "window-created": try await WindowRules.windowCreated()
         default:
             let settings = try SettingsStore().read()
             try await WindowRules.apply(

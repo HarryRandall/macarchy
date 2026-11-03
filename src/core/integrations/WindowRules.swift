@@ -222,22 +222,6 @@ extension WindowRules {
         }
     }
 
-    public static func windowCreated(integrations: Integrations = Integrations()) async throws {
-        guard let id = ProcessInfo.processInfo.environment["YABAI_WINDOW_ID"], Int(id) != nil else {
-            return
-        }
-        let result = await integrations.execute(
-            Paths.yabai, ["-m", "query", "--windows", "--window", id])
-        guard result.ok else { throw ConfigurationError(result.summary) }
-        let window = try JSONDecoder().decode(Window.self, from: Data(result.stdout.utf8))
-        guard try SettingsStore().read().floatingApps.contains(window.app), !window.floating else {
-            return
-        }
-        let applied = await integrations.execute(
-            Paths.yabai, ["-m", "window", id, "--toggle", "float"])
-        guard applied.ok else { throw ConfigurationError(applied.summary) }
-    }
-
     public static func toggle(
         store: SettingsStore = SettingsStore(), integrations: Integrations = Integrations()
     ) async throws {

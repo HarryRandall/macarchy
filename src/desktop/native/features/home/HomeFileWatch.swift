@@ -3,17 +3,22 @@ import Macarchy
 
 /// Shortcuts and theme packages can change without a settings.json write.
 /// A small fingerprint also notices atomic replacements in nested folders.
+/// It is taken only while a page is showing; a change made while none was is
+/// noticed on the first look after one comes forward.
 @MainActor
 final class HomeFileWatch {
     private var timer: Timer?
     private var previous: [String] = []
 
-    func start(changed: @escaping @MainActor () -> Void) {
+    func start(
+        watched: @escaping @MainActor () -> Bool = { true },
+        changed: @escaping @MainActor () -> Void
+    ) {
         previous = fingerprint()
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, watched() else { return }
                 let next = self.fingerprint()
                 if next != self.previous {
                     self.previous = next

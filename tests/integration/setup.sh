@@ -431,7 +431,7 @@ run_agent() {
 : > "$CALLS"
 OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file set no layout: $OUTPUT"
-grep -q '^yabai -m signal --add label=macarchy_window_created ' "$CALLS" || fail "yabai's startup file added no signals"
+grep -q '^yabai -m signal --add label=macarchy_refocus_space ' "$CALLS" || fail "yabai's startup file added no signals"
 OUTPUT="$(run_agent sketchybar 2>&1)" || fail "SketchyBar did not run its startup file: $OUTPUT"
 grep -q '^sketchybar --bar height=35 ' "$CALLS" || fail "SketchyBar's startup file set up no bar: $OUTPUT"
 grep -q -- '--load-font .*/sketchybar/sketchybar-app-font.ttf' "$CALLS" || fail "the bar did not load the app font"

@@ -33,6 +33,11 @@ public actor WidgetHost {
     private var components: [String: BarComponent] = [:]
     /// Each widget's latest update, which its next one waits for.
     private var running: [String: Task<Void, Never>] = [:]
+    /// Each widget's newest update request. One still waiting when a newer
+    /// one arrives leaves the widget to it, so a burst of Space switches
+    /// reads once more at the end rather than once for every switch.
+    private var newest: [String: Int] = [:]
+    private var requests = 0
 
     public init(
         integrations: Integrations = Integrations(), runner: WidgetProviderRunner = .init(),
@@ -126,14 +131,21 @@ public actor WidgetHost {
     /// Works out the given widgets now, whether or not they are due. A
     /// widget's updates run one after another, so a slow one cannot land
     /// after a newer one and put back what it read, as a Space switch half
-    /// seen; different widgets do not wait for each other.
+    /// seen; different widgets do not wait for each other. An update still
+    /// waiting its turn when a newer one for the same widget arrives is
+    /// dropped, since the newer one reads afresh anyway.
     @discardableResult
     public func refresh(_ ids: Set<String>? = nil, now: Date = Date()) async -> CommandResult? {
         let targets = instances.filter { $0.visible && (ids?.contains($0.id) ?? true) }.map(\.id)
         let earlier = Set(targets.compactMap { running[$0] })
+        requests += 1
+        let request = requests
+        for id in targets { newest[id] = request }
         let next = Task {
             for task in earlier { await task.value }
-            return await self.work(ids, now: now)
+            let current = Set(targets.filter { self.newest[$0] == request })
+            guard !current.isEmpty else { return nil as CommandResult? }
+            return await self.work(current, now: now)
         }
         let done = Task { _ = await next.value }
         for id in targets { running[id] = done }

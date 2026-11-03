@@ -59,12 +59,16 @@ public enum DesktopConfiguration {
 extension Startup {
     public static func applyCorners(integrations: Integrations = Integrations()) async throws {
         guard let radius = try SettingsStore().load()["BORDER_RADIUS"] else { return }
+        // A write to the global domain notifies every app, and this runs each
+        // time borders starts, so an unchanged value is left alone.
+        let current = await integrations.globalDefault("NSConvolutionOverride1")
         let result: CommandResult
         if radius == "system" {
-            let current = await integrations.globalDefault("NSConvolutionOverride1")
             if !current.ok, current.stderr.contains("does not exist") { return }
             result = await integrations.removeGlobalDefault("NSConvolutionOverride1")
         } else {
+            let saved = Double(current.stdout.trimmingCharacters(in: .whitespacesAndNewlines))
+            if current.ok, let saved, saved == Double(radius) { return }
             result = await integrations.setGlobalDefault("NSConvolutionOverride1", float: radius)
         }
         guard result.ok else { throw ConfigurationError(result.summary) }

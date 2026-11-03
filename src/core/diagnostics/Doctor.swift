@@ -142,7 +142,7 @@ public enum Doctor {
                 as? [[String: Any]]
         else { return false }
         let labels = Set(signals.compactMap { $0["label"] as? String })
-        return labels.isSuperset(of: ["macarchy_window_created", "macarchy_refocus_destroyed"])
+        return labels.isSuperset(of: ["macarchy_refocus_space", "macarchy_refocus_destroyed"])
     }
 
     static func configurationChecks(integrations: Integrations) async -> [HealthCheck] {

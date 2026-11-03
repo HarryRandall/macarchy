@@ -88,13 +88,18 @@ final class WidgetHostController {
         observers.append((DistributedNotificationCenter.default(), space))
     }
 
+    /// The look again after the latest `macarchy space`; a newer switch
+    /// replaces it, so a burst of switches checks once, after the last.
+    private var spaceCheck: Task<Void, Never>?
+
     /// A Space is about to be shown: draw it as current now, then look
     /// again once macOS has had time to switch, in case it did not.
     private func going(to space: Int) {
-        Task {
+        spaceCheck?.cancel()
+        spaceCheck = Task { [host] in
             await BuiltInReadings.shared.expect(space: space)
             await host.trigger("space_changed")
-            try? await Task.sleep(for: .seconds(1.6))
+            guard (try? await Task.sleep(for: .seconds(1.6))) != nil else { return }
             await host.trigger("space_changed")
         }
     }
@@ -157,15 +162,27 @@ final class WidgetHostController {
         self.stream = stream
     }
 
+    /// The files the bar and the theme are read from, at the top of the folder.
+    private static let barFiles: Set<String> = [
+        "settings.json", "menu-bar.json", "menu-bar-draft.json"
+    ]
+
     private func filesChanged(_ paths: [String]) {
+        let root = Paths.appRoot.resolvingSymlinksInPath().path
         let widgets = Paths.widgetsDirectory.resolvingSymlinksInPath().path + "/"
+        let urls = paths.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath() }
         // Hidden files are a widget's own scratch state, such as a history it
         // keeps between runs; restarting on those would never stop.
-        let touchedWidgets = paths.contains {
-            let url = URL(fileURLWithPath: $0)
-            return !url.lastPathComponent.hasPrefix(".")
-                && url.resolvingSymlinksInPath().path.hasPrefix(widgets)
+        let touchedWidgets = urls.contains {
+            !$0.lastPathComponent.hasPrefix(".") && $0.path.hasPrefix(widgets)
         }
+        // The daemons' logs, backups and snapshots change often; only a write
+        // to the bar's own files is worth reading the settings again for.
+        let touchedBar = urls.contains {
+            Self.barFiles.contains($0.lastPathComponent)
+                && $0.deletingLastPathComponent().path == root
+        }
+        guard touchedWidgets || touchedBar else { return }
         let bar = barData()
         let theme = currentTheme()
         guard touchedWidgets || bar != lastBar || theme != lastTheme else { return }
