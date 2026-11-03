@@ -12,38 +12,42 @@ struct StartupSignalsTests {
         #expect(
             Set(labels) == [
                 "macarchy_mission_control_exit", "macarchy_refocus_space",
-                "macarchy_refocus_destroyed", "macarchy_refocus_terminated"
+                "macarchy_refocus_activated", "macarchy_refocus_destroyed",
+                "macarchy_refocus_terminated"
             ])
         let missionControl = Startup.signals.first { $0.contains("event=mission_control_exit") }
         #expect(missionControl?.last?.contains("--focus \"$id\"") == true)
         #expect(missionControl?.last?.contains("widget trigger space_changed") == true)
     }
 
-    private func missionControlFocus(
-        window: (id: Int, space: Int)?, visible: Int
-    ) async throws -> [String] {
-        try await focus(after: "mission_control_exit", window: window, visible: visible)
-    }
-
-    /// Runs a signal's action against a fake yabai whose visible Space has id
-    /// 3 and the given index, with the given focused window, and returns its
-    /// focus commands. `arrived` is the Space id yabai passes the action.
-    private func focus(
-        after event: String, window: (id: Int, space: Int)?, visible: Int, arrived: Int? = nil
+    /// Runs the action for a yabai event against a fake yabai that reports the
+    /// given focused window, and the visible Space from `visible` in turn, one
+    /// per query and then the last one again. The visible Space has id 3;
+    /// `arrived` is the Space id yabai passes the action. Returns its focus
+    /// commands.
+    private func focusCommands(
+        _ event: String, window: (id: Int, space: Int)?, visible: [Int], arrived: Int? = nil
     ) async throws -> [String] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-signals-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let log = root.appending(path: "focus.log")
+        let spaces = root.appending(path: "spaces")
+        try visible.map(String.init).joined(separator: "\n")
+            .appending("\n").write(to: spaces, atomically: true, encoding: .utf8)
         let windowJSON = window.map {
             "{\n\t\"id\":\($0.id),\n\t\"pid\":7,\n\t\"space\":\($0.space),\n}"
         }
         let fake = root.appending(path: "yabai")
+        let spacesPath = Shell.quote(spaces.path)
         try """
         #!/bin/sh
         case "$*" in
-          "-m query --spaces --space") printf '{\\n\\t"id":3,\\n\\t"index":\(visible),\\n}\\n' ;;
+          "-m query --spaces --space")
+            index=$(head -n 1 \(spacesPath))
+            [ "$(wc -l < \(spacesPath))" -gt 1 ] && sed -i '' 1d \(spacesPath)
+            printf '{\\n\\t"id":3,\\n\\t"index":%s,\\n}\\n' "$index" ;;
           "-m query --windows --window") \(windowJSON.map { "printf '%s\\n' '\($0)'" } ?? "exit 1") ;;
           "-m window --focus "*) echo "$4" >> \(Shell.quote(log.path)) ;;
         esac
@@ -66,6 +70,12 @@ struct StartupSignalsTests {
         return focused.split(separator: "\n").map(String.init)
     }
 
+    private func missionControlFocus(
+        window: (id: Int, space: Int)?, visible: Int
+    ) async throws -> [String] {
+        try await focusCommands("mission_control_exit", window: window, visible: [visible])
+    }
+
     @Test("leaving Mission Control re-asserts a focused window on the visible Space")
     func reassertsWindowHere() async throws {
         #expect(try await missionControlFocus(window: (42, 2), visible: 2) == ["42"])
@@ -86,10 +96,10 @@ struct StartupSignalsTests {
     @Test("arriving on a Space focuses a window here when focus stayed behind")
     func refocusesOnArrival() async throws {
         #expect(
-            try await focus(after: "space_changed", window: (42, 1), visible: 2, arrived: 3)
+            try await focusCommands("space_changed", window: (42, 1), visible: [2], arrived: 3)
                 == ["first"])
         #expect(
-            try await focus(after: "space_changed", window: (42, 2), visible: 2, arrived: 3)
+            try await focusCommands("space_changed", window: (42, 2), visible: [2], arrived: 3)
                 .isEmpty)
     }
 
@@ -98,7 +108,34 @@ struct StartupSignalsTests {
     @Test("a Space already left again by the time the action runs is left alone")
     func ignoresSpaceLeftAgain() async throws {
         #expect(
-            try await focus(after: "space_changed", window: (42, 1), visible: 2, arrived: 5)
+            try await focusCommands("space_changed", window: (42, 1), visible: [2], arrived: 5)
                 .isEmpty)
+    }
+
+    /// Finder becomes active while its key window is on another Space, as when
+    /// another app or the desktop activates it.
+    @Test(
+        "an app taking focus elsewhere focuses a window here",
+        arguments: ["application_front_switched", "window_destroyed", "application_terminated"])
+    func refocusesWhenFocusLeaves(event: String) async throws {
+        #expect(try await focusCommands(event, window: (42, 4), visible: [3]) == ["first"])
+        #expect(try await focusCommands(event, window: nil, visible: [3]) == ["first"])
+    }
+
+    @Test("an app taking focus with its window here is left alone")
+    func keepsFocusHere() async throws {
+        #expect(
+            try await focusCommands("application_front_switched", window: (42, 3), visible: [3])
+                .isEmpty)
+    }
+
+    /// Moving a window and following it: yabai reports the window on the new
+    /// Space before the switch is current, and focusing here would switch back.
+    @Test("focus is not taken while the Space is still changing", arguments: [[3, 4], [3, 5]])
+    func waitsForTheSpaceToSettle(visible: [Int]) async throws {
+        #expect(
+            try await focusCommands(
+                "application_front_switched", window: (42, 4), visible: visible
+            ).isEmpty)
     }
 }

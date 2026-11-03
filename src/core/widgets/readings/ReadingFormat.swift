@@ -84,7 +84,12 @@ struct TopProcesses: Equatable, Sendable {
         return parse(result.ok ? result.stdout : "")
     }
 
-    static func parse(_ text: String) -> TopProcesses {
+    /// `ps` counts one busy core as 100%, so each share is divided by the
+    /// Mac's cores to read as part of the whole machine, as the load does.
+    static func parse(
+        _ text: String, cores: Int = ProcessInfo.processInfo.activeProcessorCount
+    ) -> TopProcesses {
+        let cores = Double(max(cores, 1))
         var grouped: [String: Entry] = [:]
         for line in text.split(separator: "\n") {
             let fields = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
@@ -92,7 +97,7 @@ struct TopProcesses: Equatable, Sendable {
             else { continue }
             let name = appName(String(fields[2]))
             var entry = grouped[name] ?? Entry(name: name, cpu: 0, memory: 0)
-            entry.cpu += cpu
+            entry.cpu += cpu / cores
             entry.memory += rss * 1024
             grouped[name] = entry
         }

@@ -95,12 +95,26 @@ public enum Startup {
     static var signals: [[String]] {
         let cli = Shell.quote(Paths.appLink.appending(path: "Contents/MacOS/macarchy").path)
         let yabai = Shell.quote(Paths.yabai)
-        let refocus =
-            "\(yabai) -m query --windows --window >/dev/null 2>&1"
-            + " || \(yabai) -m window --focus first >/dev/null 2>&1"
         let field = { (name: String) in
             "/usr/bin/awk -F'[:,]' '/\"\(name)\"/ { print $2; exit }'"
         }
+        // With "switch to a Space with open windows for the application" off,
+        // an app can become active while its key window is on another Space,
+        // or with no window at all, as Finder does when the desktop is clicked.
+        // Nothing here is focused then and no border is drawn. Focus is lost
+        // when the focused window is not on the visible Space; it must still be
+        // lost a moment later on the same Space, because during a Space switch,
+        // such as moving a window and following it, yabai briefly reports the
+        // window on the new Space while the old one is still current, and
+        // focusing a window there would switch back.
+        let lost =
+            "space=$(\(yabai) -m query --spaces --space 2>/dev/null | \(field("index")));"
+            + " focused=$(\(yabai) -m query --windows --window 2>/dev/null | \(field("space")));"
+            + " [ -n \"$space\" ] && [ \"$focused\" != \"$space\" ]"
+        let refocus =
+            "sleep 0.35; \(lost) && first=$space && sleep 0.35 && \(lost)"
+            + " && [ \"$space\" = \"$first\" ] && \(yabai) -m window --focus first >/dev/null 2>&1;"
+            + " true"
         // After Mission Control, yabai can still believe a window is focused
         // while macOS has handed focus elsewhere and no border is drawn, so
         // focus is re-asserted rather than only filled in. Only a window on the
@@ -136,6 +150,7 @@ public enum Startup {
         return [
             ("macarchy_mission_control_exit", "mission_control_exit", missionControl),
             ("macarchy_refocus_space", "space_changed", spaceRefocus),
+            ("macarchy_refocus_activated", "application_front_switched", refocus),
             ("macarchy_refocus_destroyed", "window_destroyed", refocus),
             ("macarchy_refocus_terminated", "application_terminated", refocus)
         ].map { label, event, action in
