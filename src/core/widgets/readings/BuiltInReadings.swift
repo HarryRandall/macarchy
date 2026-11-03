@@ -47,6 +47,13 @@ public actor BuiltInReadings {
         expected = Expected(index: index, at: Date())
     }
 
+    /// macOS has switched Space, whoever asked, as InstantSpaceSwitcher's
+    /// own hotkeys or a swipe do. The next update draws the Space showing
+    /// from the window server and the windows last read, since yabai
+    /// answers slowly mid-switch; a later one reads the windows again.
+    public func spaceSwitched() { switched = true }
+    private var switched = false
+
     private var temperatures: [String: Double] = [:]
 
     /// A temperature eased towards each new reading, so a sensor's
@@ -101,6 +108,10 @@ public actor BuiltInReadings {
         if let target = expected, !target.shown, let last = lastSpaces {
             expected?.shown = true
             return last.showing(target.index)
+        }
+        if switched, let last = lastSpaces, let current = SpacesReading.currentSpaceIDs() {
+            switched = false
+            return last.showing(ids: current)
         }
         guard let reading = await SpacesReading.read() else { return nil }
         lastSpaces = reading

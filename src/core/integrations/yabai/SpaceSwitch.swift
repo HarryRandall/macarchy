@@ -10,10 +10,10 @@ import Foundation
 /// waits for it to land, then goes on to whichever Space was asked for last,
 /// skipping the ones pressed in between.
 ///
-/// The next switch is sent as soon as the last one shows, without waiting
-/// for whatever sent it to finish: InstantSpaceSwitcher's tool lands at
-/// once but stays running for 0.3 s to let its swipe settle, which would
-/// otherwise hold up every press after it.
+/// Each switch's work finishes before the next starts, and the lock is held
+/// until it has: InstantSpaceSwitcher's tool stays running for 0.3 s while
+/// its swipe settles, and a second one running then takes the first's
+/// swipes for its own, which overshoots and can leave the Dock black.
 public struct SpaceSwitch: Sendable {
     /// Space ids by index, as yabai numbers them.
     var spaces: @Sendable () async -> [Int: Int]
@@ -57,38 +57,31 @@ public struct SpaceSwitch: Sendable {
         record(index)
         guard var held = take() else { return }
         var wanted = index
-        var sent: [Task<Void, Never>] = []
         // A Space that does not exist is left alone, as yabai does;
         // InstantSpaceSwitcher would go to the last one instead.
         let ids = await spaces()
         while true {
-            guard let id = ids[wanted] else {
-                release(held)
-                break
-            }
-            sent.append(focus(wanted))
-            guard await landed(on: id) else {
-                release(held)
-                break
-            }
-            if let next = recorded(), next != wanted, let nextID = ids[next],
-                !showing().contains(nextID)
-            {
+            while let id = ids[wanted] {
+                let switching = focus(wanted)
+                let arrived = await landed(on: id)
+                await switching.value
+                guard arrived, let next = newer(than: wanted, ids) else { break }
                 wanted = next
-                continue
             }
             // A press can record its Space just as the lock is let go, and
             // then finds it still held; look once more after letting go.
             release(held)
-            guard let next = recorded(), next != wanted, let nextID = ids[next],
-                !showing().contains(nextID), let again = take()
-            else { break }
+            guard let next = newer(than: wanted, ids), let again = take() else { return }
             held = again
             wanted = next
         }
-        // Switching is over and the lock let go; the tools that switched
-        // finish settling before this process ends.
-        for task in sent { await task.value }
+    }
+
+    /// The Space pressed since `wanted`, when there is one not showing yet.
+    private func newer(than wanted: Int, _ ids: [Int: Int]) -> Int? {
+        guard let next = recorded(), next != wanted, let id = ids[next], !showing().contains(id)
+        else { return nil }
+        return next
     }
 
     private func landed(on id: Int) async -> Bool {

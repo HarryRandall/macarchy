@@ -45,33 +45,20 @@ struct SpaceSwitchTests {
         }
     }
 
-    /// Holds every switch's work open, as InstantSpaceSwitcher's tool stays
-    /// running after its switch lands, until a second switch has been sent.
-    private actor Settling {
-        private var open = false
-        private var waiting: [CheckedContinuation<Void, Never>] = []
-        private(set) var sentWhileHeld: [Int] = []
-
-        func hold() async {
-            guard !open else { return }
-            await withCheckedContinuation { waiting.append($0) }
+    /// Counts the switches whose work is still running, as InstantSpaceSwitcher's
+    /// tool keeps running for a moment after its switch lands.
+    private actor Running {
+        private var now = 0
+        private(set) var most = 0
+        func start() {
+            now += 1
+            most = max(most, now)
         }
-
-        func note(_ sent: [Int]) {
-            guard !open else { return }
-            sentWhileHeld = sent
-            if sent.count >= 2 { release() }
-        }
-
-        func release() {
-            open = true
-            waiting.forEach { $0.resume() }
-            waiting = []
-        }
+        func finish() { now -= 1 }
     }
 
     private static func switcher(
-        _ desk: Desk, in directory: URL, settling: Settling? = nil
+        _ desk: Desk, in directory: URL, running: Running? = nil
     ) -> SpaceSwitch {
         SpaceSwitch(
             spaces: { Dictionary(uniqueKeysWithValues: (1...5).map { ($0, $0 * 10) }) },
@@ -80,33 +67,38 @@ struct SpaceSwitchTests {
             // only their settling afterwards is left running.
             focus: { index in
                 desk.focus(index)
-                return Task { await settling?.hold() }
+                return Task {
+                    await running?.start()
+                    for _ in 0..<20 { await Task.yield() }
+                    await running?.finish()
+                }
             },
             pause: {
-                await settling?.note(desk.sent)
                 if let press = desk.tick() {
-                    await switcher(desk, in: directory, settling: settling).go(to: press)
+                    await switcher(desk, in: directory, running: running).go(to: press)
                 }
             },
             directory: directory, patience: 20)
     }
 
-    private func run(_ desk: Desk, going to: Int, settling: Settling? = nil) async throws {
+    private func run(_ desk: Desk, going to: Int, running: Running? = nil) async throws {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-space-switch-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        await Self.switcher(desk, in: directory, settling: settling).go(to: to)
-        await settling?.release()
+        await Self.switcher(desk, in: directory, running: running).go(to: to)
     }
 
-    @Test("the next switch is sent once the last one shows, while its tool is still settling")
-    func doesNotWaitForSettling() async throws {
+    /// A second InstantSpaceSwitcher running while the first settles takes
+    /// the first's swipes for its own and overshoots.
+    @Test("each switch's work finishes before the next switch starts")
+    func oneSwitcherAtATime() async throws {
         let desk = Desk(on: 2, presses: [1: 2])
-        let settling = Settling()
-        try await run(desk, going: 4, settling: settling)
-        #expect(await settling.sentWhileHeld == [4, 2])
+        let running = Running()
+        try await run(desk, going: 4, running: running)
+        #expect(desk.sent == [4, 2])
         #expect(desk.space == 2)
+        #expect(await running.most == 1)
     }
 
     /// From 2, 4 then 2 then 4 then 2: yabai would queue every slide and

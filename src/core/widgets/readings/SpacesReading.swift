@@ -40,6 +40,15 @@ struct SpacesReading: Equatable, Sendable {
         return reading
     }
 
+    /// The reading with the Spaces whose ids are in `current` showing.
+    func showing(ids current: Set<Int>) -> SpacesReading {
+        var result = self
+        for position in result.spaces.indices {
+            result.spaces[position].visible = current.contains(result.spaces[position].id)
+        }
+        return result
+    }
+
     /// The reading with Space `index` as the current one on its display.
     func showing(_ index: Int) -> SpacesReading {
         guard let display = spaces.first(where: { $0.index == index })?.display else { return self }

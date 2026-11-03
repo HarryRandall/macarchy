@@ -14,11 +14,19 @@ public enum InstantSpaceSwitcher {
         formula: "jurplel/tap/instant-space-switcher", cask: true,
         provides: "InstantSpaceSwitcher")
 
+    public static let bundleIdentifier = "com.interversehq.InstantSpaceSwitcher"
+
+    /// The app, or nil when it is not installed. While it runs, its own
+    /// hotkeys switch Spaces, with its guard against overshooting a burst.
+    public static var app: URL? {
+        Paths.applicationDirectories.map { $0.appending(path: "InstantSpaceSwitcher.app") }
+            .first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
     /// Its command line tool, or nil when it is not installed.
     public static var cli: String? {
-        Paths.applicationDirectories
-            .map { $0.appending(path: "InstantSpaceSwitcher.app/Contents/MacOS/ISSCli").path }
-            .first { FileManager.default.isExecutableFile(atPath: $0) }
+        app.map { $0.appending(path: "Contents/MacOS/ISSCli").path }
+            .flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil }
     }
 
     /// Whether Space switches are instant, for Health.

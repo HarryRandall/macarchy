@@ -37,7 +37,12 @@ final class WidgetHostController {
         Task { await host.start() }
         let workspace = NSWorkspace.shared.notificationCenter
         observe(workspace, NSWorkspace.didWakeNotification, event: "system_woke")
-        observe(workspace, NSWorkspace.activeSpaceDidChangeNotification, event: "space_changed")
+        let switched = workspace.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { WidgetHostController.shared.spaceSwitched() }
+        }
+        observers.append((workspace, switched))
         observe(
             workspace, NSWorkspace.didActivateApplicationNotification, event: "front_app_switched")
         observe(.default, .NSSystemTimeZoneDidChange, event: "timezone_changed")
@@ -91,6 +96,21 @@ final class WidgetHostController {
     /// The look again after the latest `macarchy space`; a newer switch
     /// replaces it, so a burst of switches checks once, after the last.
     private var spaceCheck: Task<Void, Never>?
+    /// The windows read again once switching stops; a newer switch
+    /// replaces it, so a burst of switches reads yabai once.
+    private var spaceSettle: Task<Void, Never>?
+
+    /// macOS has switched Space: draw it as current from the window server
+    /// at once, then read the windows of each Space once switching settles.
+    private func spaceSwitched() {
+        spaceSettle?.cancel()
+        spaceSettle = Task { [host] in
+            await BuiltInReadings.shared.spaceSwitched()
+            await host.trigger("space_changed")
+            guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
+            await host.trigger("space_changed")
+        }
+    }
 
     /// A Space is about to be shown: draw it as current now, then look
     /// again once macOS has had time to switch, in case it did not.
