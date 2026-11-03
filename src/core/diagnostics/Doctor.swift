@@ -44,6 +44,9 @@ public struct HealthCheck: Sendable, Identifiable, Equatable {
 public enum Doctor {
     public static func checks(integrations: Integrations = Integrations()) async -> [HealthCheck] {
         var results = dependencyChecks()
+        if let support = await yabaiSupportCheck(integrations: integrations) {
+            results.append(support)
+        }
         results += await serviceChecks(integrations: integrations)
         results += await configurationChecks(integrations: integrations)
         results += optionalChecks()

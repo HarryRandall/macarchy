@@ -62,4 +62,14 @@ struct DiagnosticsTests {
                 #"[{"label":"macarchy_window_created"},{"label":"macarchy_refocus_destroyed"}]"#))
         #expect(!(await registered("macarchy_window_created macarchy_refocus_destroyed")))
     }
+
+    @Test("yabai is flagged only when its release predates the running macOS")
+    func yabaiSupport() {
+        #expect(Doctor.yabaiSupport(version: "yabai-v7.1.25\n", macOS: 27)?.status == .warning)
+        #expect(Doctor.yabaiSupport(version: "yabai-v7.0.4", macOS: 27)?.status == .warning)
+        #expect(Doctor.yabaiSupport(version: "yabai-v7.1.25", macOS: 26) == nil)
+        #expect(Doctor.yabaiSupport(version: "yabai-v7.1.26", macOS: 27) == nil)
+        #expect(Doctor.yabaiSupport(version: "yabai-v8.0.0", macOS: 27) == nil)
+        #expect(Doctor.yabaiSupport(version: "yabai-vHEAD", macOS: 27) == nil)
+    }
 }
