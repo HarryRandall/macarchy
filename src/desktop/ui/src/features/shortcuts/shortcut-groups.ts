@@ -12,6 +12,10 @@ export const categoryOrder: readonly ShortcutCategory[] = [
   "Other",
 ];
 
+/** Going to a desktop or sending a window to one, through yabai, Macarchy or its script. */
+const desktopPattern =
+  /yabai -m (space --focus\b|window --space\b|display\b)|\bmacarchy space\b|\bmove-window-to-space\.sh\b/;
+
 /**
  * The tab a binding is listed under, read from what its command does. skhdrc
  * comments give each block a name but no wider grouping, so the design's
@@ -19,7 +23,7 @@ export const categoryOrder: readonly ShortcutCategory[] = [
  */
 export function shortcutCategory(binding: ShortcutBinding): ShortcutCategory {
   const command = plainCommand(binding.command);
-  if (/yabai -m (space --focus\b|window --space\b|display\b)/.test(command)) return "Desktops";
+  if (desktopPattern.test(command)) return "Desktops";
   if (/yabai -m (window|space)\b/.test(command)) return "Windows";
   if (/\bmacarchy"?\s/i.test(command)) return "Macarchy";
   if (binding.appOverrides.length || /\b(open|osascript)\b/.test(command)) return "Apps";
@@ -203,7 +207,7 @@ export function missingDesktop(binding: ShortcutBinding, desktops: number | null
   // Older setups spell yabai with its full path.
   const targets = [
     ...plainCommand(binding.command).matchAll(
-      /yabai -m (?:space --focus|window --space) (\d+)(?![\w.])/g,
+      /(?:yabai -m (?:space --focus|window --space)|macarchy space|move-window-to-space\.sh) (\d+)(?![\w.])/g,
     ),
   ].map((match) => Number(match[1]));
   return targets.find((target) => target > desktops) ?? null;

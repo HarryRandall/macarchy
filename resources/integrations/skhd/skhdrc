@@ -1,62 +1,91 @@
 # Macarchy default shortcuts. This file is yours: edit it here or on the
-# Shortcuts page. Most use Control + Option so they leave macOS shortcuts alone.
+# Shortcuts page. Control moves between desktops and windows; Command keeps
+# its macOS meaning apart from the app shortcuts at the end. The scripts some
+# of them run ship inside Macarchy.app. A desktop that does not exist yet is
+# skipped, and its shortcuts start working once you add it.
 
 # Open a terminal
-ctrl + alt - return : open -na Ghostty 2>/dev/null || open -na Terminal
+ctrl - return : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/launch-ghostty.sh"
+
+# Take a screenshot of an area to the clipboard
+ctrl + shift - s : screencapture -i -c -x
 
 # Focus windows
-ctrl + alt - left : yabai -m window --focus west
-ctrl + alt - down : yabai -m window --focus south
-ctrl + alt - up : yabai -m window --focus north
-ctrl + alt - right : yabai -m window --focus east
+ctrl - left : yabai -m window --focus west
+ctrl - down : yabai -m window --focus south
+ctrl - up : yabai -m window --focus north
+ctrl - right : yabai -m window --focus east
 
 # Swap windows
-ctrl + alt + shift - left : yabai -m window --swap west
-ctrl + alt + shift - down : yabai -m window --swap south
-ctrl + alt + shift - up : yabai -m window --swap north
-ctrl + alt + shift - right : yabai -m window --swap east
+ctrl + shift - left : yabai -m window --swap west; yabai -m window --focus west
+ctrl + shift - down : yabai -m window --swap south; yabai -m window --focus south
+ctrl + shift - up : yabai -m window --swap north; yabai -m window --focus north
+ctrl + shift - right : yabai -m window --swap east; yabai -m window --focus east
 
 # Switch to desktop
-ctrl + alt - 1 : yabai -m space --focus 1
-ctrl + alt - 2 : yabai -m space --focus 2
-ctrl + alt - 3 : yabai -m space --focus 3
-ctrl + alt - 4 : yabai -m space --focus 4
-ctrl + alt - 5 : yabai -m space --focus 5
-ctrl + alt - 6 : yabai -m space --focus 6
-ctrl + alt - 7 : yabai -m space --focus 7
-ctrl + alt - 8 : yabai -m space --focus 8
-ctrl + alt - 9 : yabai -m space --focus 9
+ctrl - 1 : macarchy space 1
+ctrl - 2 : macarchy space 2
+ctrl - 3 : macarchy space 3
+ctrl - 4 : macarchy space 4
+ctrl - 5 : macarchy space 5
+ctrl - 6 : macarchy space 6
+ctrl - 7 : macarchy space 7
+ctrl - 8 : macarchy space 8
+ctrl - 9 : macarchy space 9
+ctrl - 0 : macarchy space 10
 
 # Move window to desktop and follow
-ctrl + alt + shift - 1 : yabai -m window --space 1 && yabai -m space --focus 1
-ctrl + alt + shift - 2 : yabai -m window --space 2 && yabai -m space --focus 2
-ctrl + alt + shift - 3 : yabai -m window --space 3 && yabai -m space --focus 3
-ctrl + alt + shift - 4 : yabai -m window --space 4 && yabai -m space --focus 4
-ctrl + alt + shift - 5 : yabai -m window --space 5 && yabai -m space --focus 5
-ctrl + alt + shift - 6 : yabai -m window --space 6 && yabai -m space --focus 6
-ctrl + alt + shift - 7 : yabai -m window --space 7 && yabai -m space --focus 7
-ctrl + alt + shift - 8 : yabai -m window --space 8 && yabai -m space --focus 8
-ctrl + alt + shift - 9 : yabai -m window --space 9 && yabai -m space --focus 9
+ctrl + shift - 1 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 1
+ctrl + shift - 2 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 2
+ctrl + shift - 3 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 3
+ctrl + shift - 4 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 4
+ctrl + shift - 5 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 5
+ctrl + shift - 6 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 6
+ctrl + shift - 7 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 7
+ctrl + shift - 8 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 8
+ctrl + shift - 9 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 9
+ctrl + shift - 0 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 10
 
 # Float or tile the window, remembered per app
-ctrl + alt - t : macarchy rules toggle
+ctrl - t : macarchy rules toggle
 
 # Fill the screen with the window
-ctrl + alt - f : yabai -m window --toggle zoom-fullscreen
+ctrl - f : yabai -m window --toggle zoom-fullscreen
 
 # Flip the split direction
-ctrl + alt - s : yabai -m window --toggle split
+ctrl - j : yabai -m window --toggle split
 
 # Rotate and rebalance the layout
-ctrl + alt - r : yabai -m space --rotate 90 && yabai -m space --balance
+ctrl - l : yabai -m space --rotate 90; yabai -m space --balance
 
 # Grow and shrink the window
-ctrl + alt - 0x18 : yabai -m window --ratio rel:0.05
-ctrl + alt - 0x1B : yabai -m window --ratio rel:-0.05
+ctrl - 0x18 : yabai -m window --ratio rel:0.05
+ctrl - 0x1B : yabai -m window --ratio rel:-0.05
 
 # Next and previous theme
-ctrl + alt - 0x2F : macarchy theme next
-ctrl + alt - 0x2B : macarchy theme prev
+ctrl + shift - 0x18 : macarchy theme next
+ctrl + shift - 0x1B : macarchy theme prev
 
 # Show or hide the menu bar
-ctrl + alt - b : macarchy bar toggle
+ctrl + shift - space : macarchy bar toggle
+
+# Control Spotify with the media keys while it is running
+play : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to playpause'
+next : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+fast : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+previous : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+rewind : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+
+# Quit the app that owns the focused window
+cmd - q : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/quit-focused-app.sh"
+
+# Command-W also quits Messages, TablePlus and Obsidian and closes Firefox's profile selector
+cmd - w -> [
+    "Messages" : osascript -e 'tell application "Messages" to quit'
+    "TablePlus" : osascript -e 'tell application "TablePlus" to quit'
+    "Obsidian" : osascript -e 'tell application "Obsidian" to quit'
+    * : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/close-firefox-selector.sh"
+]
+
+# Open the Brave profile picker
+cmd + shift - m : open -na "Brave Browser" --args --profile-picker

@@ -23,11 +23,13 @@ function actionLabel(binding: ShortcutBinding, all: ShortcutBinding[]): string {
 /**
  * The command with a full path to yabai or Macarchy's CLI cut to the tool's
  * name. Older setups wrote both in full, which hid what every shortcut does.
+ * A script the app ships for the default shortcuts is cut to its file name.
  */
 export function plainCommand(command: string): string {
   return command
     .replace(/(['"])[^'"]*\/(yabai|macarchy)\1(?=\s)/g, "$2")
-    .replace(/(^|[\s;&|])\/\S*\/(yabai|macarchy)(?=\s)/g, "$1$2");
+    .replace(/(^|[\s;&|])\/\S*\/(yabai|macarchy)(?=\s)/g, "$1$2")
+    .replace(/(['"])[^'"]*\/Contents\/Resources\/skhd\/scripts\/([\w.-]+)\1/g, "$2");
 }
 
 const directions: Record<string, string> = {
@@ -73,7 +75,10 @@ export function describeCommand(command: string): string | null {
   if (second === "yabai -m space --balance" && first === "yabai -m space --rotate 90")
     return "Rotate the layout";
   if (second) return null;
-  if ((match = /^yabai -m space --focus (\d+)$/.exec(first))) return `Go to desktop ${match[1]}`;
+  if ((match = /^(?:yabai -m space --focus|macarchy space) (\d+)$/.exec(first)))
+    return `Go to desktop ${match[1]}`;
+  if ((match = /^move-window-to-space\.sh (\d+)$/.exec(first)))
+    return `Move window to desktop ${match[1]} and follow`;
   const single: Record<string, string> = {
     "yabai -m window --toggle zoom-fullscreen": "Fill the screen",
     "yabai -m window --toggle float": "Float or tile",

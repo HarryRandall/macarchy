@@ -37,6 +37,11 @@ describe("shortcut categories", () => {
     ["yabai -m window --toggle zoom-fullscreen", "Windows"],
     ["yabai -m space --focus 3", "Desktops"],
     ["yabai -m window --space 2 && yabai -m space --focus 2", "Desktops"],
+    ["macarchy space 3", "Desktops"],
+    [
+      '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 2',
+      "Desktops",
+    ],
     ["yabai -m space --rotate 90 && yabai -m space --balance", "Windows"],
     ["'/opt/homebrew/bin/yabai' -m window --focus west", "Windows"],
     [
@@ -167,6 +172,13 @@ describe("missing desktops", () => {
     expect(missingDesktop(binding({ command: "yabai -m space --focus next" }), 1)).toBeNull();
     const fullPath = binding({ command: "'/opt/homebrew/bin/yabai' -m space --focus 4" });
     expect(missingDesktop(fullPath, 3)).toBe(4);
+    expect(missingDesktop(binding({ command: "macarchy space 10" }), 9)).toBe(10);
+    const script = binding({
+      command:
+        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 5',
+    });
+    expect(missingDesktop(script, 4)).toBe(5);
+    expect(missingDesktop(script, 5)).toBeNull();
   });
 });
 

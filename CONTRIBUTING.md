@@ -265,22 +265,27 @@ silently lost.
 
 ### Default shortcuts
 
-Most use **Control + Option** (⌃⌥) so they stay clear of macOS shortcuts. Change
-any of them on the Shortcuts page.
+**Control** (⌃) moves between desktops and windows. Change any of them on the
+Shortcuts page.
 
 | Shortcut | Action |
 |---|---|
-| ⌃⌥ Return | Open a terminal |
-| ⌃⌥ Arrows | Focus window |
-| ⌃⌥⇧ Arrows | Swap window |
-| ⌃⌥ 1–9 | Switch desktop |
-| ⌃⌥⇧ 1–9 | Move window to desktop and follow |
-| ⌃⌥ T | Float or tile the window, remembered per app |
-| ⌃⌥ F | Fill the screen |
-| ⌃⌥ S / R | Flip split / rotate and rebalance |
-| ⌃⌥ = / - | Grow / shrink |
-| ⌃⌥ . / , | Next / previous theme |
-| ⌃⌥ B | Show or hide the menu bar |
+| ⌃ Return | Open a terminal |
+| ⌃⇧ S | Screenshot an area to the clipboard |
+| ⌃ Arrows | Focus window |
+| ⌃⇧ Arrows | Swap window |
+| ⌃ 1–9, 0 | Switch to desktop 1–10 |
+| ⌃⇧ 1–9, 0 | Move window to desktop 1–10 and follow |
+| ⌃ T | Float or tile the window, remembered per app |
+| ⌃ F | Fill the screen |
+| ⌃ J / L | Flip split / rotate and rebalance |
+| ⌃ = / - | Grow / shrink |
+| ⌃⇧ = / - | Next / previous theme |
+| ⌃⇧ Space | Show or hide the menu bar |
+| Media keys | Play, pause and skip in Spotify |
+| ⌘ Q | Quit the app that owns the focused window |
+| ⌘ W | Also quits Messages, TablePlus and Obsidian |
+| ⌘⇧ M | Open the Brave profile picker |
 
 ### Do I need to disable SIP?
 

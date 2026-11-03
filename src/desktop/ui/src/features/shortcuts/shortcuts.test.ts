@@ -142,6 +142,11 @@ describe("shortcut presentation", () => {
         "Next theme",
       ],
       ["macarchy bar toggle", "Show or hide the menu bar"],
+      ["macarchy space 10", "Go to desktop 10"],
+      [
+        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 3',
+        "Move window to desktop 3 and follow",
+      ],
       ["yabai -m window --space 4 && echo moved", "yabai -m window --space 4 && echo moved"],
     ]) {
       const item = binding({ command });

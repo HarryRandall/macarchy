@@ -202,9 +202,7 @@ public enum Setup {
                 note("Wrote \(Paths.display(settings.url))")
             }
         }
-        try updateSettings { document in
-            if document.currentTheme == nil { document.currentTheme = defaultTheme }
-        }
+        try updateSettings(seedDefaults)
 
         let yabairc = StartupConfiguration.yabairc.url
         let yabai = try await yabaiRegion(existing: existing, updateSettings: updateSettings)

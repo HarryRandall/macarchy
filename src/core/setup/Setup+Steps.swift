@@ -1,7 +1,24 @@
 import Foundation
 
 extension Setup {
-    static let defaultTheme = "midnight"
+    static let defaultTheme = "awakening"
+    /// Apps a new install floats rather than tiles.
+    static let defaultFloatingApps = ["FaceTime", "iPhone Mirroring"]
+    /// Square borders on near-square window corners, which also needs the
+    /// corner override `Startup.applyCorners` sets from `BORDER_RADIUS`.
+    static let defaultBorders = [
+        "BORDER_WIDTH": "7", "BORDER_STYLE": "square", "BORDER_RADIUS": "0.3",
+        "BORDERS_BLACKLIST": "iPhone Mirroring", "BORDERS_VISIBLE": "true"
+    ]
+
+    /// Fills in what a new install starts from. Settings with no theme have
+    /// never been set up; anything already saved in them is kept.
+    static func seedDefaults(_ document: inout SettingsDocument) {
+        guard document.currentTheme == nil else { return }
+        document.currentTheme = defaultTheme
+        if document.floatingApps.isEmpty { document.floatingApps = defaultFloatingApps }
+        if document.borders.isEmpty { document.mergeFlat(defaultBorders) }
+    }
 
     /// Points the app link at `app`, replacing a stale link but never a real file.
     public static func link(_ app: URL) throws {

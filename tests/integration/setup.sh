@@ -196,7 +196,7 @@ done
 rm -rf "$CONFIG"
 "$CLI" setup --replace --no-apply >/dev/null
 untouched "replace"
-grep -q 'ctrl + alt - left' "$CONFIG/skhdrc" || fail "default shortcuts missing"
+grep -q '^ctrl - left : ' "$CONFIG/skhdrc" || fail "default shortcuts missing"
 grep -q 'for app in Calculator Finder' "$CONFIG/yabairc" && fail "replace adopted yabai commands"
 # Macarchy's own bar starts from the launcher too: SketchyBar would split its path as well.
 [ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start Macarchy's bar from the launcher"
@@ -216,7 +216,7 @@ rm -rf "$HOME_DIR/.config" "$CONFIG"
 mkdir -p "$HOME_DIR/.config/ghostty"
 echo 'font-size = 13' > "$HOME_DIR/.config/ghostty/config"
 "$CLI" setup --replace --no-apply >/dev/null
-grep -q 'ctrl + alt - left' "$CONFIG/skhdrc" || fail "default shortcuts missing"
+grep -q '^ctrl - left : ' "$CONFIG/skhdrc" || fail "default shortcuts missing"
 grep -q '^font-size = 13$' "$HOME_DIR/.config/ghostty/config" || fail "Ghostty settings lost"
 grep -q 'config-file = ?.*Application Support/Macarchy/generated/ghostty.conf' "$HOME_DIR/.config/ghostty/config" \
   || fail "Ghostty include missing"
@@ -328,8 +328,9 @@ grep -q 'if then' "$HOME_DIR/.config/yabai/yabairc" || fail "replace changed the
 "$CLI" uninstall >/dev/null
 
 # A full setup, apply and theme change in the temporary home reach only the
-# fake tools. launchd is reached only through a fake launchctl on the search
-# path; defaults, the appearance, the wallpaper and running apps are refused
+# fake tools. launchd and the global defaults the default borders' window
+# corners use are reached only through a fake launchctl and defaults on the
+# search path; the appearance, the wallpaper and running apps are refused
 # (see DesktopIsolation), so the real desktop is left alone even though
 # nothing here is a dry run.
 rm -rf "$HOME_DIR/.config" "$HOME_DIR/Library" "$CALLS"
@@ -348,6 +349,11 @@ case "\$1" in
 esac
 SH
 chmod +x "$MACARCHY_SEARCH_PATH/launchctl"
+cat > "$MACARCHY_SEARCH_PATH/defaults" <<SH
+#!/bin/sh
+printf '%s\n' "defaults \$*" >>'$CALLS'
+SH
+chmod +x "$MACARCHY_SEARCH_PATH/defaults"
 # Set up from a copy of the command inside an app, as installed, so the
 # startup files reach this build through the app link.
 APP="$HOME_DIR/Applications/Macarchy.app"
@@ -402,8 +408,11 @@ DOCTOR="$("$CLI" doctor 2>&1 || true)"
 grep -q 'has not run its startup file' <<<"$DOCTOR" && fail "doctor reports a startup file that ran: $DOCTOR"
 grep -q 'agent: Macarchy' <<<"$DOCTOR" && fail "doctor reports a start file problem: $DOCTOR"
 "$CLI" apply >/dev/null || fail "isolated apply failed"
+grep -qx 'defaults write -g NSConvolutionOverride1 -float 0.3' "$CALLS" \
+  || fail "apply did not set the default borders' window corners"
 # A copied theme folder whose manifest still names the original is stepped over.
 cp -R "$ROOT/themes/midnight" "$ROOT/themes/midnight-copy"
+"$CLI" theme midnight >/dev/null || fail "isolated theme change failed"
 "$CLI" theme next >/dev/null || fail "isolated theme change failed"
 grep -q '"currentTheme" : "turbonite"' "$SETTINGS" || fail "theme next did not advance"
 OUTPUT="$("$CLI" theme midnight-copy 2>&1)" && fail "mismatched theme folder applied"
@@ -411,7 +420,7 @@ grep -q 'folder midnight-copy contains the theme midnight' <<<"$OUTPUT" || fail 
 grep -q 'may already have applied' <<<"$OUTPUT" && fail "untouched desktop reported as partly changed"
 grep -q '^yabai -m config' "$CALLS" || fail "apply did not reach the fake yabai"
 "$CLI" uninstall >/dev/null || fail "isolated uninstall failed"
-rm "$MACARCHY_SEARCH_PATH/launchctl"
+rm "$MACARCHY_SEARCH_PATH/launchctl" "$MACARCHY_SEARCH_PATH/defaults"
 
 # A Space click on the bar runs `macarchy space`, which still reaches a
 # custom yabai whose path has a space in it.
