@@ -16,31 +16,9 @@ extension OldConfiguration.Planner {
         let blockers = finalTexts.filter { source, text in
             OldConfiguration.namesLegacyRoot(text, home: home, comment: source.comment)
         }.map { Paths.display($0.0.url) }
-        let usable = launcherFolder(blockers: blockers, plan: &plan)
-
-        var relocated: Set<Entry> = []
+        _ = launcherFolder(blockers: blockers, plan: &plan)
+        let relocated: Set<Entry> = []
         var removals: [Plan.Item] = []
-        for launcher in StartLauncher.all {
-            let entry = Entry(folder: launcher.daemon.rawValue, name: launcher.fileName)
-            guard kinds[entry] == .launcher, pinned[entry] == nil else { continue }
-            guard usable else {
-                pinned[entry] =
-                    "Macarchy's launcher, which stays until \(Paths.display(Paths.launcherDirectory)) "
-                    + "can hold it"
-                continue
-            }
-            relocated.insert(entry)
-            if Paths.isInstalled(launcher.daemon.executableName) {
-                plan.launchers.append(.init(daemon: launcher.daemon, from: launcher.legacyURL))
-            } else {
-                removals.append(
-                    .init(
-                        path: launcher.legacyURL,
-                        reason: "Macarchy's launcher; \(launcher.daemon.displayName) is not "
-                            + "installed"))
-            }
-        }
-
         for entry in entries where !moving.contains(entry) && goes(entry) {
             removals.append(.init(path: entry.url, reason: kinds[entry]?.reason(entry) ?? ""))
         }
@@ -113,8 +91,7 @@ extension OldConfiguration.Planner {
         }
     }
 
-    /// Whether launchers can go in the launcher folder, deciding whether
-    /// the link there is replaced.
+    /// Removes an old link only after every live reference has been rewritten.
     func launcherFolder(blockers: [String], plan: inout Plan) -> Bool {
         let folder = Paths.launcherDirectory
         if OldConfiguration.isLink(folder) {
@@ -129,8 +106,7 @@ extension OldConfiguration.Planner {
             plan.kept.append(
                 .init(
                     path: folder,
-                    reason: "a file Macarchy did not make, so its launchers stay in the tools' "
-                        + "folders"))
+                    reason: "a file Macarchy did not make, so cleanup leaves it in place"))
             return false
         }
         return true

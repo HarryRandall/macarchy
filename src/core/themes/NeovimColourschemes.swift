@@ -10,13 +10,10 @@ public enum NeovimColourschemes {
         home: URL = Paths.home, env: [String: String] = ProcessInfo.processInfo.environment,
         runtimes: [URL]? = nil
     ) -> [String] {
-        let app = env["NVIM_APPNAME"] ?? "nvim"
-        let config =
-            env["XDG_CONFIG_HOME"].map { URL(fileURLWithPath: $0) }
-            ?? home.appending(path: ".config")
-        let data =
-            env["XDG_DATA_HOME"].map { URL(fileURLWithPath: $0) }
-            ?? home.appending(path: ".local/share")
+        let app = "nvim"
+        let plugin = home.appending(path: "Library/Application Support/Macarchy/plugins/neovim")
+        let config = plugin.appending(path: "config")
+        let data = plugin.appending(path: "data")
         var folders = [config.appending(path: "\(app)/colors")]
         folders += children(of: data.appending(path: "\(app)/lazy")).map {
             $0.appending(path: "colors")

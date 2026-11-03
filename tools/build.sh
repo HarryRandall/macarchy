@@ -41,6 +41,8 @@ cp "$ROOT/packaging/macos/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/resources/app/logo.svg" "$APP/Contents/Resources/"
 cp -R "$ROOT/resources/themes" "$ROOT/resources/widgets" "$ROOT/resources/integrations/sketchybar" \
   "$ROOT/resources/integrations/skhd" "$APP/Contents/Resources/"
+cp -R "$ROOT/resources/plugins" "$ROOT/resources/launchers" "$APP/Contents/Resources/"
+cp "$ROOT/resources/plugins/neovim/nvim" "$APP/Contents/MacOS/nvim"
 cp -R "$UI/dist" "$APP/Contents/Resources/ui"
 CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
 cp "$CLI_PATH" "$APP/Contents/MacOS/macarchy"

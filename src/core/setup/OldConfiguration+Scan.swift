@@ -39,16 +39,15 @@ extension OldConfiguration {
 
         var removable: Bool {
             switch self {
-            case .startupFile, .backup, .empty, .finderData, .barFile, .special: true
-            case .launcher, .unknown: false
+            case .launcher, .startupFile, .backup, .empty, .finderData, .barFile, .special: true
+            case .unknown: false
             }
         }
 
         func reason(_ entry: Entry) -> String {
             switch self {
             case .launcher:
-                "Macarchy's launcher, which now goes in "
-                    + Paths.display(Paths.launcherDirectory)
+                "an old launcher; Macarchy now uses its bundled launcher"
             case .startupFile(true):
                 "written by an earlier version; Macarchy runs config/\(entry.name) now"
             case .startupFile(false):

@@ -23,9 +23,9 @@ public enum GhosttyConfig {
     }
 
     /// The include goes in the last file Ghostty loads, so nothing after it
-    /// can override the theme. Without any config, the standard XDG file.
+    /// can override the theme. Without any config, the native Application Support file.
     public static var targetURL: URL {
-        loadedFiles.last { FileManager.default.fileExists(atPath: $0.path) } ?? loadedFiles[0]
+        loadedFiles.last { FileManager.default.fileExists(atPath: $0.path) } ?? loadedFiles[2]
     }
     public static var themeURL: URL { Paths.generatedDirectory.appending(path: "ghostty.conf") }
 

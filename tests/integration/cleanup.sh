@@ -10,6 +10,8 @@
 # and the zsh and Neovim lines an earlier version wrote, which read through
 # the link. `@HOME@` stands for the home folder.
 set -euo pipefail
+# Python import caches must not change the home being compared.
+export PYTHONDONTWRITEBYTECODE=1
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 swift build --package-path "$REPO" -c debug >/dev/null
 CLI="$(swift build --package-path "$REPO" --show-bin-path)/macarchy"
@@ -24,7 +26,7 @@ RESOURCES="$WORK/resources"
 mkdir -p "$RESOURCES"
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
 cp -R "$REPO/resources/themes" "$REPO/resources/integrations/sketchybar" \
-  "$REPO/resources/integrations/skhd" "$RESOURCES/"
+  "$REPO/resources/integrations/skhd" "$REPO/resources/launchers" "$REPO/resources/plugins" "$RESOURCES/"
 export MACARCHY_RESOURCES="$RESOURCES"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -175,7 +177,7 @@ grep -qx '  ~/.config/skhd' <<<"$PLAN" || fail "plan does not delete the old sho
 grep -qx '  ~/.config/borders' <<<"$PLAN" || fail "plan does not delete the old borders folder: $PLAN"
 grep -qx '  ~/.config/zsh/.zshrc' <<<"$PLAN" || fail "plan does not point the zsh line: $PLAN"
 grep -qx '  ~/.config/nvim/lua/config/theme.lua' <<<"$PLAN" || fail "plan does not point the Neovim line: $PLAN"
-grep -q 'Make ~/.config/macarchy a folder for Macarchy' <<<"$PLAN" || fail "plan keeps the link: $PLAN"
+grep -q 'Remove the old configuration link at ~/.config/macarchy' <<<"$PLAN" || fail "plan keeps the link: $PLAN"
 grep -qx '  ~/.config/yabai' <<<"$PLAN" || fail "plan does not delete the yabai folder: $PLAN"
 grep -q 'Leave in place' <<<"$PLAN" && fail "plan leaves something in place: $PLAN"
 grep -qx '  ~/.config/sketchybar' <<<"$PLAN" || fail "plan does not delete the old bar: $PLAN"
@@ -232,15 +234,11 @@ grep -q 'It relied on ~/.config/sketchybar' "$OWN_BAR" || fail "the own bar does
 grep -qF "archived ~/.config/sketchybar in ~/Library/Application Support/Macarchy/backups/$ARCHIVE" "$OWN_BAR" \
   || fail "the own bar does not name the archive"
 
-# The launcher folder is real and holds only the launchers, which the
-# daemons run through sh as the real ones do.
-[ -d "$LINK" ] && [ ! -L "$LINK" ] || fail "~/.config/macarchy is still a link"
-[ "$(ls -A "$LINK" | tr '\n' ' ')" = "macarchy-sketchybarrc macarchy-yabairc " ] \
-  || fail "the launcher folder does not hold just the launchers: $(ls -A "$LINK")"
+[ ! -e "$LINK" ] || fail "cleanup left an unused configuration link"
 YABAI_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist")"
-[ "$YABAI_START" = "$LINK/macarchy-yabairc" ] || fail "yabai does not start from the launcher folder: $YABAI_START"
+[ "$YABAI_START" = "$RESOURCES/launchers/macarchy-yabairc" ] || fail "yabai does not start from the launcher folder: $YABAI_START"
 BAR_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.sketchybar.plist")"
-[ "$BAR_START" = "$LINK/macarchy-sketchybarrc" ] || fail "the bar does not start from the launcher folder: $BAR_START"
+[ "$BAR_START" = "$RESOURCES/launchers/macarchy-sketchybarrc" ] || fail "the bar does not start from the launcher folder: $BAR_START"
 : > "$CALLS"
 OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file did not apply the layout: $OUTPUT"
@@ -275,7 +273,7 @@ OUTPUT="$("$CLI" cleanup --restore "$ARCHIVE" 2>&1)" || grep -q 'Secure Keyboard
 AFTER="$(tree)"
 [ "$AFTER" = "$BEFORE" ] || fail "restore did not put everything back: $(diff <(echo "$BEFORE") <(echo "$AFTER"))"
 [ "$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist")" \
-  = "$H/.config/yabai/macarchy-yabairc" ] || fail "yabai's agent does not start from its old launcher again"
+  = "$RESOURCES/launchers/macarchy-yabairc" ] || fail "yabai's agent does not start from its old launcher again"
 DOCTOR="$("$CLI" doctor 2>&1 || true)"
 grep -q 'warn Old configuration' <<<"$DOCTOR" || fail "doctor does not offer the cleanup again: $DOCTOR"
 
@@ -321,8 +319,8 @@ grep -q 'reads it through \$CONFIG_DIR' <<<"$OUTPUT" || fail "plan does not keep
 apply
 [ -f "$H/.config/sketchybar/colors.sh" ] || fail "the bar folder its region reads was deleted"
 grep -q '.config/macarchy' "$H/.config/sketchybar/colors.sh" && fail "the bar's colours still read through the link"
-[ -f "$H/.config/sketchybar/macarchy-sketchybarrc" ] || fail "the bar's launcher left its folder"
-[ "$(ls -A "$LINK")" = macarchy-yabairc ] || fail "the launcher folder: $(ls -A "$LINK")"
+[ ! -e "$H/.config/sketchybar/macarchy-sketchybarrc" ] || fail "setup created an obsolete bar launcher"
+[ ! -e "$LINK" ] || fail "cleanup recreated the launcher folder"
 
 # A link at ~/.config/macarchy that something cleanup cannot change still
 # reads through stays, and so do the launchers.
@@ -333,6 +331,6 @@ grep -q 'init.vim still reads through this link' <<<"$OUTPUT" || fail "plan does
 grep -q 'Make ~/.config/macarchy' <<<"$OUTPUT" && fail "plan replaces a link something still reads: $OUTPUT"
 apply
 [ -L "$LINK" ] || fail "the link Vim script reads was replaced"
-[ -f "$H/.config/yabai/macarchy-yabairc" ] || fail "the yabai launcher moved into a link"
+[ ! -e "$H/.config/yabai/macarchy-yabairc" ] || fail "cleanup retained an obsolete yabai launcher"
 
 echo "cleanup integration test passed"

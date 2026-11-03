@@ -112,7 +112,6 @@ public enum Setup {
         ]
         changes += barChanges()
         changes.append(bordersChange())
-        changes += launchers.compactMap(\.change)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             changes.append(
                 Change(
@@ -126,6 +125,7 @@ public enum Setup {
                     path: GhosttyConfig.targetURL, action: .include,
                     detail: "Adds one line so Ghostty uses theme colours"))
         }
+        changes += PluginSetup.plan()
         return changes
     }
 
@@ -172,6 +172,7 @@ public enum Setup {
     private static func perform(
         existing: Existing, app: URL?, report: inout [String]
     ) async throws {
+        try BundledStartLauncher.validate()
         let fm = FileManager.default
         for directory in [
             Paths.appRoot, Paths.themesDirectory, Paths.generatedDirectory, Paths.backupsDirectory,
@@ -181,6 +182,7 @@ public enum Setup {
         }
         if let app { try link(app); report.append("Linked \(Paths.display(app))") }
         try installThemes(report: &report)
+        report += PluginSetup.install()
 
         let backups = Backups()
         let settings = SettingsStore()
@@ -222,7 +224,6 @@ public enum Setup {
         let borders = try await bordersRegion()
         report += borders.lines
         try generate(bordersrc, StartupConfiguration().generateBordersRC(adopting: borders.region))
-        report += try placeLaunchers(backups: backups)
         for daemon in Daemon.allCases where Paths.isInstalled(daemon.executableName) {
             try DaemonAgents.install(daemon, backups: backups, report: &report)
         }
@@ -279,6 +280,7 @@ public enum Setup {
         let fm = FileManager.default
         try Backups().restoreAll(into: &report)
         try OldConfiguration.putBack(cleanups, into: &report)
+        try PluginSetup.uninstall(into: &report)
         for file in StartupConfiguration.all { try file.forget() }
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {

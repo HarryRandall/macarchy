@@ -18,6 +18,11 @@ func withSetupResources(_ harness: Harness, _ body: () async throws -> Void) asy
     try fm.copyItem(
         at: repository.appending(path: "resources/widgets"),
         to: resources.appending(path: "widgets"))
+    for name in ["launchers", "plugins"] {
+        try fm.copyItem(
+            at: repository.appending(path: "resources/\(name)"), to: resources.appending(path: name)
+        )
+    }
     setenv("MACARCHY_RESOURCES", resources.path, 1)
     defer {
         if let previous {

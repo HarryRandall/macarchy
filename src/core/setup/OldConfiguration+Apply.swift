@@ -70,10 +70,8 @@ extension OldConfiguration {
 
         if plan.replacedLink != nil {
             try fm.removeItem(at: Paths.launcherDirectory)
-            try fm.createDirectory(at: Paths.launcherDirectory, withIntermediateDirectories: true)
             report.lines.append(
-                "Replaced the link at \(Paths.display(Paths.launcherDirectory)) with a folder "
-                    + "for Macarchy's launchers")
+                "Removed the old configuration link; launchers are bundled in the app")
         }
         try relocateAndDelete(plan, archived: saved.archived, into: &report.lines)
         let bar = OldConfiguration.folder("sketchybar")

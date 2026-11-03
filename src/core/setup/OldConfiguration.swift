@@ -8,9 +8,8 @@ import Foundation
 /// keep scripts their shortcuts run, and the move to Application Support
 /// left a link at `~/.config/macarchy`. Macarchy reads none of it now. The
 /// cleanup moves the person's scripts that something live runs into
-/// `Paths.scriptsDirectory` and points every reference at them, replaces
-/// the link with the real launcher folder (`StartLauncher`) once nothing
-/// reads through it, and deletes the rest. A file something still names in
+/// `Paths.scriptsDirectory` and points every reference at them, removes
+/// the old link once nothing reads through it, and deletes the rest. A file something still names in
 /// a way it cannot change, and anything it cannot classify, stays where it
 /// is and is reported.
 ///
@@ -117,7 +116,7 @@ extension OldConfiguration.Plan {
             link.append(
                 Line(
                     path: Paths.display(Paths.launcherDirectory),
-                    detail: "replaces the link to "
+                    detail: "removes the link to "
                         + Paths.display(URL(fileURLWithPath: replacedLink))))
         }
         link += launchers.map {
@@ -130,7 +129,7 @@ extension OldConfiguration.Plan {
         add(
             replacedLink == nil
                 ? "Move Macarchy's launchers into \(Paths.display(Paths.launcherDirectory))"
-                : "Make \(Paths.display(Paths.launcherDirectory)) a folder for Macarchy's launchers",
+                : "Remove the old configuration link at \(Paths.display(Paths.launcherDirectory))",
             link)
         add(
             "Archive, then delete",

@@ -102,7 +102,8 @@ extension WebInterfaceTests {
                     Set(plan.removals.map { Paths.display($0.path) })
                         == [
                             "~/.config/yabai/yabairc", "~/.config/yabai/launch.sh.backup-1",
-                            "~/.config/yabai/examples", "~/.config/skhd"
+                            "~/.config/yabai/examples", "~/.config/skhd",
+                            "~/.config/yabai/macarchy-yabairc"
                         ])
                 let kept = Dictionary(uniqueKeysWithValues: plan.kept.map { ($0.path, $0.reason) })
                 #expect(kept[yabai.appending(path: "quoted.sh")]?.contains("single quotes") == true)
@@ -111,11 +112,11 @@ extension WebInterfaceTests {
                     plan.moves.first { $0.from.lastPathComponent == "mine.sh" }?.reason
                         .contains("so ~/.config/yabai can go") == true)
                 #expect(plan.replacedLink == harness.root.path)
-                #expect(plan.launchers.map(\.daemon) == [.yabai])
+                #expect(plan.launchers.isEmpty)
                 #expect(
                     Set(plan.rewrites.map { Paths.display($0.file) })
                         == ["~/Library/Application Support/Macarchy/config/skhdrc", "~/.zshrc"])
-                #expect(plan.restarts == [.yabai])
+                #expect(plan.restarts.isEmpty)
                 #expect(plan.text.contains("Archive, then delete"))
             }
         }
@@ -157,18 +158,10 @@ extension WebInterfaceTests {
                     )
                     .sorted() == ["quoted.sh"])
                 #expect(!fm.fileExists(atPath: harness.home.appending(path: ".config/skhd").path))
-                #expect(!OldConfiguration.isLink(Paths.launcherDirectory))
-                #expect(
-                    try fm.contentsOfDirectory(atPath: Paths.launcherDirectory.path) == [
-                        "macarchy-yabairc"
-                    ])
-                #expect(StartLauncher.yabai.url == StartLauncher.yabai.newURL)
-                #expect(Doctor.startFile(.yabai) == StartLauncher.yabai.newURL)
+                #expect(!fm.fileExists(atPath: Paths.launcherDirectory.path))
+                #expect(Doctor.startFile(.yabai) == BundledStartLauncher.url(.yabai))
                 #expect(Doctor.startFileProblem(.yabai) == nil)
-                #expect(
-                    await harness.desktop.calls(to: "launchctl").contains {
-                        $0.first == "kickstart"
-                    })
+                #expect(await harness.desktop.calls(to: "launchctl").isEmpty)
                 let again = await OldConfiguration.plan()
                 #expect(!again.hasChanges)
                 #expect(await Doctor.oldConfigurationCheck() == nil)
@@ -180,7 +173,7 @@ extension WebInterfaceTests {
                 #expect(
                     after == before,
                     "\(Set(after).symmetricDifference(Set(before)).sorted())")
-                #expect(Doctor.startFile(.yabai) == StartLauncher.yabai.legacyURL)
+                #expect(Doctor.startFile(.yabai) == BundledStartLauncher.url(.yabai))
                 #expect(await Doctor.oldConfigurationCheck() != nil)
             }
         }
@@ -242,34 +235,17 @@ extension WebInterfaceTests {
             }
         }
 
-        @Test("a fresh install keeps its launchers in a real folder, which uninstall removes")
+        @Test("a fresh install uses bundled launchers without creating XDG configuration")
         func freshLaunchers() async throws {
             try await withHarness(tools: ["yabai", "sketchybar"]) { harness in
-                let fm = FileManager.default
-                #expect(StartLauncher.folderIsUsable)
-                for launcher in StartLauncher.all {
-                    #expect(
-                        launcher.url == Paths.launcherDirectory.appending(path: launcher.fileName))
-                    _ = try launcher.place(backups: Backups())
-                }
-                #expect(!OldConfiguration.isLink(Paths.launcherDirectory))
+                try BundledStartLauncher.validate()
                 #expect(
-                    try fm.contentsOfDirectory(atPath: Paths.launcherDirectory.path).sorted()
-                        == ["macarchy-sketchybarrc", "macarchy-yabairc"])
-                #expect(await OldConfiguration.plan().hasChanges == false)
-                var report: [String] = []
-                try Setup.uninstallLocked(into: &report)
-                #expect(!fm.fileExists(atPath: Paths.launcherDirectory.path))
-                #expect(report.contains("Removed ~/.config/macarchy"))
-
-                try fm.createDirectory(
-                    at: Paths.launcherDirectory.deletingLastPathComponent(),
-                    withIntermediateDirectories: true)
-                try fm.createSymbolicLink(
-                    at: Paths.launcherDirectory, withDestinationURL: harness.root)
-                #expect(StartLauncher.yabai.url == StartLauncher.yabai.legacyURL)
+                    !FileManager.default.fileExists(
+                        atPath: harness.home.appending(path: ".config").path))
+                for daemon in [Daemon.yabai, .sketchybar] {
+                    #expect(BundledStartLauncher.url(daemon).path.contains("resources/launchers/"))
+                }
             }
         }
-
     }
 }

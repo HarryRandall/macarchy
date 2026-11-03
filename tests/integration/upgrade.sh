@@ -21,7 +21,7 @@ RESOURCES="$WORK/resources"
 mkdir -p "$RESOURCES"
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
 cp -R "$REPO/resources/themes" "$REPO/resources/widgets" "$REPO/resources/integrations/sketchybar" \
-  "$REPO/resources/integrations/skhd" "$RESOURCES/"
+  "$REPO/resources/integrations/skhd" "$REPO/resources/launchers" "$REPO/resources/plugins" "$RESOURCES/"
 export MACARCHY_RESOURCES="$RESOURCES"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -202,7 +202,7 @@ grep -q 'widgets' <<<"$OUTPUT" && fail "second setup moved the bar again: $OUTPU
 # launcher's path has no space, and it hands over to Macarchy's yabairc, which
 # applies the owner's layout and runs their region.
 YABAI_START="$(plutil -extract ProgramArguments.2 raw "$H/Library/LaunchAgents/io.github.harryrandall.macarchy.yabai.plist")"
-[ "$YABAI_START" = "$H/.config/yabai/macarchy-yabairc" ] || fail "yabai does not start from its launcher: $YABAI_START"
+[ "$YABAI_START" = "$RESOURCES/launchers/macarchy-yabairc" ] || fail "yabai does not start from its launcher: $YABAI_START"
 : > "$CALLS"
 OUTPUT="$(run_agent yabai 2>&1)" || fail "yabai did not run its startup file: $OUTPUT"
 grep -q '^yabai -m config layout ' "$CALLS" || fail "yabai's startup file did not apply the layout: $OUTPUT"

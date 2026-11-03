@@ -34,4 +34,6 @@ jobs:
       - name: Lint
         run: ./tools/lint.sh
       - name: Setup integration test
-        run: tests/integration/setup.sh
+        run: |
+          tests/integration/setup.sh
+          tests/integration/plugins.sh

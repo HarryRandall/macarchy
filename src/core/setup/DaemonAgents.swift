@@ -5,7 +5,7 @@ import Foundation
 /// Each one starts its daemon with the config in `Paths.configDirectory`, so
 /// the daemons never read the places they look by default. yabai and
 /// SketchyBar run that file through `sh -c` unquoted, which a path in
-/// Application Support defeats, so they start from a `StartLauncher`. The agents yabai,
+/// Application Support defeats, so they start from a bundled launcher. The agents yabai,
 /// skhd and Homebrew install for themselves are stopped once Macarchy's runs,
 /// and backed up so uninstall can bring them back.
 ///
@@ -34,10 +34,10 @@ public enum DaemonAgents {
 
     static func arguments(_ daemon: Daemon) -> [String] {
         switch daemon {
-        case .yabai: [Paths.yabai, "-c", StartLauncher.yabai.url.path]
+        case .yabai: [Paths.yabai, "-c", BundledStartLauncher.url(.yabai).path]
         case .skhd: [Paths.skhd, "-c", Setup.skhdrc.path]
         case .sketchybar:
-            [Paths.sketchybar, "--config", StartLauncher.sketchybar.url.path]
+            [Paths.sketchybar, "--config", BundledStartLauncher.url(.sketchybar).path]
         case .borders: [StartupConfiguration.bordersrc.url.path]
         }
     }

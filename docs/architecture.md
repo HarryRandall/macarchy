@@ -14,8 +14,10 @@ The settings window and the theme switcher are drawn by a React interface in
 `tools/build.sh` builds the interface and copies it to `Contents/Resources/ui`,
 then copies `resources` into `Contents/Resources`, flat: `themes`, `widgets`
 (the built-in bar widgets), `sketchybar` (sketchybar-app-font, which the
-Spaces widget draws apps with), `skhd` (the default shortcuts), and `logo.svg`
-and `AppIcon.icns` from `resources/app`. The bundle's `Info.plist` comes from
+Spaces widget draws apps with), `skhd` (the default shortcuts), `launchers`
+(the yabai and SketchyBar start launchers), `plugins` (the seed Neovim
+configuration and its launcher), and `logo.svg` and `AppIcon.icns` from
+`resources/app`. The `nvim` launcher is also copied to `Contents/MacOS`. The bundle's `Info.plist` comes from
 `packaging/macos`.
 
 ## One folder
@@ -27,6 +29,7 @@ Macarchy owns `~/Library/Application Support/Macarchy`:
 | `settings.json` | Every preference: theme, layout, borders, menu bar, rules. Schema-versioned. |
 | `config/` | The configs yabai, skhd, SketchyBar and borders run with. |
 | `themes/` | Installed themes. Bundled ones are copied in by setup and never overwritten. |
+| `plugins/neovim/` | Editor configuration, downloaded plugins, state and cache. Configuration is seeded from the app bundle. |
 | `widgets/` | Bar widgets people made or imported, one folder each; see [widgets](widgets.md). |
 | `generated/` | Rendered from the active theme for other programs: Ghostty colours, bar colours, shell colours, Neovim colourscheme name. |
 | `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest, and the archives cleaning up writes (`old-configuration-<date>.zip`). |
@@ -79,7 +82,7 @@ moved scripts themselves. Each rewritten command or file must still parse
 (`bash -n`, or `zsh -n` for zsh) or what it runs stays put. Anything else that uses an entry keeps it in place:
 a LaunchAgent, Vim script, a widget, a file that stays, a path inside single
 quotes, or a folder named as a whole. The link at `~/.config/macarchy` is
-replaced by the launcher folder only once nothing reads through it: zsh and
+removed only once nothing reads through it: zsh and
 shell paths go through `OldPathScanner`, Neovim Lua strings that hold only a
 path and Ghostty `config-file` lines are pointed at Application Support, and
 anything else that still names it keeps the link.
@@ -87,8 +90,7 @@ anything else that still names it keeps the link.
 `OldConfiguration.apply` replans under the desktop lock, zips everything it
 will delete or change, with a manifest, into `backups/` and checks the zip
 reads back before changing anything, snapshots the configs it rewrites, then
-moves, rewrites, replaces the link and launchers, rewrites the agents that
-name a launcher and deletes. A failure before that says nothing was changed.
+moves, rewrites, removes the unused link and old launchers, and deletes. A failure before that says nothing was changed.
 The zip is written and read with `ditto`, which keeps links, permissions and
 extended attributes. Named pipes, sockets and devices cannot be archived:
 they are left out of every copy, recorded in the manifest as skipped and
@@ -139,19 +141,17 @@ repairs the link when it launches.
 
 `skhdrc` is the exception: seeded with defaults, then the person's file.
 
-yabai and SketchyBar run the file they are started with as `sh -c <path>`,
-with the path unquoted, so sh splits a path in Application Support at its
-space and the file never runs. Their agents start a `StartLauncher` instead:
-`~/.config/macarchy/macarchy-yabairc` and `macarchy-sketchybarrc`, two-line
-files that exec the quoted path of `config/yabairc` and `config/sketchybarrc`.
-That folder holds nothing else. It is a real folder, not a link into
-Application Support: SketchyBar resolves links, so neither a linked launcher
-nor a linked folder would do. Earlier versions put each launcher in the
-tool's own folder, `~/.config/<tool>`; one stays there while an upgrade's link
-still stands at `~/.config/macarchy`, or while it is in place and the new one
-is not, so only cleaning up moves it. Setup backs the launchers up as absent,
-so uninstall removes them, and the folder once it is empty. skhd only reads
-its file, and launchd runs bordersrc itself.
+yabai and SketchyBar run their config paths through an unquoted shell command.
+Their tiny launchers now ship in the app's `Contents/Resources/launchers`, and
+their agents name them where setup found the app, since the app link's path
+has a space. Install the app in `/Applications/Macarchy.app` so those paths
+have no spaces, and run setup again after moving it. Setup refuses a copy that
+is translocated, on a mounted disk image or in `.build`. The SketchyBar
+launcher gives the bar `~/.config/sketchybar` as `$CONFIG_DIR` and working
+folder while that folder exists, so commands kept from an earlier bar still
+find their files. Each launcher quotes the path to the real config
+in Application Support. New setup does not create `~/.config/macarchy`.
+Earlier launchers remain compatibility inputs for cleanup and uninstall only.
 
 `macarchy startup <tool>` records the pid launchd reports for the daemon's
 job in `state/startup/<tool>`. Doctor compares it with the copy running now,

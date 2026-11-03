@@ -29,13 +29,16 @@ let interfaceRequired = ProcessInfo.processInfo.environment["MACARCHY_REQUIRE_UI
 /// Points the scheme handler at `dist` and keeps the search path away from
 /// Homebrew for the whole suite, then puts every variable back.
 struct WebEnvironment: SuiteTrait, TestScoping {
-    static let names = ["MACARCHY_HOME", "MACARCHY_SEARCH_PATH", "MACARCHY_UI_DIST"]
+    static let names = [
+        "MACARCHY_HOME", "MACARCHY_SEARCH_PATH", "MACARCHY_UI_DIST", "MACARCHY_RESOURCES"
+    ]
 
     func provideScope(
         for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void
     ) async throws {
         let previous = Self.names.map { name in getenv(name).map { String(cString: $0) } }
         setenv("MACARCHY_UI_DIST", interfaceDist.path, 1)
+        setenv("MACARCHY_RESOURCES", repository.appending(path: "resources").path, 1)
         defer {
             for (name, value) in zip(Self.names, previous) {
                 if let value { setenv(name, value, 1) } else { unsetenv(name) }

@@ -13,7 +13,7 @@ trap 'rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
 # Resources layout, which is what Paths.resources expects.
 cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
 cp -R "$REPO/resources/themes" "$REPO/resources/widgets" "$REPO/resources/integrations/sketchybar" \
-  "$REPO/resources/integrations/skhd" "$RESOURCES/"
+  "$REPO/resources/integrations/skhd" "$REPO/resources/launchers" "$REPO/resources/plugins" "$RESOURCES/"
 export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$RESOURCES"
 export MACARCHY_SEARCH_PATH="$HOME_DIR/fake-bin" MACARCHY_APPLICATIONS="$HOME_DIR/Applications"
 mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/skhd"
@@ -120,11 +120,7 @@ assert [c["side"] for c in bar["components"]] == ["left"] + ["right"] * 6
 assert bar["geometry"]["height"] == "35" and bar["geometry"]["sticky"] == "on"
 assert bar["geometry"]["padding_left"] == "10" and bar["geometry"]["blur_radius"] == "0"
 PY2
-# A new install keeps its launchers in a real folder, with nothing else in it.
-[ -d "$HOME_DIR/.config/macarchy" ] && [ ! -L "$HOME_DIR/.config/macarchy" ] \
-  || fail "the launcher folder is missing or a link"
-[ "$(ls -A "$HOME_DIR/.config/macarchy" | tr '\n' ' ')" = "macarchy-sketchybarrc macarchy-yabairc " ] \
-  || fail "the launcher folder holds more than the launchers: $(ls -A "$HOME_DIR/.config/macarchy")"
+[ ! -e "$HOME_DIR/.config/macarchy" ] || fail "setup created an XDG launcher folder"
 grep -q '"window_gap" : 12' "$SETTINGS" || fail "yabai window_gap not adopted"
 grep -q '"layout" : "float"' "$SETTINGS" || fail "yabai layout not adopted"
 grep -q 'for app in Calculator Finder; do' "$CONFIG/yabairc" || fail "loop not kept"
@@ -153,16 +149,16 @@ for daemon in yabai skhd sketchybar borders; do
 done
 [ "$(argument skhd 2)" = "$CONFIG/skhdrc" ] || fail "skhd agent does not use Macarchy's skhdrc"
 # yabai and SketchyBar run the file they start with through sh unquoted, so
-# they start from launchers in their own folders, whose paths have no space,
-# and each hands over to Macarchy's file. The kept bar's items also see its
-# folder as $CONFIG_DIR.
-YABAI_LAUNCHER="$HOME_DIR/.config/macarchy/macarchy-yabairc"
-LAUNCHER="$HOME_DIR/.config/macarchy/macarchy-sketchybarrc"
+# they start from the launchers bundled in the app, whose paths have no space,
+# and each hands over to Macarchy's file. The kept bar's items see
+# ~/.config/sketchybar as $CONFIG_DIR.
+YABAI_LAUNCHER="$RESOURCES/launchers/macarchy-yabairc"
+LAUNCHER="$RESOURCES/launchers/macarchy-sketchybarrc"
 [ "$(argument yabai 2)" = "$YABAI_LAUNCHER" ] || fail "yabai agent does not start from its launcher"
 [ "$(argument sketchybar 2)" = "$LAUNCHER" ] || fail "SketchyBar agent does not start from its launcher"
-grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/yabairc" "$@"$' "$YABAI_LAUNCHER" \
+grep -q '^exec "$TASK_HOME/Library/Application Support/Macarchy/config/yabairc" "$@"$' "$YABAI_LAUNCHER" \
   || fail "launcher does not hand over to Macarchy's yabairc"
-grep -q '^exec "$HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"$' "$LAUNCHER" \
+grep -q '^exec "$TASK_HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"$' "$LAUNCHER" \
   || fail "launcher does not hand over to Macarchy's sketchybarrc"
 [ -x "$YABAI_LAUNCHER" ] && [ -x "$LAUNCHER" ] || fail "launchers not executable"
 [ "$(argument borders 0)" = "$CONFIG/bordersrc" ] || fail "borders agent does not run bordersrc"
@@ -191,8 +187,8 @@ untouched "uninstall"
 for daemon in yabai skhd sketchybar borders; do
   [ -e "$AGENTS/io.github.harryrandall.macarchy.$daemon.plist" ] && fail "$daemon agent not removed on uninstall"
 done
-[ -e "$YABAI_LAUNCHER" ] && fail "uninstall left the yabai launcher"
-[ -e "$LAUNCHER" ] && fail "uninstall left the bar launcher"
+[ -x "$YABAI_LAUNCHER" ] || fail "uninstall removed a bundled launcher"
+[ -x "$LAUNCHER" ] || fail "uninstall removed a bundled launcher"
 [ -e "$HOME_DIR/.config/macarchy" ] && fail "uninstall left the launcher folder"
 [ -f "$SETTINGS" ] || fail "uninstall removed settings"
 

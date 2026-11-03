@@ -9,12 +9,14 @@ struct NeovimColourschemesTests {
         let home = FileManager.default.temporaryDirectory.appending(path: "nvim-\(UUID())")
         defer { try? FileManager.default.removeItem(at: home) }
         let files = [
-            ".config/nvim/colors/mine.lua",
-            ".local/share/nvim/lazy/tokyonight.nvim/colors/tokyonight-night.lua",
-            ".local/share/nvim/lazy/tokyonight.nvim/colors/tokyonight-day.vim",
-            ".local/share/nvim/lazy/other/colors/README.md",
-            ".local/share/nvim/site/pack/themes/start/gruvbox/colors/gruvbox.vim",
-            ".local/share/nvim/site/pack/themes/opt/gruvbox/colors/gruvbox.lua"
+            ".config/nvim/colors/outside.lua",
+            ".local/share/nvim/lazy/outside/colors/outside.vim",
+            "Library/Application Support/Macarchy/plugins/neovim/config/nvim/colors/mine.lua",
+            "Library/Application Support/Macarchy/plugins/neovim/data/nvim/lazy/tokyonight.nvim/colors/tokyonight-night.lua",
+            "Library/Application Support/Macarchy/plugins/neovim/data/nvim/lazy/tokyonight.nvim/colors/tokyonight-day.vim",
+            "Library/Application Support/Macarchy/plugins/neovim/data/nvim/lazy/other/colors/README.md",
+            "Library/Application Support/Macarchy/plugins/neovim/data/nvim/site/pack/themes/start/gruvbox/colors/gruvbox.vim",
+            "Library/Application Support/Macarchy/plugins/neovim/data/nvim/site/pack/themes/opt/gruvbox/colors/gruvbox.lua"
         ]
         for file in files {
             let url = home.appending(path: file)

@@ -103,11 +103,15 @@ extension OldConfiguration {
         }
     }
 
-    /// Neovim's Lua and Vim script files. Lua paths are pointed at the new
+    /// Neovim's Lua and Vim script files, in `~/.config/nvim` and where
+    /// tools/migrate-plugins.sh moves them. Lua paths are pointed at the new
     /// folder where a string holds nothing but the path; Vim script is only read.
     static func neovimFiles() -> [Source] {
-        let folder = Paths.home.appending(path: ".config/nvim")
-        return textFiles(under: folder).compactMap { file in
+        let folders = [
+            Paths.home.appending(path: ".config/nvim"),
+            PluginSetup.neovimConfig.appending(path: "nvim")
+        ]
+        return folders.flatMap { textFiles(under: $0) }.compactMap { file in
             guard let text = text(of: file) else { return nil }
             switch file.pathExtension {
             case "lua" where homeRelative(file) != nil:

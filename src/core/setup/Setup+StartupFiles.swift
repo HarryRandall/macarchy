@@ -84,13 +84,4 @@ extension Setup {
         return (try await carriedRegion(from: source, report: &lines), lines)
     }
 
-    /// The launchers that installed daemons start from (`StartLauncher`).
-    static var launchers: [StartLauncher] {
-        StartLauncher.all.filter { Paths.isInstalled($0.daemon.executableName) }
-    }
-
-    /// Writes each installed daemon's launcher before its agent, which names it.
-    static func placeLaunchers(backups: Backups) throws -> [String] {
-        try launchers.flatMap { try $0.place(backups: backups) }
-    }
 }

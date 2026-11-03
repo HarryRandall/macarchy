@@ -47,7 +47,7 @@ when prompted, then restart them from **Advanced**.
 
 Run `corepack pnpm run check` and `corepack pnpm run build` in `src/desktop/ui`,
 then `swift build`, `swift test`, `./tools/lint.sh` and
-`tests/integration/setup.sh`. CI runs the same. The web view tests in
+`tests/integration/setup.sh` and `tests/integration/plugins.sh`. CI runs the same. The web view tests in
 `swift test` need the built interface; without it they are skipped locally and
 fail in CI. Tests must use temporary
 homes (`MACARCHY_HOME`), fake tools (`MACARCHY_SEARCH_PATH`) and must never alter
@@ -103,7 +103,7 @@ exports. Controls in `components/ui` own their look through `variant` and
 | `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes`, `widgets` |
 | `src/desktop` | `native`, `ui` (React) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
-| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar` (the app font), `integrations/skhd` |
+| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar` (the app font), `integrations/skhd`, `launchers` (yabai and SketchyBar start launchers), `plugins` (Neovim configuration and launcher) |
 | `packaging/macos` | `Info.plist` |
 
 ## Behaviour
@@ -170,8 +170,15 @@ not used either way. Your own files are left as they are.
 
 The bar shows widgets, arranged on the Menu Bar page: Spaces on the left, and
 network, memory, GPU, CPU, battery and the clock on the right to begin with.
-See [widgets](docs/widgets.md) to make your own. Commands in the keep region
-of `config/sketchybarrc` run after the widgets are set up.
+See [widgets](docs/widgets.md) to make your own.
+
+Menu Bar → Bar controls the bar height, side padding and screen edge gap, plus
+the gap, inner side padding and box height shared by widgets. Top and bottom
+padding adjusts the bar height around those boxes. A widget's own
+side padding overrides the shared value. Spaces and other grouped widgets keep
+their internal spacing and height under their own settings.
+
+Commands in the keep region of `config/sketchybarrc` run after the widgets are set up.
 
 The app keeps the widgets up to date, so it opens at login; turn that off
 under **Advanced → Open at login**. While it is not running, readings keep
@@ -217,14 +224,14 @@ Outside the folder it only writes:
 | File | Contents |
 |---|---|
 | `~/Library/LaunchAgents/io.github.harryrandall.macarchy.<tool>.plist` | Starts each tool at login with its config. The tool's own agent is switched off and backed up |
-| `~/.config/ghostty/config` | One `config-file` line, if you use Ghostty |
-| `~/.config/macarchy/macarchy-yabairc` | yabai starts from it, since it cannot start a file whose path has a space. It hands over to `yabairc` |
-| `~/.config/macarchy/macarchy-sketchybarrc` | SketchyBar starts from it for the same reason. It hands over to `sketchybarrc` |
+| Ghostty's existing config, or its native Application Support config | One `config-file` line, if you use Ghostty |
+| `~/.zshenv` and the active `.zshrc` | One line adding the app's bundled commands to new zsh sessions; uninstall removes only that line |
 
-`~/.config/macarchy` holds only those two launchers. After an upgrade it is a
-link to the new folder instead, for files that still name the old one, and
-the launchers stay in `~/.config/yabai` and `~/.config/sketchybar` until you
-clean up.
+The yabai and SketchyBar launchers ship inside Macarchy.app. Their paths must
+contain no spaces, so install the app in `/Applications/Macarchy.app`. Setup
+updates the service definitions to use those bundled launchers. After that,
+the old `~/.config/macarchy` launchers are no longer needed. Do not remove them
+while the installed service definitions still refer to them.
 
 ### Cleaning up after an upgrade
 
@@ -238,8 +245,8 @@ first, then:
   permissions, and points your shortcuts, yabai region and the scripts
   themselves at the new places;
 - points the zsh, Neovim and Ghostty lines that read through
-  `~/.config/macarchy` at Application Support, and makes that folder hold just
-  the launchers;
+  `~/.config/macarchy` at Application Support, and removes the old link once
+  nothing needs it;
 - deletes the startup files, backup copies and old bar Macarchy no longer
   reads, and restarts the tools whose files changed.
 
@@ -310,21 +317,36 @@ folder and pick them on the Themes page.
 
 #### Neovim
 
-Macarchy writes the theme's colourscheme name to
-`~/Library/Application Support/Macarchy/generated/nvim-colorscheme` and signals running Neovim
-instances. To follow it, add this to your config:
+Neovim's configuration and plugin lockfile ship in `resources/plugins/neovim`.
+Setup seeds an editable copy in
+`~/Library/Application Support/Macarchy/plugins/neovim/config/nvim` and
+preserves it on later runs. Plugin downloads, state and cache live beside
+`config` under `data`, `state` and `cache`. None needs `~/.config` or `~/.local`.
 
-```lua
-local function macarchy_colourscheme()
-  local file = io.open(vim.fn.expand("~/Library/Application Support/Macarchy/generated/nvim-colorscheme"))
-  if not file then return end
-  local name = file:read("*l")
-  file:close()
-  if name and name:match("^[%w_.-]+$") then pcall(vim.cmd.colorscheme, name) end
-end
-macarchy_colourscheme()
-vim.api.nvim_create_autocmd("VimResized", { callback = macarchy_colourscheme })
-```
+The app bundles an `nvim` launcher. Setup adds one line putting the app's
+commands on `PATH` to `~/.zshenv` and the `.zshrc` zsh reads (in `ZDOTDIR` when
+that is set); uninstall removes only that line, and a file left empty. Bash and
+fish are not changed. Open a new terminal after setup; `command -v nvim` should
+point inside Macarchy.app. The launcher runs `bin/nvim` from Application
+Support when there is one, otherwise the first Neovim on `PATH`. It points the
+XDG directories at Macarchy's folders, and `environment.lua` beside it puts the
+person's own values back once the configuration is read, so terminals, git and
+language servers started from the editor see the usual settings.
+
+To migrate an existing installation, run `./tools/migrate-plugins.sh` before
+setup. It moves existing Neovim configuration and data into managed storage,
+keeping a conflicting destination in Macarchy's `backups`. It also moves an
+existing XDG Ghostty folder to Ghostty's native Application Support folder,
+unless that already exists. It checks every source first and refuses linked
+folders before moving anything. Python tools Mason installed get pip's
+`/bin/sh` trampoline, since a `#!` line cannot hold the new path's space;
+any other Mason tool whose interpreter moved is listed for reinstalling. Existing editor
+sessions should be closed first.
+
+Macarchy writes the active colourscheme to `generated/nvim-colorscheme`;
+the bundled Neovim configuration reads it. Keep configuration and the lockfile
+in Git; downloaded plugins and editor state can be recreated. Personal changes
+to the installed copy must be copied back to the repository before pushing.
 
 #### Custom builds
 

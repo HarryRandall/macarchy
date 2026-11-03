@@ -23,6 +23,15 @@ extension OldConfiguration {
             return "Set up Macarchy first: cleaning up relies on the configs setup writes to "
                 + "\(Paths.display(Paths.configDirectory))."
         }
+        // A daemon Homebrew has removed keeps its old agent until setup runs
+        // with it installed again, which it cannot block.
+        for daemon in [Daemon.yabai, .sketchybar]
+        where DaemonAgents.isInstalled(daemon) && Paths.isInstalled(daemon.executableName) {
+            if Doctor.startFile(daemon) != BundledStartLauncher.url(daemon) {
+                return
+                    "Run setup before cleaning up: the services must use Macarchy's bundled launchers first."
+            }
+        }
         return nil
     }
 
@@ -126,20 +135,18 @@ extension OldConfiguration {
             return await finish()
         }
 
-        /// SketchyBar gives a bar its launcher's folder as `$CONFIG_DIR`. While
-        /// the launcher is in `~/.config/sketchybar` and Macarchy's
-        /// sketchybarrc reads that variable, the folder is the bar's, and so is
-        /// the launcher's place.
+        /// The bundled SketchyBar launcher hands the bar `~/.config/sketchybar`
+        /// as `$CONFIG_DIR` while that folder exists. While Macarchy's
+        /// sketchybarrc reads that variable, the folder is the bar's.
         mutating func pinBarFolder() {
             guard let bar = fixed.first(where: { $0.url == StartupConfiguration.sketchybarrc.url }),
                 OldConfiguration.liveLines(bar.text, comment: "#").contains(where: {
                     $0.contains("CONFIG_DIR")
-                }),
-                StartLauncher.sketchybar.staysInToolFolder
+                })
             else { return }
             folderPins["sketchybar"] =
-                "\(Paths.display(bar.url)) reads it through $CONFIG_DIR, which SketchyBar sets to "
-                + "the folder its launcher is in, so the launcher stays here too"
+                "\(Paths.display(bar.url)) reads it through $CONFIG_DIR, which Macarchy's "
+                + "launcher sets to this folder"
         }
 
         /// Everything changeable text runs, followed through the scripts that
