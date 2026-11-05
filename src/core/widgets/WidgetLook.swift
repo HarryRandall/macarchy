@@ -42,16 +42,20 @@ public struct WidgetLook: Sendable {
     public static func current(
         catalogue: WidgetCatalogue = WidgetCatalogue(), store: SettingsStore = SettingsStore()
     ) -> WidgetLook {
-        let theme = (try? store.read())?.currentTheme.flatMap {
-            Theme.load(from: Paths.themesDirectory.appending(path: $0))
-        }
-        return current(catalogue: catalogue, theme: theme)
+        let name = (try? store.read())?.currentTheme
+        let theme = name.flatMap { Theme.load(from: Paths.themesDirectory.appending(path: $0)) }
+        return current(
+            catalogue: catalogue, theme: theme,
+            text: theme == nil ? nil : BarLook.Colours.theme(name).text)
     }
 
     /// The widgets on this Mac in `theme`'s colours, as while a theme is
-    /// being applied and before settings name it.
+    /// being applied and before settings name it. `text` is the bar's text
+    /// colour when the caller has it: a theme without `sketchybarText` still
+    /// gives the bar one from its terminal colours, and a widget needs it to
+    /// go back to normal after a warning colour.
     public static func current(
-        catalogue: WidgetCatalogue = WidgetCatalogue(), theme: Theme?
+        catalogue: WidgetCatalogue = WidgetCatalogue(), theme: Theme?, text: String? = nil
     )
         -> WidgetLook
     {
@@ -59,7 +63,7 @@ public struct WidgetLook: Sendable {
             catalogue.read().entries.map { ($0.id, $0.manifest) },
             uniquingKeysWith: { first, _ in first })
         // SketchyBar reads 0xAARRGGBB only; a theme may spell #rrggbb.
-        let text = theme?.colors.sketchybarText.map(Theme.argb)
+        let text = text ?? theme?.colors.sketchybarText.map(Theme.argb)
         let muted = text.flatMap {
             $0.count == 10 && $0.hasPrefix("0x") ? "0x99" + $0.dropFirst(4) : nil
         }

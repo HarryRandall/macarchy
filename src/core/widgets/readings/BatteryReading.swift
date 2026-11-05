@@ -51,7 +51,10 @@ struct BatteryReading: Equatable, Sendable {
                     .takeUnretainedValue() as? [String: Any],
                 description[kIOPSTypeKey] as? String == kIOPSInternalBatteryType
             else { continue }
-            let current = description[kIOPSCurrentCapacityKey] as? Int ?? 0
+            // Around sleep, wake and a change of power source the entry can
+            // come without its charge; reading that as 0% would flag the
+            // battery as low, so there is no reading until it is back.
+            guard let current = description[kIOPSCurrentCapacityKey] as? Int else { return nil }
             let maximum = max(description[kIOPSMaxCapacityKey] as? Int ?? 100, 1)
             let charging = description[kIOPSIsChargingKey] as? Bool ?? false
             let minutes =

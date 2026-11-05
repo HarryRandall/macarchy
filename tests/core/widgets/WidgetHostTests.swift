@@ -245,6 +245,24 @@ struct WidgetHostTests {
         #expect(calm[0].properties.contains("label.color=0xffdacbe6"))
     }
 
+    @Test("a theme without a bar text colour still gives warnings one to go back to")
+    func colourResetWithoutThemeText() {
+        let catalogue = WidgetCatalogue(
+            builtIn: WidgetManifestTests.builtIn,
+            user: FileManager.default.temporaryDirectory.appending(path: "none-\(UUID())"))
+        let theme = Theme(name: "plain")
+        #expect(WidgetLook.current(catalogue: catalogue, theme: theme).text == nil)
+        let look = WidgetLook.current(catalogue: catalogue, theme: theme, text: "0xffc0c0c0")
+        #expect(look.text == "0xffc0c0c0")
+        #expect(look.muted == "0x99c0c0c0")
+        let instance = WidgetInstance(
+            id: "macarchy.battery", manifest: manifest("battery"),
+            directory: URL(fileURLWithPath: "/w"), settings: [:], visible: true)
+        let calm = WidgetHost.items(instance, output: WidgetOutput(label: "88%"), look: look)
+        #expect(calm[0].properties.contains("label.color=0xffc0c0c0"))
+        #expect(calm[0].properties.contains("icon.color=0xffc0c0c0"))
+    }
+
     @Test("labels are one short line with no control characters")
     func clean() {
         #expect(WidgetHost.clean(" a\nb\u{7}c ") == "a bc")

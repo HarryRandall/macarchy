@@ -175,7 +175,7 @@ public struct ThemeApplication: Sendable {
     /// on; the app's widget host picks the theme up when settings change.
     private func recolourBar(theme: Theme, colours: BarLook.Colours) async -> CommandResult {
         do {
-            let look = WidgetLook.current(theme: theme)
+            let look = WidgetLook.current(theme: theme, text: colours.text)
             let configuration = look.normalised(try Startup.bar(try SettingsStore().read()))
             let existing = await BarCommands.items(integrations: integrations)
             let result = await integrations.sketchybar(
