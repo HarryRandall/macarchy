@@ -33,10 +33,14 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
     }
 
     /// Hands the request to the app when it is switching, otherwise switches
-    /// in this process. Returns whether it was handed over.
+    /// in this process. Returns whether it was handed over. Either way the
+    /// Space is recorded first, as yabai's refocus signal reads it to hold
+    /// back while a switch is on its way: focusing a window on the Space
+    /// being left would switch back to it.
     @discardableResult
     public func perform(
         appSwitching: Bool = PresenceLock.isHeld(at: presenceURL),
+        record: (Int) -> Void = { SpaceSwitch.record($0, in: Paths.stateDirectory) },
         handOff: (SpaceSwitchRequest) -> Void = { AppNotice.post(notification, $0.userInfo) },
         here: (SpaceSwitchRequest) async -> Void = { request in
             let switcher = SpaceSwitch.live
@@ -48,6 +52,7 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
         }
     ) async -> Bool {
         if appSwitching {
+            record(space)
             handOff(self)
             return true
         }

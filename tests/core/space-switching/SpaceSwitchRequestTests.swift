@@ -21,12 +21,15 @@ struct SpaceSwitchRequestTests {
 
     @Test("while the app is switching, the request goes to it and nothing switches here")
     func handsOffToTheApp() async {
+        var recorded: [Int] = []
         var handedOff: [SpaceSwitchRequest] = []
         var here: [SpaceSwitchRequest] = []
         let request = SpaceSwitchRequest(space: 2, move: true)
         let handed = await request.perform(
-            appSwitching: true, handOff: { handedOff.append($0) }, here: { here.append($0) })
+            appSwitching: true, record: { recorded.append($0) },
+            handOff: { handedOff.append($0) }, here: { here.append($0) })
         #expect(handed)
+        #expect(recorded == [2], "the refocus signal reads the Space pressed")
         #expect(handedOff == [request])
         #expect(here.isEmpty)
     }
@@ -36,8 +39,10 @@ struct SpaceSwitchRequestTests {
         var handedOff: [SpaceSwitchRequest] = []
         var here: [SpaceSwitchRequest] = []
         let request = SpaceSwitchRequest(space: 5)
+        // Switching here records it itself, in `SpaceSwitch`.
         let handed = await request.perform(
-            appSwitching: false, handOff: { handedOff.append($0) }, here: { here.append($0) })
+            appSwitching: false, record: { _ in Issue.record("recorded twice") },
+            handOff: { handedOff.append($0) }, here: { here.append($0) })
         #expect(!handed)
         #expect(here == [request])
         #expect(handedOff.isEmpty)

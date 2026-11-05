@@ -106,8 +106,14 @@ public struct SpaceSwitch: Sendable {
     }
 
     private func record(_ index: Int) {
+        Self.record(index, in: directory)
+    }
+
+    /// Records the Space last pressed, whoever switches to it, so the refocus
+    /// signal can tell a switch is still on its way.
+    public static func record(_ index: Int, in directory: URL) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? Data("\(index)\n".utf8).write(to: targetURL, options: .atomic)
+        try? Data("\(index)\n".utf8).write(to: targetURL(in: directory), options: .atomic)
     }
 
     private func recorded() -> Int? {
