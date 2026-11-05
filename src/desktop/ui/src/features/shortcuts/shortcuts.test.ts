@@ -143,6 +143,11 @@ describe("shortcut presentation", () => {
       ],
       ["macarchy bar toggle", "Show or hide the menu bar"],
       ["macarchy space 10", "Go to desktop 10"],
+      ["macarchy space 4 --move", "Move window to desktop 4 and follow"],
+      [
+        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" space 2 --move',
+        "Move window to desktop 2 and follow",
+      ],
       [
         '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 3',
         "Move window to desktop 3 and follow",

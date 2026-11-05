@@ -35,16 +35,16 @@ ctrl - 9 : macarchy space 9
 ctrl - 0 : macarchy space 10
 
 # Move window to desktop and follow
-ctrl + shift - 1 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 1
-ctrl + shift - 2 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 2
-ctrl + shift - 3 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 3
-ctrl + shift - 4 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 4
-ctrl + shift - 5 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 5
-ctrl + shift - 6 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 6
-ctrl + shift - 7 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 7
-ctrl + shift - 8 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 8
-ctrl + shift - 9 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 9
-ctrl + shift - 0 : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 10
+ctrl + shift - 1 : macarchy space 1 --move
+ctrl + shift - 2 : macarchy space 2 --move
+ctrl + shift - 3 : macarchy space 3 --move
+ctrl + shift - 4 : macarchy space 4 --move
+ctrl + shift - 5 : macarchy space 5 --move
+ctrl + shift - 6 : macarchy space 6 --move
+ctrl + shift - 7 : macarchy space 7 --move
+ctrl + shift - 8 : macarchy space 8 --move
+ctrl + shift - 9 : macarchy space 9 --move
+ctrl + shift - 0 : macarchy space 10 --move
 
 # Float or tile the window, remembered per app
 ctrl - t : macarchy rules toggle

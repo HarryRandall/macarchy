@@ -1,8 +1,9 @@
 # Plan: built-in instant Space switching
 
-Status: steps 1 to 4 built on `feat/space-gesture` (5 November 2026); the
-rest proposed. Quit the ISS app before trying a build: while it runs with
-swipe override, it takes the app's swipes for its own, as it does ISSCli's.
+Status: steps 1 to 5 built on `feat/space-gesture` (5 November 2026); step
+6, trying it on the desktop, is left. Quit the ISS app before trying a
+build: while it runs with swipe override, it takes the app's swipes for its
+own, as it does ISSCli's.
 
 ## Why
 
@@ -164,10 +165,12 @@ Each step is its own commit, in an isolated worktree.
    switcher lock, so the app and `macarchy doctor` agree, and a second row
    warns while the ISS app runs. ISS is gone from setup's extras, Advanced and
    app launch; `InstantSpaceSwitcher` only checks whether it is running.
-5. **Shortcuts and docs.** Defaults, Shortcuts page parsing, CONTRIBUTING,
-   architecture. The interface's setup fixtures, mock and `SetupExtraId` still
-   name ISS as an example extra; with `Setup.extras` empty the page hides the
-   section, so drop them here, regenerating `tests/fixtures/bridge`.
+5. **Shortcuts and docs.** Done. The default move shortcuts run
+   `macarchy space N --move`, and `move-window-to-space.sh` now just calls it
+   for older shortcuts files. The Shortcuts page labels and groups `--move`.
+   The interface no longer names ISS: `SetupExtraId` is a string, the mock
+   offers no extras, and the bridge fixtures use a neutral example extra.
+   CONTRIBUTING and the architecture guide describe the switcher.
 6. **Try it on the desktop**, with your go-ahead and nobody else testing:
    fast bursts, ⌘⇧3 then ⌘2 at once, Mission Control open, a Space that does
    not exist, two displays, the app closed, and quitting ISS.

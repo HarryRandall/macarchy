@@ -77,6 +77,8 @@ export function describeCommand(command: string): string | null {
   if (second) return null;
   if ((match = /^(?:yabai -m space --focus|macarchy space) (\d+)$/.exec(first)))
     return `Go to desktop ${match[1]}`;
+  if ((match = /^macarchy space (\d+) --move$/.exec(first)))
+    return `Move window to desktop ${match[1]} and follow`;
   if ((match = /^move-window-to-space\.sh (\d+)$/.exec(first)))
     return `Move window to desktop ${match[1]} and follow`;
   const single: Record<string, string> = {

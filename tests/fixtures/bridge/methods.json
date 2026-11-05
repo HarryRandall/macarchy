@@ -1482,10 +1482,10 @@
         ],
         "extras": [
           {
-            "description": "Switches Spaces at once instead of sliding.",
-            "id": "instant-space-switcher",
+            "description": "An app Macarchy uses when it is there.",
+            "id": "example-app",
             "installed": false,
-            "name": "InstantSpaceSwitcher"
+            "name": "Example"
           }
         ],
         "homebrew": true,
@@ -1550,10 +1550,10 @@
         ],
         "extras": [
           {
-            "description": "Switches Spaces at once instead of sliding.",
-            "id": "instant-space-switcher",
+            "description": "An app Macarchy uses when it is there.",
+            "id": "example-app",
             "installed": true,
-            "name": "InstantSpaceSwitcher"
+            "name": "Example"
           }
         ],
         "homebrew": false,
@@ -1630,7 +1630,7 @@
       "params": {
         "existing": {},
         "extras": [
-          "instant-space-switcher"
+          "example-app"
         ],
         "tools": [
           "yabai"

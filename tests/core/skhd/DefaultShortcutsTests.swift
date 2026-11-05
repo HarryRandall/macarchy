@@ -37,7 +37,7 @@ struct DefaultShortcutsTests {
             #expect(
                 bindings.contains {
                     $0.modifiers == ["ctrl", "shift"] && $0.key == key
-                        && $0.command.hasSuffix("move-window-to-space.sh\" \(number)")
+                        && $0.command == "macarchy space \(number) --move"
                 })
         }
         let command = bindings.filter { $0.modifiers.contains("cmd") }.map(\.key)
@@ -52,7 +52,7 @@ struct DefaultShortcutsTests {
             "\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/"
         let commands = try bindings().flatMap { [$0.command] + $0.appOverrides.map(\.command) }
         let scripts = Set(commands.filter { $0.contains("/scripts/") })
-        #expect(scripts.count == 13)
+        #expect(scripts.count == 3)
         for command in scripts {
             #expect(command.hasPrefix(link + "scripts/"))
             let name = String(command.dropFirst(link.count).prefix { $0 != "\"" })

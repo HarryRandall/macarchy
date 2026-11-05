@@ -458,16 +458,17 @@ const tools: SetupState["tools"] = [
   },
 ];
 
-const instantSpaces: SetupState["extras"][number] = {
-  id: "instant-space-switcher",
-  name: "InstantSpaceSwitcher",
-  description: "Switches Spaces at once instead of sliding.",
+/** No extras ship; this one only keeps the shape covered. */
+const exampleExtra: SetupState["extras"][number] = {
+  id: "example-app",
+  name: "Example",
+  description: "An app Macarchy uses when it is there.",
   installed: false,
 };
 
 const keepPlan: SetupState = {
   tools,
-  extras: [instantSpaces],
+  extras: [exampleExtra],
   homebrew: true,
   changes: [
     {
@@ -487,7 +488,7 @@ const keepPlan: SetupState = {
 
 const replacePlan: SetupState = {
   tools,
-  extras: [{ ...instantSpaces, installed: true }],
+  extras: [{ ...exampleExtra, installed: true }],
   homebrew: false,
   changes: [
     {
@@ -1043,7 +1044,7 @@ export const methodFixtures: MethodFixtures = {
   "setup.run": [
     { params: { tools: ["yabai", "sketchybar", "skhd"], existing: {} }, result: setupCompleted },
     {
-      params: { tools: ["yabai"], existing: {}, extras: ["instant-space-switcher"] },
+      params: { tools: ["yabai"], existing: {}, extras: ["example-app"] },
       result: setupCompleted,
     },
     {
@@ -1279,7 +1280,7 @@ export const eventFixtures: EventFixtures = {
     },
     {
       type: "setup.progress",
-      state: { tool: "instant-space-switcher", status: "installed", line: null },
+      state: { tool: "example-app", status: "installed", line: null },
     },
     { type: "setup.progress", state: { tool: null, status: "configuring", line: null } },
   ],

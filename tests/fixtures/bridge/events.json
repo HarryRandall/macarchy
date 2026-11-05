@@ -200,7 +200,7 @@
       "state": {
         "line": null,
         "status": "installed",
-        "tool": "instant-space-switcher"
+        "tool": "example-app"
       },
       "type": "setup.progress"
     },

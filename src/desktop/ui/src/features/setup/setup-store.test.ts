@@ -23,8 +23,8 @@ const plan: SetupState = {
   ],
   extras: [
     {
-      id: "instant-space-switcher",
-      name: "InstantSpaceSwitcher",
+      id: "example-app",
+      name: "Example",
       description: "",
       installed: false,
     },
@@ -146,19 +146,16 @@ describe("Setup store", () => {
     const { store, request } = harness();
     await store.load();
     const planned = request.mock.calls.length;
-    store.toggleExtra("instant-space-switcher", true);
+    store.toggleExtra("example-app", true);
     expect(request.mock.calls.length).toBe(planned);
     request.mockResolvedValueOnce({ lines: [], failures: [], failure: null });
     const running = store.run();
     expect(store.getSnapshot().installs).toMatchObject({
       sketchybar: { status: "waiting" },
-      "instant-space-switcher": { status: "waiting" },
+      "example-app": { status: "waiting" },
     });
     await running;
-    expect(request.mock.calls.at(-1)).toEqual([
-      "setup.run",
-      { ...every, extras: ["instant-space-switcher"] },
-    ]);
+    expect(request.mock.calls.at(-1)).toEqual(["setup.run", { ...every, extras: ["example-app"] }]);
   });
   it("ignores progress when no run is going", async () => {
     const { store, progress } = harness();

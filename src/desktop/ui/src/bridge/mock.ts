@@ -381,15 +381,8 @@ export function installMockHost() {
       ownConfig: null,
     },
   ];
-  const setupExtras: SetupExtra[] = [
-    {
-      id: "instant-space-switcher",
-      name: "InstantSpaceSwitcher",
-      description:
-        "Switches Spaces at once instead of sliding. Installed in Applications from jurplel's Homebrew tap; macOS may ask to allow it under Accessibility.",
-      installed: false,
-    },
-  ];
+  // None ship, as in the app.
+  const setupExtras: SetupExtra[] = [];
   let homebrew = query.get("brew") !== "missing";
   function progress(state: SetupProgress) {
     deliver({ type: "setup.progress", state });

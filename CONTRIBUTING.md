@@ -290,18 +290,24 @@ Shortcuts page.
 
 ### Instant Space switching
 
-yabai's Space switch slides for about half a second on macOS 27, and a
-switch pressed during a slide waits for it. `macarchy space` sends one
-switch at a time and then goes straight to the last desktop pressed, so
-pressing quickly never stops on one in between.
+Macarchy switches Spaces with no slide, by sending the Dock a trackpad swipe
+fast enough that there is nothing to animate. The swipe is trimmed from
+[InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher) (MIT)
+and lives in `src/space-gesture`; nothing else needs installing.
 
-With [InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher)
-installed, switches have no slide at all. Setup offers it under Optional and
-installs it with Homebrew from jurplel's tap, trusting only that cask. It
-stays in Applications, where macOS keeps its permissions; Macarchy only runs
-its `ISSCli` from skhd, so skhd's Accessibility covers it. With several
-displays, or if it cannot switch, yabai switches instead. Health says which
-is in use.
+`macarchy space <number>` goes to a Space and `--move` takes the focused
+window with it. The shortcuts run those, and the app does the switching:
+one at a time, then straight to the last desktop pressed, so pressing
+quickly never stops on one in between, and a switch pressed just after a
+move waits its turn. The app needs Accessibility for this and asks after
+setup. Until it has it, each shortcut switches on its own with skhd's
+permission. A Space on another display, or one picked while Mission
+Control is open, goes through yabai and slides. Health says which is in
+use.
+
+Earlier versions installed InstantSpaceSwitcher. If its app still runs, its
+own hotkeys and trackpad swipe override compete with Macarchy's switching,
+and Health says to quit it.
 
 ### Do I need to disable SIP?
 

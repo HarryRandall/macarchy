@@ -28,8 +28,11 @@ export interface SetupTool {
   /** The person's own config the tool can start from, home-relative. */
   ownConfig: string | null;
 }
-/** An app setup can install, which Macarchy uses when it is there. */
-export type SetupExtraId = "instant-space-switcher";
+/**
+ * An app setup can install, which Macarchy uses when it is there. None ship
+ * at the moment, and the page hides the section while the list is empty.
+ */
+export type SetupExtraId = string;
 export interface SetupExtra {
   id: SetupExtraId;
   name: string;

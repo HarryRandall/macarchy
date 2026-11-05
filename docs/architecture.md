@@ -222,6 +222,26 @@ Every integration is optional. Theme application skips tools that are not
 installed and says so. Nothing requires System Integrity Protection to be
 disabled; the yabai scripting addition is reported as an optional extra.
 
+## Space switching
+
+One switcher serves every Space shortcut. `SpaceSwitcher`
+(`src/core/integrations/space-switching`) sends the instant Dock swipe from
+the `SpaceGesture` C target on the display under the pointer, and falls back
+to `yabai -m space --focus` for another display, while Mission Control or
+App Exposé is open, or without permission to post events. Requests run in
+the order they arrive; one made while a switch lands only records its Space,
+and the switcher goes on to the latest once it lands, working each switch
+out from the Space showing so a burst never overshoots.
+
+The app runs it (`SpaceSwitcherController`) and holds
+`state/space-switcher.lock` while it may post events. `macarchy space N
+[--move]` posts a `SpaceSwitchRequest` notice while that lock is held;
+otherwise it switches itself through `SpaceSwitch`, which coordinates
+presses across processes with `state/space-switch.lock` and the
+`space-target` file. Health reads the same lock, so the app and the command
+agree. An isolated run never posts events and leaves every switch to its
+fake yabai.
+
 ## Persistence
 
 Settings writes lock across processes with a bounded wait, validate, snapshot
