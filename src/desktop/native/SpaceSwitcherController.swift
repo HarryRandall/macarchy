@@ -6,8 +6,8 @@ import Macarchy
 /// While this process may post events it holds the switcher lock, so
 /// `macarchy space` hands its requests here instead of switching itself
 /// (`SpaceSwitchRequest`). Permission can be given or taken away while the
-/// app runs, so it looks again every half minute and lets the lock go when
-/// it can no longer switch.
+/// app runs, so it looks again every few seconds, which costs one
+/// permission check, and lets the lock go when it can no longer switch.
 @MainActor
 final class SpaceSwitcherController {
     static let shared = SpaceSwitcherController()
@@ -28,7 +28,7 @@ final class SpaceSwitcherController {
             MainActor.assumeIsolated { SpaceSwitcherController.shared.handle(request) }
         }
         updatePresence()
-        check = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+        check = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
             MainActor.assumeIsolated { SpaceSwitcherController.shared.updatePresence() }
         }
     }

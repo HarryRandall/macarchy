@@ -18,7 +18,7 @@ extension SpaceSwitcher {
                     .optional, "Instant Space switching", .unknown,
                     "Each shortcut switches on its own until Macarchy may control the computer",
                     fix: "Allow Macarchy in System Settings → Privacy & Security → Accessibility. "
-                        + "It starts switching within half a minute.")
+                        + "It starts switching within a few seconds.")
         ]
         if oldSwitcherRunning {
             checks.append(

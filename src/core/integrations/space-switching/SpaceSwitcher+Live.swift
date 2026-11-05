@@ -1,3 +1,4 @@
+import ApplicationServices
 import CoreGraphics
 import Foundation
 import SpaceGesture
@@ -90,8 +91,12 @@ extension SpaceSwitcher.Desktop {
 extension SpaceSwitcher {
     /// Whether this process may send the instant swipe. Never in an isolated
     /// run.
+    ///
+    /// Allowing a process under Accessibility lets it post events, but
+    /// `CGPreflightPostEventAccess` keeps the answer it gave first until the
+    /// process restarts, while `AXIsProcessTrusted` sees the change at once.
     public static var gesturesAllowed: Bool {
-        !DesktopIsolation.isActive && sg_can_post_events()
+        !DesktopIsolation.isActive && (AXIsProcessTrusted() || sg_can_post_events())
     }
 
     /// Asks macOS to let this process post events, showing its prompt the
