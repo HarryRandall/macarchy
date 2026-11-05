@@ -10,6 +10,7 @@ under its own licence.
 | Matte Black palette | [Omarchy](https://github.com/basecamp/omarchy) | MIT |
 | Carbonfox palette | [nightfox.nvim](https://github.com/EdenEast/nightfox.nvim) | MIT |
 | Blackgold, City 783, Lumon, Midnight and Turbonite palettes | To confirm | To confirm |
+| Instant Space switching gesture, trimmed in `src/space-gesture` | [jurplel/InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher) | MIT |
 
 Macarchy configures, but does not include, yabai, skhd, SketchyBar and
 JankyBorders, which are installed separately.
