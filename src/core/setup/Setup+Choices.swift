@@ -37,8 +37,10 @@ extension Setup {
     }
 
     /// Apps setup can install that Macarchy uses when they are there, with
-    /// nothing to configure.
-    public static let extras: [ToolInstaller.Package] = [InstantSpaceSwitcher.package]
+    /// nothing to configure. None at the moment: InstantSpaceSwitcher was
+    /// one until Macarchy switched Spaces itself. The page hides the section
+    /// while this is empty.
+    public static let extras: [ToolInstaller.Package] = []
 
     /// The tools the last setup was told to configure. Every tool before
     /// setup has asked, as earlier versions configured them all, and when

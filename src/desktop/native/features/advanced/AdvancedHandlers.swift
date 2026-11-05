@@ -127,6 +127,7 @@ extension BridgeRouter {
                 if let problem = model.loginItem.turnOnOnce() {
                     model.log.failure("open at login", problem)
                 }
+                SpaceSwitcherController.shared.askForPermission()
             }
             await model.loadEverything()
             StateBroadcast.shared.settingsWritten()
@@ -206,11 +207,8 @@ extension CleanupReport {
 }
 
 extension AppModel {
-    static let extraDescriptions = [
-        InstantSpaceSwitcher.package.id:
-            "Switches Spaces at once instead of sliding. Installed in Applications from "
-            + "jurplel's Homebrew tap; macOS may ask to allow it under Accessibility."
-    ]
+    /// One line for each of `Setup.extras`, by id.
+    static let extraDescriptions: [String: String] = [:]
 
     /// The plan for `choices`, with every tool and whether it was chosen
     /// last time, so the page starts from the earlier answers.

@@ -94,6 +94,14 @@ extension SpaceSwitcher {
         !DesktopIsolation.isActive && sg_can_post_events()
     }
 
+    /// Asks macOS to let this process post events, showing its prompt the
+    /// first time only. Never in an isolated run.
+    @discardableResult
+    public static func requestPermission() -> Bool {
+        guard !DesktopIsolation.isActive else { return false }
+        return sg_request_post_events()
+    }
+
     /// A switcher for the real desktop.
     public static func live(integrations: Integrations = Integrations()) -> SpaceSwitcher {
         SpaceSwitcher(desktop: .live(integrations: integrations))

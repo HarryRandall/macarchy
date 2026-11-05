@@ -16,7 +16,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         WidgetHostController.shared.start()
         WidgetMenuController.shared.start()
         SpaceSwitcherController.shared.start()
-        Self.startInstantSpaceSwitcher()
         Self.showMainWindow()
         #if DEBUG
         // A development build cannot register ⌘⌃Space while an installed copy
@@ -88,19 +87,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func quit() {
         quitting = true
         NSApp.terminate(nil)
-    }
-
-    /// InstantSpaceSwitcher cannot open at login itself, and its hotkeys
-    /// switch Spaces only while it runs, so it starts with this app.
-    private static func startInstantSpaceSwitcher() {
-        guard !DesktopIsolation.isActive, let app = InstantSpaceSwitcher.app,
-            NSRunningApplication.runningApplications(
-                withBundleIdentifier: InstantSpaceSwitcher.bundleIdentifier
-            ).isEmpty
-        else { return }
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-        NSWorkspace.shared.openApplication(at: app, configuration: configuration)
     }
 
     /// Shows the settings window.

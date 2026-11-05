@@ -1,9 +1,8 @@
 # Plan: built-in instant Space switching
 
-Status: steps 1 to 3 built on `feat/space-gesture` (5 November 2026); the
-rest proposed. Do not install a build between steps 3 and 4: while the ISS
-app runs with swipe override, it would take the app's swipes for its own,
-as it does ISSCli's today.
+Status: steps 1 to 4 built on `feat/space-gesture` (5 November 2026); the
+rest proposed. Quit the ISS app before trying a build: while it runs with
+swipe override, it takes the app's swipes for its own, as it does ISSCli's.
 
 ## Why
 
@@ -160,10 +159,15 @@ Each step is its own commit, in an isolated worktree.
    `SpaceSwitcher` instead of ISSCli and can move a window too.
    `PresenceLock` is shared with the widget host's lock. An isolated run
    leaves every switch to its fake yabai.
-4. **Permissions, Health, setup.** Accessibility request, Health row, ISS
-   retired.
+4. **Permissions, Health, setup.** Done. The app asks for Accessibility
+   after setup runs. Health's "Instant Space switching" row reads the
+   switcher lock, so the app and `macarchy doctor` agree, and a second row
+   warns while the ISS app runs. ISS is gone from setup's extras, Advanced and
+   app launch; `InstantSpaceSwitcher` only checks whether it is running.
 5. **Shortcuts and docs.** Defaults, Shortcuts page parsing, CONTRIBUTING,
-   architecture, CREDITS.
+   architecture. The interface's setup fixtures, mock and `SetupExtraId` still
+   name ISS as an example extra; with `Setup.extras` empty the page hides the
+   section, so drop them here, regenerating `tests/fixtures/bridge`.
 6. **Try it on the desktop**, with your go-ahead and nobody else testing:
    fast bursts, ⌘⇧3 then ⌘2 at once, Mission Control open, a Space that does
    not exist, two displays, the app closed, and quitting ISS.

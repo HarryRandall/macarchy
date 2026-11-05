@@ -47,8 +47,8 @@ public actor BuiltInReadings {
         expected = Expected(index: index, at: Date())
     }
 
-    /// macOS has switched Space, whoever asked, as InstantSpaceSwitcher's
-    /// own hotkeys or a swipe do. The next update draws the Space showing
+    /// macOS has switched Space, whoever asked, as a trackpad swipe or
+    /// Mission Control do. The next update draws the Space showing
     /// from the window server and the windows last read, since yabai
     /// answers slowly mid-switch; a later one reads the windows again.
     public func spaceSwitched() { switched = true }

@@ -186,10 +186,12 @@ extension WebInterfaceTests {
 
         @Test("a package from a tap trusts only itself; one from Homebrew needs nothing")
         func trust() {
+            let tapped = ToolInstaller.Package(
+                id: "example", name: "Example", formula: "someone/tap/example", cask: true,
+                provides: "Example")
             #expect(
-                InstantSpaceSwitcher.package.trustSteps == [
-                    ["tap", "jurplel/tap"],
-                    ["trust", "--cask", "jurplel/tap/instant-space-switcher"]
+                tapped.trustSteps == [
+                    ["tap", "someone/tap"], ["trust", "--cask", "someone/tap/example"]
                 ])
             #expect(ToolInstaller.Package.ghostty.trustSteps.isEmpty)
         }

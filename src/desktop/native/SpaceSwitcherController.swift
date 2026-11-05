@@ -46,6 +46,15 @@ final class SpaceSwitcherController {
         }
     }
 
+    /// Asks for Accessibility once setup has run, rather than at launch,
+    /// so the prompt follows something the person did. macOS shows it only
+    /// the first time; after that, Health says where to allow it.
+    func askForPermission() {
+        guard !SpaceSwitcher.gesturesAllowed else { return }
+        SpaceSwitcher.requestPermission()
+        updatePresence()
+    }
+
     private func updatePresence() {
         if SpaceSwitcher.gesturesAllowed {
             if presence == nil { presence = PresenceLock.hold(at: SpaceSwitchRequest.presenceURL) }
