@@ -34,7 +34,9 @@ final class WidgetHostController {
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
             reason: "Keeping bar widgets and their dropdowns responsive")
-        Task { await host.start() }
+        // Detached, so the first update starts now rather than once the main
+        // actor is free, which at launch is a few hundred milliseconds later.
+        Task.detached { [host] in await host.start() }
         let workspace = NSWorkspace.shared.notificationCenter
         observe(workspace, NSWorkspace.didWakeNotification, event: "system_woke")
         let switched = workspace.addObserver(

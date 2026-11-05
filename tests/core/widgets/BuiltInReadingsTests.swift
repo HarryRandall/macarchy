@@ -45,6 +45,17 @@ struct BuiltInReadingsTests {
         #expect(CoreTicks.loads(from: [], to: later) == [0, 0])
     }
 
+    @Test("the first load and speed are measured over a short sample, not shown as zero")
+    func firstSample() async {
+        let readings = BuiltInReadings()
+        let asked = Date()
+        let measured = await readings.baseline(asked)
+        #expect(measured.timeIntervalSince(asked) >= BuiltInReadings.firstSample)
+        // Later readings compare with the one before, with no wait.
+        let later = asked.addingTimeInterval(2)
+        #expect(await readings.baseline(later) == later)
+    }
+
     @Test("helpers count towards their app, busiest first")
     func processes() {
         let top = TopProcesses.parse(

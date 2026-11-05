@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         repairAppLink()
-        WidgetHostController.shared.start()
         WidgetMenuController.shared.start()
         SpaceSwitcherController.shared.start()
         Self.showMainWindow()

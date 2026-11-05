@@ -22,8 +22,16 @@ public actor BuiltInReadings {
     /// Points kept for each graph: a minute at the usual two seconds.
     static let historyLength = 30
 
+    /// The shortest time the first load and speed are measured over. With
+    /// no earlier reading they would show 0% and 0KB/s, and a moment less
+    /// than this is mostly noise.
+    static let firstSample: TimeInterval = 0.25
+
     private var ticks: [CoreTicks] = []
     private var counters: (reading: NetworkCounters, at: Date)?
+    /// When the first load and speed can be read, once `baseline` has
+    /// taken the readings they are measured from.
+    private var firstSampleReady: Date?
     private var histories: [String: [Double]] = [:]
     private var processes: (list: TopProcesses, at: Date)?
     /// Each process's GPU time when last read, for the share since.
@@ -123,7 +131,27 @@ public actor BuiltInReadings {
         return reading.showing(target.index)
     }
 
+    /// Takes the readings the first load and speed are measured from, if
+    /// none has been taken, then waits until they are `firstSample` old.
+    /// Returns when the next reading is taken: `now`, or later after a wait.
+    func baseline(_ now: Date) async -> Date {
+        if ticks.isEmpty || counters == nil {
+            let at = Date()
+            if ticks.isEmpty { ticks = CoreTicks.read() }
+            if counters == nil { counters = (NetworkCounters.read(), at) }
+            firstSampleReady = at.addingTimeInterval(Self.firstSample)
+        }
+        guard let ready = firstSampleReady else { return now }
+        while ready.timeIntervalSinceNow > 0 {
+            guard (try? await Task.sleep(for: .seconds(ready.timeIntervalSinceNow))) != nil
+            else { break }
+        }
+        firstSampleReady = nil
+        return max(now, Date())
+    }
+
     func cpu(_ instance: WidgetInstance, now: Date) async -> WidgetOutput {
+        _ = await baseline(now)
         let current = CoreTicks.read()
         let loads = CoreTicks.loads(from: ticks.isEmpty ? current : ticks, to: current)
         ticks = current
@@ -171,6 +199,7 @@ public actor BuiltInReadings {
     }
 
     func network(_ instance: WidgetInstance, now: Date) async -> WidgetOutput {
+        let now = await baseline(now)
         let reading = NetworkCounters.read()
         var down = 0.0
         var up = 0.0

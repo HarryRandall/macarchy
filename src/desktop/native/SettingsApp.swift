@@ -10,6 +10,9 @@ struct SettingsApp: App {
         // Before anything reads settings, so a first launch after the move
         // to Application Support finds them there.
         LegacyLayout.migrate()
+        // First, so the bar is brought up to date while the rest of the app
+        // and its window are still being set up.
+        WidgetHostController.shared.start()
         let model = AppModel()
         _model = State(initialValue: model)
         // The widgets need the app running, so the first launch after setup
