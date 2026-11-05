@@ -1,19 +1,15 @@
 import Foundation
 
-/// Switches Spaces one at a time, always on to the latest Space asked for.
+/// Switches Spaces from `macarchy space` while the app is not switching
+/// (`SpaceSwitchRequest`), one at a time across processes, always on to the
+/// latest Space asked for.
 ///
-/// yabai cannot tell on macOS 27 when a switch is still sliding, so every
-/// `space --focus` waits behind the slides before it, about half a second
-/// each, and one for the Space a slide is leaving is refused as already
-/// current: pressing 4 and then 2 quickly from 2 stays on 4. So each press
-/// only records its Space. The press that holds the lock sends one switch,
-/// waits for it to land, then goes on to whichever Space was asked for last,
-/// skipping the ones pressed in between.
-///
-/// Each switch's work finishes before the next starts, and the lock is held
-/// until it has: InstantSpaceSwitcher's tool stays running for 0.3 s while
-/// its swipe settles, and a second one running then takes the first's
-/// swipes for its own, which overshoots and can leave the Dock black.
+/// Each press is its own process. So each only records its Space, and the
+/// one that holds the lock switches with a `SpaceSwitcher` of its own,
+/// waits for the switch to land, then goes on to whichever Space was asked
+/// for last, skipping the ones pressed in between. A switch sent while
+/// another is still landing works it out from a Space the window server
+/// reports mid-swipe and overshoots, so each finishes before the next.
 public struct SpaceSwitch: Sendable {
     /// Space ids by index, as yabai numbers them.
     var spaces: @Sendable () async -> [Int: Int]
@@ -27,25 +23,28 @@ public struct SpaceSwitch: Sendable {
     /// Pauses before a switch that has not landed is given up on, as for a
     /// Space that does not exist or while Mission Control is open.
     var patience = 150
+    /// The focused window, moving it and focusing it again, for `move(to:)`.
+    var focusedWindow: @Sendable () async -> Int? = { nil }
+    var moveWindow: @Sendable (_ window: Int, _ space: Int) async -> Bool = { _, _ in false }
+    var focusWindow: @Sendable (Int) async -> Void = { _ in }
 
     public static var live: SpaceSwitch {
         let integrations = Integrations()
+        let desktop = SpaceSwitcher.Desktop.live(integrations: integrations)
         return SpaceSwitch(
             spaces: {
                 if let ids = SpacesReading.indicesFromWindowServer() { return ids }
                 return await indices(integrations)
             },
-            showing: { SpacesReading.currentSpaceIDs() ?? [] },
+            showing: desktop.showing,
             focus: { index in
-                Task {
-                    guard await !InstantSpaceSwitcher.focus(index, integrations: integrations)
-                    else { return }
-                    _ = await integrations.execute(
-                        Paths.yabai, ["-m", "space", "--focus", String(index)])
-                }
+                Task { await SpaceSwitcher(desktop: desktop).go(to: index) }
             },
-            pause: { try? await Task.sleep(for: .milliseconds(10)) },
-            directory: Paths.stateDirectory)
+            pause: desktop.pause,
+            directory: Paths.stateDirectory,
+            focusedWindow: desktop.focusedWindow,
+            moveWindow: desktop.moveWindow,
+            focusWindow: desktop.focusWindow)
     }
 
     /// The Space last pressed, which the refocus signals also read.
@@ -57,8 +56,7 @@ public struct SpaceSwitch: Sendable {
         record(index)
         guard var held = take() else { return }
         var wanted = index
-        // A Space that does not exist is left alone, as yabai does;
-        // InstantSpaceSwitcher would go to the last one instead.
+        // A Space that does not exist is left alone, as yabai does.
         let ids = await spaces()
         while true {
             while let id = ids[wanted] {
@@ -75,6 +73,21 @@ public struct SpaceSwitch: Sendable {
             held = again
             wanted = next
         }
+    }
+
+    /// Moves the focused window to Space `index` and follows it there. The
+    /// window moves at once, whoever is switching; it is focused again only
+    /// when this process switched and nothing was pressed since.
+    public func move(to index: Int) async {
+        var window: Int?
+        if let focused = await focusedWindow(), await moveWindow(focused, index) {
+            window = focused
+        }
+        await go(to: index)
+        guard let window, recorded() == index, let id = await spaces()[index],
+            showing().contains(id)
+        else { return }
+        await focusWindow(window)
     }
 
     /// The Space pressed since `wanted`, when there is one not showing yet.

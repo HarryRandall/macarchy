@@ -15,6 +15,7 @@ struct SpaceSwitchTests {
         private var looksSoFar = 0
         private var presses: [Int: Int]
         private(set) var sent: [Int] = []
+        private(set) var windows: [String] = []
 
         init(on index: Int, presses: [Int: Int] = [:]) {
             current = index * 10
@@ -22,6 +23,7 @@ struct SpaceSwitchTests {
         }
 
         func showing() -> Set<Int> { lock.withLock { [current] } }
+        func record(_ change: String) { lock.withLock { windows.append(change) } }
         var space: Int { lock.withLock { current / 10 } }
 
         func focus(_ index: Int) {
@@ -78,15 +80,28 @@ struct SpaceSwitchTests {
                     await switcher(desk, in: directory, running: running).go(to: press)
                 }
             },
-            directory: directory, patience: 20)
+            directory: directory, patience: 20,
+            focusedWindow: { 7 },
+            moveWindow: { window, space in
+                desk.record("move \(window) to \(space)")
+                return true
+            },
+            focusWindow: { desk.record("focus \($0)") })
     }
 
-    private func run(_ desk: Desk, going to: Int, running: Running? = nil) async throws {
+    private func run(
+        _ desk: Desk, going to: Int, moving: Bool = false, running: Running? = nil
+    ) async throws {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appending(path: "macarchy-space-switch-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        await Self.switcher(desk, in: directory, running: running).go(to: to)
+        let switcher = Self.switcher(desk, in: directory, running: running)
+        if moving {
+            await switcher.move(to: to)
+        } else {
+            await switcher.go(to: to)
+        }
     }
 
     /// A second InstantSpaceSwitcher running while the first settles takes
@@ -125,5 +140,23 @@ struct SpaceSwitchTests {
         try await run(desk, going: 9)
         #expect(desk.sent.isEmpty)
         #expect(desk.space == 1)
+    }
+
+    @Test("moving a window here moves it, switches and focuses it once it lands")
+    func moveFollows() async throws {
+        let desk = Desk(on: 1)
+        try await run(desk, going: 3, moving: true)
+        #expect(desk.windows == ["move 7 to 3", "focus 7"])
+        #expect(desk.sent == [3])
+        #expect(desk.space == 3)
+    }
+
+    @Test("a press made during the move's switch leaves the window unfocused")
+    func moveThenPress() async throws {
+        let desk = Desk(on: 1, presses: [1: 2])
+        try await run(desk, going: 3, moving: true)
+        #expect(desk.windows == ["move 7 to 3"])
+        #expect(desk.sent == [3, 2])
+        #expect(desk.space == 2)
     }
 }

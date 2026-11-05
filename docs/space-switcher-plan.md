@@ -1,7 +1,9 @@
 # Plan: built-in instant Space switching
 
-Status: steps 1 and 2 built on `feat/space-gesture` (5 November 2026); the
-rest proposed.
+Status: steps 1 to 3 built on `feat/space-gesture` (5 November 2026); the
+rest proposed. Do not install a build between steps 3 and 4: while the ISS
+app runs with swipe override, it would take the app's swipes for its own,
+as it does ISSCli's today.
 
 ## Why
 
@@ -151,8 +153,13 @@ Each step is its own commit, in an isolated worktree.
    overlay, no permission, a failed swipe, a missing Space, another display
    and a switch that never lands. Nothing calls it yet; `SpaceSwitch` and its
    tests stay until step 3 replaces them.
-3. **App service and CLI hand-off.** Switcher lock, notification, `--move`,
-   in-process fallback. Remove the ISSCli path from `SpaceSwitch`.
+3. **App service and CLI hand-off.** Done. `SpaceSwitcherController` in the
+   app holds `state/space-switcher.lock` while it may post events and takes
+   `SpaceSwitchRequest` notices; `macarchy space N [--move]` hands over or
+   switches itself through `SpaceSwitch`, which now switches with a
+   `SpaceSwitcher` instead of ISSCli and can move a window too.
+   `PresenceLock` is shared with the widget host's lock. An isolated run
+   leaves every switch to its fake yabai.
 4. **Permissions, Health, setup.** Accessibility request, Health row, ISS
    retired.
 5. **Shortcuts and docs.** Defaults, Shortcuts page parsing, CONTRIBUTING,

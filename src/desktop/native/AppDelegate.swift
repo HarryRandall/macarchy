@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         repairAppLink()
         WidgetHostController.shared.start()
         WidgetMenuController.shared.start()
+        SpaceSwitcherController.shared.start()
         Self.startInstantSpaceSwitcher()
         Self.showMainWindow()
         #if DEBUG

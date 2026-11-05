@@ -8,9 +8,11 @@ extension SpaceSwitcher.Desktop {
     public static func live(integrations: Integrations = Integrations()) -> Self {
         let yabai = Paths.yabai
         return Self(
-            layout: { await layout(integrations) },
+            // An isolated run must not judge by the real desktop's Spaces, so
+            // without a layout every switch goes to its fake yabai.
+            layout: { DesktopIsolation.isActive ? nil : await layout(integrations) },
             showing: { SpacesReading.currentSpaceIDs() ?? [] },
-            gesturesAllowed: { !DesktopIsolation.isActive && sg_can_post_events() },
+            gesturesAllowed: { SpaceSwitcher.gesturesAllowed },
             overlayOpen: { sg_overlay_open() },
             swipe: { direction, steps in
                 guard !DesktopIsolation.isActive, steps > 0 else { return false }
@@ -86,6 +88,12 @@ extension SpaceSwitcher.Desktop {
 }
 
 extension SpaceSwitcher {
+    /// Whether this process may send the instant swipe. Never in an isolated
+    /// run.
+    public static var gesturesAllowed: Bool {
+        !DesktopIsolation.isActive && sg_can_post_events()
+    }
+
     /// A switcher for the real desktop.
     public static func live(integrations: Integrations = Integrations()) -> SpaceSwitcher {
         SpaceSwitcher(desktop: .live(integrations: integrations))

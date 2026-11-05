@@ -1,4 +1,3 @@
-import Darwin
 import Foundation
 
 /// Whether a widget host is running for this home. The app, or
@@ -11,33 +10,15 @@ public enum WidgetHostPresence {
         Paths.stateDirectory.appending(path: "widget-host.lock")
     }
 
-    /// Takes the lock and returns its descriptor, to keep open for the life
-    /// of the host. Nil before setup, so launching never creates Macarchy's
-    /// folder, or when another host already holds it.
+    /// Takes the lock, to keep open for the life of the host; see
+    /// `PresenceLock.hold`.
     public static func hold(at url: URL = defaultURL) -> Int32? {
-        let root = url.deletingLastPathComponent().deletingLastPathComponent()
-        guard FileManager.default.fileExists(atPath: root.path),
-            (try? FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(), withIntermediateDirectories: true)) != nil
-        else { return nil }
-        let descriptor = open(url.path, O_CREAT | O_RDWR, 0o600)
-        guard descriptor >= 0 else { return nil }
-        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
-            close(descriptor)
-            return nil
-        }
-        return descriptor
+        PresenceLock.hold(at: url)
     }
 
-    /// Whether a host holds the lock now. Never creates the file: with no
-    /// lock file, no host has run.
+    /// Whether a host holds the lock now.
     public static func isHeld(at url: URL = defaultURL) -> Bool {
-        let descriptor = open(url.path, O_RDONLY)
-        guard descriptor >= 0 else { return false }
-        defer { close(descriptor) }
-        guard flock(descriptor, LOCK_SH | LOCK_NB) == 0 else { return errno == EWOULDBLOCK }
-        flock(descriptor, LOCK_UN)
-        return false
+        PresenceLock.isHeld(at: url)
     }
 }
 
