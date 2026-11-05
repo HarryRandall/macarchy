@@ -42,7 +42,7 @@ public struct SpaceSwitch: Sendable {
             },
             pause: desktop.pause,
             directory: Paths.stateDirectory,
-            focusedWindow: desktop.focusedWindow,
+            focusedWindow: { await desktop.focusedWindow()?.id },
             moveWindow: desktop.moveWindow,
             focusWindow: desktop.focusWindow)
     }

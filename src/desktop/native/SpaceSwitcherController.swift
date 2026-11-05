@@ -12,7 +12,11 @@ import Macarchy
 final class SpaceSwitcherController {
     static let shared = SpaceSwitcherController()
 
-    private let switcher = SpaceSwitcher.live()
+    private let switcher = SpaceSwitcher.live { window, space in
+        await MainActor.run {
+            WidgetHostController.shared.windowMoved(window.app, from: window.space, to: space)
+        }
+    }
     private var presence: Int32?
     private var check: Timer?
     private var observer: NSObjectProtocol?

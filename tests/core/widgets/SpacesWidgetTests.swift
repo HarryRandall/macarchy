@@ -45,6 +45,17 @@ struct SpacesWidgetTests {
         #expect(try reading.showing(9) == reading)
     }
 
+    @Test("a moved window's app leaves its Space and shows last on the new one")
+    func moving() throws {
+        let moved = try reading.moving("Safari", from: 1, to: 2)
+        #expect(moved.spaces[0].apps == ["Code"])
+        #expect(moved.spaces[1].apps == ["Safari"])
+        let reading = try reading
+        #expect(reading.moving("Safari", from: 1, to: 1) == reading)
+        #expect(reading.moving("Mail", from: 1, to: 2) == reading)
+        #expect(reading.moving("Safari", from: 1, to: 9) == reading)
+    }
+
     @Test("apps get their glyph, by name, then by prefix, then the default")
     func glyphs() throws {
         #expect(icons.glyph(for: "Safari") == ":safari:")

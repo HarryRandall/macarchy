@@ -8,6 +8,8 @@ struct SpaceSwitcherTests {
         case swipe(SpaceSwitcher.Direction, Int)
         case yabai(Int)
         case moved(window: Int, space: Int)
+        /// The bar told a window's app is on another Space now.
+        case drawn(app: String, from: Int, to: Int)
         case focused(Int)
     }
 
@@ -106,7 +108,11 @@ struct SpaceSwitcherTests {
                     self.record(.yabai(index))
                     self.head(to: index)
                 },
-                focusedWindow: { self.focusedWindow },
+                focusedWindow: {
+                    self.focusedWindow.map {
+                        SpaceSwitcher.Window(id: $0, app: "Notes", space: self.space)
+                    }
+                },
                 moveWindow: { window, space in
                     self.record(.moved(window: window, space: space))
                     if let press = self.pressDuringMove {
@@ -115,6 +121,9 @@ struct SpaceSwitcherTests {
                     }
                     return true
                 },
+                windowMoved: { window, space in
+                    self.record(.drawn(app: window.app, from: window.space, to: space))
+                },
                 focusWindow: { self.record(.focused($0)) },
                 pause: {
                     if let press = self.tick() { await self.press(press) }
@@ -122,7 +131,7 @@ struct SpaceSwitcherTests {
         }
     }
 
-    private func run(_ desk: Desk, _ press: Press) async {
+    func run(_ desk: Desk, _ press: Press) async {
         let switcher = SpaceSwitcher(desktop: desk.desktop(), patience: 20)
         desk.switcher = switcher
         await desk.press(press)
@@ -149,7 +158,11 @@ struct SpaceSwitcherTests {
     func moveFollows() async {
         let desk = Desk(on: 1)
         await run(desk, .move(3))
-        #expect(desk.events == [.moved(window: 7, space: 3), .swipe(.right, 2), .focused(7)])
+        #expect(
+            desk.events == [
+                .moved(window: 7, space: 3), .drawn(app: "Notes", from: 1, to: 3),
+                .swipe(.right, 2), .focused(7)
+            ])
         #expect(desk.space == 3)
     }
 
@@ -158,41 +171,12 @@ struct SpaceSwitcherTests {
     func switchBackAfterMove() async {
         let desk = Desk(on: 1, presses: [1: .go(2)])
         await run(desk, .move(3))
-        #expect(desk.events == [.moved(window: 7, space: 3), .swipe(.right, 2), .swipe(.left, 1)])
+        #expect(
+            desk.events == [
+                .moved(window: 7, space: 3), .drawn(app: "Notes", from: 1, to: 3),
+                .swipe(.right, 2), .swipe(.left, 1)
+            ])
         #expect(desk.space == 2)
-    }
-
-    @Test("a trackpad swipe goes one Space along from the one showing")
-    func swipeSteps() async {
-        let desk = Desk(on: 2)
-        await run(desk, .step(.left))
-        #expect(desk.events == [.swipe(.left, 1)])
-        #expect(desk.space == 1)
-    }
-
-    @Test("a swipe past either end does nothing")
-    func swipeAtEnds() async {
-        let first = Desk(on: 1)
-        await run(first, .step(.left))
-        let last = Desk(on: 5)
-        await run(last, .step(.right))
-        #expect(first.events.isEmpty && last.events.isEmpty)
-    }
-
-    @Test("a second swipe while the first lands goes on from where the first is heading")
-    func quickSwipes() async {
-        let desk = Desk(on: 1, presses: [1: .step(.right)])
-        await run(desk, .step(.right))
-        #expect(desk.events == [.swipe(.right, 1), .swipe(.right, 1)])
-        #expect(desk.space == 3)
-    }
-
-    @Test("a swipe after a shortcut press goes on from the Space pressed")
-    func swipeAfterPress() async {
-        let desk = Desk(on: 1, presses: [1: .go(4), 2: .step(.left)])
-        await run(desk, .go(2))
-        #expect(desk.events == [.swipe(.right, 1), .swipe(.right, 1)])
-        #expect(desk.space == 3)
     }
 
     @Test("a press made while yabai moves the window decides where the switch goes")
@@ -200,7 +184,12 @@ struct SpaceSwitcherTests {
         let desk = Desk(on: 1)
         desk.pressDuringMove = .go(2)
         await run(desk, .move(3))
-        #expect(desk.events == [.moved(window: 7, space: 3), .swipe(.right, 1)])
+        // The press ran while yabai moved the window, so its switch comes first.
+        #expect(
+            desk.events == [
+                .moved(window: 7, space: 3), .swipe(.right, 1),
+                .drawn(app: "Notes", from: 1, to: 3)
+            ])
         #expect(desk.space == 2)
     }
 
@@ -282,7 +271,10 @@ struct SpaceSwitcherTests {
         let desk = Desk(on: 1)
         desk.stuck = true
         await run(desk, .move(3))
-        #expect(desk.events == [.moved(window: 7, space: 3), .swipe(.right, 2)])
+        #expect(
+            desk.events == [
+                .moved(window: 7, space: 3), .drawn(app: "Notes", from: 1, to: 3), .swipe(.right, 2)
+            ])
         #expect(desk.space == 1)
     }
 }

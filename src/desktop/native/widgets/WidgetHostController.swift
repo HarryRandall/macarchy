@@ -126,6 +126,15 @@ final class WidgetHostController {
         }
     }
 
+    /// A window moved to another Space: draw its app there now, from what
+    /// was last read, rather than after yabai has been read again.
+    func windowMoved(_ app: String, from: Int, to: Int) {
+        Task { [host] in
+            await BuiltInReadings.shared.expect(moving: app, from: from, to: to)
+            await host.trigger("space_changed")
+        }
+    }
+
     private var pending: Set<String> = []
 
     private func coalesce(_ event: String) {

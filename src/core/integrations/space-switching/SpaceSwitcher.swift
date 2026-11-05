@@ -34,6 +34,20 @@ public actor SpaceSwitcher {
         }
     }
 
+    /// The focused window, as yabai reports it.
+    public struct Window: Equatable, Sendable {
+        public var id: Int
+        public var app: String
+        /// The index of the Space it is on.
+        public var space: Int
+
+        public init(id: Int, app: String, space: Int) {
+            self.id = id
+            self.app = app
+            self.space = space
+        }
+    }
+
     /// Everything that reads or changes the desktop, so tests use fakes.
     public struct Desktop: Sendable {
         var layout: @Sendable () async -> Layout?
@@ -45,9 +59,12 @@ public actor SpaceSwitcher {
         /// Sends that many swipes; false when they could not all be made.
         var swipe: @Sendable (Direction, Int) -> Bool
         var yabaiFocus: @Sendable (Int) async -> Void
-        var focusedWindow: @Sendable () async -> Int?
+        var focusedWindow: @Sendable () async -> Window?
         /// Moves a window to the Space with that index; false when yabai refused.
         var moveWindow: @Sendable (_ window: Int, _ space: Int) async -> Bool
+        /// Told a window has moved, so the bar can show it on its new Space
+        /// straight away instead of waiting to read yabai again.
+        var windowMoved: @Sendable (_ window: Window, _ space: Int) async -> Void = { _, _ in }
         var focusWindow: @Sendable (Int) async -> Void
         /// A short wait between looks at whether a switch has landed.
         var pause: @Sendable () async -> Void
@@ -112,9 +129,10 @@ public actor SpaceSwitcher {
         let ticket = tickets
         var window: Int?
         if moving, let focused = await desktop.focusedWindow(),
-            await desktop.moveWindow(focused, index)
+            await desktop.moveWindow(focused.id, index)
         {
-            window = focused
+            window = focused.id
+            if focused.space != index { await desktop.windowMoved(focused, index) }
         }
         guard ticket > newest else { return }
         newest = ticket

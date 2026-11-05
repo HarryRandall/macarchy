@@ -55,6 +55,21 @@ public actor BuiltInReadings {
         expected = Expected(index: index, at: Date())
     }
 
+    /// A window of `app` has moved from Space `from` to Space `to`. The next
+    /// update draws its app there from what was last read, rather than
+    /// waiting on yabai, which answers slowly mid-switch; later ones read the
+    /// windows again and confirm it.
+    public func expect(moving app: String, from: Int, to: Int) {
+        guard let last = lastSpaces else { return }
+        lastSpaces = last.moving(app, from: from, to: to)
+        if expected != nil {
+            expected?.shown = false
+        } else {
+            redrawLast = true
+        }
+    }
+    private var redrawLast = false
+
     /// macOS has switched Space, whoever asked, as a trackpad swipe or
     /// Mission Control do. The next update draws the Space showing
     /// from the window server and the windows last read, since yabai
@@ -115,7 +130,12 @@ public actor BuiltInReadings {
         if let target = expected, Date().timeIntervalSince(target.at) > 1.5 { expected = nil }
         if let target = expected, !target.shown, let last = lastSpaces {
             expected?.shown = true
+            redrawLast = false
             return last.showing(target.index)
+        }
+        if redrawLast, let last = lastSpaces {
+            redrawLast = false
+            return last
         }
         if switched, let last = lastSpaces, let current = SpacesReading.currentSpaceIDs() {
             switched = false

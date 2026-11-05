@@ -49,6 +49,21 @@ struct SpacesReading: Equatable, Sendable {
         return result
     }
 
+    /// The reading with one of `app`'s windows moved from Space `from` to
+    /// Space `to`, shown last there. Unchanged when either Space is missing
+    /// or `from` shows no window of `app`.
+    func moving(_ app: String, from: Int, to: Int) -> SpacesReading {
+        guard from != to,
+            let source = spaces.firstIndex(where: { $0.index == from }),
+            let target = spaces.firstIndex(where: { $0.index == to }),
+            let window = spaces[source].apps.lastIndex(of: app)
+        else { return self }
+        var result = self
+        result.spaces[source].apps.remove(at: window)
+        result.spaces[target].apps.append(app)
+        return result
+    }
+
     /// The reading with Space `index` as the current one on its display.
     func showing(_ index: Int) -> SpacesReading {
         guard let display = spaces.first(where: { $0.index == index })?.display else { return self }

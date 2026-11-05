@@ -6,7 +6,11 @@ import SpaceGesture
 extension SpaceSwitcher.Desktop {
     /// The real desktop. An isolated run never posts events, and yabai's
     /// commands go through `Integrations`, which refuses them there too.
-    public static func live(integrations: Integrations = Integrations()) -> Self {
+    /// `windowMoved` hears each window a move sends to another Space.
+    public static func live(
+        integrations: Integrations = Integrations(),
+        windowMoved: @escaping @Sendable (SpaceSwitcher.Window, Int) async -> Void = { _, _ in }
+    ) -> Self {
         let yabai = Paths.yabai
         return Self(
             // An isolated run must not judge by the real desktop's Spaces, so
@@ -25,18 +29,19 @@ extension SpaceSwitcher.Desktop {
             },
             focusedWindow: {
                 let result = await integrations.execute(
-                    yabai, ["-m", "query", "--windows", "id", "--window"])
+                    yabai, ["-m", "query", "--windows", "id,app,space", "--window"])
                 guard result.ok,
                     let window = try? JSONDecoder().decode(
                         Window.self, from: Data(result.stdout.utf8))
                 else { return nil }
-                return window.id
+                return SpaceSwitcher.Window(id: window.id, app: window.app, space: window.space)
             },
             moveWindow: { window, space in
                 await integrations.execute(
                     yabai, ["-m", "window", String(window), "--space", String(space)]
                 ).ok
             },
+            windowMoved: windowMoved,
             focusWindow: { window in
                 _ = await integrations.execute(yabai, ["-m", "window", "--focus", String(window)])
             },
@@ -45,6 +50,8 @@ extension SpaceSwitcher.Desktop {
 
     private struct Window: Decodable {
         let id: Int
+        let app: String
+        let space: Int
     }
 
     private struct Space: Decodable {
@@ -108,7 +115,10 @@ extension SpaceSwitcher {
     }
 
     /// A switcher for the real desktop.
-    public static func live(integrations: Integrations = Integrations()) -> SpaceSwitcher {
-        SpaceSwitcher(desktop: .live(integrations: integrations))
+    public static func live(
+        integrations: Integrations = Integrations(),
+        windowMoved: @escaping @Sendable (Window, Int) async -> Void = { _, _ in }
+    ) -> SpaceSwitcher {
+        SpaceSwitcher(desktop: .live(integrations: integrations, windowMoved: windowMoved))
     }
 }
