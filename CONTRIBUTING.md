@@ -29,11 +29,12 @@ testing the active desktop:
 
 ```sh
 ./tools/install.sh
-open /Applications/Macarchy.app
 ```
 
-The installer copies the app to `/Applications`, runs setup and prints a health
-check. Setup backs up existing configuration before changing it. To review the
+The installer copies the app to `/Applications`, runs setup, opens the app and
+prints a health check. The app opens as soon as setup has restarted the tools,
+so the bar is only briefly without it, and yabai is already running to manage
+its window. Setup backs up existing configuration before changing it. To review the
 setup plan interactively instead, copy the built app to Applications and open it.
 
 Local builds use ad-hoc signing by default. Rebuilding can reset macOS permissions.
