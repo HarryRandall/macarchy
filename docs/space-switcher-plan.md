@@ -1,7 +1,7 @@
 # Plan: built-in instant Space switching
 
-Status: step 1 built on `feat/space-gesture` (5 November 2026); the rest
-proposed.
+Status: steps 1 and 2 built on `feat/space-gesture` (5 November 2026); the
+rest proposed.
 
 ## Why
 
@@ -145,9 +145,12 @@ Each step is its own commit, in an isolated worktree.
 1. **Vendor the core.** Done. `SpaceGesture`, trimmed, with tests for the
    swipe progress and sign, both event forms, the payload's layout and that
    macOS keeps the appended field when it reads the event back.
-2. **Switcher in core.** Add `SpaceSwitcher` with injected effects; move the
-   burst and landing tests over from `SpaceSwitchTests`, and add tests for move
-   then a quick switch back, an overlay, a missing Space and another display.
+2. **Switcher in core.** Done. `SpaceSwitcher` in
+   `src/core/integrations/space-switching`, with its live desktop, and tests
+   for bursts, move then a quick switch back, a press during the move, an
+   overlay, no permission, a failed swipe, a missing Space, another display
+   and a switch that never lands. Nothing calls it yet; `SpaceSwitch` and its
+   tests stay until step 3 replaces them.
 3. **App service and CLI hand-off.** Switcher lock, notification, `--move`,
    in-process fallback. Remove the ISSCli path from `SpaceSwitch`.
 4. **Permissions, Health, setup.** Accessibility request, Health row, ISS

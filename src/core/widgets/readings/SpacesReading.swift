@@ -70,6 +70,22 @@ struct SpacesReading: Equatable, Sendable {
         return ids.isEmpty ? nil : Set(ids)
     }
 
+    /// Each display's Space ids left to right, with the window server's
+    /// identifier for the display: its UUID, or "Main" while displays share
+    /// Spaces. Nil when the window server cannot be asked.
+    static func displaySpaces() -> [(identifier: String, ids: [Int])]? {
+        guard let displays = copyManagedDisplaySpaces(mainConnection()) as? [[String: Any]],
+            !displays.isEmpty
+        else { return nil }
+        return displays.map { display in
+            let spaces = display["Spaces"] as? [[String: Any]] ?? []
+            return (
+                display["Display Identifier"] as? String ?? "",
+                spaces.compactMap { $0["ManagedSpaceID"] as? Int }
+            )
+        }
+    }
+
     /// Space ids by index, numbered as yabai does, from the window server
     /// at once rather than from yabai, which answers slowly mid-switch. Nil
     /// with several displays, whose order yabai decides.
