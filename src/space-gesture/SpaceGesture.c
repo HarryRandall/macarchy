@@ -8,11 +8,6 @@
 #include <mach/mach_time.h>
 #include <stdatomic.h>
 
-// See IOHIDEventType in IOHIDFamily.
-static const uint32_t kIOHIDEventTypeDockSwipe = 23;
-static const int64_t kCGSEventGesture = 29;
-static const int64_t kCGSEventDockControl = 30;
-static const int64_t kGestureMotionHorizontal = 1;
 
 // Upstream's default gesture speed, multiplied by the steps of a jump.
 static const double kLegacySpeed = 2000.0;
@@ -84,10 +79,10 @@ static CGEventRef copyModernSwipe(SGPhase phase, SGDirection direction, bool nat
     if (!event) {
         return NULL;
     }
-    CGEventSetIntegerValueField(event, kSGFieldEventType, kCGSEventDockControl);
-    CGEventSetIntegerValueField(event, kSGFieldGestureHIDType, kIOHIDEventTypeDockSwipe);
+    CGEventSetIntegerValueField(event, kSGFieldEventType, kSGEventDockControl);
+    CGEventSetIntegerValueField(event, kSGFieldGestureHIDType, kSGHIDDockSwipe);
     CGEventSetIntegerValueField(event, kSGFieldGesturePhase, phase);
-    CGEventSetIntegerValueField(event, kSGFieldSwipeMotion, kGestureMotionHorizontal);
+    CGEventSetIntegerValueField(event, kSGFieldSwipeMotion, kSGMotionHorizontal);
     // Full progress switches too, but the previous Space flashes first.
     CGEventSetDoubleValueField(event, kSGFieldSwipeProgress, sign * kTinyProgress);
     // Fields a real trackpad swipe carries, from upstream's traces.
@@ -110,11 +105,11 @@ static CGEventRef copyLegacySwipe(SGPhase phase, SGDirection direction, double v
         return NULL;
     }
     const double signedVelocity = direction == SGDirectionRight ? velocity : -velocity;
-    CGEventSetIntegerValueField(event, kSGFieldEventType, kCGSEventDockControl);
-    CGEventSetIntegerValueField(event, kSGFieldGestureHIDType, kIOHIDEventTypeDockSwipe);
+    CGEventSetIntegerValueField(event, kSGFieldEventType, kSGEventDockControl);
+    CGEventSetIntegerValueField(event, kSGFieldGestureHIDType, kSGHIDDockSwipe);
     CGEventSetIntegerValueField(event, kSGFieldGesturePhase, phase);
     CGEventSetDoubleValueField(event, kSGFieldSwipeProgress, sg_swipe_progress(direction));
-    CGEventSetIntegerValueField(event, kSGFieldSwipeMotion, kGestureMotionHorizontal);
+    CGEventSetIntegerValueField(event, kSGFieldSwipeMotion, kSGMotionHorizontal);
     CGEventSetDoubleValueField(event, kSGFieldSwipeVelocityX, signedVelocity);
     CGEventSetDoubleValueField(event, kSGFieldSwipeVelocityY, signedVelocity);
     return event;
@@ -141,8 +136,9 @@ static bool postSwipe(SGPhase phase, SGDirection direction, bool modern, bool na
             CFRelease(event);
             return false;
         }
-        CGEventSetIntegerValueField(companion, kSGFieldEventType, kCGSEventGesture);
+        CGEventSetIntegerValueField(companion, kSGFieldEventType, kSGEventGesture);
     }
+    sg_note_own_events(companion ? 2 : 1);
     CGEventPost(kCGSessionEventTap, event);
     CFRelease(event);
     if (companion) {

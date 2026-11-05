@@ -22,6 +22,8 @@ struct AdvancedState: Codable, Sendable {
     var wakeHelpers: Bool
     var backupsDirectory: String
     var loginItem: LoginItem.State
+    /// Whether the trackpad's sideways swipe switches Spaces at once.
+    var trackpadSwipes: Bool
     /// Tools Macarchy installed with Homebrew and still there, which
     /// restoring may also remove.
     var removableTools: [RemovableTool]
@@ -61,6 +63,7 @@ struct RebuildParams: Codable, Sendable { var file: AdvancedConfiguration.File }
 struct SnapshotParams: Codable, Sendable { var id: String }
 struct RebuildResult: Codable, Sendable { var outcome: String }
 struct LoginItemParams: Codable, Sendable { var enabled: Bool }
+struct TrackpadSwipesParams: Codable, Sendable { var enabled: Bool }
 struct SetupParams: Codable, Sendable {
     enum Existing: String, Codable, Sendable { case keep, replace }
     /// The tools to configure; the others are left alone.

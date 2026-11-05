@@ -239,7 +239,15 @@ The app runs it (`SpaceSwitcherController`) and holds
 otherwise it switches itself through `SpaceSwitch`, which coordinates
 presses across processes with `state/space-switch.lock` and the
 `space-target` file. Health reads the same lock, so the app and the command
-agree. An isolated run never posts events and leaves every switch to its
+agree.
+
+With `trackpadSwipes` on in settings, the app also runs an event tap
+(`TrackpadSwipes`, `SwipeOverride.c`) that catches the trackpad's sideways
+Dock swipe and calls `SpaceSwitcher.step`, holding the rest of the gesture
+back so the Dock never animates it. On macOS 27 the app's own swipes come
+back looking like the trackpad's, so it counts them as it posts them and
+lets that many through. Only the app catches swipes; while it is closed they
+slide as macOS normally does. An isolated run never posts events and leaves every switch to its
 fake yabai.
 
 ## Persistence

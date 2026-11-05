@@ -120,6 +120,20 @@ struct SettingsTests {
         #expect(try message(#"{"schema":1,"currentTheme":"../x"}"#).contains("settings.json: "))
     }
 
+    /// Instant trackpad swipes are off until turned on, and saved once they are.
+    @Test func trackpadSwipesSave() throws {
+        let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appending(path: "settings.json")
+        try #"{"schema":1}"#.write(to: url, atomically: true, encoding: .utf8)
+        let store = SettingsStore(url: url)
+        #expect(try store.read().trackpadSwipes == nil)
+        try store.update { $0.trackpadSwipes = true }
+        #expect(try store.read().trackpadSwipes == true)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains(#""trackpadSwipes" : true"#))
+        try store.update { $0.trackpadSwipes = false }
+        #expect(try store.read().trackpadSwipes == false)
+    }
+
     /// Keys a newer version added survive a write by this one.
     @Test func unknownKeysSurviveWrites() throws {
         let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }

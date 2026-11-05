@@ -62,6 +62,8 @@ public actor SpaceSwitcher {
     private var wanted: Int?
     /// The window to focus once `wanted` shows, when it came from a move.
     private var follow: Int?
+    /// The Space a switch has been sent to and not yet landed on.
+    private var heading: Int?
     private var tickets = 0
     /// The ticket of the latest request applied; older ones finishing late
     /// are ignored.
@@ -84,6 +86,25 @@ public actor SpaceSwitcher {
     /// changes.
     public func move(to index: Int) async {
         await request(index, moving: true)
+    }
+
+    /// Switches one Space left or right on the pointer's display, as a
+    /// trackpad swipe does, from where switching is heading: two quick swipes
+    /// go two Spaces. At either end nothing happens.
+    public func step(_ direction: Direction) async {
+        guard let layout = await desktop.layout() else { return }
+        let ids = layout.pointerDisplay
+        let showing = desktop.showing()
+        let pending = [wanted, heading].compactMap { $0 }.compactMap { layout.ids[$0] }
+        guard
+            let from = pending.compactMap(ids.firstIndex(of:)).first
+                ?? ids.firstIndex(where: showing.contains)
+        else { return }
+        let to = direction == .right ? from + 1 : from - 1
+        guard ids.indices.contains(to),
+            let index = layout.ids.first(where: { $0.value == ids[to] })?.key
+        else { return }
+        await request(index, moving: false)
     }
 
     private func request(_ index: Int, moving: Bool) async {
@@ -119,8 +140,11 @@ public actor SpaceSwitcher {
             // A Space that does not exist is left alone, as yabai does.
             guard let id = layout.ids[index] else { continue }
             if !desktop.showing().contains(id) {
+                heading = index
                 await send(index, id: id, layout: layout)
-                guard await landed(on: id) else { continue }
+                let arrived = await landed(on: id)
+                heading = nil
+                guard arrived else { continue }
             }
             if let window, wanted == nil {
                 await desktop.focusWindow(window)

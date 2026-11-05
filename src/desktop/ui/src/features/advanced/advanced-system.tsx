@@ -1,4 +1,4 @@
-import { Power, RotateCcw, SquareTerminal, Wand } from "lucide-react";
+import { Hand, Power, RotateCcw, SquareTerminal, Wand } from "lucide-react";
 import { useState } from "react";
 
 import type { AdvancedState, SetupReport } from "~/bridge/protocol";
@@ -116,6 +116,39 @@ export function LoginCard({
               onCheckedChange={onChange}
             />
           </>
+        }
+      />
+    </Card>
+  );
+}
+
+/** Instant trackpad swipes between desktops, which are off unless turned on. */
+export function TrackpadSwipesCard({
+  enabled,
+  busy,
+  onChange,
+}: {
+  enabled: boolean;
+  busy: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <Card>
+      <Row
+        title="Instant trackpad swipes"
+        help="Swiping between desktops with three fingers switches at once instead of sliding. Swipes in Mission Control slide as usual. Needs Macarchy allowed under Accessibility, and only works while Macarchy is open."
+        leading={
+          <IconTile variant="outline">
+            <Hand strokeWidth={1.75} />
+          </IconTile>
+        }
+        control={
+          <Switch
+            aria-label="Switch desktops at once when swiping"
+            checked={enabled}
+            disabled={busy}
+            onCheckedChange={onChange}
+          />
         }
       />
     </Card>

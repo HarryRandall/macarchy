@@ -399,6 +399,7 @@ const advanced: AdvancedState = {
   wakeHelpers: true,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   loginItem: "on",
+  trackpadSwipes: false,
   removableTools: [
     { id: "sketchybar", name: "SketchyBar" },
     { id: "neovim", name: "Neovim" },
@@ -420,6 +421,7 @@ const advancedBeforeSetup: AdvancedState = {
   wakeHelpers: false,
   backupsDirectory: "~/Library/Application Support/Macarchy/backups",
   loginItem: "off",
+  trackpadSwipes: false,
   removableTools: [],
 };
 
@@ -989,6 +991,7 @@ export const methodFixtures: MethodFixtures = {
         addition: "unavailable",
         additionExplanation: "Development runs never change the real sudoers rule.",
         loginItem: "unavailable",
+        trackpadSwipes: false,
       },
     },
   ],
@@ -1034,6 +1037,10 @@ export const methodFixtures: MethodFixtures = {
     { params: { enabled: false }, result: null },
   ],
   "advanced.openLoginItems": [{ params: {}, result: null }],
+  "advanced.setTrackpadSwipes": [
+    { params: { enabled: true }, result: null },
+    { params: { enabled: false }, result: null },
+  ],
   "setup.getPlan": [
     { params: { tools: ["yabai", "sketchybar", "skhd"], existing: {} }, result: keepPlan },
     {
@@ -1263,6 +1270,7 @@ export const eventFixtures: EventFixtures = {
         addition: "repair",
         additionExplanation: "yabai was updated, so its sudoers rule needs repairing.",
         loginItem: "approval",
+        trackpadSwipes: false,
       },
     },
   ],

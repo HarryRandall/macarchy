@@ -14,6 +14,8 @@ struct SpaceSwitcherTests {
     enum Press {
         case go(Int)
         case move(Int)
+        /// A trackpad swipe.
+        case step(SpaceSwitcher.Direction)
     }
 
     /// One display of five Spaces, where Space n has id n * 10. A switch
@@ -84,6 +86,7 @@ struct SpaceSwitcherTests {
             switch press {
             case .go(let index): await switcher?.go(to: index)
             case .move(let index): await switcher?.move(to: index)
+            case .step(let direction): await switcher?.step(direction)
             }
         }
 
@@ -157,6 +160,39 @@ struct SpaceSwitcherTests {
         await run(desk, .move(3))
         #expect(desk.events == [.moved(window: 7, space: 3), .swipe(.right, 2), .swipe(.left, 1)])
         #expect(desk.space == 2)
+    }
+
+    @Test("a trackpad swipe goes one Space along from the one showing")
+    func swipeSteps() async {
+        let desk = Desk(on: 2)
+        await run(desk, .step(.left))
+        #expect(desk.events == [.swipe(.left, 1)])
+        #expect(desk.space == 1)
+    }
+
+    @Test("a swipe past either end does nothing")
+    func swipeAtEnds() async {
+        let first = Desk(on: 1)
+        await run(first, .step(.left))
+        let last = Desk(on: 5)
+        await run(last, .step(.right))
+        #expect(first.events.isEmpty && last.events.isEmpty)
+    }
+
+    @Test("a second swipe while the first lands goes on from where the first is heading")
+    func quickSwipes() async {
+        let desk = Desk(on: 1, presses: [1: .step(.right)])
+        await run(desk, .step(.right))
+        #expect(desk.events == [.swipe(.right, 1), .swipe(.right, 1)])
+        #expect(desk.space == 3)
+    }
+
+    @Test("a swipe after a shortcut press goes on from the Space pressed")
+    func swipeAfterPress() async {
+        let desk = Desk(on: 1, presses: [1: .go(4), 2: .step(.left)])
+        await run(desk, .go(2))
+        #expect(desk.events == [.swipe(.right, 1), .swipe(.right, 1)])
+        #expect(desk.space == 3)
     }
 
     @Test("a press made while yabai moves the window decides where the switch goes")

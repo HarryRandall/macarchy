@@ -14,6 +14,8 @@ export interface AdvancedState {
   wakeHelpers: boolean;
   backupsDirectory: string;
   loginItem: LoginItemState;
+  /** Whether the trackpad's sideways swipe between desktops switches at once instead of sliding. */
+  trackpadSwipes: boolean;
   /** Tools Macarchy installed with Homebrew and still there, which restoring may also remove. */
   removableTools: { id: string; name: string }[];
 }
@@ -100,6 +102,7 @@ export interface AdvancedMethods {
   "advanced.getCleanupPlan": { params: Record<string, never>; result: CleanupPlan };
   "advanced.cleanUp": { params: Record<string, never>; result: CleanupReport };
   "advanced.setLoginItem": { params: { enabled: boolean }; result: null };
+  "advanced.setTrackpadSwipes": { params: { enabled: boolean }; result: null };
   "advanced.openLoginItems": { params: Record<string, never>; result: null };
   "setup.getPlan": { params: SetupChoices; result: SetupState };
   /** Installs chosen tools that are missing, then sets up; see `setup.progress`. */

@@ -62,5 +62,20 @@ final class SpaceSwitcherController {
             close(held)
             presence = nil
         }
+        updateSwipes()
+    }
+
+    /// Catches trackpad swipes while settings ask for it and the app may
+    /// post events, and lets them through to the Dock otherwise. Called
+    /// again when the setting changes.
+    func updateSwipes() {
+        guard TrackpadSwipes.wanted, SpaceSwitcher.gesturesAllowed else {
+            TrackpadSwipes.stop()
+            return
+        }
+        let switcher = switcher
+        TrackpadSwipes.start { direction in
+            Task { await switcher.step(direction) }
+        }
     }
 }

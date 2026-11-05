@@ -15,7 +15,14 @@ import { dayStarts } from "./advanced-format";
 import { ServicesCard } from "./advanced-services";
 import type { AdvancedStore } from "./advanced-store";
 import { AdvancedSummary } from "./advanced-summary";
-import { CommandLineCard, DangerZone, ExtrasCard, LoginCard, SetupCard } from "./advanced-system";
+import {
+  CommandLineCard,
+  DangerZone,
+  ExtrasCard,
+  LoginCard,
+  SetupCard,
+  TrackpadSwipesCard,
+} from "./advanced-system";
 
 export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openSetup(): void }) {
   const snapshot = useStore(store);
@@ -109,6 +116,11 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
               busy={busy}
               onChange={(enabled) => void store.setLoginItem(enabled).catch(() => {})}
               onOpenSettings={() => void store.openLoginItems()}
+            />
+            <TrackpadSwipesCard
+              enabled={state.trackpadSwipes}
+              busy={busy}
+              onChange={(enabled) => void store.setTrackpadSwipes(enabled).catch(() => {})}
             />
             <CommandLineCard />
             <SetupCard busy={busy} onOpenSetup={openSetup} />

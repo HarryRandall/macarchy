@@ -338,6 +338,7 @@ export function installMockHost() {
 
   const advanced: Omit<AdvancedState, "services"> = {
     loginItem: "on",
+    trackpadSwipes: false,
     snapshots: [],
     theme: "awakening",
     installedThemes: themes.length,
@@ -480,6 +481,10 @@ export function installMockHost() {
       return null;
     },
     "advanced.openLoginItems": () => null,
+    "advanced.setTrackpadSwipes": ({ enabled }) => {
+      advanced.trackpadSwipes = enabled;
+      return null;
+    },
     "setup.getPlan": ({ tools, existing }) => ({
       tools: setupTools,
       extras: setupExtras,

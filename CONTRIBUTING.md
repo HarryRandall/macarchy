@@ -305,6 +305,11 @@ permission. A Space on another display, or one picked while Mission
 Control is open, goes through yabai and slides. Health says which is in
 use.
 
+**Advanced → Instant trackpad swipes** makes the three-finger swipe between
+desktops switch at once too, through the same queue. It is off unless turned
+on, needs the same Accessibility, and works only while the app is open;
+swipes in Mission Control and App Exposé slide as usual.
+
 Earlier versions installed InstantSpaceSwitcher. If its app still runs, its
 own hotkeys and trackpad swipe override compete with Macarchy's switching,
 and Health says to quit it.

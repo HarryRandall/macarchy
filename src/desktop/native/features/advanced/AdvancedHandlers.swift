@@ -60,7 +60,21 @@ extension BridgeRouter {
             model.loginItem.openSettings()
             return Null()
         }
+        registerSwipes(model: model)
         registerRestore(model: model)
+    }
+
+    private func registerSwipes(model: AppModel) {
+        register("advanced.setTrackpadSwipes") { (params: TrackpadSwipesParams) in
+            try await Self.maintenance(
+                model,
+                name: params.enabled ? "turn on instant swipes" : "turn off instant swipes"
+            ) {
+                try TrackpadSwipes.setWanted(params.enabled)
+                SpaceSwitcherController.shared.updateSwipes()
+                return Null()
+            }
+        }
     }
 
     private func registerRestore(model: AppModel) {
@@ -267,6 +281,7 @@ extension AppModel {
                 wakeHelpers: await advancedConfiguration.wakeHelpersRegistered(),
                 backupsDirectory: Paths.display(Paths.backupsDirectory),
                 loginItem: loginItem.state(),
+                trackpadSwipes: TrackpadSwipes.wanted,
                 removableTools: setupSession.installer.removable().map {
                     .init(id: $0.id, name: $0.name)
                 })

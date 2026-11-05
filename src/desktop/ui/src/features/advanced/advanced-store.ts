@@ -102,6 +102,8 @@ export function createAdvancedStore(host: PageHost) {
     repair: () => perform(() => host.request("advanced.repairAddition")),
     setLoginItem: (enabled: boolean) =>
       perform(() => host.request("advanced.setLoginItem", { enabled })),
+    setTrackpadSwipes: (enabled: boolean) =>
+      perform(() => host.request("advanced.setTrackpadSwipes", { enabled })),
     /** Opens Login Items in System Settings. Changes nothing, so the state is not read again. */
     async openLoginItems() {
       set({ error: null });

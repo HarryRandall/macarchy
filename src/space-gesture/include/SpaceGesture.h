@@ -72,4 +72,50 @@ size_t sg_dock_swipe_payload(CGEventRef event, uint8_t *buffer, size_t capacity)
 bool sg_mission_control_in_window_list(CFArrayRef windowList);
 bool sg_expose_in_window_list(CFArrayRef windowList);
 
+// Instant trackpad swipes: the trackpad's sideways swipe between Spaces is
+// caught before the Dock animates it, and the handler switches instead.
+
+/// Called on the main thread with the direction of a swipe to switch for.
+typedef void (*SGSwipeHandler)(SGDirection direction);
+
+/// Starts catching the trackpad's sideways swipes, on the main run loop.
+/// Needs Accessibility; returns false without it. Call on the main thread.
+bool sg_swipe_override_start(SGSwipeHandler handler);
+
+/// Lets swipes through to the Dock again. Call on the main thread.
+void sg_swipe_override_stop(void);
+
+/// What happens to one gesture event.
+typedef enum {
+    SGSwipePass = 0,
+    SGSwipeSwallow = 1,
+    /// Let through with its motion zeroed: on macOS 27 the Dock needs the
+    /// real ended event to finish the gesture, but must not switch again.
+    SGSwipePassStill = 2,
+} SGSwipeAction;
+
+/// Where one swipe has got to, between its events.
+typedef struct {
+    bool tracking;
+    bool fired;
+} SGSwipeState;
+
+/// The fields of a gesture event the decision reads.
+typedef struct {
+    int64_t eventType;
+    int64_t hidType;
+    int64_t motion;
+    int64_t phase;
+    double progress;
+    double velocity;
+    int64_t sourcePid;
+} SGSwipeEvent;
+
+/// Decides one gesture event, for the interception and for tests.
+/// `overlayOpen` is asked only as a swipe begins: one begun in Mission
+/// Control or App Exposé goes to the Dock untouched. `outSwitch` is set to
+/// the direction to switch, or -1 for none.
+SGSwipeAction sg_swipe_decide(SGSwipeState *state, SGSwipeEvent event, bool modern,
+                              bool (*overlayOpen)(void), int *outSwitch);
+
 #endif

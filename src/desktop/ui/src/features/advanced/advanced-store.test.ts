@@ -13,6 +13,7 @@ const state: AdvancedState = {
   wakeHelpers: true,
   backupsDirectory: "~/.config/macarchy/backups",
   loginItem: "off",
+  trackpadSwipes: false,
   removableTools: [],
 };
 function harness() {
@@ -175,6 +176,30 @@ describe("Advanced store", () => {
       ["advanced.setLoginItem", { enabled: false }],
       ["advanced.getState"],
       ["advanced.openLoginItems"],
+    ]);
+  });
+  it("turns instant trackpad swipes on and off and reads the state again", async () => {
+    const { store, request } = harness();
+    let desktop: AdvancedState = state;
+    request.mockImplementation(async (method, params) => {
+      if (method === "advanced.setTrackpadSwipes") {
+        desktop = { ...desktop, trackpadSwipes: (params as { enabled: boolean }).enabled };
+      } else if (method !== "advanced.getState") {
+        throw new Error(`Unexpected ${String(method)}`);
+      }
+      return method === "advanced.getState" ? desktop : null;
+    });
+    await store.load();
+    await store.setTrackpadSwipes(true);
+    expect(store.getSnapshot().state?.trackpadSwipes).toBe(true);
+    await store.setTrackpadSwipes(false);
+    expect(store.getSnapshot().state?.trackpadSwipes).toBe(false);
+    expect(request.mock.calls).toEqual([
+      ["advanced.getState"],
+      ["advanced.setTrackpadSwipes", { enabled: true }],
+      ["advanced.getState"],
+      ["advanced.setTrackpadSwipes", { enabled: false }],
+      ["advanced.getState"],
     ]);
   });
   it("rebuilds every file, keeps going past a failure and names each one that failed", async () => {
