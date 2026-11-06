@@ -1,5 +1,5 @@
 #!/bin/bash
-# Exercise plugin storage and migration without opening an editor or real services.
+# Exercise Neovim's setup and launchers without opening an editor or real services.
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 CLI="${MACARCHY_TEST_CLI:-$REPO/.build/debug/macarchy}"
@@ -11,19 +11,21 @@ export MACARCHY_SEARCH_PATH= MACARCHY_APPLICATIONS="$TEST_ROOT/applications"
 mkdir -p "$MACARCHY_HOME"
 "$CLI" setup --no-apply > "$TEST_ROOT/setup.log"
 PLUGIN="$MACARCHY_HOME/Library/Application Support/Macarchy/plugins/neovim"
-# Setup leaves Neovim and the shell alone; they are plugins of their own.
+# Without --neovim, setup leaves Neovim and the shell alone.
 [ ! -e "$PLUGIN" ]
 [ ! -e "$MACARCHY_HOME/.zshenv" ]
 [ ! -e "$MACARCHY_HOME/.zshrc" ]
 [ ! -e "$MACARCHY_HOME/.config" ]
-# What an earlier setup seeded: the editable configuration and the PATH line.
-mkdir -p "$PLUGIN"
-cp -R "$REPO/resources/neovim/config" "$PLUGIN/config"
+# With --neovim, setup seeds the editable configuration and adds the PATH
+# line to both zsh files.
+"$CLI" setup --no-apply --neovim > "$TEST_ROOT/setup-neovim.log"
+cmp "$REPO/resources/neovim/config/nvim/init.lua" "$PLUGIN/config/nvim/init.lua"
+[ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshenv")" = 1 ]
+[ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshrc")" = 1 ]
+[ ! -e "$MACARCHY_HOME/.config" ]
+# Setting up again keeps the person's edits and adds no second line.
 printf '\n-- preserved local edit\n' >> "$PLUGIN/config/nvim/init.lua"
-PATH_LINE='export PATH="$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS:$PATH"'
-printf '%s\n' "$PATH_LINE" > "$MACARCHY_HOME/.zshenv"
-printf '%s\n' "$PATH_LINE" > "$MACARCHY_HOME/.zshrc"
-"$CLI" setup --no-apply > "$TEST_ROOT/setup-again.log"
+"$CLI" setup --no-apply --neovim > "$TEST_ROOT/setup-again.log"
 grep -q 'preserved local edit' "$PLUGIN/config/nvim/init.lua"
 [ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshenv")" = 1 ]
 [ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshrc")" = 1 ]

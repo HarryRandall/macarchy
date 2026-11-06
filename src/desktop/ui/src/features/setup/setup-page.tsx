@@ -300,7 +300,7 @@ function ToolRow({
   );
 }
 
-/** An app Macarchy uses when it is there; ticking it only installs it. */
+/** An app setup can set up beside the tools, installing it first when it is missing. */
 function ExtraRow({
   store,
   extra,
@@ -311,7 +311,7 @@ function ExtraRow({
   homebrew: boolean;
 }) {
   const snapshot = useStore(store);
-  const chosen = extra.installed || snapshot.extras.includes(extra.id);
+  const chosen = snapshot.extras.includes(extra.id);
   return (
     <Row
       title={extra.name}
@@ -319,16 +319,16 @@ function ExtraRow({
       className="px-3.5 py-3 not-first:border-t not-first:border-hairline"
       leading={
         <Checkbox
-          aria-label={`Install ${extra.name}`}
+          aria-label={`Set up ${extra.name}`}
           checked={chosen}
-          disabled={extra.installed || snapshot.busy || snapshot.planning || !homebrew}
+          disabled={snapshot.busy || snapshot.planning}
           onCheckedChange={(checked) => store.toggleExtra(extra.id, checked)}
         />
       }
       control={
         extra.installed ? (
           <Badge tone="ok">Installed</Badge>
-        ) : chosen ? (
+        ) : chosen && homebrew ? (
           <Badge tone="accent">Will be installed</Badge>
         ) : (
           <Badge>Not installed</Badge>

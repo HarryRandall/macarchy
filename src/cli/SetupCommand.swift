@@ -75,6 +75,7 @@ func setupChoices(_ options: CommandArguments, usage: String) throws -> Setup.Ch
         tools: chosen, all: options.flags.contains("--replace") ? .replace : .keep)
     for daemon in keep { choices.existing[daemon] = .keep }
     for daemon in replace { choices.existing[daemon] = .replace }
+    if options.flags.contains("--neovim") { choices.extras.insert(ToolInstaller.Package.neovim.id) }
     return choices
 }
 

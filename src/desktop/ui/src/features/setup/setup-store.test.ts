@@ -141,12 +141,15 @@ describe("Setup store", () => {
       log: ["==> Pouring sketchybar", "Error: No available formula"],
     });
   });
-  it("a ticked extra is installed with the tools and changes no plan", async () => {
+  it("a ticked extra is planned and installed with the tools", async () => {
     const { store, request } = harness();
     await store.load();
-    const planned = request.mock.calls.length;
     store.toggleExtra("example-app", true);
-    expect(request.mock.calls.length).toBe(planned);
+    await vi.waitFor(() => expect(store.getSnapshot().planning).toBe(false));
+    expect(request.mock.calls.at(-1)).toEqual([
+      "setup.getPlan",
+      { ...every, extras: ["example-app"] },
+    ]);
     request.mockResolvedValueOnce({ lines: [], failures: [], failure: null });
     const running = store.run();
     expect(store.getSnapshot().installs).toMatchObject({

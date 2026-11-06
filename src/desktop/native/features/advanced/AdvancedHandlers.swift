@@ -179,7 +179,10 @@ extension SetupReport {
 
 extension AppModel {
     /// One line for each of `Setup.extras`, by id.
-    static let extraDescriptions: [String: String] = [:]
+    static let extraDescriptions: [String: String] = [
+        "neovim": "An editor setup that lives in Macarchy's folder and follows the theme. "
+            + "Adds one line to zsh so nvim opens it."
+    ]
 
     /// The plan for `choices`, with every tool and whether it was chosen
     /// last time, so the page starts from the earlier answers.

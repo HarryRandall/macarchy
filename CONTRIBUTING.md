@@ -333,15 +333,21 @@ folder and pick them on the Themes page.
 
 #### Neovim
 
+Neovim is optional: tick it under Optional in setup, or run
+`macarchy setup --neovim` (with `--install` to install Neovim with Homebrew
+when it is missing). Without it, setup leaves Neovim and your shell files
+alone.
+
 Neovim's configuration and plugin lockfile ship in `resources/neovim`.
 Setup seeds an editable copy in
 `~/Library/Application Support/Macarchy/plugins/neovim/config/nvim` and
 preserves it on later runs. Plugin downloads, state and cache live beside
 `config` under `data`, `state` and `cache`. None needs `~/.config` or `~/.local`.
 
-The app bundles an `nvim` launcher. Setup adds one line putting the app's
+The app bundles an `nvim` launcher. With Neovim ticked, setup adds one line putting the app's
 commands on `PATH` to `~/.zshenv` and the `.zshrc` zsh reads (in `ZDOTDIR` when
-that is set); uninstall removes only that line, and a file left empty. Bash and
+that is set); uninstall removes only that line, and a file left empty, whether
+or not Neovim was ticked. Bash and
 fish are not changed. Open a new terminal after setup; `command -v nvim` should
 point inside Macarchy.app. The launcher runs `bin/nvim` from Application
 Support when there is one, otherwise the first Neovim on `PATH`. It points the

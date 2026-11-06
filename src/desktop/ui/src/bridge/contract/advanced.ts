@@ -48,7 +48,7 @@ export interface SetupChoices {
   tools: ServiceId[];
   /** How each tool with a config of its own starts; `keep` for any not given. */
   existing: Partial<Record<ServiceId, ExistingSetup>>;
-  /** Extras to install if missing; none when left out. */
+  /** Extras to set up, installing them first if missing; none when left out. */
   extras?: SetupExtraId[];
 }
 export interface SetupState {

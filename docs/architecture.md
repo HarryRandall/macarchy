@@ -150,7 +150,7 @@ arrays, a timeout and cancellation that also stops child processes.
 
 Each tool's code has its own folder in `src/core/integrations`. In
 `neovim`, `NeovimSetup` seeds the editable configuration and the zsh PATH
-line, and takes the line back out on uninstall; `NeovimColourschemes` lists
+line when setup's Neovim extra is ticked, and takes the line back out on uninstall; `NeovimColourschemes` lists
 the colourschemes a theme can pick. Neovim's files keep the `plugins/neovim`
 folder, in Application Support and in the app bundle.
 

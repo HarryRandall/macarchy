@@ -71,7 +71,7 @@ struct SetupParams: Codable, Sendable {
     /// How each tool with a config of its own starts, by tool id; `keep`
     /// for any not given.
     var existing: [String: Existing]
-    /// Ids of the extras to install; none when not given.
+    /// Ids of the extras to set up; none when not given.
     var extras: [String]?
 
     var choices: Setup.Choices {

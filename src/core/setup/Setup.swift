@@ -120,6 +120,9 @@ public enum Setup {
                         + ". Any agent it had is backed up and switched off when the services "
                         + "start"))
         }
+        if choices.extras.contains(ToolInstaller.Package.neovim.id) {
+            changes += NeovimSetup.plan()
+        }
         return changes
     }
 
@@ -169,6 +172,9 @@ public enum Setup {
         }
         if let app { try link(app); report.append("Linked \(Paths.display(app))") }
         try installThemes(report: &report)
+        if choices.extras.contains(ToolInstaller.Package.neovim.id) {
+            report += NeovimSetup.install()
+        }
 
         let backups = Backups()
         let settings = SettingsStore()

@@ -10,8 +10,7 @@ extension Setup {
         public var tools: Set<Daemon>
         /// How each tool starts; `keep` for any not given.
         public var existing: [Daemon: Existing]
-        /// Ids of `Setup.extras` to install if missing. They need no files
-        /// or services, so nothing else about setup changes for them.
+        /// Ids of `Setup.extras` to set up, installing them first if missing.
         public var extras: Set<String> = []
 
         public init(
@@ -36,10 +35,9 @@ extension Setup {
         var ordered: [Daemon] { Daemon.allCases.filter(tools.contains) }
     }
 
-    /// Apps setup can install that Macarchy uses when they are there, with
-    /// nothing to configure. None at the moment; the page hides the section
-    /// while this is empty.
-    public static let extras: [ToolInstaller.Package] = []
+    /// Apps setup can install and set up beside the tools, when ticked:
+    /// Neovim, through `NeovimSetup`.
+    public static let extras: [ToolInstaller.Package] = [.neovim]
 
     /// The tools the last setup was told to configure. Every tool before
     /// setup has asked, as earlier versions configured them all, and when

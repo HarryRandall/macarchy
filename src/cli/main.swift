@@ -17,7 +17,8 @@ func announce(_ name: Notification.Name, _ userInfo: [AnyHashable: Any] = [:]) {
 let usage = """
     Usage: macarchy <command>
 
-      setup [--tools=<list>] [--keep[=<list>]|--replace[=<list>]] [--install] [--no-apply]
+      setup [--tools=<list>] [--keep[=<list>]|--replace[=<list>]] [--install] [--neovim]
+            [--no-apply]
                                   Set up this Mac, start the services and apply the
                                   theme. --tools names the tools to configure, from
                                   yabai, skhd, sketchybar and borders, separated by
@@ -27,9 +28,11 @@ let usage = """
                                   (default); --replace starts from defaults. Either
                                   can name tools, as in --replace=skhd, to choose
                                   for those alone. --install first installs chosen
-                                  tools that are missing with Homebrew. --no-apply
-                                  only writes the files: no services are started
-                                  and no theme is applied.
+                                  tools that are missing with Homebrew. --neovim also
+                                  sets up Macarchy's Neovim (with --install, Neovim
+                                  too if missing) and puts its nvim first in zsh.
+                                  --no-apply only writes the files: no services are
+                                  started and no theme is applied.
       services                    Start or restart the tools setup configured.
       uninstall [--remove-tools]  Stop Macarchy's services and give the daemons back
                                   the agents and files they had before setup.
@@ -100,7 +103,7 @@ do {
     switch command {
     case "setup":
         let options = try parse(
-            flags: ["--keep", "--replace", "--no-apply", "--install"],
+            flags: ["--keep", "--replace", "--no-apply", "--install", "--neovim"],
             options: ["--tools", "--keep", "--replace"], conflicting: [["--keep", "--replace"]])
         try await setUp(options, usage: usage(of: command))
     case "services":

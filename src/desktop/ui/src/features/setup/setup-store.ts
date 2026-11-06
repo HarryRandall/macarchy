@@ -28,7 +28,7 @@ export function createSetupStore(host: PageHost) {
     /** The ticked tools. Every tool until the first plan says what was chosen before. */
     tools: allTools,
     existing: {} as Partial<Record<ServiceId, ExistingSetup>>,
-    /** The ticked extras to install. None until the person ticks one. */
+    /** The ticked extras to set up. None until the person ticks one. */
     extras: [] as SetupExtraId[],
     busy: false,
     planning: false,
@@ -119,11 +119,12 @@ export function createSetupStore(host: PageHost) {
       set({ tools });
       void load();
     },
-    /** Ticks or unticks an extra. It changes no files, so the plan stays as it is. */
+    /** Ticks or unticks an extra, and reads the plan for the new choice. */
     toggleExtra(extra: SetupExtraId, chosen: boolean) {
       if (snapshot.busy) return;
       const others = snapshot.extras.filter((id) => id !== extra);
       set({ extras: chosen ? [...others, extra] : others });
+      void load();
     },
     /** Keeps a tool's own config or starts it from Macarchy's defaults. */
     choose(tool: ServiceId, existing: ExistingSetup) {
