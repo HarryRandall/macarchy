@@ -2,7 +2,7 @@
 """Turns sketchybar-app-font's icon_map.sh into the Spaces widget's app-icons.json.
 
 Run it with the icon_map.sh from the sketchybar-app-font release whose font is
-in resources/integrations/sketchybar, after updating the font:
+in resources/sketchybar, after updating the font:
     tools/app-icons.py path/to/icon_map.sh resources/widgets/spaces/app-icons.json
 """
 import json

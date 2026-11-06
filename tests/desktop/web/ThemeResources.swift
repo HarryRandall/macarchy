@@ -7,7 +7,7 @@ struct ThemeResources: SuiteTrait, TestScoping {
         for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void
     ) async throws {
         let previous = getenv("MACARCHY_RESOURCES").map { String(cString: $0) }
-        setenv("MACARCHY_RESOURCES", repository.appending(path: "resources").path, 1)
+        setenv("MACARCHY_RESOURCES", bundledResources.path, 1)
         defer {
             if let previous {
                 setenv("MACARCHY_RESOURCES", previous, 1)

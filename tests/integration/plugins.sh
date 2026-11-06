@@ -5,8 +5,7 @@ REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 CLI="${MACARCHY_TEST_CLI:-$REPO/.build/debug/macarchy}"
 TEST_ROOT="$(mktemp -d -t macarchy-plugins-test)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
-mkdir -p "$TEST_ROOT/resources"
-cp -R "$REPO/resources/themes" "$REPO/resources/plugins" "$REPO/resources/launchers" "$REPO/resources/integrations/skhd" "$TEST_ROOT/resources/"
+"$REPO/tools/stage-resources.sh" "$TEST_ROOT/resources"
 export MACARCHY_HOME="$TEST_ROOT/home" MACARCHY_RESOURCES="$TEST_ROOT/resources"
 export MACARCHY_SEARCH_PATH= MACARCHY_APPLICATIONS="$TEST_ROOT/applications"
 mkdir -p "$MACARCHY_HOME"
@@ -19,7 +18,7 @@ PLUGIN="$MACARCHY_HOME/Library/Application Support/Macarchy/plugins/neovim"
 [ ! -e "$MACARCHY_HOME/.config" ]
 # What an earlier setup seeded: the editable configuration and the PATH line.
 mkdir -p "$PLUGIN"
-cp -R "$REPO/resources/plugins/neovim/config" "$PLUGIN/config"
+cp -R "$REPO/resources/neovim/config" "$PLUGIN/config"
 printf '\n-- preserved local edit\n' >> "$PLUGIN/config/nvim/init.lua"
 PATH_LINE='export PATH="$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS:$PATH"'
 printf '%s\n' "$PATH_LINE" > "$MACARCHY_HOME/.zshenv"
@@ -36,7 +35,7 @@ set -euo pipefail
 printf '%s\n' "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$NVIM_APPNAME" "$@"
 FAKE
 chmod +x "$TEST_ROOT/fake-nvim"
-MACARCHY_NVIM_BINARY="$TEST_ROOT/fake-nvim" "$REPO/resources/plugins/neovim/nvim" 'file with spaces.md' > "$TEST_ROOT/actual"
+MACARCHY_NVIM_BINARY="$TEST_ROOT/fake-nvim" "$REPO/resources/neovim/nvim" 'file with spaces.md' > "$TEST_ROOT/actual"
 printf '%s\n' "$PLUGIN/config" "$PLUGIN/data" "$PLUGIN/state" "$PLUGIN/cache" nvim \
   --cmd 'lua dofile(vim.env.MACARCHY_NVIM_ENVIRONMENT)' 'file with spaces.md' > "$TEST_ROOT/expected"
 cmp "$TEST_ROOT/actual" "$TEST_ROOT/expected"
@@ -44,7 +43,7 @@ for tool in yabai sketchybar; do
   config="$MACARCHY_HOME/Library/Application Support/Macarchy/config/${tool}rc"
   printf '#!/bin/bash\nprintf ran\n' > "$config"
   chmod +x "$config"
-  [ "$(/bin/sh -c "$REPO/resources/launchers/macarchy-${tool}rc")" = ran ]
+  [ "$(/bin/sh -c "$REPO/resources/${tool}/macarchy-${tool}rc")" = ran ]
 done
 "$CLI" uninstall > "$TEST_ROOT/uninstall.log"
 [ ! -e "$MACARCHY_HOME/.zshenv" ]

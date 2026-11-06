@@ -10,18 +10,9 @@ func withSetupResources(_ harness: Harness, _ body: () async throws -> Void) asy
     let resources = harness.home.appending(path: "resources")
     let fm = FileManager.default
     try fm.createDirectory(at: resources, withIntermediateDirectories: true)
-    try fm.copyItem(
-        at: repository.appending(path: "resources/themes"), to: resources.appending(path: "themes"))
-    try fm.copyItem(
-        at: repository.appending(path: "resources/integrations/skhd"),
-        to: resources.appending(path: "skhd"))
-    try fm.copyItem(
-        at: repository.appending(path: "resources/widgets"),
-        to: resources.appending(path: "widgets"))
-    for name in ["launchers", "plugins"] {
+    for name in ["themes", "skhd", "widgets", "launchers", "plugins"] {
         try fm.copyItem(
-            at: repository.appending(path: "resources/\(name)"), to: resources.appending(path: name)
-        )
+            at: bundledResources.appending(path: name), to: resources.appending(path: name))
     }
     setenv("MACARCHY_RESOURCES", resources.path, 1)
     defer {

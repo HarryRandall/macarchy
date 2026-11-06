@@ -43,16 +43,14 @@ echo "==> Assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_PATH" "$APP/Contents/MacOS/$BINARY"
-cp "$ROOT/packaging/macos/Info.plist" "$APP/Contents/Info.plist"
+cp "$ROOT/resources/app/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$ROOT/resources/app/AppIcon.icns" ] && cp "$ROOT/resources/app/AppIcon.icns" "$APP/Contents/Resources/"
 
-# Themes, the starter bar, built-in widgets and default shortcuts. The command
-# line tool ships inside the app, so one bundle is the whole install.
-cp "$ROOT/resources/app/logo.svg" "$APP/Contents/Resources/"
-cp -R "$ROOT/resources/themes" "$ROOT/resources/widgets" "$ROOT/resources/integrations/sketchybar" \
-  "$ROOT/resources/integrations/skhd" "$APP/Contents/Resources/"
-cp -R "$ROOT/resources/plugins" "$ROOT/resources/launchers" "$APP/Contents/Resources/"
-cp "$ROOT/resources/plugins/neovim/nvim" "$APP/Contents/MacOS/nvim"
+# Themes, the app font, built-in widgets, default shortcuts, the start
+# launchers and Neovim's configuration. The command line tool ships inside the
+# app, so one bundle is the whole install.
+"$ROOT/tools/stage-resources.sh" "$APP/Contents/Resources"
+cp "$ROOT/resources/neovim/nvim" "$APP/Contents/MacOS/nvim"
 cp -R "$UI/dist" "$APP/Contents/Resources/ui"
 CLI_PATH="$(swift build -c "$CONFIG" --show-bin-path)/macarchy"
 cp "$CLI_PATH" "$APP/Contents/MacOS/macarchy"

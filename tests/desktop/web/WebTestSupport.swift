@@ -22,6 +22,25 @@ let repository = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent()
 let interfaceDist = repository.appending(path: "src/desktop/ui/dist")
+/// The repository keeps one resource folder per tool; the app reads them in
+/// its bundle's layout, so tools/stage-resources.sh lays them out once per run.
+let bundledResources: URL = {
+    let folder = FileManager.default.temporaryDirectory
+        .appending(path: "macarchy-resources-\(ProcessInfo.processInfo.processIdentifier)")
+        .appending(path: "resources")
+    try? FileManager.default.removeItem(at: folder)
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/bash")
+    process.arguments = [repository.appending(path: "tools/stage-resources.sh").path, folder.path]
+    do {
+        try process.run()
+    } catch {
+        preconditionFailure("Could not run tools/stage-resources.sh: \(error)")
+    }
+    process.waitUntilExit()
+    precondition(process.terminationStatus == 0, "tools/stage-resources.sh failed")
+    return folder
+}()
 let interfaceBuilt = FileManager.default.fileExists(
     atPath: interfaceDist.appending(path: "settings.html").path)
 let interfaceRequired = ProcessInfo.processInfo.environment["MACARCHY_REQUIRE_UI_TESTS"] == "1"
@@ -38,7 +57,7 @@ struct WebEnvironment: SuiteTrait, TestScoping {
     ) async throws {
         let previous = Self.names.map { name in getenv(name).map { String(cString: $0) } }
         setenv("MACARCHY_UI_DIST", interfaceDist.path, 1)
-        setenv("MACARCHY_RESOURCES", repository.appending(path: "resources").path, 1)
+        setenv("MACARCHY_RESOURCES", bundledResources.path, 1)
         defer {
             for (name, value) in zip(Self.names, previous) {
                 if let value { setenv(name, value, 1) } else { unsetenv(name) }

@@ -105,8 +105,7 @@ exports. Controls in `components/ui` own their look through `variant` and
 | `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes`, `widgets` |
 | `src/desktop` | `native`, `ui` (React) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
-| `resources` | `app` (logo and icon), `themes`, `widgets` (built-in bar widgets), `integrations/sketchybar` (the app font), `integrations/skhd`, `launchers` (yabai and SketchyBar start launchers), `plugins` (Neovim configuration and launcher) |
-| `packaging/macos` | `Info.plist` |
+| `resources` | One folder per tool: `app` (logo, icon and `Info.plist`), `themes`, `widgets` (built-in bar widgets), `neovim` (configuration and launcher), `sketchybar` (the app font and start launcher), `skhd` (default shortcuts) and `yabai` (start launcher) |
 
 ## Behaviour
 
@@ -127,8 +126,9 @@ exports. Controls in `components/ui` own their look through `variant` and
 - Every integration is optional. Detect it, skip it when it is missing, and say
   so; never fail a whole operation because one tool is absent.
 - Locate executables with `Paths.executable`, never a hard-coded prefix.
-- Ship desktop files in `resources`; `tools/build.sh` copies them into the
-  app's `Contents/Resources`.
+- Ship desktop files in `resources`; `tools/stage-resources.sh` copies them
+  into the app's `Contents/Resources` for `tools/build.sh` and the integration
+  tests.
 - Nothing here may require System Integrity Protection to be disabled.
 
 ## Style
@@ -333,7 +333,7 @@ folder and pick them on the Themes page.
 
 #### Neovim
 
-Neovim's configuration and plugin lockfile ship in `resources/plugins/neovim`.
+Neovim's configuration and plugin lockfile ship in `resources/neovim`.
 Setup seeds an editable copy in
 `~/Library/Application Support/Macarchy/plugins/neovim/config/nvim` and
 preserves it on later runs. Plugin downloads, state and cache live beside

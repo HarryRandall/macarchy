@@ -10,11 +10,7 @@ HOME_DIR="$(mktemp -d -t macarchy-setup-test)"
 RESOURCES="$(mktemp -d -t macarchy-setup-resources)"
 # The partial uninstall check locks a file; unlock everything before removing.
 trap 'chflags -R nouchg "$HOME_DIR" 2>/dev/null; rm -rf "$HOME_DIR" "$RESOURCES"' EXIT
-# The repository splits bundled files by kind; stage them in the app bundle's
-# Resources layout, which is what Paths.resources expects.
-cp "$REPO/resources/app/logo.svg" "$RESOURCES/"
-cp -R "$REPO/resources/themes" "$REPO/resources/widgets" "$REPO/resources/integrations/sketchybar" \
-  "$REPO/resources/integrations/skhd" "$REPO/resources/launchers" "$REPO/resources/plugins" "$RESOURCES/"
+"$REPO/tools/stage-resources.sh" "$RESOURCES"
 export MACARCHY_HOME="$HOME_DIR" MACARCHY_RESOURCES="$RESOURCES"
 export MACARCHY_SEARCH_PATH="$HOME_DIR/fake-bin" MACARCHY_APPLICATIONS="$HOME_DIR/Applications"
 mkdir -p "$MACARCHY_SEARCH_PATH" "$HOME_DIR/.config/yabai" "$HOME_DIR/.config/skhd"

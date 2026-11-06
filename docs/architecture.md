@@ -11,14 +11,16 @@ Macarchy has three Swift targets that share one implementation:
 The settings window and the theme switcher are drawn by a React interface in
 `src/desktop/ui`, hosted in web views; see [the interface guide](interface.md).
 
-`tools/build.sh` builds the interface and copies it to `Contents/Resources/ui`,
-then copies `resources` into `Contents/Resources`, flat: `themes`, `widgets`
-(the built-in bar widgets), `sketchybar` (sketchybar-app-font, which the
-Spaces widget draws apps with), `skhd` (the default shortcuts), `launchers`
-(the yabai and SketchyBar start launchers), `plugins` (the seed Neovim
-configuration and its launcher), and `logo.svg` and `AppIcon.icns` from
-`resources/app`. The `nvim` launcher is also copied to `Contents/MacOS`. The bundle's `Info.plist` comes from
-`packaging/macos`.
+`tools/build.sh` builds the interface and copies it to `Contents/Resources/ui`.
+The repository keeps one folder per tool in `resources`; `tools/stage-resources.sh`
+copies them into `Contents/Resources` in the layout installed agents and
+startup files expect: `themes`, `widgets` (the built-in bar widgets),
+`sketchybar` (sketchybar-app-font, which the Spaces widget draws apps with),
+`skhd` (the default shortcuts), `launchers` (the yabai and SketchyBar start
+launchers, from `resources/yabai` and `resources/sketchybar`), `plugins/neovim`
+(the seed Neovim configuration and its launcher, from `resources/neovim`) and
+`logo.svg`. `tools/build.sh` adds `AppIcon.icns` and the bundle's `Info.plist`
+from `resources/app`, and copies the `nvim` launcher to `Contents/MacOS`.
 
 ## One folder
 

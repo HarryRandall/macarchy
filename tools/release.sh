@@ -4,7 +4,7 @@
 set -euo pipefail
 VERSION="${1:?Usage: ./tools/release.sh <version>}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PLIST="$ROOT/packaging/macos/Info.plist"
+PLIST="$ROOT/resources/app/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(git -C "$ROOT" rev-list --count HEAD)" "$PLIST"
 "$ROOT/tools/build.sh" release

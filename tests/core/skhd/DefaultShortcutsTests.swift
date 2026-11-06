@@ -8,7 +8,7 @@ import Testing
 struct DefaultShortcutsTests {
     static let skhd = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        .appending(path: "resources/integrations/skhd")
+        .appending(path: "resources/skhd")
 
     private func bindings() throws -> [SkhdBinding] {
         SkhdConfig.parse(
