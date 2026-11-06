@@ -12,10 +12,13 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
     public var space: Int
     /// Move the focused window there and follow it.
     public var move: Bool
+    /// Swap the windows of the desktop showing with that one's, and follow.
+    public var swap: Bool
 
-    public init(space: Int, move: Bool = false) {
+    public init(space: Int, move: Bool = false, swap: Bool = false) {
         self.space = space
         self.move = move
+        self.swap = swap
     }
 
     public static let notification = Notification.Name(
@@ -25,11 +28,13 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
         Paths.stateDirectory.appending(path: "space-switcher.lock")
     }
 
-    public var userInfo: [AnyHashable: Any] { ["space": space, "move": move] }
+    public var userInfo: [AnyHashable: Any] { ["space": space, "move": move, "swap": swap] }
 
     public init?(userInfo: [AnyHashable: Any]?) {
         guard let space = userInfo?["space"] as? Int, space > 0 else { return nil }
-        self.init(space: space, move: userInfo?["move"] as? Bool ?? false)
+        self.init(
+            space: space, move: userInfo?["move"] as? Bool ?? false,
+            swap: userInfo?["swap"] as? Bool ?? false)
     }
 
     /// Hands the request to the app when it is switching, otherwise switches
@@ -42,14 +47,7 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
         appSwitching: Bool = PresenceLock.isHeld(at: presenceURL),
         record: (Int) -> Void = { SpaceSwitch.record($0, in: Paths.stateDirectory) },
         handOff: (SpaceSwitchRequest) -> Void = { AppNotice.post(notification, $0.userInfo) },
-        here: (SpaceSwitchRequest) async -> Void = { request in
-            let switcher = SpaceSwitch.live
-            if request.move {
-                await switcher.move(to: request.space)
-            } else {
-                await switcher.go(to: request.space)
-            }
-        }
+        here: (SpaceSwitchRequest) async -> Void = { await $0.performHere() }
     ) async -> Bool {
         if appSwitching {
             record(space)
@@ -58,5 +56,20 @@ public struct SpaceSwitchRequest: Equatable, Sendable {
         }
         await here(self)
         return false
+    }
+
+    /// Switches in this process. A swap runs a switcher of its own, as it
+    /// is not queued with other presses across processes.
+    public func performHere() async {
+        if swap {
+            await SpaceSwitcher(desktop: .live()).swap(with: space)
+            return
+        }
+        let switcher = SpaceSwitch.live
+        if move {
+            await switcher.move(to: space)
+        } else {
+            await switcher.go(to: space)
+        }
     }
 }

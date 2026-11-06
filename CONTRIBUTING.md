@@ -306,10 +306,18 @@ permission. A Space on another display, or one picked while Mission
 Control is open, goes through yabai and slides. Health says which is in
 use.
 
+`macarchy space <number> --swap` swaps the windows of the desktop showing
+with that desktop's and follows them there, through the same queue. The
+desktops themselves stay where they are. Your tiled windows float while
+they cross, so they never join the other desktop's layout, then tile again
+in the same order; each desktop's own settings, such as its layout, stay
+with its number. Minimised, hidden and sticky windows stay put.
+
 The Dock carries a swipe out in its own order of desktops. Swapping or
 moving desktops with yabai's scripting addition (`yabai -m space --swap`)
 reorders them everywhere else but can leave the Dock's order behind, so a
-swipe would land on the wrong desktop. Macarchy watches each switch land:
+swipe would land on the wrong desktop, and a later swap can put a desktop
+in the wrong place. Use `--swap` instead. Macarchy watches each switch land:
 if it shows a desktop off the way, or stops short, yabai finishes it by
 number, and switching keeps going through yabai until the Dock restarts.
 Restart the Dock (`killall Dock`) to make switches instant again.

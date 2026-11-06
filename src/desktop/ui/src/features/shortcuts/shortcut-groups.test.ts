@@ -39,6 +39,7 @@ describe("shortcut categories", () => {
     ["yabai -m window --space 2 && yabai -m space --focus 2", "Desktops"],
     ["macarchy space 3", "Desktops"],
     ["macarchy space 3 --move", "Desktops"],
+    ["macarchy space 3 --swap", "Desktops"],
     [
       '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 2',
       "Desktops",

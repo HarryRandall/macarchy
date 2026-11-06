@@ -42,7 +42,9 @@ final class SpaceSwitcherController {
     private func handle(_ request: SpaceSwitchRequest) {
         let switcher = switcher
         Task {
-            if request.move {
+            if request.swap {
+                await switcher.swap(with: request.space)
+            } else if request.move {
                 await switcher.move(to: request.space)
             } else {
                 await switcher.go(to: request.space)

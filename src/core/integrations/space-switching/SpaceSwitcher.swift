@@ -79,24 +79,32 @@ public actor SpaceSwitcher {
         /// Which Dock is running, by process id, so swipes are tried again
         /// once a Dock whose order was wrong restarts.
         var dock: @Sendable () -> Int? = { nil }
+        /// The index of the focused Space, as yabai reports it.
+        var focusedSpace: @Sendable () async -> Int? = { nil }
+        /// Every window a desktop swap carries: not sticky, minimised or
+        /// hidden. Nil when yabai cannot be asked.
+        var windows: @Sendable () async -> [PlacedWindow]? = { nil }
+        var toggleFloat: @Sendable (_ window: Int) async -> Void = { _ in }
+        /// Swaps two tiled windows' places on their Space.
+        var swapWindows: @Sendable (Int, Int) async -> Void = { _, _ in }
     }
 
-    private let desktop: Desktop
+    let desktop: Desktop
     /// Pauses before a switch that has not landed is given up on, as for
     /// one Mission Control swallowed.
     private let patience: Int
 
     /// The Space last asked for and not yet started.
-    private var wanted: Int?
+    var wanted: Int?
     /// The window to focus once `wanted` shows, when it came from a move.
-    private var follow: Int?
+    var follow: Int?
     /// The Space a switch has been sent to and not yet landed on.
-    private var heading: Int?
-    private var tickets = 0
+    var heading: Int?
+    var tickets = 0
     /// The ticket of the latest request applied; older ones finishing late
     /// are ignored.
-    private var newest = 0
-    private var switching = false
+    var newest = 0
+    var switching = false
     /// Set when a swipe landed where the window server's order said it
     /// would not, with the Dock it happened under.
     private var misorderedDock: Int??
@@ -167,7 +175,7 @@ public actor SpaceSwitcher {
         switching = false
     }
 
-    private func run() async {
+    func run() async {
         let layout = await desktop.layout()
         while let index = wanted {
             let window = follow
@@ -194,7 +202,7 @@ public actor SpaceSwitcher {
 
     /// Switches to Space `index` and waits for it to show. Returns whether
     /// it did.
-    private func switchTo(_ index: Int, id: Int, layout: Layout) async -> Bool {
+    func switchTo(_ index: Int, id: Int, layout: Layout) async -> Bool {
         if let way = swipe(id: id, layout: layout) {
             switch await watch(id: id, way: way, display: layout.pointerDisplay) {
             case .arrived:

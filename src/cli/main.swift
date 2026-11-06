@@ -47,9 +47,11 @@ let usage = """
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
       rules [toggle]              Reapply window rules, or float/tile the focused window.
       bar toggle                  Show or hide the menu bar.
-      space <number> [--move]     Go to a Space, telling the bar first so it shows the
+      space <number> [--move|--swap]
+                                  Go to a Space, telling the bar first so it shows the
                                   new Space before macOS has switched. --move takes
-                                  the focused window there too.
+                                  the focused window there too; --swap swaps this
+                                  Space's windows with that one's and follows them.
       widget list                 List the bar widgets that can be added.
       widget check <id|folder>    Check a widget's files and say what to fix.
       widget run                  Keep the bar's widgets updated until Control-C, as the
@@ -193,15 +195,21 @@ do {
         }
         announce(Notification.Name("io.github.harryrandall.macarchy.switcher"))
     case "space":
-        let options = try parse(flags: ["--move"], values: 1...1)
+        let options = try parse(flags: ["--move", "--swap"], values: 1...1)
         guard let space = Int(options.values[0]), (1...99).contains(space) else {
             throw CommandArguments.Invalid(
                 message: "The Space must be a number from 1 to 99", usage: usage(of: command))
         }
+        let move = options.flags.contains("--move")
+        let swap = options.flags.contains("--swap")
+        guard !(move && swap) else {
+            throw CommandArguments.Invalid(
+                message: "Use --move or --swap, not both", usage: usage(of: command))
+        }
         // Heard by the running app, which repaints the bar from what it already
         // knows before the switch lands.
         announce(WidgetActions.spaceNotification, ["space": space])
-        await SpaceSwitchRequest(space: space, move: options.flags.contains("--move")).perform()
+        await SpaceSwitchRequest(space: space, move: move, swap: swap).perform()
     case "bar":
         _ = try parse(values: 1...1, choices: ["toggle"])
         try require(await Integrations().sketchybar(["--bar", "hidden=toggle"]))

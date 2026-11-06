@@ -50,7 +50,66 @@ extension SpaceSwitcher.Desktop {
             dock: {
                 NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock")
                     .first.map { Int($0.processIdentifier) }
+            },
+            focusedSpace: {
+                let result = await integrations.execute(
+                    yabai, ["-m", "query", "--spaces", "--space"])
+                guard result.ok else { return nil }
+                return try? JSONDecoder().decode(Space.self, from: Data(result.stdout.utf8)).index
+            },
+            windows: {
+                let result = await integrations.execute(yabai, ["-m", "query", "--windows"])
+                guard result.ok,
+                    let windows = try? JSONDecoder().decode(
+                        [QueriedWindow].self, from: Data(result.stdout.utf8))
+                else { return nil }
+                return windows.filter(\.carried).map(\.placed)
+            },
+            toggleFloat: { window in
+                _ = await integrations.execute(
+                    yabai, ["-m", "window", String(window), "--toggle", "float"])
+            },
+            swapWindows: { first, second in
+                _ = await integrations.execute(
+                    yabai, ["-m", "window", String(first), "--swap", String(second)])
             })
+    }
+
+    /// A window from yabai's query, for swapping desktops.
+    private struct QueriedWindow: Decodable {
+        struct Frame: Decodable {
+            let x: Double
+            let y: Double
+        }
+
+        let id: Int
+        let app: String
+        let space: Int
+        let frame: Frame
+        let floating: Bool
+        let sticky: Bool
+        let minimized: Bool
+        let hidden: Bool
+        let focused: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case id, app, space, frame
+            case floating = "is-floating"
+            case sticky = "is-sticky"
+            case minimized = "is-minimized"
+            case hidden = "is-hidden"
+            case focused = "has-focus"
+        }
+
+        /// Sticky windows are on every desktop, and yabai cannot move
+        /// minimised or hidden ones.
+        var carried: Bool { !sticky && !minimized && !hidden }
+
+        var placed: SpaceSwitcher.PlacedWindow {
+            SpaceSwitcher.PlacedWindow(
+                id: id, app: app, space: space, floating: floating, focused: focused,
+                x: frame.x, y: frame.y)
+        }
     }
 
     private struct Window: Decodable {

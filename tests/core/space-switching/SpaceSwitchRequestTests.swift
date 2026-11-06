@@ -8,6 +8,8 @@ struct SpaceSwitchRequestTests {
     func roundTrip() {
         let request = SpaceSwitchRequest(space: 3, move: true)
         #expect(SpaceSwitchRequest(userInfo: request.userInfo) == request)
+        let swap = SpaceSwitchRequest(space: 6, swap: true)
+        #expect(SpaceSwitchRequest(userInfo: swap.userInfo) == swap)
         #expect(SpaceSwitchRequest(userInfo: ["space": 4]) == SpaceSwitchRequest(space: 4))
     }
 
