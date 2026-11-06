@@ -29,12 +29,10 @@ public enum Setup {
         public var id: String { path.path }
     }
 
-    /// Whether setup has to run: it never has, it last ran before the move
-    /// to Application Support and has not run since, or the bar it set up
-    /// still has to move onto widgets.
+    /// Whether setup has to run: it never has, or the bar it set up still
+    /// has to move onto widgets.
     public static var isNeeded: Bool {
-        !FileManager.default.fileExists(atPath: Paths.settings.path) || LegacyLayout.awaitingSetup
-            || barNeedsMoving
+        !FileManager.default.fileExists(atPath: Paths.settings.path) || barNeedsMoving
     }
 
     // MARK: - Locations
@@ -132,21 +130,11 @@ public enum Setup {
     /// A failing step throws `Interrupted` with the lines of the steps before it.
     public static func run(_ choices: Choices, app: URL?) async throws -> [String] {
         try checkCarriable(choices.tools)
-        // Before the lock, which lives in the new folder and would create it.
-        let moved = try moveEarlierFolder()
-        do {
-            let report = try await OperationLock.run {
-                if choices.tools.contains(.yabai), choices.existing(.yabai) == .keep {
-                    try await checkKeepable()
-                }
-                return try await runLocked(choices, app: app, report: moved)
+        return try await OperationLock.run {
+            if choices.tools.contains(.yabai), choices.existing(.yabai) == .keep {
+                try await checkKeepable()
             }
-            LegacyLayout.clearNote()
-            return report
-        } catch let interrupted as Interrupted {
-            // Its lines, the move's among them, still reach the person.
-            LegacyLayout.clearNote()
-            throw interrupted
+            return try await runLocked(choices, app: app)
         }
     }
 
@@ -245,10 +233,7 @@ public enum Setup {
             await DaemonAgents.stopAll(integrations: integrations)
             var report: [String] = []
             do {
-                // Read before restoring, which moves the backups folder aside.
-                let cleanups = try await OldConfiguration.unpackArchives()
-                defer { OldConfiguration.discard(cleanups) }
-                try uninstallLocked(into: &report, cleanups: cleanups)
+                try uninstallLocked(into: &report)
             } catch {
                 // The daemons were stopped for the restore; start whichever
                 // agent each has now rather than leaving it stopped.
@@ -266,14 +251,9 @@ public enum Setup {
 
     /// Each change is added to `report` as it is made, so a failure part way
     /// still tells the caller what was already put back.
-    /// `cleanups` are the archives cleaning up wrote, whose moved scripts
-    /// and old folders go back once setup's own originals have.
-    static func uninstallLocked(
-        into report: inout [String], cleanups: [OldConfiguration.Unpacked] = []
-    ) throws {
+    static func uninstallLocked(into report: inout [String]) throws {
         let fm = FileManager.default
         try Backups().restoreAll(into: &report)
-        try OldConfiguration.putBack(cleanups, into: &report)
         // Setup no longer adds the PATH line or Ghostty's include, but earlier
         // versions did, so restoring still takes them out.
         try PluginSetup.uninstall(into: &report)
@@ -288,10 +268,6 @@ public enum Setup {
         }
         if (try? fm.destinationOfSymbolicLink(atPath: Paths.appLink.path)) != nil {
             try fm.removeItem(at: Paths.appLink)
-        }
-        // Kept until now for files and scripts that still name the old folder.
-        if try LegacyLayout.removeLink() {
-            report.append("Removed the link at \(Paths.display(Paths.legacyRoot))")
         }
         // The launcher folder, once restoring has removed the launchers in it.
         let launchers = Paths.launcherDirectory

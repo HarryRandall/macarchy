@@ -111,8 +111,7 @@ extension AppModel {
     /// to move onto widgets (`Setup.isNeeded`). Setup offers Done only when
     /// this is false, or Done would close it and the shell would open it again.
     var setupRequired: Bool {
-        !FileManager.default.fileExists(atPath: settingsStore.url.path)
-            || LegacyLayout.awaitingSetup || Setup.barNeedsMoving
+        !FileManager.default.fileExists(atPath: settingsStore.url.path) || Setup.barNeedsMoving
     }
 
     /// Setup health shows the same words for a build without a version.

@@ -1,81 +1,4 @@
 {
-  "advanced.cleanUp": [
-    {
-      "params": {},
-      "result": {
-        "archive": "~/Library/Application Support/Macarchy/backups/old-configuration-2026-10-25-180000.zip",
-        "failure": null,
-        "failures": [],
-        "lines": [
-          "Moved ~/.config/yabai/launch_ghostty.sh to ~/Library/Application Support/Macarchy/scripts/launch_ghostty.sh",
-          "Deleted ~/.config/skhd"
-        ]
-      }
-    },
-    {
-      "params": {},
-      "result": {
-        "archive": null,
-        "failure": "Set up Macarchy first.",
-        "failures": [
-          "Secure Keyboard Entry is on, held by loginwindow."
-        ],
-        "lines": [
-          "Nothing to clean up."
-        ]
-      }
-    }
-  ],
-  "advanced.getCleanupPlan": [
-    {
-      "params": {},
-      "result": {
-        "hasChanges": true,
-        "refusal": null,
-        "sections": [
-          {
-            "lines": [
-              {
-                "detail": "run by ~/Library/Application Support/Macarchy/config/skhdrc",
-                "path": "~/.config/yabai/launch_ghostty.sh"
-              }
-            ],
-            "title": "Move into ~/Library/Application Support/Macarchy/scripts, keeping names and permissions"
-          },
-          {
-            "lines": [
-              {
-                "detail": "54 paths",
-                "path": "~/Library/Application Support/Macarchy/config/skhdrc"
-              },
-              {
-                "detail": "1 path",
-                "path": "~/.config/zsh/.zshrc"
-              }
-            ],
-            "title": "Point paths at the new places"
-          },
-          {
-            "lines": [
-              {
-                "detail": "the old skhdrc and 3 backup copies",
-                "path": "~/.config/skhd"
-              }
-            ],
-            "title": "Archive, then delete"
-          }
-        ]
-      }
-    },
-    {
-      "params": {},
-      "result": {
-        "hasChanges": false,
-        "refusal": "Set up Macarchy first: cleaning up relies on the configs setup writes to ~/Library/Application Support/Macarchy/config.",
-        "sections": []
-      }
-    }
-  ],
   "advanced.getState": [
     {
       "params": {},
@@ -1506,9 +1429,6 @@
           }
         ],
         "homebrew": true,
-        "notices": [
-          "Moved ~/.config/macarchy to ~/Library/Application Support/Macarchy"
-        ],
         "tools": [
           {
             "chosen": true,
@@ -1574,7 +1494,6 @@
           }
         ],
         "homebrew": false,
-        "notices": [],
         "tools": [
           {
             "chosen": true,

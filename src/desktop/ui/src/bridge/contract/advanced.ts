@@ -58,8 +58,6 @@ export interface SetupState {
   homebrew: boolean;
   changes: { path: string; action: string; detail: string }[];
   canClose: boolean;
-  /** What moving an earlier version's folder did, until setup reports it. */
-  notices: string[];
 }
 /** One step of installing tools during `setup.run`, sent as it happens. */
 export interface SetupProgress {
@@ -75,22 +73,6 @@ export interface SetupReport {
   /** Why setup stopped early. `lines` still lists what it changed first. */
   failure: string | null;
 }
-/** What cleaning up old configuration would do, under headings in the order it happens. */
-export interface CleanupPlan {
-  sections: { title: string; lines: { path: string; detail: string }[] }[];
-  hasChanges: boolean;
-  /** Why nothing can be cleaned up yet, such as setup not having run. */
-  refusal: string | null;
-}
-export interface CleanupReport {
-  lines: string[];
-  /** Restarts that did not work. */
-  failures: string[];
-  /** Why it stopped part way. `lines` still lists what it changed first. */
-  failure: string | null;
-  /** The archive holding everything it deleted or changed, home-relative. */
-  archive: string | null;
-}
 export interface AdvancedMethods {
   "advanced.getState": { params: Record<string, never>; result: AdvancedState };
   "advanced.restartService": { params: { daemon: ServiceId }; result: null };
@@ -99,8 +81,6 @@ export interface AdvancedMethods {
   "advanced.restoreSnapshot": { params: { id: string }; result: null };
   "advanced.repairAddition": { params: Record<string, never>; result: null };
   "advanced.restoreOriginals": { params: { removeTools: string[] }; result: SetupReport };
-  "advanced.getCleanupPlan": { params: Record<string, never>; result: CleanupPlan };
-  "advanced.cleanUp": { params: Record<string, never>; result: CleanupReport };
   "advanced.setLoginItem": { params: { enabled: boolean }; result: null };
   "advanced.setTrackpadSwipes": { params: { enabled: boolean }; result: null };
   "advanced.openLoginItems": { params: Record<string, never>; result: null };

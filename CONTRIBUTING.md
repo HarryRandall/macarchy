@@ -231,36 +231,7 @@ Outside the folder it only writes:
 
 The yabai and SketchyBar launchers ship inside Macarchy.app. Their paths must
 contain no spaces, so install the app in `/Applications/Macarchy.app`. Setup
-updates the service definitions to use those bundled launchers. After that,
-the old `~/.config/macarchy` launchers are no longer needed. Do not remove them
-while the installed service definitions still refer to them.
-
-### Cleaning up after an upgrade
-
-Earlier versions left files in `~/.config/yabai`, `skhd`, `borders` and
-`sketchybar`. **Advanced → Clean up old configuration** (or
-`macarchy cleanup`, then `macarchy cleanup --apply`) shows what it will do
-first, then:
-
-- moves your own scripts and the files they use into
-  `~/Library/Application Support/Macarchy/scripts`, keeping their names and
-  permissions, and points your shortcuts, yabai region and the scripts
-  themselves at the new places;
-- points the zsh, Neovim and Ghostty lines that read through
-  `~/.config/macarchy` at Application Support, and removes the old link once
-  nothing needs it;
-- deletes the startup files, backup copies and old bar Macarchy no longer
-  reads, and restarts the tools whose files changed.
-
-A file something it cannot change still uses, such as a LaunchAgent of your
-own, stays where it is and is listed with the reason. Everything it deletes or
-changes goes into one zip in `backups` first, apart from named pipes and
-sockets a running program made, which go with their folder;
-`macarchy cleanup --restore <archive>` puts it all back. A file it rewrote
-that you have edited since stays as you left it, with the earlier version
-beside it as `<name>.before-cleanup`. Your own bar's
-commands, kept in `config/own-bar-before-widgets.sh`, name that archive, since
-they relied on `~/.config/sketchybar`.
+updates the service definitions to use those bundled launchers.
 
 Edits outside a file's `macarchy:keep` region are snapshotted and reported, not
 silently lost.
@@ -347,7 +318,7 @@ The app includes a `macarchy` command, used by the startup files:
 "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" doctor
 ```
 
-`setup`, `uninstall`, `doctor`, `cleanup`, `apply`, `theme <name|next|prev>`,
+`setup`, `uninstall`, `doctor`, `apply`, `theme <name|next|prev>`,
 `wallpaper <theme> <path>`, `rules [toggle]`, `bar toggle` and `restore`.
 Run it with no arguments for details.
 `setup` does what the app's setup does: it writes the files, starts the
@@ -378,16 +349,6 @@ XDG directories at Macarchy's folders, and `environment.lua` beside it puts the
 person's own values back once the configuration is read, so terminals, git and
 language servers started from the editor see the usual settings.
 
-To migrate an existing installation, run `./tools/migrate-plugins.sh` before
-setup. It moves existing Neovim configuration and data into managed storage,
-keeping a conflicting destination in Macarchy's `backups`. It also moves an
-existing XDG Ghostty folder to Ghostty's native Application Support folder,
-unless that already exists. It checks every source first and refuses linked
-folders before moving anything. Python tools Mason installed get pip's
-`/bin/sh` trampoline, since a `#!` line cannot hold the new path's space;
-any other Mason tool whose interpreter moved is listed for reinstalling. Existing editor
-sessions should be closed first.
-
 Macarchy writes the active colourscheme to `generated/nvim-colorscheme`;
 the bundled Neovim configuration reads it. Keep configuration and the lockfile
 in Git; downloaded plugins and editor state can be recreated. Personal changes
@@ -402,9 +363,7 @@ for example a patched `borders`.
 
 1. **Advanced → Restore original files** (or `macarchy uninstall`) stops
    Macarchy's agents, gives each tool back the agent and files it had and
-   removes Ghostty's include line. After a cleanup it also puts your scripts
-   and old folders back where your original files expect them; a moved script
-   you edited since stays in `scripts` as well.
+   removes Ghostty's include line.
    Macarchy also stops opening at login.
 2. Delete Macarchy.app, and `~/Library/Application Support/Macarchy` if you do
    not want your settings and themes.

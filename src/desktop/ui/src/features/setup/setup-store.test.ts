@@ -32,7 +32,6 @@ const plan: SetupState = {
   homebrew: true,
   changes: [{ path: "~/yabairc", action: "adopt", detail: "Kept" }],
   canClose: false,
-  notices: [],
 };
 const every = { tools: ["yabai", "skhd", "sketchybar", "borders"], existing: {} };
 function harness(state: SetupState = plan) {

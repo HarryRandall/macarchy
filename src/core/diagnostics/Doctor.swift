@@ -151,7 +151,6 @@ public enum Doctor {
     static func configurationChecks(integrations: Integrations) async -> [HealthCheck] {
         let fm = FileManager.default
         var results: [HealthCheck] = []
-        if let unmoved = unmovedCheck() { return [unmoved] }
         guard fm.fileExists(atPath: Paths.settings.path) else {
             return [
                 HealthCheck(
@@ -160,7 +159,6 @@ public enum Doctor {
             ]
         }
         results += layoutChecks()
-        if let old = await oldConfigurationCheck() { results.append(old) }
         let linked = fm.fileExists(
             atPath: Paths.appLink.appending(path: "Contents/MacOS/macarchy").path)
         results.append(

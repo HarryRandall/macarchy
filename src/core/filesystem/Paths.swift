@@ -56,13 +56,12 @@ public enum Paths {
     static func appRoot(in environment: [String: String]) -> URL {
         home(in: environment).appending(path: "Library/Application Support/Macarchy")
     }
-    /// Where earlier versions kept everything. `LegacyLayout` moves it into `appRoot`.
+    /// Where earlier versions kept everything, before `appRoot`.
     public static var legacyRoot: URL { home.appending(path: ".config/macarchy") }
     /// Earlier versions kept launchers here. Retained only for migration,
     /// cleanup archives and uninstall; new services use bundled launchers.
     public static var launcherDirectory: URL { legacyRoot }
     /// The person's own scripts, which their shortcuts and keep regions run.
-    /// `OldConfiguration` moves them here from the tools' old folders.
     public static var scriptsDirectory: URL { appRoot.appending(path: "scripts") }
     /// The configs Macarchy's LaunchAgents start yabai, skhd, SketchyBar and borders with.
     public static var configDirectory: URL { appRoot.appending(path: "config") }

@@ -133,8 +133,7 @@ public struct SnapshotStore: Sendable {
     }
 
     /// Where a recorded path lives now. Snapshots taken before the move to
-    /// Application Support recorded `~/.config/macarchy`; `LegacyLayout` maps
-    /// those records when it moves the folder, and this covers any it missed.
+    /// Application Support recorded `~/.config/macarchy`, and this maps them.
     /// With `startupFiles`, the earlier places of the startup files and
     /// shortcuts map to `config/` too. Only the move asks for that, because
     /// uninstall in this version can snapshot those old places legitimately.

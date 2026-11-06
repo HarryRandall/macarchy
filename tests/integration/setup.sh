@@ -226,24 +226,7 @@ printf '\n# Theme colours from Macarchy\nconfig-file = ?%s\n' "$ROOT/generated/g
   >> "$HOME_DIR/.config/ghostty/config"
 "$CLI" uninstall >/dev/null
 [ "$(cat "$HOME_DIR/.config/ghostty/config")" = 'font-size = 13' ] || fail "earlier Ghostty include not removed"
-cp "$SETTINGS" "$HOME_DIR/settings.saved"
 rm -rf "$HOME_DIR/.config" "$ROOT"
-
-# An install from before Application Support moves across and keeps working
-# through a link, which setup keeps for files that still name the old folder
-# and uninstall removes. tests/integration/upgrade.sh covers a full upgrade.
-OLD="$HOME_DIR/.config/macarchy"
-mkdir -p "$OLD/themes/mine"
-cp "$HOME_DIR/settings.saved" "$OLD/settings.json"
-"$CLI" doctor >/dev/null 2>&1 || true
-[ -f "$ROOT/settings.json" ] || fail "settings not moved"
-[ -d "$ROOT/themes/mine" ] || fail "themes not moved"
-[ -L "$OLD" ] || fail "no link left at the old folder"
-"$CLI" setup --keep --no-apply >/dev/null
-[ -L "$OLD" ] || fail "old folder link removed by setup"
-grep -q 'Set up before Macarchy moved' <<<"$("$CLI" doctor 2>&1 || true)" && fail "setup still needed after setup"
-"$CLI" uninstall >/dev/null
-[ -e "$OLD" ] && fail "old folder link kept after uninstall"
 
 # An uninstall that stops part way says what it had already restored, and a
 # second run finishes. Backups are restored in path order, so the installer's
@@ -483,5 +466,3 @@ MACARCHY_SEARCH_PATH="$BAR_BIN" "$CLI" space 1 || fail "Space click failed"
 grep -qx 'yabai -m space --focus 1' "$CALLS" || fail "Space click did not reach yabai: $(cat "$CALLS")"
 
 echo "setup integration test passed"
-"$REPO/tests/integration/upgrade.sh"
-"$REPO/tests/integration/cleanup.sh"

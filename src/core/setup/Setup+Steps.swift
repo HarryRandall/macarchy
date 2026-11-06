@@ -71,12 +71,8 @@ extension Setup {
         if existing == .keep, let source = skhdSource, let text = adoptable(source) {
             try FileManager.default.createDirectory(
                 at: shortcuts.deletingLastPathComponent(), withIntermediateDirectories: true)
-            var lines: [String] = []
-            let carried = await pointingAtNewFolder(
-                text, in: source, shortcuts: true, report: &lines)
-            try carried.write(to: shortcuts, atomically: true, encoding: .utf8)
+            try text.write(to: shortcuts, atomically: true, encoding: .utf8)
             report.append("Copied your shortcuts from \(Paths.display(source))")
-            report += lines
         } else {
             try installDefaultShortcuts(to: shortcuts)
             report.append("Installed default shortcuts")

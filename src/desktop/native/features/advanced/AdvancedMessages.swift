@@ -128,8 +128,6 @@ struct SetupState: Codable, Sendable {
     var homebrew: Bool
     var changes: [Change]
     var canClose: Bool
-    /// What moving an earlier version's folder did, until setup reports it.
-    var notices: [String]
 }
 
 /// One step of installing tools during setup, sent as it happens.
@@ -183,46 +181,6 @@ extension SetupReport {
         try container.encode(lines, forKey: .lines)
         try container.encode(failures, forKey: .failures)
         try container.encode(failure, forKey: .failure)
-    }
-}
-
-struct CleanupPlanState: Codable, Sendable {
-    struct Section: Codable, Sendable {
-        struct Line: Codable, Sendable {
-            var path: String
-            var detail: String
-        }
-        var title: String
-        var lines: [Line]
-    }
-    var sections: [Section]
-    var hasChanges: Bool
-    var refusal: String?
-
-    private enum CodingKeys: String, CodingKey { case sections, hasChanges, refusal }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(sections, forKey: .sections)
-        try container.encode(hasChanges, forKey: .hasChanges)
-        try container.encode(refusal, forKey: .refusal)
-    }
-}
-
-struct CleanupReport: Codable, Sendable {
-    var lines: [String]
-    var failures: [String]
-    var failure: String?
-    var archive: String?
-
-    private enum CodingKeys: String, CodingKey { case lines, failures, failure, archive }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(lines, forKey: .lines)
-        try container.encode(failures, forKey: .failures)
-        try container.encode(failure, forKey: .failure)
-        try container.encode(archive, forKey: .archive)
     }
 }
 

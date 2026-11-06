@@ -46,34 +46,8 @@ for tool in yabai sketchybar; do
   chmod +x "$config"
   [ "$(/bin/sh -c "$REPO/resources/launchers/macarchy-${tool}rc")" = ran ]
 done
-mkdir -p "$MACARCHY_HOME/.config/nvim" "$MACARCHY_HOME/.local/share/nvim/lazy/example" "$MACARCHY_HOME/.config/ghostty"
-printf 'return {}\n' > "$MACARCHY_HOME/.config/nvim/init.lua"
-ln -s "$MACARCHY_HOME/.local/share/nvim/lazy/example" "$MACARCHY_HOME/.local/share/nvim/query-link"
-mkdir -p "$MACARCHY_HOME/.local/share/nvim/mason/bin"
-printf '#!/bin/sh\nexec "%s/.local/share/nvim/lazy/example/tool" "$@"\n' "$MACARCHY_HOME" > "$MACARCHY_HOME/.local/share/nvim/mason/bin/example"
-chmod +x "$MACARCHY_HOME/.local/share/nvim/mason/bin/example"
-VENV="$MACARCHY_HOME/.local/share/nvim/mason/packages/example/venv/bin"
-mkdir -p "$VENV"
-printf '#!/bin/sh\nexec /usr/bin/python3 "$@"\n' > "$VENV/python"
-chmod +x "$VENV/python"
-printf '#!%s/python\nprint("python tool ran")\n' "$VENV" > "$VENV/example-py"
-chmod +x "$VENV/example-py"
-printf 'font-size = 13\n' > "$MACARCHY_HOME/.config/ghostty/config"
-"$REPO/tools/migrate-plugins.sh" > "$TEST_ROOT/migrate.log"
-[ ! -e "$MACARCHY_HOME/.config/nvim" ]
-[ ! -e "$MACARCHY_HOME/.config/ghostty" ]
-[ ! -e "$MACARCHY_HOME/.local/share/nvim" ]
-[ -d "$PLUGIN/data/nvim/lazy/example" ]
-[ "$(readlink "$PLUGIN/data/nvim/query-link")" = "$PLUGIN/data/nvim/lazy/example" ]
-grep -qF "$PLUGIN/data/nvim/lazy/example/tool" "$PLUGIN/data/nvim/mason/bin/example"
-[ "$("$PLUGIN/data/nvim/mason/packages/example/venv/bin/example-py")" = 'python tool ran' ]
-[ "$(cat "$PLUGIN/config/nvim/init.lua")" = 'return {}' ]
-grep -q 'font-size = 13' "$MACARCHY_HOME/Library/Application Support/com.mitchellh.ghostty/config"
-BACKUP_INIT="$(find "$MACARCHY_HOME/Library/Application Support/Macarchy/backups" -name init.lua -print -quit)"
-[ -n "$BACKUP_INIT" ]
-grep -q 'preserved local edit' "$BACKUP_INIT"
 "$CLI" uninstall > "$TEST_ROOT/uninstall.log"
 [ ! -e "$MACARCHY_HOME/.zshenv" ]
 grep -qx "alias ll='ls -l'" "$MACARCHY_HOME/.zshrc"
 [ "$(grep -c '^export PATH=' "$MACARCHY_HOME/.zshrc")" = 0 ]
-echo 'Plugin launcher, migration, preservation and shell restoration checks passed.'
+echo 'Plugin launcher, preservation and shell restoration checks passed.'

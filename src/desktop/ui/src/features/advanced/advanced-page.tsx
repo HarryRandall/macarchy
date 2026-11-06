@@ -8,7 +8,6 @@ import { Notice } from "~/components/ui/notice";
 import { useStore } from "~/lib/store";
 
 import { BackupsCard } from "./advanced-backups";
-import { CleanupCard } from "./advanced-cleanup";
 import { AdvancedCharts } from "./advanced-charts";
 import { ConfigFilesCard, generatedFiles } from "./advanced-files";
 import { dayStarts } from "./advanced-format";
@@ -124,16 +123,6 @@ export function AdvancedPage({ store, openSetup }: { store: AdvancedStore; openS
             />
             <CommandLineCard />
             <SetupCard busy={busy} onOpenSetup={openSetup} />
-            <CleanupCard
-              busy={busy}
-              reviewing={snapshot.reviewingCleanup}
-              plan={snapshot.cleanupPlan}
-              report={snapshot.cleanupReport}
-              onReview={() => void store.reviewCleanup()}
-              onClose={() => store.closeCleanup()}
-              onCleanUp={() => store.cleanUp()}
-              onDismissReport={() => store.dismissCleanupReport()}
-            />
             <DangerZone
               directory={state.backupsDirectory}
               removableTools={state.removableTools}

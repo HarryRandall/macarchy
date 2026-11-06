@@ -37,11 +37,6 @@ let usage = """
                                   installed with Homebrew; tools you had before are
                                   never removed.
       doctor                      Check dependencies, services and configuration.
-      cleanup [--apply] [--restore <archive>]
-                                  Show how old configuration outside Macarchy's folder
-                                  would be cleaned up; --apply does it, archiving
-                                  everything it deletes or changes first; --restore
-                                  puts an archive back.
       apply                       Reapply every saved setting to the desktop.
       theme <name>|next|prev      Switch theme.
       wallpaper <theme> <path>    Choose a theme's wallpaper (path inside the theme).
@@ -91,9 +86,6 @@ func usage(of command: String) -> String {
 }
 
 let args = Array(CommandLine.arguments.dropFirst())
-// Startup files run the CLI at login, possibly before the app has moved the
-// old folder, so the CLI moves it too.
-LegacyLayout.migrate()
 let command = args.first ?? ""
 let rest = Array(args.dropFirst())
 do {
@@ -128,11 +120,6 @@ do {
     case "doctor":
         _ = try parse()
         try require(await Doctor.check())
-    case "cleanup":
-        let options = try parse(
-            flags: ["--apply", "--restore"], values: 0...1,
-            conflicting: [["--apply", "--restore"]])
-        try await cleanUp(options, usage: usage(of: command))
     case "apply":
         _ = try parse()
         try await DesktopConfiguration.apply()

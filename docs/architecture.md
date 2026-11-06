@@ -32,13 +32,12 @@ Macarchy owns `~/Library/Application Support/Macarchy`:
 | `plugins/neovim/` | Editor configuration, downloaded plugins, state and cache. Configuration is seeded from the app bundle. |
 | `widgets/` | Bar widgets people made or imported, one folder each; see [widgets](widgets.md). |
 | `generated/` | Rendered from the active theme for other programs: Ghostty colours, bar colours, shell colours, Neovim colourscheme name. |
-| `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest, and the archives cleaning up writes (`old-configuration-<date>.zip`). |
-| `scripts/` | The person's own scripts their shortcuts and keep regions run, moved here by cleaning up. |
+| `backups/` | Originals of the agents and Ghostty config setup changed, with a manifest. |
+| `scripts/` | The person's own scripts their shortcuts and keep regions run. |
 | `snapshots/` | Rolling copies taken before each change, for undo. |
 | `bin/` | Optional replacements for daemon executables. |
 | `state/` | Daemon logs, startup records and the widget host's lock. |
 | `Macarchy.app` | A link to the installed app. |
-| `migration.json` | What moving an earlier version's folder did, until setup reports it. |
 
 `MACARCHY_HOME` relocates everything for tests. It and `MACARCHY_SEARCH_PATH`
 also isolate the run from the desktop: `DesktopIsolation` lets launchd,
@@ -47,78 +46,8 @@ only as fakes under the home or the search path, and refuses the wallpaper
 and notifications to the running app, reporting them as skipped. Test processes are isolated even without either variable. A
 `MACARCHY_HOME` that is the account's own home does not isolate.
 
-Earlier versions used `~/.config/macarchy`. `LegacyLayout` moves it on first
-launch when it holds Macarchy's data and the new folder has no settings yet,
-merging into a new folder something else created first (anything that clashes
-is kept aside in `Macarchy before migration <date>` and Doctor reports it).
-Bar scripts never create the new folder. The move leaves a link at the old path
-that stays until the person cleans up (below), because earlier startup files,
-shortcuts and the person's own scripts may still name it. When the old path is the person's own
-link, as dotfiles make it, the folder it leads to is copied instead, and the
-link and that folder are left as they are; Doctor reports the copy left behind.
-Setup also rewrites old paths in the shortcuts and the yabai, SketchyBar and
-borders keep regions it carries over, so the link is a fallback. A rewrite
-follows the shell's quoting (`OldPathScanner`) and is kept only when the result
-still parses with `bash -n`; otherwise the text stays as written and the report
-says so. Snapshot records are moved to the new paths, and restore maps any it
-missed. The first command after an upgrade usually makes the move unseen, so
-`move` leaves `migration.json` saying what it did; the setup screen, Doctor and
-setup's report show it, and setup clears it.
-
-## Cleaning up
-
-Earlier versions also left startup files, backups and launchers in the
-tools' own folders, `~/.config/yabai`, `skhd`, `borders` and `sketchybar`,
-where people keep scripts their shortcuts run. Cleaning up is explicit:
-`macarchy cleanup` prints the plan, `--apply` carries it out, and Advanced →
-Clean up old configuration shows the same plan behind a confirmation.
-`OldConfiguration.plan` only reads. It classifies each entry of those
-folders: Macarchy's startup files, launchers, backup copies, empty folders
-and the bar SketchyBar ran before can go; anything else is the person's own
-and moves to `scripts/`, with its name and permissions, so the folders can go
-entirely. References to what moves are pointed at the new places in the
-shortcuts, the startup files, the person's zsh and bash startup files and the
-moved scripts themselves. Each rewritten command or file must still parse
-(`bash -n`, or `zsh -n` for zsh) or what it runs stays put. Anything else that uses an entry keeps it in place:
-a LaunchAgent, Vim script, a widget, a file that stays, a path inside single
-quotes, or a folder named as a whole. The link at `~/.config/macarchy` is
-removed only once nothing reads through it: zsh and
-shell paths go through `OldPathScanner`, Neovim Lua strings that hold only a
-path and Ghostty `config-file` lines are pointed at Application Support, and
-anything else that still names it keeps the link.
-
-`OldConfiguration.apply` replans under the desktop lock, zips everything it
-will delete or change, with a manifest, into `backups/` and checks the zip
-reads back before changing anything, snapshots the configs it rewrites, then
-moves, rewrites, removes the unused link and old launchers, and deletes. A failure before that says nothing was changed.
-The zip is written and read with `ditto`, which keeps links, permissions and
-extended attributes. Named pipes, sockets and devices cannot be archived:
-they are left out of every copy, recorded in the manifest as skipped and
-deleted with their folder. A pid file in a folder that goes, naming a process
-that runs a script from inside that folder, is a helper the old bar left
-running, and it is stopped; any other pid is reported. Deleting walks what the
-archive holds, so anything that appeared after archiving stays and is
-reported. It restarts skhd, yabai, SketchyBar or borders when their file or
-launcher changed, through `Setup.startService`. `restore` refuses before
-changing anything when a path it would put back is in use again; otherwise it
-puts every file and the link back, removes the moved copies that were not
-edited since (a moved folder is compared by a hash of its whole tree),
-rewrites the agents and restarts the daemons. A rewritten file edited since
-cleaning up is kept, and the archived version goes beside it as
-`<name>.before-cleanup`. Doctor shows a warning while there is something to
-clean up.
-
-Uninstall reads every cleanup archive before restoring setup's backups, then
-puts back what cleaning up moved or deleted wherever the backups left nothing,
-leaving out Macarchy's launchers, and removes the moved copies nobody edited.
-The person's original files then find their scripts and folders where they
-were. A person's own bar kept in `config/own-bar-before-widgets.sh` names the
-archive holding `~/.config/sketchybar`, which it relied on.
-
 Tests never run the person's scripts: `DesktopIsolation` refuses anything in
-`scripts/` or the tools' old folders except `bash -n` or `zsh -n`, and the
-integration test points the owner's scripts' Homebrew paths at fakes and
-runs with a PATH that has no Homebrew in it.
+`scripts/` or the tools' old folders except `bash -n` or `zsh -n`.
 
 ## Startup
 
@@ -150,8 +79,7 @@ is translocated, on a mounted disk image or in `.build`. The SketchyBar
 launcher gives the bar `~/.config/sketchybar` as `$CONFIG_DIR` and working
 folder while that folder exists, so commands kept from an earlier bar still
 find their files. Each launcher quotes the path to the real config
-in Application Support. New setup does not create `~/.config/macarchy`.
-Earlier launchers remain compatibility inputs for cleanup and uninstall only.
+in Application Support.
 
 `macarchy startup <tool>` records the pid launchd reports for the daemon's
 job in `state/startup/<tool>`. Doctor compares it with the copy running now,
@@ -266,6 +194,5 @@ bridge and web views against the built interface.
 `corepack pnpm run check` in `src/desktop/ui` covers the interface.
 `tests/integration/setup.sh` runs setup, a repeat setup and uninstall
 in a temporary home against fake tools, and starts each agent as launchd
-would. `tests/integration/upgrade.sh` upgrades a copy of the owner's earlier
-layout and checks their own bar ends on widgets with nothing lost. The fake yabai and SketchyBar run their file as `sh -c <path>`, as the
+would. The fake yabai and SketchyBar run their file as `sh -c <path>`, as the
 real ones do, so a path sh would split fails there too.

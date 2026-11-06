@@ -12,7 +12,7 @@ extension Setup {
         let body = try regions(of: source)
         guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
         report.append("Carried your own commands over from \(Paths.display(source))")
-        return await pointingAtNewFolder(body, in: source, report: &report)
+        return body
     }
 
     /// The keep regions of a startup file as written, `yours` first.
@@ -24,38 +24,6 @@ extension Setup {
             + regions.keys.filter { $0 != StartupConfiguration.yoursRegion }.sorted()
         return StartupConfiguration.tidy(
             names.compactMap { regions[$0] }.joined(separator: "\n").components(separatedBy: "\n"))
-    }
-
-    /// `text` with paths into `~/.config/macarchy` pointed at the new folder,
-    /// saying so in the report. `shortcuts` is skhd text, rewritten one
-    /// command at a time; anything else is a bash script.
-    static func pointingAtNewFolder(
-        _ text: String, in source: URL, shortcuts: Bool = false, report: inout [String]
-    ) async
-        -> String
-    {
-        let rewritten =
-            shortcuts
-            ? await LegacyLayout.rewritingOldPaths(inShortcuts: text)
-            : await LegacyLayout.rewritingOldPaths(inScript: text)
-        func count(_ number: Int) -> String { number == 1 ? "1 path" : "\(number) paths" }
-        if rewritten.changed != 0 {
-            report.append(
-                "Pointed \(count(rewritten.changed)) from \(Paths.display(source)) at "
-                    + "\(Paths.display(Paths.appRoot))")
-        }
-        if rewritten.unsafe != 0 {
-            report.append(
-                "Left \(count(rewritten.unsafe)) in \(Paths.display(source)) as written, because "
-                    + "pointing \(rewritten.unsafe == 1 ? "it" : "them") at the new folder would "
-                    + "not parse as shell")
-        }
-        if LegacyLayout.mentionsOldFolder(rewritten.text) {
-            report.append(
-                "\(Paths.display(source)) still names \(Paths.display(Paths.legacyRoot)) "
-                    + "where it could not be rewritten; \(LegacyLayout.oldPathFallback)")
-        }
-        return rewritten.text
     }
 
     /// A keep region without its end marker cannot be carried: where the
@@ -78,21 +46,5 @@ extension Setup {
                     + "Add the marker after your own lines, then set up again. "
                     + "Setup did not change anything.")
         }
-    }
-
-    /// Moves an earlier version's folder before anything else touches the
-    /// new one, and stops setup if it is still waiting to move, because
-    /// setting up an empty folder would start every setting from defaults.
-    /// Returns what the move did, now or when a command made it earlier, so
-    /// the report tells the person; `run` clears the note once it has.
-    static func moveEarlierFolder() throws -> [String] {
-        try LegacyLayout.move()
-        guard !LegacyLayout.needsMigration else {
-            throw ConfigurationError(
-                "Settings from an earlier version are still in "
-                    + "\(Paths.display(LegacyLayout.linkedFolder ?? Paths.legacyRoot)) and could "
-                    + "not be moved. Setup did not change anything.")
-        }
-        return LegacyLayout.note?.lines ?? []
     }
 }

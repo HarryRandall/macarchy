@@ -160,14 +160,6 @@ function Plan({ store, state }: { store: SetupStore; state: SetupState }) {
         : "Writes the files below and starts the services.";
   return (
     <>
-      {state.notices.length ? (
-        <Notice.Root>
-          <Notice.Title>Your settings moved</Notice.Title>
-          <Notice.Description className="whitespace-pre-line select-text">
-            {state.notices.join("\n")}
-          </Notice.Description>
-        </Notice.Root>
-      ) : null}
       <Card className="px-6 py-5">
         <Steps>
           <Step

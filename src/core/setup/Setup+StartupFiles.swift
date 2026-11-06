@@ -38,14 +38,8 @@ extension Setup {
         if FileManager.default.fileExists(atPath: url.path) {
             return Change(path: url, action: .adopt, detail: "Already set up; left as it is")
         }
-        if existing == .keep, let source = skhdSource, let text = adoptable(source) {
-            let old = LegacyLayout.mentionsOldFolder(text)
-            return Change(
-                path: url, action: .adopt,
-                detail: old
-                    ? "Starts from your own shortcuts, pointing those that run Macarchy from "
-                        + "\(Paths.display(Paths.legacyRoot)) at its new folder"
-                    : "Starts from your own shortcuts")
+        if existing == .keep, let source = skhdSource, adoptable(source) != nil {
+            return Change(path: url, action: .adopt, detail: "Starts from your own shortcuts")
         }
         return Change(path: url, action: .create, detail: "Installs Macarchy's default shortcuts")
     }
@@ -68,9 +62,8 @@ extension Setup {
         }
         let adopted = StartupConfiguration.adoptYabai(text)
         try updateSettings { $0.mergeFlat(adopted.values) }
-        let kept = await pointingAtNewFolder(adopted.kept, in: source, report: &lines)
         lines.append("Moved \(adopted.values.count) yabai settings into Macarchy")
-        return (kept, lines)
+        return (adopted.kept, lines)
     }
 
     /// The bordersrc region: carried from an earlier version's file, or nil

@@ -8,7 +8,6 @@ extension BridgeRouter {
         model: AppModel, send: @escaping @MainActor (BridgeEvent) -> Void = { _ in }
     ) {
         registerSetup(model: model, send: send)
-        registerCleanup(model: model)
         register("advanced.getState") { (_: Empty) in
             try await model.advancedState()
         }
@@ -91,27 +90,6 @@ extension BridgeRouter {
                 for command in report.commands { model.log.record(command) }
                 return SetupReport(report)
             }
-        }
-    }
-
-    private func registerCleanup(model: AppModel) {
-        register("advanced.getCleanupPlan") { (_: Empty) in
-            CleanupPlanState(await OldConfiguration.plan())
-        }
-        // Like setup, a partial run resolves, so the page shows what changed
-        // beside why it stopped.
-        register("advanced.cleanUp") { (_: Empty) in
-            let report = await OldConfiguration.apply(integrations: model.setupSession.integrations)
-            for command in report.commands { model.log.record(command) }
-            if let failure = report.failure {
-                model.log.failure("clean up old configuration", failure)
-            } else {
-                model.log.note("clean up old configuration", "Completed")
-            }
-            await model.loadEverything()
-            StateBroadcast.shared.settingsWritten()
-            StateBroadcast.shared.advancedChanged()
-            return CleanupReport(report)
         }
     }
 
@@ -199,27 +177,6 @@ extension SetupReport {
     }
 }
 
-extension CleanupPlanState {
-    init(_ plan: OldConfiguration.Plan) {
-        sections = plan.sections.map { section in
-            .init(
-                title: section.title,
-                lines: section.lines.map { .init(path: $0.path, detail: $0.detail) })
-        }
-        hasChanges = plan.refusal == nil && plan.hasChanges
-        refusal = plan.refusal
-    }
-}
-
-extension CleanupReport {
-    init(_ report: OldConfiguration.Report) {
-        lines = report.lines
-        failures = report.commands.filter { !$0.ok }.map(\.summary)
-        failure = report.failure
-        archive = report.archive.map(Paths.display)
-    }
-}
-
 extension AppModel {
     /// One line for each of `Setup.extras`, by id.
     static let extraDescriptions: [String: String] = [:]
@@ -246,8 +203,7 @@ extension AppModel {
             changes: plan.map {
                 .init(path: Paths.display($0.path), action: $0.action.rawValue, detail: $0.detail)
             },
-            canClose: !setupRequired,
-            notices: LegacyLayout.note?.lines ?? [])
+            canClose: !setupRequired)
     }
 
     func advancedState() async throws -> AdvancedState {

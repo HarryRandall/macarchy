@@ -15,7 +15,7 @@ import Foundation
 /// Earlier versions put each launcher in the tool's own folder,
 /// `~/.config/<tool>`. A launcher stays there while it is there and the new
 /// one is not, or while an upgrade's link still stands at the launcher
-/// folder; only `OldConfiguration` moves it, with that link.
+/// folder.
 ///
 /// SketchyBar sets `$CONFIG_DIR` to the folder of the file it starts with;
 /// Macarchy's bar names everything in full and does not mind where that is.
