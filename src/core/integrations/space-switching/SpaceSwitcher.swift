@@ -14,6 +14,14 @@ import Foundation
 /// from the Space showing once the last one landed, never from the window
 /// server mid-swipe, which reports the Spaces passed on the way.
 ///
+/// The Dock carries a swipe out in its own order of Spaces, which yabai's
+/// scripting addition can leave behind when it swaps or moves Spaces: the
+/// window server, yabai and Mission Control show the new order while the
+/// Dock still swipes through the old one. So each switch is watched as it
+/// lands. A swipe that shows a Space off the way to the target, or settles
+/// short of it, is put right through yabai, which goes by index, and later
+/// switches go through yabai until that Dock restarts.
+///
 /// Requests are taken in the order they arrive. Moving a window to a Space
 /// asks yabai first; a press made while that is under way wins, so the
 /// window still moves but the switch goes where the later press asked.
@@ -68,6 +76,9 @@ public actor SpaceSwitcher {
         var focusWindow: @Sendable (Int) async -> Void
         /// A short wait between looks at whether a switch has landed.
         var pause: @Sendable () async -> Void
+        /// Which Dock is running, by process id, so swipes are tried again
+        /// once a Dock whose order was wrong restarts.
+        var dock: @Sendable () -> Int? = { nil }
     }
 
     private let desktop: Desktop
@@ -86,6 +97,18 @@ public actor SpaceSwitcher {
     /// are ignored.
     private var newest = 0
     private var switching = false
+    /// Set when a swipe landed where the window server's order said it
+    /// would not, with the Dock it happened under.
+    private var misorderedDock: Int??
+
+    /// Whether switches go through yabai because the Dock's order of
+    /// Spaces was found to differ from the window server's.
+    func swipesDistrusted() -> Bool {
+        guard let dock = misorderedDock else { return false }
+        if dock == desktop.dock() { return true }
+        misorderedDock = nil
+        return false
+    }
 
     public init(desktop: Desktop, patience: Int = 150) {
         self.desktop = desktop
@@ -159,8 +182,7 @@ public actor SpaceSwitcher {
             guard let id = layout.ids[index] else { continue }
             if !desktop.showing().contains(id) {
                 heading = index
-                await send(index, id: id, layout: layout)
-                let arrived = await landed(on: id)
+                let arrived = await switchTo(index, id: id, layout: layout)
                 heading = nil
                 guard arrived else { continue }
             }
@@ -170,24 +192,64 @@ public actor SpaceSwitcher {
         }
     }
 
-    private func send(_ index: Int, id: Int, layout: Layout) async {
+    /// Switches to Space `index` and waits for it to show. Returns whether
+    /// it did.
+    private func switchTo(_ index: Int, id: Int, layout: Layout) async -> Bool {
+        if let way = swipe(id: id, layout: layout) {
+            switch await watch(id: id, way: way, display: layout.pointerDisplay) {
+            case .arrived:
+                return true
+            case .misplaced:
+                // The Dock's order differs from the window server's.
+                misorderedDock = .some(desktop.dock())
+            case .stuck:
+                break
+            }
+        }
+        // yabai goes to the Space by index, so it is safe after any swipe.
+        await desktop.yabaiFocus(index)
+        return await watch(id: id, way: nil) == .arrived
+    }
+
+    /// Sends the swipes to Space `id` on the pointer's display. Returns the
+    /// Spaces they should pass through, from the one showing to `id`, or
+    /// nil when yabai has to switch instead.
+    private func swipe(id: Int, layout: Layout) -> [Int]? {
         let showing = desktop.showing()
-        if desktop.gesturesAllowed(), !desktop.overlayOpen(),
+        guard !swipesDistrusted(), desktop.gesturesAllowed(), !desktop.overlayOpen(),
             let target = layout.pointerDisplay.firstIndex(of: id),
             let current = layout.pointerDisplay.firstIndex(where: showing.contains),
             desktop.swipe(target > current ? .right : .left, abs(target - current))
-        {
-            return
-        }
-        // yabai goes to the Space by index, so it is safe after a partial swipe.
-        await desktop.yabaiFocus(index)
+        else { return nil }
+        return Array(layout.pointerDisplay[min(current, target)...max(current, target)])
     }
 
-    private func landed(on id: Int) async -> Bool {
+    private enum Landing { case arrived, misplaced, stuck }
+
+    /// Waits for Space `id` to show. With the `way` swipes should pass
+    /// along `display`, showing a Space off it, or stopping short of `id`,
+    /// is misplaced. Swipes still under way are let finish first, so they
+    /// do not undo yabai's correction.
+    private func watch(id: Int, way: [Int]?, display: [Int] = []) async -> Landing {
+        let here = { self.desktop.showing().intersection(display) }
+        let start = here()
+        var strayed = false
+        var still = 0
+        var last = start
         for _ in 0..<patience {
-            if desktop.showing().contains(id) { return true }
+            if desktop.showing().contains(id) { return .arrived }
+            let now = here()
+            if let way, !now.isEmpty, !now.contains(where: way.contains) { strayed = true }
+            still = now == last ? still + 1 : 0
+            last = now
+            if strayed, still >= Self.settled { return .misplaced }
             await desktop.pause()
         }
-        return desktop.showing().contains(id)
+        if desktop.showing().contains(id) { return .arrived }
+        // Moved, but not all the way: the Dock went through other Spaces.
+        return way != nil && (strayed || here() != start) ? .misplaced : .stuck
     }
+
+    /// Looks a Space must stay showing before a stray swipe counts as done.
+    static let settled = 15
 }

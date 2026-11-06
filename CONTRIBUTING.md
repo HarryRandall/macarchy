@@ -306,6 +306,14 @@ permission. A Space on another display, or one picked while Mission
 Control is open, goes through yabai and slides. Health says which is in
 use.
 
+The Dock carries a swipe out in its own order of desktops. Swapping or
+moving desktops with yabai's scripting addition (`yabai -m space --swap`)
+reorders them everywhere else but can leave the Dock's order behind, so a
+swipe would land on the wrong desktop. Macarchy watches each switch land:
+if it shows a desktop off the way, or stops short, yabai finishes it by
+number, and switching keeps going through yabai until the Dock restarts.
+Restart the Dock (`killall Dock`) to make switches instant again.
+
 **Advanced → Instant trackpad swipes** makes the three-finger swipe between
 desktops switch at once too, through the same queue. It is off unless turned
 on, needs the same Accessibility, and works only while the app is open;

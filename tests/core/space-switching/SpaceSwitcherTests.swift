@@ -39,6 +39,15 @@ struct SpaceSwitcherTests {
         var swipesWork = true
         /// Switches are sent but never land, as when Mission Control eats them.
         var stuck = false
+        /// The Dock's own order of Space ids, when it differs from the
+        /// window server's, as after yabai's scripting addition swaps Spaces.
+        /// Swipes go along this order, showing only the last Space, as the
+        /// real Dock does, or each one passed with `dockShowsEachStep`.
+        var dockOrder: [Int]?
+        var dockShowsEachStep = false
+        var dockID = 1
+        /// A Space showing on another display.
+        var otherDisplay: Int?
         var focusedWindow: Int? = 7
         /// A press made while yabai moves the window.
         var pressDuringMove: Press?
@@ -52,7 +61,9 @@ struct SpaceSwitcherTests {
         var space: Int { lock.withLock { current } }
         var events: [Event] { lock.withLock { log } }
 
-        func showing() -> Set<Int> { lock.withLock { [current * 10] } }
+        func showing() -> Set<Int> {
+            lock.withLock { Set([current * 10] + (otherDisplay.map { [$0] } ?? [])) }
+        }
 
         func record(_ event: Event) { lock.withLock { log.append(event) } }
 
@@ -67,7 +78,17 @@ struct SpaceSwitcherTests {
         func swipe(_ direction: SpaceSwitcher.Direction, _ steps: Int) -> Bool {
             record(.swipe(direction, steps))
             guard swipesWork else { return false }
-            head(to: space + (direction == .right ? steps : -steps))
+            guard let order = dockOrder, let from = order.firstIndex(of: space * 10) else {
+                head(to: space + (direction == .right ? steps : -steps))
+                return true
+            }
+            // Along the Dock's order, stopping at its ends.
+            let step = direction == .right ? 1 : -1
+            let passed = stride(from: from + step, through: from + step * steps, by: step)
+                .filter(order.indices.contains)
+            for position in dockShowsEachStep ? passed : passed.suffix(1) {
+                head(to: order[position] / 10)
+            }
             return true
         }
 
@@ -127,12 +148,13 @@ struct SpaceSwitcherTests {
                 focusWindow: { self.record(.focused($0)) },
                 pause: {
                     if let press = self.tick() { await self.press(press) }
-                })
+                },
+                dock: { self.dockID })
         }
     }
 
     func run(_ desk: Desk, _ press: Press) async {
-        let switcher = SpaceSwitcher(desktop: desk.desktop(), patience: 20)
+        let switcher = desk.switcher ?? SpaceSwitcher(desktop: desk.desktop(), patience: 30)
         desk.switcher = switcher
         await desk.press(press)
     }
@@ -265,15 +287,20 @@ struct SpaceSwitcherTests {
         await run(desk, .go(3))
         #expect(desk.events.isEmpty)
     }
+}
 
-    @Test("a switch that never lands is given up on, and no window is focused")
+extension SpaceSwitcherTests {
+    @Test("a switch that never lands is tried once through yabai, then given up on")
     func neverLands() async {
         let desk = Desk(on: 1)
         desk.stuck = true
         await run(desk, .move(3))
+        // No window is focused, as the Space never showed.
         #expect(
             desk.events == [
-                .moved(window: 7, space: 3), .drawn(app: "Notes", from: 1, to: 3), .swipe(.right, 2)
+                .moved(window: 7, space: 3), .drawn(app: "Notes", from: 1, to: 3),
+                .swipe(.right, 2),
+                .yabai(3)
             ])
         #expect(desk.space == 1)
     }

@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationServices
 import CoreGraphics
 import Foundation
@@ -45,7 +46,11 @@ extension SpaceSwitcher.Desktop {
             focusWindow: { window in
                 _ = await integrations.execute(yabai, ["-m", "window", "--focus", String(window)])
             },
-            pause: { try? await Task.sleep(for: .milliseconds(10)) })
+            pause: { try? await Task.sleep(for: .milliseconds(10)) },
+            dock: {
+                NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock")
+                    .first.map { Int($0.processIdentifier) }
+            })
     }
 
     private struct Window: Decodable {
