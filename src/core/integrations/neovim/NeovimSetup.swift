@@ -1,12 +1,16 @@
 import Foundation
 
-/// Seeds editable plugin configuration once and puts Macarchy's bundled
-/// commands first on zsh's PATH. App updates preserve local edits.
+/// Seeds the editable Neovim configuration once and puts Macarchy's bundled
+/// commands, its `nvim` launcher among them, first on zsh's PATH. App updates
+/// preserve local edits.
 ///
 /// The shell files are the person's own, so they are never backed up and
 /// restored whole: setup adds one line and uninstall takes that line out,
 /// leaving everything written around it.
-enum PluginSetup {
+///
+/// Neovim's files stay in `plugins/neovim`, in Application Support and in the
+/// app bundle, where earlier versions put them.
+enum NeovimSetup {
     static let pathLine =
         "export PATH=\"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS:$PATH\""
 
@@ -166,3 +170,6 @@ enum PluginSetup {
         }
     }
 }
+
+/// The old configuration cleanup still names this; remove it with that code.
+typealias PluginSetup = NeovimSetup

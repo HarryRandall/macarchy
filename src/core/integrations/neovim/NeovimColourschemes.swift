@@ -11,9 +11,9 @@ public enum NeovimColourschemes {
         runtimes: [URL]? = nil
     ) -> [String] {
         let app = "nvim"
-        let plugin = home.appending(path: "Library/Application Support/Macarchy/plugins/neovim")
-        let config = plugin.appending(path: "config")
-        let data = plugin.appending(path: "data")
+        let neovim = home.appending(path: "Library/Application Support/Macarchy/plugins/neovim")
+        let config = neovim.appending(path: "config")
+        let data = neovim.appending(path: "data")
         var folders = [config.appending(path: "\(app)/colors")]
         folders += children(of: data.appending(path: "\(app)/lazy")).map {
             $0.appending(path: "colors")

@@ -148,6 +148,12 @@ both Homebrew prefixes, then `PATH`. launchd labels are discovered from
 `~/Library/LaunchAgents`, Macarchy's own first. Commands run through `CommandRunner` with argument
 arrays, a timeout and cancellation that also stops child processes.
 
+Each tool's code has its own folder in `src/core/integrations`. In
+`neovim`, `NeovimSetup` seeds the editable configuration and the zsh PATH
+line, and takes the line back out on uninstall; `NeovimColourschemes` lists
+the colourschemes a theme can pick. Neovim's files keep the `plugins/neovim`
+folder, in Application Support and in the app bundle.
+
 Every integration is optional. Theme application skips tools that are not
 installed and says so. Nothing requires System Integrity Protection to be
 disabled; the yabai scripting addition is reported as an optional extra.

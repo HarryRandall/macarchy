@@ -256,7 +256,7 @@ public enum Setup {
         try Backups().restoreAll(into: &report)
         // Setup no longer adds the PATH line or Ghostty's include, but earlier
         // versions did, so restoring still takes them out.
-        try PluginSetup.uninstall(into: &report)
+        try NeovimSetup.uninstall(into: &report)
         for file in StartupConfiguration.all { try file.forget() }
         // A Ghostty file setup did not create still carries the include.
         for url in GhosttyConfig.loadedFiles {

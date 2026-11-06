@@ -102,7 +102,7 @@ exports. Controls in `components/ui` own their look through `variant` and
 
 | Path | Contents |
 |---|---|
-| `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations`, `themes`, `widgets` |
+| `src/core` | `settings`, `filesystem`, `processes`, `setup`, `diagnostics`, `integrations` (one folder per tool, such as `yabai`, `skhd`, `sketchybar`, `ghostty` and `neovim`), `themes`, `widgets` |
 | `src/desktop` | `native`, `ui` (React) |
 | `tests` | `core`, `desktop`, `integration` and `fixtures` |
 | `resources` | One folder per tool: `app` (logo, icon and `Info.plist`), `themes`, `widgets` (built-in bar widgets), `neovim` (configuration and launcher), `sketchybar` (the app font and start launcher), `skhd` (default shortcuts) and `yabai` (start launcher) |
