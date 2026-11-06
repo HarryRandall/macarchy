@@ -327,10 +327,6 @@ desktops switch at once too, through the same queue. It is off unless turned
 on, needs the same Accessibility, and works only while the app is open;
 swipes in Mission Control and App Exposé slide as usual.
 
-Earlier versions installed InstantSpaceSwitcher. If its app still runs, its
-own hotkeys and trackpad swipe override compete with Macarchy's switching,
-and Health says to quit it.
-
 ### Do I need to disable SIP?
 
 No. Everything Macarchy does works with System Integrity Protection on, using

@@ -40,10 +40,6 @@ describe("shortcut categories", () => {
     ["macarchy space 3", "Desktops"],
     ["macarchy space 3 --move", "Desktops"],
     ["macarchy space 3 --swap", "Desktops"],
-    [
-      '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 2',
-      "Desktops",
-    ],
     ["yabai -m space --rotate 90 && yabai -m space --balance", "Windows"],
     ["'/opt/homebrew/bin/yabai' -m window --focus west", "Windows"],
     [
@@ -176,12 +172,9 @@ describe("missing desktops", () => {
     expect(missingDesktop(fullPath, 3)).toBe(4);
     expect(missingDesktop(binding({ command: "macarchy space 10" }), 9)).toBe(10);
     expect(missingDesktop(binding({ command: "macarchy space 6 --move" }), 5)).toBe(6);
-    const script = binding({
-      command:
-        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 5',
-    });
-    expect(missingDesktop(script, 4)).toBe(5);
-    expect(missingDesktop(script, 5)).toBeNull();
+    const swap = binding({ command: "macarchy space 5 --swap" });
+    expect(missingDesktop(swap, 4)).toBe(5);
+    expect(missingDesktop(swap, 5)).toBeNull();
   });
 });
 

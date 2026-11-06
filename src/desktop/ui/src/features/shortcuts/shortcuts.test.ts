@@ -149,10 +149,6 @@ describe("shortcut presentation", () => {
         '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/MacOS/macarchy" space 2 --move',
         "Move window to desktop 2 and follow",
       ],
-      [
-        '"$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/move-window-to-space.sh" 3',
-        "Move window to desktop 3 and follow",
-      ],
       ["yabai -m window --space 4 && echo moved", "yabai -m window --space 4 && echo moved"],
     ]) {
       const item = binding({ command });

@@ -47,8 +47,8 @@ struct SpaceSwitchTests {
         }
     }
 
-    /// Counts the switches whose work is still running, as InstantSpaceSwitcher's
-    /// tool keeps running for a moment after its switch lands.
+    /// Counts the switches whose work is still running, which can go on for
+    /// a moment after the switch lands.
     private actor Running {
         private var now = 0
         private(set) var most = 0
@@ -104,8 +104,8 @@ struct SpaceSwitchTests {
         }
     }
 
-    /// A second InstantSpaceSwitcher running while the first settles takes
-    /// the first's swipes for its own and overshoots.
+    /// A switch sent while the last one settles works out its swipes from
+    /// a Space shown mid-switch and overshoots.
     @Test("each switch's work finishes before the next switch starts")
     func oneSwitcherAtATime() async throws {
         let desk = Desk(on: 2, presses: [1: 2])

@@ -188,7 +188,7 @@ struct SpaceSwitcherTests {
         #expect(desk.space == 3)
     }
 
-    /// The case InstantSpaceSwitcher dropped: ⌘⇧3 then ⌘2 at once.
+    /// ⌘⇧3 then ⌘2 at once, where the ⌘2 used to be dropped.
     @Test("a switch pressed right after a move waits its turn instead of being dropped")
     func switchBackAfterMove() async {
         let desk = Desk(on: 1, presses: [1: .go(2)])
