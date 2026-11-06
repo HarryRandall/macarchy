@@ -1,0 +1,91 @@
+# Macarchy default shortcuts. This file is yours: edit it here or on the
+# Shortcuts page. Control moves between desktops and windows; Command keeps
+# its macOS meaning apart from the app shortcuts at the end. The scripts some
+# of them run ship inside Macarchy.app. A desktop that does not exist yet is
+# skipped, and its shortcuts start working once you add it.
+
+# Open a terminal
+ctrl - return : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/launch-ghostty.sh"
+
+# Take a screenshot of an area to the clipboard
+ctrl + shift - s : screencapture -i -c -x
+
+# Focus windows
+ctrl - left : yabai -m window --focus west
+ctrl - down : yabai -m window --focus south
+ctrl - up : yabai -m window --focus north
+ctrl - right : yabai -m window --focus east
+
+# Swap windows
+ctrl + shift - left : yabai -m window --swap west; yabai -m window --focus west
+ctrl + shift - down : yabai -m window --swap south; yabai -m window --focus south
+ctrl + shift - up : yabai -m window --swap north; yabai -m window --focus north
+ctrl + shift - right : yabai -m window --swap east; yabai -m window --focus east
+
+# Switch to desktop
+ctrl - 1 : macarchy space 1
+ctrl - 2 : macarchy space 2
+ctrl - 3 : macarchy space 3
+ctrl - 4 : macarchy space 4
+ctrl - 5 : macarchy space 5
+ctrl - 6 : macarchy space 6
+ctrl - 7 : macarchy space 7
+ctrl - 8 : macarchy space 8
+ctrl - 9 : macarchy space 9
+ctrl - 0 : macarchy space 10
+
+# Move window to desktop and follow
+ctrl + shift - 1 : macarchy space 1 --move
+ctrl + shift - 2 : macarchy space 2 --move
+ctrl + shift - 3 : macarchy space 3 --move
+ctrl + shift - 4 : macarchy space 4 --move
+ctrl + shift - 5 : macarchy space 5 --move
+ctrl + shift - 6 : macarchy space 6 --move
+ctrl + shift - 7 : macarchy space 7 --move
+ctrl + shift - 8 : macarchy space 8 --move
+ctrl + shift - 9 : macarchy space 9 --move
+ctrl + shift - 0 : macarchy space 10 --move
+
+# Float or tile the window, remembered per app
+ctrl - t : macarchy rules toggle
+
+# Fill the screen with the window
+ctrl - f : yabai -m window --toggle zoom-fullscreen
+
+# Flip the split direction
+ctrl - j : yabai -m window --toggle split
+
+# Rotate and rebalance the layout
+ctrl - l : yabai -m space --rotate 90; yabai -m space --balance
+
+# Grow and shrink the window
+ctrl - 0x18 : yabai -m window --ratio rel:0.05
+ctrl - 0x1B : yabai -m window --ratio rel:-0.05
+
+# Next and previous theme
+ctrl + shift - 0x18 : macarchy theme next
+ctrl + shift - 0x1B : macarchy theme prev
+
+# Show or hide the menu bar
+ctrl + shift - space : macarchy bar toggle
+
+# Control Spotify with the media keys while it is running
+play : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to playpause'
+next : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+fast : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to next track'
+previous : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+rewind : /usr/bin/pgrep -x Spotify >/dev/null && /usr/bin/osascript -e 'tell application "Spotify" to previous track'
+
+# Quit the app that owns the focused window
+cmd - q : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/quit-focused-app.sh"
+
+# Command-W also quits Messages, TablePlus and Obsidian and closes Firefox's profile selector
+cmd - w -> [
+    "Messages" : osascript -e 'tell application "Messages" to quit'
+    "TablePlus" : osascript -e 'tell application "TablePlus" to quit'
+    "Obsidian" : osascript -e 'tell application "Obsidian" to quit'
+    * : "$HOME/Library/Application Support/Macarchy/Macarchy.app/Contents/Resources/skhd/scripts/close-firefox-selector.sh"
+]
+
+# Open the Brave profile picker
+cmd + shift - m : open -na "Brave Browser" --args --profile-picker

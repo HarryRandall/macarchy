@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "id": "network",
+  "name": "Network",
+  "version": "1.0.0",
+  "author": "Macarchy",
+  "description": "Upload over download, with your Wi-Fi link, both rates over the last minute and your router.",
+  "icon": "􀤆",
+  "source": "network",
+  "label": "{up}\n{down}",
+  "style": {
+    "box": "outline",
+    "size": 12,
+    "lines": 2
+  },
+  "update": {
+    "every": "2s",
+    "events": [
+      "system_woke"
+    ]
+  },
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "Network",
+        "value": "{status}"
+      },
+      {
+        "type": "status",
+        "label": "{kind}",
+        "value": "{link}",
+        "icons": [
+          "{icon}"
+        ],
+        "current": "{signal}",
+        "options": [
+          "{band}",
+          "{channel}",
+          "{rate}",
+          "{rssi}"
+        ]
+      },
+      {
+        "type": "mirror",
+        "label": "↓ Download|↑ Upload",
+        "value": "{history}|{upHistory}",
+        "current": "{down}|{up}",
+        "colour": "accent|#ff9f0a",
+        "unit": "KB/s"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "reading",
+        "label": "Router",
+        "value": "{router}"
+      },
+      {
+        "type": "reading",
+        "label": "Received since start",
+        "value": "{received}"
+      },
+      {
+        "type": "reading",
+        "label": "Sent since start",
+        "value": "{sent}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Network Settings…",
+        "open": "x-apple.systempreferences:com.apple.Network-Settings.extension"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "99.9MB/s\n99.9MB/s",
+    "unavailable": "--\n--"
+  }
+}

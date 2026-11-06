@@ -1,0 +1,14 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "tokyonight-night"
+  },
+  "colors": {
+    "borderActive": "0xff66CCFF",
+    "borderInactive": "0x00000000",
+    "firefoxAccent": "#66CCFF"
+  },
+  "dark": true,
+  "name": "midnight",
+  "schema": 1
+}

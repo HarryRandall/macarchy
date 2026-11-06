@@ -1,0 +1,5 @@
+#!/bin/bash
+# Written by Macarchy. Bundled startup launcher.
+set -euo pipefail
+TASK_HOME="${MACARCHY_HOME:-$HOME}"
+exec "$TASK_HOME/Library/Application Support/Macarchy/config/yabairc" "$@"

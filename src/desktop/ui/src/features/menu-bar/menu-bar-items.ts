@@ -1,0 +1,215 @@
+import type {
+  BarItemKind,
+  BarZone,
+  MenuBarItemEdit,
+  MenuBarItemState,
+  MenuBarSettings,
+  WidgetInfo,
+} from "~/bridge/protocol";
+
+export type Zone = BarZone;
+export type BarItem = MenuBarItemState;
+
+export const zones: readonly Zone[] = ["left", "centre", "right"];
+
+export const zoneLabels: Record<Zone, string> = { left: "Left", centre: "Centre", right: "Right" };
+
+/** Seconds between runs of a command item, as the page offers them. */
+export const intervals = [
+  { value: "1", label: "1s" },
+  { value: "5", label: "5s" },
+  { value: "30", label: "30s" },
+  { value: "60", label: "1m" },
+  { value: "300", label: "5m" },
+] as const;
+
+/** Glyphs a made item can show. SketchyBar draws them in SF Pro, so they render as here. */
+export const glyphs = ["", "●", "○", "◆", "★", "▲", "■", "↑", "↓", "→", "⇅", "»"] as const;
+
+/** Items the page can make, with what the library says about them. */
+export const makeable: { kind: Exclude<BarItemKind, "widget">; name: string; detail: string }[] = [
+  { kind: "text", name: "Text", detail: "A label you write" },
+  { kind: "spacer", name: "Spacer", detail: "Empty width, to push items apart" },
+  { kind: "command", name: "Command", detail: "Shows what a shell command prints" },
+];
+
+/** A new item for `zone`. Its id becomes a SketchyBar item name. */
+export function newItem(
+  kind: Exclude<BarItemKind, "widget">,
+  zone: Zone,
+  patch: Partial<BarItem> = {},
+): BarItem {
+  const name = makeable.find((entry) => entry.kind === kind)?.name ?? "Item";
+  return {
+    id: `macarchy.${crypto.randomUUID().toLowerCase()}`,
+    title: name,
+    zone,
+    visible: true,
+    kind,
+    text: kind === "text" ? "Hello" : "",
+    icon: "",
+    command: kind === "command" ? "" : null,
+    interval: kind === "command" ? 30 : null,
+    widget: null,
+    settings: {},
+    style: null,
+    click: null,
+    reading: "",
+    ...patch,
+  };
+}
+
+/**
+ * A widget for `zone`, as `macarchy.` and the widget's id, numbered when
+ * the bar already shows that widget.
+ */
+export function newWidgetItem(widget: WidgetInfo, zone: Zone, items: BarItem[]): BarItem {
+  const taken = new Set(items.map((item) => item.id));
+  let id = `macarchy.${widget.id}`;
+  for (let number = 2; taken.has(id); number++) id = `macarchy.${widget.id}-${number}`;
+  return {
+    id,
+    title: widget.name,
+    zone,
+    visible: true,
+    kind: "widget",
+    text: "",
+    icon: "",
+    command: null,
+    interval: null,
+    widget: widget.id,
+    settings: {},
+    style: null,
+    click: null,
+    reading: "",
+  };
+}
+
+/** How many items on the bar show each widget. */
+export function widgetCounts(items: BarItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.widget) counts.set(item.widget, (counts.get(item.widget) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function insertAtZoneEnd(items: BarItem[], item: BarItem): BarItem[] {
+  const next = [...items];
+  const last = next.map((entry) => entry.zone).lastIndexOf(item.zone);
+  next.splice(last === -1 ? next.length : last + 1, 0, item);
+  return next;
+}
+
+/** Moves an item into `zone`, before `beforeId` or after the zone's last item. */
+export function moveItem(items: BarItem[], id: string, zone: Zone, beforeId?: string): BarItem[] {
+  const item = items.find((entry) => entry.id === id);
+  if (!item || id === beforeId) return items;
+  const rest = items.filter((entry) => entry.id !== id);
+  const moved = { ...item, zone };
+  const at = beforeId ? rest.findIndex((entry) => entry.id === beforeId) : -1;
+  if (at === -1) return insertAtZoneEnd(rest, moved);
+  rest.splice(at, 0, moved);
+  return rest;
+}
+
+/** One place earlier or later within the item's own zone, for the keyboard. */
+export function stepItem(items: BarItem[], id: string, direction: -1 | 1): BarItem[] {
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return items;
+  const zone = items.filter((entry) => entry.zone === item.zone);
+  const index = zone.findIndex((entry) => entry.id === id);
+  const target = index + direction;
+  if (target < 0 || target >= zone.length) return items;
+  if (direction === -1) return moveItem(items, id, item.zone, zone[target]?.id);
+  return moveItem(items, id, item.zone, zone[target + 1]?.id);
+}
+
+/**
+ * To the end of the neighbouring zone, for the keyboard; nothing past either
+ * edge. Only `open` zones count, so a centre that is switched off is skipped.
+ */
+export function shiftZone(
+  items: BarItem[],
+  id: string,
+  direction: -1 | 1,
+  open: readonly Zone[] = zones,
+): BarItem[] {
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return items;
+  const index = zones.indexOf(item.zone);
+  const zone = (direction === 1 ? zones.slice(index + 1) : zones.slice(0, index).toReversed()).find(
+    (candidate) => open.includes(candidate),
+  );
+  return zone ? moveItem(items, id, zone) : items;
+}
+
+/** Puts an item taken off the bar back: where it was in its own zone, or at the end of another. */
+export function putBack(items: BarItem[], id: string, zone: Zone): BarItem[] {
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return items;
+  const placed = item.zone === zone ? items : moveItem(items, id, zone);
+  return patchItem(placed, id, { visible: true });
+}
+
+/** The names of the items that differ from `before`, removed ones included. */
+export function changedNames(before: BarItem[], after: BarItem[]): string[] {
+  const old = new Map(before.map((item) => [item.id, item]));
+  const names: string[] = [];
+  for (const item of after) {
+    const was = old.get(item.id);
+    if (!was || !sameItems([item], [was])) names.push(item.title);
+    old.delete(item.id);
+  }
+  return [...names, ...[...old.values()].map((item) => item.title)];
+}
+
+export function addItem(items: BarItem[], item: BarItem): BarItem[] {
+  return insertAtZoneEnd(items, item);
+}
+
+/** Made items and widgets go; the bar's own can only be hidden. */
+export function removeItem(items: BarItem[], id: string): BarItem[] {
+  return items.filter((entry) => entry.id !== id || entry.kind === null);
+}
+
+export function patchItem(items: BarItem[], id: string, patch: Partial<BarItem>): BarItem[] {
+  return items.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+}
+
+/** What the page sends back: the list without its readings. */
+export function editsOf(items: BarItem[]): MenuBarItemEdit[] {
+  return items.map(({ reading: _reading, ...edit }) => edit);
+}
+
+/** Every edited field, so an edit undone by hand no longer counts as a change. */
+export function sameItems(a: BarItem[], b: BarItem[]): boolean {
+  return JSON.stringify(editsOf(a)) === JSON.stringify(editsOf(b));
+}
+
+export function sameBar(a: MenuBarSettings, b: MenuBarSettings): boolean {
+  return (
+    a.height === b.height &&
+    a.padding === b.padding &&
+    a.position === b.position &&
+    a.centre === b.centre &&
+    (a.widgetGap ?? 6) === (b.widgetGap ?? 6) &&
+    (a.widgetInset ?? 8) === (b.widgetInset ?? 8) &&
+    (a.widgetHeight ?? 24) === (b.widgetHeight ?? 24) &&
+    (a.offset ?? 0) === (b.offset ?? 0)
+  );
+}
+
+/** Why an item cannot be applied yet, if it cannot. */
+export function problemWith(item: BarItem): string | null {
+  if (!item.title.trim()) return "Every item needs a name.";
+  if (item.kind === "command" && !item.command?.trim()) return `${item.title} needs a command.`;
+  return null;
+}
+
+/** What the preview and the list show for an item. */
+export function shownText(item: BarItem): string {
+  if (item.kind === "text") return item.text;
+  if (item.kind === "command") return item.reading || "…";
+  return item.reading;
+}

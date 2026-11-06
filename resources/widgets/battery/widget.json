@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "id": "battery",
+  "name": "Battery",
+  "version": "1.0.0",
+  "author": "Macarchy",
+  "description": "Charge and power source; temperature and time left on battery, charging rate and time to full when plugged in.",
+  "icon": "􀛨",
+  "source": "battery",
+  "label": "{percent}",
+  "settings": {
+    "showPercent": {
+      "type": "toggle",
+      "label": "Show percentage",
+      "default": true
+    },
+    "lowAt": {
+      "type": "number",
+      "label": "Red below",
+      "default": 10,
+      "min": 1,
+      "max": 50,
+      "unit": "%"
+    }
+  },
+  "style": {
+    "box": "outline",
+    "size": 12
+  },
+  "update": {
+    "every": "30s",
+    "events": [
+      "system_woke",
+      "power_source_changed"
+    ]
+  },
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "Battery",
+        "value": "{headline}"
+      },
+      {
+        "type": "graph",
+        "label": "Temp",
+        "value": "{temperatures}",
+        "current": "{temperature}",
+        "colour": "#5ac8e8",
+        "unit": "°",
+        "min": "15",
+        "max": "45",
+        "when": "{notCharging}"
+      },
+      {
+        "type": "graph",
+        "label": "Left",
+        "value": "{levels}",
+        "current": "{remaining.short}",
+        "colour": "#30d158",
+        "when": "{notCharging}"
+      },
+      {
+        "type": "graph",
+        "label": "Rate",
+        "value": "{rates}",
+        "current": "{rate}",
+        "colour": "#30d158",
+        "unit": "W",
+        "when": "{charging}"
+      },
+      {
+        "type": "graph",
+        "label": "Full",
+        "value": "{levels}",
+        "current": "{remaining.short}",
+        "colour": "#30d158",
+        "when": "{charging}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "choice",
+        "label": "Energy Mode",
+        "value": "{energyMode}",
+        "options": [
+          "Automatic",
+          "Low Power",
+          "High Power"
+        ],
+        "icons": [
+          "battery.100percent",
+          "battery.25percent",
+          "bolt.fill"
+        ]
+      },
+      {
+        "type": "divider",
+        "when": "{energyApps}"
+      },
+      {
+        "type": "heading",
+        "label": "Using significant energy",
+        "when": "{energyApps}"
+      },
+      {
+        "type": "apps",
+        "value": "{energyApps}",
+        "when": "{energyApps}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Battery Settings…",
+        "open": "x-apple.systempreferences:com.apple.Battery-Settings.extension"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "100%",
+    "unavailable": "--"
+  }
+}

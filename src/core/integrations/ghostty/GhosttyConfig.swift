@@ -1,0 +1,139 @@
+import Foundation
+
+/// Points Ghostty at the active theme's colours without rewriting the user's config.
+///
+/// The user's file gains one `config-file` line, which Ghostty loads after the
+/// rest, so the theme wins without any of their own settings being touched.
+/// Removing that line is the whole uninstall.
+public enum GhosttyConfig {
+    /// Every file Ghostty may load, in its loading order: XDG first, then
+    /// Application Support, which therefore wins.
+    public static var loadedFiles: [URL] {
+        // A relocated home is a test; it must not follow the real XDG folder.
+        let environment = ProcessInfo.processInfo.environment
+        let xdg = Paths.relocatesHome(in: environment) ? nil : environment["XDG_CONFIG_HOME"]
+        let base = xdg.map { URL(fileURLWithPath: $0) } ?? Paths.home.appending(path: ".config")
+        let folder = base.appending(path: "ghostty")
+        let support = Paths.home.appending(
+            path: "Library/Application Support/com.mitchellh.ghostty")
+        return [
+            folder.appending(path: "config"), folder.appending(path: "config.ghostty"),
+            support.appending(path: "config"), support.appending(path: "config.ghostty")
+        ]
+    }
+
+    /// The include goes in the last file Ghostty loads, so nothing after it
+    /// can override the theme. Without any config, the native Application Support file.
+    public static var targetURL: URL {
+        loadedFiles.last { FileManager.default.fileExists(atPath: $0.path) } ?? loadedFiles[2]
+    }
+    public static var themeURL: URL { Paths.generatedDirectory.appending(path: "ghostty.conf") }
+
+    /// Whether Ghostty is installed or already configured, so following the
+    /// theme matters.
+    public static var isPresent: Bool {
+        loadedFiles.contains { FileManager.default.fileExists(atPath: $0.path) }
+            || Paths.hasApplication("Ghostty") || Paths.isInstalled("ghostty")
+    }
+
+    static let comment = "# Theme colours from Macarchy"
+
+    /// `?` makes the include optional, so Ghostty still starts if the file is gone.
+    static var includeLine: String { "config-file = ?\(themeURL.path)" }
+
+    public static func hasInclude(_ config: String) -> Bool {
+        config.split(separator: "\n").contains { isInclude($0) }
+    }
+
+    /// Appends the include once; an existing one is left where it is. An
+    /// include of the folder Macarchy used before Application Support is
+    /// replaced, since that folder goes once setup has run.
+    public static func addingInclude(to config: String) -> String {
+        guard !config.split(separator: "\n").contains(where: { isInclude($0, of: themeURL.path) })
+        else { return config }
+        var text = hasInclude(config) ? removingInclude(from: config) : config
+        if !text.isEmpty, !text.hasSuffix("\n") { text += "\n" }
+        if !text.isEmpty { text += "\n" }
+        return text + comment + "\n" + includeLine + "\n"
+    }
+
+    /// Writes a Ghostty config through a symbolic link, as dotfile managers
+    /// make them, instead of replacing the link with a copy, and keeps the
+    /// file's permissions. The file written is snapshotted first.
+    static func write(_ text: String, to url: URL) throws {
+        let fm = FileManager.default
+        let target = url.resolvingSymlinksInPath()
+        let permissions = try? fm.attributesOfItem(atPath: target.path)[.posixPermissions]
+        if fm.fileExists(atPath: target.path) {
+            try SnapshotStore().capture([target], reason: "Ghostty theme include")
+        }
+        try fm.createDirectory(
+            at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try text.write(to: target, atomically: true, encoding: .utf8)
+        if let permissions {
+            try fm.setAttributes([.posixPermissions: permissions], ofItemAtPath: target.path)
+        }
+    }
+
+    public static func removingInclude(from config: String) -> String {
+        config.components(separatedBy: "\n")
+            .filter { !isInclude(Substring($0)) && $0 != comment }
+            .joined(separator: "\n")
+    }
+
+    /// Where the colours were before the move to Application Support.
+    static var legacyThemePath: String {
+        Paths.legacyRoot.appending(path: "generated/ghostty.conf").path
+    }
+
+    private static func isInclude(_ line: Substring) -> Bool {
+        isInclude(line, of: themeURL.path) || isInclude(line, of: legacyThemePath)
+    }
+
+    private static func isInclude(_ line: Substring, of path: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasPrefix("config-file") && trimmed.hasSuffix(path)
+    }
+
+    /// Colour keys a theme may set. Everything else in a theme's palette file
+    /// is dropped: Ghostty config can also set `command` and similar options,
+    /// so copying an imported file verbatim would let a theme run programs.
+    static let colourKeys: Set<String> = [
+        "background", "foreground", "cursor-color", "cursor-text", "selection-background",
+        "selection-foreground", "bold-color", "split-divider-color", "palette"
+    ]
+
+    /// The theme's colours only, one validated `key = value` per line, and
+    /// each colour setting left out because it could not be read, as
+    /// `key = value`, so the caller can say so. Colours are read with
+    /// `Theme.hex`, as the bar and borders read them, and written as
+    /// `#rrggbb`; palette indexes run from 0 to 255, as in Ghostty.
+    public static func colours(from palette: String) -> (text: String, skipped: [String]) {
+        var lines = ["# Generated by Macarchy from the active theme. Do not edit."]
+        var skipped: [String] = []
+        for raw in palette.split(separator: "\n") {
+            let parts = raw.split(separator: "=", maxSplits: 1).map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            guard parts.count == 2, colourKeys.contains(parts[0]) else { continue }
+            if let value = colourValue(parts[1], palette: parts[0] == "palette") {
+                lines.append("\(parts[0]) = \(value)")
+            } else {
+                skipped.append("\(parts[0]) = \(parts[1])")
+            }
+        }
+        return (lines.joined(separator: "\n") + "\n", skipped)
+    }
+
+    /// A colour as Ghostty is given it, or nil when it cannot be read.
+    private static func colourValue(_ value: String, palette: Bool) -> String? {
+        guard palette else { return Theme.hex(value) }
+        let entry = value.split(separator: "=", maxSplits: 1).map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
+        guard entry.count == 2, let index = Int(entry[0]), (0...255).contains(index),
+            let colour = Theme.hex(entry[1])
+        else { return nil }
+        return "\(index)=\(colour)"
+    }
+}

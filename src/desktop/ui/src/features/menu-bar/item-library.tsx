@@ -1,0 +1,348 @@
+import { AlertTriangle, Folder, Search } from "lucide-react";
+import { useState } from "react";
+
+import type { BarItemKind, WidgetInfo } from "~/bridge/protocol";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Dialog } from "~/components/ui/dialog";
+import { EmptyState } from "~/components/ui/empty-state";
+import { focusRing } from "~/components/ui/focus-ring";
+import { SearchField } from "~/components/ui/search-field";
+import { cn } from "~/lib/cn";
+
+import { ScriptBadge } from "./item-inspector";
+import { ItemIcon } from "./menu-bar-icon";
+import { type BarItem, makeable, type Zone, zoneLabels } from "./menu-bar-items";
+import type { BarLook } from "./menu-bar-store";
+import { WidgetChip } from "./widget-preview";
+
+type Category = "all" | "builtIn" | "user" | "make" | "hidden";
+
+/**
+ * One thing the library can add: a widget, a made item or one of the bar's
+ * own that is hidden. A widget folder that could not be read is listed too,
+ * with why, so it does not just go missing.
+ */
+type Entry =
+  | { type: "widget"; key: string; widget: WidgetInfo }
+  | {
+      type: "make";
+      key: string;
+      kind: Exclude<BarItemKind, "widget">;
+      name: string;
+      detail: string;
+    }
+  | { type: "hidden"; key: string; item: BarItem }
+  | { type: "broken"; key: string; folder: string; problems: string[] };
+
+const sampleItem = (widget: WidgetInfo): BarItem => ({
+  id: `sample.${widget.id}`,
+  title: widget.name,
+  zone: "right",
+  visible: true,
+  kind: "widget",
+  text: "",
+  icon: "",
+  command: null,
+  interval: null,
+  widget: widget.id,
+  settings: {},
+  style: null,
+  click: null,
+  reading: "",
+});
+
+function nameOf(entry: Entry): string {
+  if (entry.type === "widget") return entry.widget.name;
+  if (entry.type === "make") return entry.name;
+  if (entry.type === "broken") return entry.folder;
+  return entry.item.title;
+}
+
+function detailOf(entry: Entry): string {
+  if (entry.type === "widget") return entry.widget.description ?? "";
+  if (entry.type === "make") return entry.detail;
+  if (entry.type === "broken") {
+    const count = entry.problems.length;
+    return `Can't be read: ${count} ${count === 1 ? "problem" : "problems"} in widget.json`;
+  }
+  return `Taken off the ${zoneLabels[entry.item.zone].toLowerCase()} zone`;
+}
+
+/**
+ * What can go in one zone: a widget, a text, spacer or command item, or one
+ * of the bar's own items that is hidden. Open while `zone` is set; the last
+ * zone stays drawn while the dialog fades out.
+ */
+export function ItemLibrary({
+  zone,
+  widgets,
+  counts,
+  hidden,
+  broken,
+  look,
+  onAddWidget,
+  onMake,
+  onShow,
+  onOpenFolder,
+  onClose,
+}: {
+  zone: Zone | null;
+  widgets: readonly WidgetInfo[];
+  /** How many items on the bar show each widget. */
+  counts: Map<string, number>;
+  /** The bar's own items that are hidden, to show again. */
+  hidden: BarItem[];
+  /** Widget folders that could not be read, with what is wrong. */
+  broken: readonly { folder: string; problems: string[] }[];
+  look: BarLook;
+  onAddWidget: (widget: WidgetInfo, zone: Zone) => void;
+  onMake: (kind: Exclude<BarItemKind, "widget">, zone: Zone) => void;
+  onShow: (id: string, zone: Zone) => void;
+  onOpenFolder: () => void;
+  onClose: () => void;
+}) {
+  const [last, setLast] = useState<Zone>("right");
+  const [category, setCategory] = useState<Category>("all");
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
+  if (zone !== null && zone !== last) setLast(zone);
+  const shownZone = zone ?? last;
+
+  // What was taken off comes first: it is the likeliest thing to want back.
+  const entries: Entry[] = [
+    ...hidden.map((item): Entry => ({ type: "hidden", key: `hidden:${item.id}`, item })),
+    ...widgets.map((widget): Entry => ({ type: "widget", key: `widget:${widget.id}`, widget })),
+    ...makeable.map((made): Entry => ({ type: "make", key: `make:${made.kind}`, ...made })),
+    ...broken.map((entry): Entry => ({ type: "broken", key: `broken:${entry.folder}`, ...entry })),
+  ];
+  const inCategory = (entry: Entry, name: Category) => {
+    if (name === "all") return true;
+    if (name === "make" || name === "hidden") return entry.type === name;
+    if (entry.type === "broken") return name === "user";
+    return entry.type === "widget" && entry.widget.origin === name;
+  };
+  const categories: { id: Category; name: string }[] = [
+    { id: "all", name: "All" },
+    ...(hidden.length > 0 ? [{ id: "hidden" as const, name: "Taken off your bar" }] : []),
+    { id: "builtIn", name: "Built-in" },
+    { id: "user", name: "Yours" },
+    { id: "make", name: "Make an item" },
+  ];
+  const search = query.trim().toLowerCase();
+  const shown = entries.filter(
+    (entry) =>
+      inCategory(entry, category) &&
+      (!search || `${nameOf(entry)} ${detailOf(entry)}`.toLowerCase().includes(search)),
+  );
+  // Nothing is picked for the person that is already on the bar or cannot be added.
+  const addable = (entry: Entry) =>
+    entry.type !== "broken" && (entry.type !== "widget" || !counts.get(entry.widget.id));
+  const selected =
+    shown.find((entry) => entry.key === picked) ?? shown.find(addable) ?? shown[0] ?? null;
+  const onBar = selected?.type === "widget" ? (counts.get(selected.widget.id) ?? 0) : 0;
+
+  const add = (entry: Entry | null) => {
+    if (!entry || entry.type === "broken") return;
+    if (entry.type === "widget") onAddWidget(entry.widget, shownZone);
+    else if (entry.type === "make") onMake(entry.kind, shownZone);
+    else onShow(entry.item.id, shownZone);
+    onClose();
+  };
+
+  return (
+    <Dialog.Root open={zone !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
+      <Dialog.Popup className="h-[600px] w-[880px] max-w-[calc(100vw-48px)]">
+        <Dialog.Header>
+          <Dialog.Title>Add a widget</Dialog.Title>
+          <Dialog.Description>
+            To the {zoneLabels[shownZone].toLowerCase()} of the bar
+          </Dialog.Description>
+        </Dialog.Header>
+        <div className="flex min-h-0 flex-1 border-t border-hairline">
+          <nav
+            aria-label="Categories"
+            className="flex w-[188px] shrink-0 flex-col gap-0.5 border-r border-hairline bg-side p-2.5"
+          >
+            {categories.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                aria-pressed={category === entry.id}
+                onClick={() => {
+                  setCategory(entry.id);
+                  setPicked(null);
+                }}
+                className={cn(
+                  "flex h-8 items-center rounded-control px-2.5 text-left text-detail",
+                  category === entry.id
+                    ? "bg-accent-soft font-medium text-accent-text"
+                    : "text-fg-secondary hover:bg-hover",
+                  focusRing,
+                )}
+              >
+                <span className="flex-1">{entry.name}</span>
+                <span className="text-caption tabular-nums opacity-70">
+                  {entries.filter((candidate) => inCategory(candidate, entry.id)).length}
+                </span>
+              </button>
+            ))}
+            <div className="flex-1" />
+            <p className="px-2 pb-2 text-caption text-fg-secondary">
+              Your widgets live in{" "}
+              <span className="font-mono">~/Library/Application Support/Macarchy/widgets</span>
+            </p>
+            <Button size="sm" onClick={onOpenFolder}>
+              <Folder aria-hidden size={12} /> Open folder
+            </Button>
+          </nav>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+            <SearchField
+              label="Search widgets"
+              value={query}
+              onValueChange={(value) => {
+                setQuery(value);
+                setPicked(null);
+              }}
+            />
+            {shown.length === 0 ? (
+              search ? (
+                <EmptyState
+                  variant="plain"
+                  icon={<Search />}
+                  title="No widgets match"
+                  description={`Nothing here is called "${query}".`}
+                  action={<Button onClick={() => setQuery("")}>Clear search</Button>}
+                />
+              ) : (
+                <EmptyState
+                  variant="plain"
+                  icon={<Folder />}
+                  title="No widgets of your own yet"
+                  description="Each widget is a folder with a widget.json in ~/Library/Application Support/Macarchy/widgets. Built-ins can be copied there from their Files tab."
+                  action={<Button onClick={onOpenFolder}>Open folder</Button>}
+                />
+              )
+            ) : (
+              <ul className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2.5">
+                {shown.map((entry) => (
+                  <li key={entry.key}>
+                    <LibraryCard
+                      entry={entry}
+                      look={look}
+                      onBar={
+                        entry.type === "widget" ? (counts.get(entry.widget.id) ?? 0) > 0 : false
+                      }
+                      selected={selected?.key === entry.key}
+                      onPick={() => setPicked(entry.key)}
+                      onAdd={() => add(entry)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        <Dialog.Footer
+          leading={
+            selected?.type === "widget" && selected.widget.scripted ? (
+              <Badge tone="warn">
+                <AlertTriangle aria-hidden size={11} /> Runs a script as you
+              </Badge>
+            ) : null
+          }
+        >
+          <span className="mr-auto max-w-[460px] truncate pl-2 text-small text-fg-secondary">
+            {selected?.type === "broken" ? selected.problems.join(" · ") : null}
+          </span>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!selected || selected.type === "broken"}
+            onClick={() => add(selected)}
+          >
+            {selected
+              ? selected.type === "broken"
+                ? "Fix it to add it"
+                : selected.type === "hidden"
+                  ? `Put ${nameOf(selected)} back`
+                  : onBar > 0
+                    ? "Add another"
+                    : `Add ${nameOf(selected)}`
+              : "Add"}
+          </Button>
+        </Dialog.Footer>
+      </Dialog.Popup>
+    </Dialog.Root>
+  );
+}
+
+function LibraryCard({
+  entry,
+  look,
+  onBar,
+  selected,
+  onPick,
+  onAdd,
+}: {
+  entry: Entry;
+  look: BarLook;
+  onBar: boolean;
+  selected: boolean;
+  onPick: () => void;
+  onAdd: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onPick}
+      onDoubleClick={onAdd}
+      className={cn(
+        "flex w-full flex-col gap-2 rounded-card border bg-card p-2.5 text-left transition-colors",
+        selected ? "border-accent ring-[3px] ring-accent-soft" : "border-hairline hover:bg-hover",
+        focusRing,
+      )}
+    >
+      <span
+        aria-hidden
+        className="flex h-12 items-center justify-center overflow-hidden rounded-control"
+        style={{ background: look.background, color: look.foreground }}
+      >
+        {entry.type === "widget" ? (
+          <WidgetChip
+            item={sampleItem(entry.widget)}
+            widget={entry.widget}
+            sample="widest"
+            look={look}
+          />
+        ) : entry.type === "broken" ? (
+          <AlertTriangle aria-hidden size={16} className="text-warning" />
+        ) : (
+          <ItemIcon
+            item={entry.type === "make" ? { id: entry.kind, kind: entry.kind } : entry.item}
+            size={16}
+          />
+        )}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="min-w-0 flex-1 truncate text-detail font-medium text-fg">
+          {nameOf(entry)}
+        </span>
+        {onBar ? <Badge tone="ok">On bar</Badge> : null}
+        {entry.type === "broken" ? <Badge tone="warn">Needs fixing</Badge> : null}
+        {entry.type === "widget" && entry.widget.scripted ? (
+          <ScriptBadge widget={entry.widget} compact />
+        ) : null}
+        {entry.type === "widget" && entry.widget.origin === "user" && !entry.widget.scripted ? (
+          <Badge tone="accent">Yours</Badge>
+        ) : null}
+      </span>
+      <span className="line-clamp-2 min-h-[2lh] text-small text-fg-secondary">
+        {detailOf(entry)}
+      </span>
+    </button>
+  );
+}

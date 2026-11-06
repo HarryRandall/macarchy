@@ -1,0 +1,13 @@
+#!/bin/bash
+# Written by Macarchy. Bundled startup launcher.
+set -euo pipefail
+TASK_HOME="${MACARCHY_HOME:-$HOME}"
+# SketchyBar gives the bar this file's folder, inside the app, as $CONFIG_DIR
+# and its working folder. Commands kept from the person's own bar expect the
+# bar's folder there, as it was before the launcher moved into the app.
+BAR_FOLDER="$TASK_HOME/.config/sketchybar"
+if [ -d "$BAR_FOLDER" ]; then
+  export CONFIG_DIR="$BAR_FOLDER"
+  cd "$BAR_FOLDER"
+fi
+exec "$TASK_HOME/Library/Application Support/Macarchy/config/sketchybarrc" "$@"

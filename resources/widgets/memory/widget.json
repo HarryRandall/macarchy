@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "id": "memory",
+  "name": "Memory",
+  "version": "1.0.0",
+  "author": "Macarchy",
+  "description": "Memory in use, with swap, a map of what is holding it and the busiest apps.",
+  "icon": "􀫦",
+  "source": "memory",
+  "label": "{percent}\n{used}",
+  "style": {
+    "box": "outline",
+    "size": 12,
+    "lines": 2
+  },
+  "update": {
+    "every": "2s",
+    "events": [
+      "system_woke"
+    ]
+  },
+  "click": {
+    "dropdown": [
+      {
+        "type": "heading",
+        "label": "Memory",
+        "value": "{summary}"
+      },
+      {
+        "type": "graph",
+        "label": "Used",
+        "value": "{history}",
+        "current": "{percent.short}"
+      },
+      {
+        "type": "graph",
+        "label": "Swap",
+        "value": "{swapHistory}",
+        "current": "{swap.short}",
+        "colour": "#bf5af2",
+        "unit": "G"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "map",
+        "value": "App:{app.gb},Wired:{wired.gb},Compressed:{compressed.gb},Cached:{cached.gb}",
+        "max": "{total.gb}",
+        "colour": "accent|#bf5af2|#ff9f0a|#8e8e93",
+        "unit": "GB"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "heading",
+        "label": "Using the most memory"
+      },
+      {
+        "type": "apps",
+        "value": "{top}"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "action",
+        "label": "Open Activity Monitor…",
+        "open": "Activity Monitor"
+      }
+    ]
+  },
+  "samples": {
+    "widest": "100.0%\n99.9G",
+    "unavailable": "--\n--"
+  }
+}

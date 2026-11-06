@@ -1,0 +1,456 @@
+{
+  "advanced.changed": [
+    {
+      "state": {
+        "addition": "repair",
+        "additionExplanation": "yabai was updated, so its sudoers rule needs repairing.",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
+        "installedThemes": 8,
+        "loginItem": "approval",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
+        "services": [
+          {
+            "id": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "state": "stopped"
+          },
+          {
+            "id": "skhd",
+            "state": "unknown"
+          }
+        ],
+        "snapshots": [
+          {
+            "created": 1792570500000,
+            "files": 3,
+            "id": "20261021-081500",
+            "reason": "Before applying Lumon"
+          }
+        ],
+        "theme": "lumon",
+        "trackpadSwipes": false,
+        "wakeHelpers": true
+      },
+      "type": "advanced.changed"
+    }
+  ],
+  "advanced.invalidated": [
+    {
+      "type": "advanced.invalidated"
+    }
+  ],
+  "borders.changed": [
+    {
+      "state": {
+        "appearance": {
+          "activeColour": "0xff45e8ff",
+          "excludedApps": [
+            "iPhone Mirroring"
+          ],
+          "inactiveColour": null,
+          "radius": null,
+          "visible": true,
+          "width": 6
+        },
+        "applicationIcons": {
+          "iPhone Mirroring": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        },
+        "defaults": {
+          "activeColour": "0xff61afef",
+          "excludedApps": [],
+          "inactiveColour": "0xff3b4048",
+          "radius": 10,
+          "visible": true,
+          "width": 4
+        },
+        "theme": "awakening",
+        "unavailableReason": null,
+        "wallpaper": "macarchy-app://media/wallpaper?max=1400&v=3fa2c19e"
+      },
+      "type": "borders.changed"
+    }
+  ],
+  "health.changed": [
+    {
+      "type": "health.changed"
+    }
+  ],
+  "home.changed": [
+    {
+      "type": "home.changed"
+    }
+  ],
+  "layout.changed": [
+    {
+      "state": {
+        "source": "daemon",
+        "unavailableReason": null,
+        "values": {
+          "autoBalance": false,
+          "layout": "float",
+          "mouseDropAction": "stack",
+          "mouseFollowsFocus": false,
+          "mouseModifier": "cmd",
+          "padding": 40,
+          "splitType": "horizontal",
+          "windowGap": 0,
+          "windowPlacement": "second_child"
+        },
+        "wallpaper": "macarchy-app://media/wallpaper?max=1400&v=3fa2c19e"
+      },
+      "type": "layout.changed"
+    }
+  ],
+  "menuBar.changed": [
+    {
+      "type": "menuBar.changed"
+    }
+  ],
+  "report.invalidated": [
+    {
+      "type": "report.invalidated"
+    }
+  ],
+  "rules.changed": [
+    {
+      "state": {
+        "customRules": [
+          {
+            "app": "Finder",
+            "id": "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B",
+            "title": "^Copy$"
+          }
+        ],
+        "externalRules": [
+          {
+            "app": "System Settings",
+            "title": ""
+          }
+        ],
+        "floatingApps": [
+          "Calculator",
+          "Messages"
+        ],
+        "icons": {
+          "Calculator": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+          "Messages": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        },
+        "unavailableReason": null
+      },
+      "type": "rules.changed"
+    }
+  ],
+  "rules.unavailable": [
+    {
+      "state": {
+        "message": "Your saved rules could not be read: settings.json is not valid JSON."
+      },
+      "type": "rules.unavailable"
+    }
+  ],
+  "setup.progress": [
+    {
+      "state": {
+        "line": null,
+        "status": "installing",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": "==> Pouring sketchybar",
+        "status": "output",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
+        "status": "installed",
+        "tool": "sketchybar"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": "Error: No available formula",
+        "status": "failed",
+        "tool": "skhd"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
+        "status": "installed",
+        "tool": "example-app"
+      },
+      "type": "setup.progress"
+    },
+    {
+      "state": {
+        "line": null,
+        "status": "configuring",
+        "tool": null
+      },
+      "type": "setup.progress"
+    }
+  ],
+  "shell.changed": [
+    {
+      "state": {
+        "appearance": {
+          "accent": "#61afef",
+          "mode": "light"
+        },
+        "selectedPane": "themes",
+        "serviceList": [
+          {
+            "id": "yabai",
+            "name": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "name": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar",
+            "state": "running"
+          },
+          {
+            "id": "skhd",
+            "name": "skhd",
+            "state": "running"
+          }
+        ],
+        "services": {
+          "running": 4,
+          "total": 4
+        },
+        "setupRequired": false,
+        "sidebarVisible": true,
+        "version": "0.9.2"
+      },
+      "type": "shell.changed"
+    }
+  ],
+  "shell.logChanged": [
+    {
+      "type": "shell.logChanged"
+    }
+  ],
+  "shell.shortcut": [
+    {
+      "state": {
+        "shortcut": "palette"
+      },
+      "type": "shell.shortcut"
+    },
+    {
+      "state": {
+        "shortcut": "back"
+      },
+      "type": "shell.shortcut"
+    }
+  ],
+  "shortcuts.changed": [
+    {
+      "state": {
+        "bindings": [
+          {
+            "activatesMode": null,
+            "appOverrides": [],
+            "caps": [
+              "⌃",
+              "⌥",
+              "↩"
+            ],
+            "command": "open -na Ghostty",
+            "disabled": false,
+            "id": 1,
+            "key": "return",
+            "modes": [],
+            "modifiers": [
+              "ctrl",
+              "alt"
+            ],
+            "passthrough": false,
+            "section": "Open a terminal"
+          }
+        ],
+        "desktops": null,
+        "revision": "7d793037a0760186"
+      },
+      "type": "shortcuts.changed"
+    }
+  ],
+  "shortcuts.unavailable": [
+    {
+      "state": "Your shortcuts could not be read: skhdrc is missing.",
+      "type": "shortcuts.unavailable"
+    }
+  ],
+  "switcher.didClose": [
+    {
+      "type": "switcher.didClose"
+    }
+  ],
+  "switcher.willOpen": [
+    {
+      "state": {
+        "current": "awakening",
+        "error": null,
+        "themes": [
+          {
+            "backgrounds": [
+              {
+                "name": "First Light",
+                "path": "backgrounds/1-first-light.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=700"
+              },
+              {
+                "name": "Hand Of Adam",
+                "path": "backgrounds/2-hand-of-adam.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/2-hand-of-adam.png?max=700"
+              }
+            ],
+            "colours": {
+              "background": "#11131a",
+              "blue": "#61afef",
+              "cyan": "#56b6c2",
+              "foreground": "#d7dae0",
+              "green": "#98c379",
+              "red": "#e06c75"
+            },
+            "currentBackground": "backgrounds/1-first-light.png",
+            "isDark": true,
+            "name": "awakening",
+            "preview": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=1400",
+            "ring": "#61afef",
+            "title": "Awakening"
+          },
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      },
+      "type": "switcher.willOpen"
+    },
+    {
+      "state": {
+        "current": null,
+        "error": {
+          "reason": "yabai-msg: failed to connect",
+          "title": "Could not apply Awakening"
+        },
+        "themes": [
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      },
+      "type": "switcher.willOpen"
+    }
+  ],
+  "themes.changed": [
+    {
+      "state": {
+        "current": "awakening",
+        "themes": [
+          {
+            "backgrounds": [
+              {
+                "name": "First Light",
+                "path": "backgrounds/1-first-light.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=700"
+              },
+              {
+                "name": "Hand Of Adam",
+                "path": "backgrounds/2-hand-of-adam.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/2-hand-of-adam.png?max=700"
+              }
+            ],
+            "colours": {
+              "background": "#11131a",
+              "blue": "#61afef",
+              "cyan": "#56b6c2",
+              "foreground": "#d7dae0",
+              "green": "#98c379",
+              "red": "#e06c75"
+            },
+            "currentBackground": "backgrounds/1-first-light.png",
+            "isDark": true,
+            "name": "awakening",
+            "preview": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=1400",
+            "ring": "#61afef",
+            "title": "Awakening"
+          },
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      },
+      "type": "themes.changed"
+    },
+    {
+      "state": {
+        "current": null,
+        "themes": [
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      },
+      "type": "themes.changed"
+    }
+  ]
+}

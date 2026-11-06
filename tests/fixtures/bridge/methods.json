@@ -1,0 +1,3038 @@
+{
+  "advanced.getState": [
+    {
+      "params": {},
+      "result": {
+        "addition": "active",
+        "additionExplanation": "The scripting addition is loaded.",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
+        "installedThemes": 8,
+        "loginItem": "on",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
+        "services": [
+          {
+            "id": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "state": "stopped"
+          },
+          {
+            "id": "skhd",
+            "state": "unknown"
+          }
+        ],
+        "snapshots": [
+          {
+            "created": 1792570500000,
+            "files": 3,
+            "id": "20261021-081500",
+            "reason": "Before applying Lumon"
+          }
+        ],
+        "theme": "lumon",
+        "trackpadSwipes": false,
+        "wakeHelpers": true
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "addition": "missing",
+        "additionExplanation": "yabai is not installed, so there is no scripting addition to load.",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
+        "installedThemes": 0,
+        "loginItem": "off",
+        "removableTools": [],
+        "services": [
+          {
+            "id": "yabai",
+            "state": "stopped"
+          },
+          {
+            "id": "borders",
+            "state": "stopped"
+          },
+          {
+            "id": "sketchybar",
+            "state": "stopped"
+          },
+          {
+            "id": "skhd",
+            "state": "stopped"
+          }
+        ],
+        "snapshots": [],
+        "theme": "None",
+        "trackpadSwipes": false,
+        "wakeHelpers": false
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "addition": "unavailable",
+        "additionExplanation": "Development runs never change the real sudoers rule.",
+        "backupsDirectory": "~/Library/Application Support/Macarchy/backups",
+        "installedThemes": 8,
+        "loginItem": "unavailable",
+        "removableTools": [
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar"
+          },
+          {
+            "id": "neovim",
+            "name": "Neovim"
+          }
+        ],
+        "services": [
+          {
+            "id": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "state": "stopped"
+          },
+          {
+            "id": "skhd",
+            "state": "unknown"
+          }
+        ],
+        "snapshots": [
+          {
+            "created": 1792570500000,
+            "files": 3,
+            "id": "20261021-081500",
+            "reason": "Before applying Lumon"
+          }
+        ],
+        "theme": "lumon",
+        "trackpadSwipes": false,
+        "wakeHelpers": true
+      }
+    }
+  ],
+  "advanced.openLoginItems": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "advanced.rebuild": [
+    {
+      "params": {
+        "file": "bordersrc"
+      },
+      "result": {
+        "outcome": "Rebuilt"
+      }
+    },
+    {
+      "params": {
+        "file": "yabairc"
+      },
+      "result": {
+        "outcome": "Up to date"
+      }
+    },
+    {
+      "params": {
+        "file": "sketchybarrc"
+      },
+      "result": {
+        "outcome": "Edits backed up"
+      }
+    }
+  ],
+  "advanced.repairAddition": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "advanced.restartService": [
+    {
+      "params": {
+        "daemon": "yabai"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "daemon": "borders"
+      },
+      "result": null
+    }
+  ],
+  "advanced.restoreOriginals": [
+    {
+      "params": {
+        "removeTools": []
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Restored original files"
+        ]
+      }
+    },
+    {
+      "params": {
+        "removeTools": [
+          "sketchybar"
+        ]
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Restored original files",
+          "Removed SketchyBar with Homebrew"
+        ]
+      }
+    }
+  ],
+  "advanced.restoreSnapshot": [
+    {
+      "params": {
+        "id": "20261021-081500"
+      },
+      "result": null
+    }
+  ],
+  "advanced.setLoginItem": [
+    {
+      "params": {
+        "enabled": true
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "enabled": false
+      },
+      "result": null
+    }
+  ],
+  "advanced.setTrackpadSwipes": [
+    {
+      "params": {
+        "enabled": true
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "enabled": false
+      },
+      "result": null
+    }
+  ],
+  "advanced.stopService": [
+    {
+      "params": {
+        "daemon": "sketchybar"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "daemon": "skhd"
+      },
+      "result": null
+    }
+  ],
+  "app.ready": [
+    {
+      "params": {
+        "surface": "settings"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "surface": "switcher"
+      },
+      "result": null
+    }
+  ],
+  "borders.apply": [
+    {
+      "params": {
+        "appearance": {
+          "activeColour": "0xff45e8ff",
+          "excludedApps": [
+            "iPhone Mirroring"
+          ],
+          "inactiveColour": null,
+          "radius": null,
+          "visible": true,
+          "width": 6
+        },
+        "theme": "awakening"
+      },
+      "result": null
+    }
+  ],
+  "borders.getState": [
+    {
+      "params": {},
+      "result": {
+        "appearance": {
+          "activeColour": "0xff45e8ff",
+          "excludedApps": [
+            "iPhone Mirroring"
+          ],
+          "inactiveColour": null,
+          "radius": null,
+          "visible": true,
+          "width": 6
+        },
+        "applicationIcons": {
+          "iPhone Mirroring": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        },
+        "defaults": {
+          "activeColour": "0xff61afef",
+          "excludedApps": [],
+          "inactiveColour": "0xff3b4048",
+          "radius": 10,
+          "visible": true,
+          "width": 4
+        },
+        "theme": "awakening",
+        "unavailableReason": null,
+        "wallpaper": "macarchy-app://media/wallpaper?max=1400&v=3fa2c19e"
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "appearance": {
+          "activeColour": null,
+          "excludedApps": [],
+          "inactiveColour": "0x66494d64",
+          "radius": 12,
+          "visible": false,
+          "width": 8
+        },
+        "applicationIcons": {},
+        "defaults": null,
+        "theme": null,
+        "unavailableReason": "borders is not running.",
+        "wallpaper": null
+      }
+    }
+  ],
+  "borders.pickApplication": [
+    {
+      "params": {},
+      "result": {
+        "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "name": "Zoom"
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "icon": null,
+        "name": "Steam"
+      }
+    },
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "health.copyCommand": [
+    {
+      "params": {
+        "id": "Services/borders"
+      },
+      "result": null
+    }
+  ],
+  "health.getState": [
+    {
+      "params": {},
+      "result": {
+        "checkedAt": 1792570500,
+        "checks": [
+          {
+            "advice": null,
+            "command": null,
+            "detail": "yabai 7.1.25 at /opt/homebrew/bin/yabai",
+            "file": null,
+            "group": "Dependencies",
+            "id": "Dependencies/yabai",
+            "status": "passed",
+            "title": "yabai"
+          },
+          {
+            "advice": "Restart it from Advanced",
+            "command": "borders --start-service",
+            "detail": "Stopped",
+            "file": null,
+            "group": "Services",
+            "id": "Services/borders",
+            "status": "warning",
+            "title": "borders"
+          },
+          {
+            "advice": "Open Macarchy to set it up",
+            "command": null,
+            "detail": "Macarchy has not been set up",
+            "file": null,
+            "group": "Configuration",
+            "id": "Configuration/Setup",
+            "status": "failed",
+            "title": "Setup"
+          },
+          {
+            "advice": "Correct the file, or restore an earlier snapshot from Advanced",
+            "command": null,
+            "detail": "settings.json is not valid JSON",
+            "file": "~/Library/Application Support/Macarchy/settings.json",
+            "group": "Configuration",
+            "id": "Configuration/Settings",
+            "status": "failed",
+            "title": "Settings"
+          },
+          {
+            "advice": null,
+            "command": null,
+            "detail": "The sudoers rule could not be read",
+            "file": null,
+            "group": "Optional",
+            "id": "Optional/Scripting addition",
+            "status": "unknown",
+            "title": "Scripting addition"
+          }
+        ],
+        "environment": {
+          "app": "1.4.0 (142)",
+          "architecture": "Apple Silicon",
+          "macOS": "26.1",
+          "model": "Mac15,6",
+          "settingsFolder": "~/Library/Application Support/Macarchy"
+        }
+      }
+    }
+  ],
+  "health.openFile": [
+    {
+      "params": {
+        "id": "Configuration/Settings"
+      },
+      "result": null
+    }
+  ],
+  "health.revealSettings": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "home.getState": [
+    {
+      "params": {},
+      "result": {
+        "lastChange": 1792570500,
+        "layout": "bsp",
+        "running": 3,
+        "shortcutsCount": 24,
+        "subtitle": "A space that works for you.",
+        "theme": "lumon",
+        "themeCount": 8,
+        "total": 4,
+        "wallpaper": "macarchy-app://media/wallpaper?max=1400&v=3fa2c19e"
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "lastChange": null,
+        "layout": "float",
+        "running": 0,
+        "shortcutsCount": 0,
+        "subtitle": "A space that works for you.",
+        "theme": null,
+        "themeCount": 0,
+        "total": 4,
+        "wallpaper": null
+      }
+    }
+  ],
+  "layout.apply": [
+    {
+      "params": {
+        "changes": {
+          "autoBalance": true,
+          "layout": "float",
+          "mouseDropAction": "swap",
+          "mouseFollowsFocus": true,
+          "mouseModifier": "shift",
+          "padding": 12,
+          "splitType": "horizontal",
+          "windowGap": 16,
+          "windowPlacement": "first_child"
+        },
+        "linkPadding": true
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "changes": {
+          "windowGap": 20
+        },
+        "linkPadding": false
+      },
+      "result": null
+    }
+  ],
+  "layout.getState": [
+    {
+      "params": {},
+      "result": {
+        "source": "daemon",
+        "unavailableReason": null,
+        "values": {
+          "autoBalance": false,
+          "layout": "bsp",
+          "mouseDropAction": "stack",
+          "mouseFollowsFocus": false,
+          "mouseModifier": "ctrl",
+          "padding": 8,
+          "splitType": "auto",
+          "windowGap": 8,
+          "windowPlacement": "second_child"
+        },
+        "wallpaper": "macarchy-app://media/wallpaper?max=1400&v=3fa2c19e"
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "source": "saved",
+        "unavailableReason": "yabai is not running, so these are your saved settings. Start yabai from Advanced to change them.",
+        "values": {
+          "autoBalance": true,
+          "layout": "stack",
+          "mouseDropAction": "swap",
+          "mouseFollowsFocus": true,
+          "mouseModifier": "alt",
+          "padding": 20,
+          "splitType": "vertical",
+          "windowGap": 12,
+          "windowPlacement": "first_child"
+        },
+        "wallpaper": null
+      }
+    }
+  ],
+  "menuBar.apply": [
+    {
+      "params": {
+        "bar": {
+          "centre": true,
+          "height": 30,
+          "padding": 6,
+          "position": "bottom"
+        },
+        "items": [
+          {
+            "click": null,
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "settings": {},
+            "style": null,
+            "text": "",
+            "title": "Clock",
+            "visible": false,
+            "widget": null,
+            "zone": "right"
+          },
+          {
+            "click": null,
+            "command": null,
+            "icon": "",
+            "id": "macarchy.note-2",
+            "interval": null,
+            "kind": "text",
+            "settings": {},
+            "style": null,
+            "text": "Hello",
+            "title": "Text",
+            "visible": true,
+            "widget": null,
+            "zone": "left"
+          },
+          {
+            "click": {
+              "dropdown": [
+                {
+                  "label": "Hi",
+                  "type": "text"
+                }
+              ]
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.clock",
+            "interval": null,
+            "kind": "widget",
+            "settings": {
+              "order": "month-day",
+              "seconds": true
+            },
+            "style": {
+              "paddingLeft": 4,
+              "textColour": "accent"
+            },
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "widget": "clock",
+            "zone": "right"
+          }
+        ]
+      },
+      "result": {
+        "bar": {
+          "centre": false,
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [
+          {
+            "click": null,
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "reading": "Thu 23 Oct 14:05",
+            "settings": {},
+            "style": null,
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "widget": null,
+            "zone": "right"
+          },
+          {
+            "click": null,
+            "command": "uptime | cut -d, -f1",
+            "icon": "↑",
+            "id": "macarchy.uptime-1",
+            "interval": 60,
+            "kind": "command",
+            "reading": "",
+            "settings": {},
+            "style": null,
+            "text": "",
+            "title": "Uptime",
+            "visible": true,
+            "widget": null,
+            "zone": "centre"
+          },
+          {
+            "click": {
+              "open": "Activity Monitor"
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.cpu",
+            "interval": null,
+            "kind": "widget",
+            "reading": "12.0%",
+            "settings": {
+              "temperature": false
+            },
+            "style": {
+              "box": "fill",
+              "radius": 6
+            },
+            "text": "",
+            "title": "CPU",
+            "visible": true,
+            "widget": "cpu",
+            "zone": "right"
+          }
+        ],
+        "unavailableReason": null,
+        "widgetProblems": [
+          {
+            "folder": "weather",
+            "problems": [
+              "Line 3: id is missing"
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "author": "Macarchy",
+            "click": {
+              "dropdown": [
+                {
+                  "label": "{weekday.long} {day}",
+                  "type": "heading"
+                },
+                {
+                  "label": "London",
+                  "type": "reading",
+                  "value": "{time:Europe/London}"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "label": "Seconds",
+                  "setting": "seconds",
+                  "type": "toggle"
+                },
+                {
+                  "label": "Order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "setting": "order",
+                  "type": "choice"
+                },
+                {
+                  "label": "Open Calendar",
+                  "open": "Calendar",
+                  "type": "action"
+                }
+              ]
+            },
+            "description": "The date and time, in any format.",
+            "files": [
+              "widget.json"
+            ],
+            "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+            "icon": "􀧞",
+            "id": "clock",
+            "label": "{date}",
+            "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+            "name": "Clock",
+            "origin": "builtIn",
+            "samples": {
+              "unavailable": "--",
+              "widest": "Wed 30 Sep 12:59 PM"
+            },
+            "scripted": false,
+            "settings": [
+              {
+                "default": false,
+                "hint": "Every second",
+                "key": "seconds",
+                "label": "Seconds",
+                "type": "toggle"
+              },
+              {
+                "default": "day-month",
+                "key": "order",
+                "label": "Date order",
+                "options": [
+                  "day-month",
+                  "month-day"
+                ],
+                "type": "choice"
+              },
+              {
+                "key": "size",
+                "label": "Size",
+                "max": 9,
+                "min": 1,
+                "step": 1,
+                "type": "number",
+                "unit": "pt"
+              }
+            ],
+            "source": "date",
+            "style": {
+              "box": "none",
+              "size": 13
+            },
+            "update": {
+              "events": [
+                "system_woke"
+              ],
+              "every": "minute"
+            },
+            "version": "1.0.0"
+          },
+          {
+            "files": [
+              "provider.sh",
+              "widget.json"
+            ],
+            "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
+            "id": "uptime",
+            "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+            "name": "Uptime",
+            "origin": "user",
+            "provider": "provider.sh",
+            "scripted": true,
+            "settings": [],
+            "update": {
+              "every": "1m"
+            },
+            "version": "0.1.0"
+          }
+        ]
+      }
+    }
+  ],
+  "menuBar.duplicateWidget": [
+    {
+      "params": {
+        "widget": "clock"
+      },
+      "result": {
+        "state": {
+          "bar": {
+            "centre": false,
+            "height": 35,
+            "padding": 10,
+            "position": "top"
+          },
+          "items": [
+            {
+              "click": null,
+              "command": null,
+              "icon": "",
+              "id": "calendar",
+              "interval": null,
+              "kind": null,
+              "reading": "Thu 23 Oct 14:05",
+              "settings": {},
+              "style": null,
+              "text": "",
+              "title": "Clock",
+              "visible": true,
+              "widget": null,
+              "zone": "right"
+            },
+            {
+              "click": null,
+              "command": "uptime | cut -d, -f1",
+              "icon": "↑",
+              "id": "macarchy.uptime-1",
+              "interval": 60,
+              "kind": "command",
+              "reading": "",
+              "settings": {},
+              "style": null,
+              "text": "",
+              "title": "Uptime",
+              "visible": true,
+              "widget": null,
+              "zone": "centre"
+            },
+            {
+              "click": {
+                "open": "Activity Monitor"
+              },
+              "command": null,
+              "icon": "",
+              "id": "macarchy.cpu",
+              "interval": null,
+              "kind": "widget",
+              "reading": "12.0%",
+              "settings": {
+                "temperature": false
+              },
+              "style": {
+                "box": "fill",
+                "radius": 6
+              },
+              "text": "",
+              "title": "CPU",
+              "visible": true,
+              "widget": "cpu",
+              "zone": "right"
+            }
+          ],
+          "unavailableReason": null,
+          "widgetProblems": [
+            {
+              "folder": "weather",
+              "problems": [
+                "Line 3: id is missing"
+              ]
+            }
+          ],
+          "widgets": [
+            {
+              "author": "Macarchy",
+              "click": {
+                "dropdown": [
+                  {
+                    "label": "{weekday.long} {day}",
+                    "type": "heading"
+                  },
+                  {
+                    "label": "London",
+                    "type": "reading",
+                    "value": "{time:Europe/London}"
+                  },
+                  {
+                    "type": "divider"
+                  },
+                  {
+                    "label": "Seconds",
+                    "setting": "seconds",
+                    "type": "toggle"
+                  },
+                  {
+                    "label": "Order",
+                    "options": [
+                      "day-month",
+                      "month-day"
+                    ],
+                    "setting": "order",
+                    "type": "choice"
+                  },
+                  {
+                    "label": "Open Calendar",
+                    "open": "Calendar",
+                    "type": "action"
+                  }
+                ]
+              },
+              "description": "The date and time, in any format.",
+              "files": [
+                "widget.json"
+              ],
+              "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+              "icon": "􀧞",
+              "id": "clock",
+              "label": "{date}",
+              "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+              "name": "Clock",
+              "origin": "builtIn",
+              "samples": {
+                "unavailable": "--",
+                "widest": "Wed 30 Sep 12:59 PM"
+              },
+              "scripted": false,
+              "settings": [
+                {
+                  "default": false,
+                  "hint": "Every second",
+                  "key": "seconds",
+                  "label": "Seconds",
+                  "type": "toggle"
+                },
+                {
+                  "default": "day-month",
+                  "key": "order",
+                  "label": "Date order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "type": "choice"
+                },
+                {
+                  "key": "size",
+                  "label": "Size",
+                  "max": 9,
+                  "min": 1,
+                  "step": 1,
+                  "type": "number",
+                  "unit": "pt"
+                }
+              ],
+              "source": "date",
+              "style": {
+                "box": "none",
+                "size": 13
+              },
+              "update": {
+                "events": [
+                  "system_woke"
+                ],
+                "every": "minute"
+              },
+              "version": "1.0.0"
+            },
+            {
+              "files": [
+                "provider.sh",
+                "widget.json"
+              ],
+              "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
+              "id": "uptime",
+              "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+              "name": "Uptime",
+              "origin": "user",
+              "provider": "provider.sh",
+              "scripted": true,
+              "settings": [],
+              "update": {
+                "every": "1m"
+              },
+              "version": "0.1.0"
+            }
+          ]
+        },
+        "widget": "clock-copy"
+      }
+    }
+  ],
+  "menuBar.getState": [
+    {
+      "params": {},
+      "result": {
+        "bar": {
+          "centre": false,
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [
+          {
+            "click": null,
+            "command": null,
+            "icon": "",
+            "id": "calendar",
+            "interval": null,
+            "kind": null,
+            "reading": "Thu 23 Oct 14:05",
+            "settings": {},
+            "style": null,
+            "text": "",
+            "title": "Clock",
+            "visible": true,
+            "widget": null,
+            "zone": "right"
+          },
+          {
+            "click": null,
+            "command": "uptime | cut -d, -f1",
+            "icon": "↑",
+            "id": "macarchy.uptime-1",
+            "interval": 60,
+            "kind": "command",
+            "reading": "",
+            "settings": {},
+            "style": null,
+            "text": "",
+            "title": "Uptime",
+            "visible": true,
+            "widget": null,
+            "zone": "centre"
+          },
+          {
+            "click": {
+              "open": "Activity Monitor"
+            },
+            "command": null,
+            "icon": "",
+            "id": "macarchy.cpu",
+            "interval": null,
+            "kind": "widget",
+            "reading": "12.0%",
+            "settings": {
+              "temperature": false
+            },
+            "style": {
+              "box": "fill",
+              "radius": 6
+            },
+            "text": "",
+            "title": "CPU",
+            "visible": true,
+            "widget": "cpu",
+            "zone": "right"
+          }
+        ],
+        "unavailableReason": null,
+        "widgetProblems": [
+          {
+            "folder": "weather",
+            "problems": [
+              "Line 3: id is missing"
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "author": "Macarchy",
+            "click": {
+              "dropdown": [
+                {
+                  "label": "{weekday.long} {day}",
+                  "type": "heading"
+                },
+                {
+                  "label": "London",
+                  "type": "reading",
+                  "value": "{time:Europe/London}"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "label": "Seconds",
+                  "setting": "seconds",
+                  "type": "toggle"
+                },
+                {
+                  "label": "Order",
+                  "options": [
+                    "day-month",
+                    "month-day"
+                  ],
+                  "setting": "order",
+                  "type": "choice"
+                },
+                {
+                  "label": "Open Calendar",
+                  "open": "Calendar",
+                  "type": "action"
+                }
+              ]
+            },
+            "description": "The date and time, in any format.",
+            "files": [
+              "widget.json"
+            ],
+            "folder": "/Applications/Macarchy.app/Contents/Resources/widgets/clock",
+            "icon": "􀧞",
+            "id": "clock",
+            "label": "{date}",
+            "manifest": "{\n  \"schema\": 1,\n  \"id\": \"clock\"\n}\n",
+            "name": "Clock",
+            "origin": "builtIn",
+            "samples": {
+              "unavailable": "--",
+              "widest": "Wed 30 Sep 12:59 PM"
+            },
+            "scripted": false,
+            "settings": [
+              {
+                "default": false,
+                "hint": "Every second",
+                "key": "seconds",
+                "label": "Seconds",
+                "type": "toggle"
+              },
+              {
+                "default": "day-month",
+                "key": "order",
+                "label": "Date order",
+                "options": [
+                  "day-month",
+                  "month-day"
+                ],
+                "type": "choice"
+              },
+              {
+                "key": "size",
+                "label": "Size",
+                "max": 9,
+                "min": 1,
+                "step": 1,
+                "type": "number",
+                "unit": "pt"
+              }
+            ],
+            "source": "date",
+            "style": {
+              "box": "none",
+              "size": 13
+            },
+            "update": {
+              "events": [
+                "system_woke"
+              ],
+              "every": "minute"
+            },
+            "version": "1.0.0"
+          },
+          {
+            "files": [
+              "provider.sh",
+              "widget.json"
+            ],
+            "folder": "~/Library/Application Support/Macarchy/widgets/uptime",
+            "id": "uptime",
+            "manifest": "{ \"schema\": 1, \"id\": \"uptime\" }\n",
+            "name": "Uptime",
+            "origin": "user",
+            "provider": "provider.sh",
+            "scripted": true,
+            "settings": [],
+            "update": {
+              "every": "1m"
+            },
+            "version": "0.1.0"
+          }
+        ]
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "bar": {
+          "centre": false,
+          "height": 35,
+          "padding": 10,
+          "position": "top"
+        },
+        "items": [],
+        "unavailableReason": "sketchybar is not running.",
+        "widgetProblems": [],
+        "widgets": []
+      }
+    }
+  ],
+  "menuBar.openWidgetFile": [
+    {
+      "params": {
+        "file": "provider.sh",
+        "widget": "uptime"
+      },
+      "result": null
+    }
+  ],
+  "menuBar.previewWidget": [
+    {
+      "params": {
+        "settings": {
+          "twentyFourHour": true
+        },
+        "widget": "clock"
+      },
+      "result": "Sun 25 Oct 22:42"
+    }
+  ],
+  "menuBar.revealWidget": [
+    {
+      "params": {
+        "widget": "clock"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "widget": null
+      },
+      "result": null
+    }
+  ],
+  "report.copy": [
+    {
+      "params": {
+        "token": "2C1D7F5E-8A4B-4C3D-9E2F-1A0B3C4D5E6F"
+      },
+      "result": null
+    }
+  ],
+  "report.openIssue": [
+    {
+      "params": {
+        "title": "Borders vanish after sleep",
+        "token": "2C1D7F5E-8A4B-4C3D-9E2F-1A0B3C4D5E6F"
+      },
+      "result": {
+        "copied": false
+      }
+    },
+    {
+      "params": {
+        "title": "Setup stops early",
+        "token": "9A8B7C6D-5E4F-4A3B-8C2D-1E0F9A8B7C6D"
+      },
+      "result": {
+        "copied": true
+      }
+    }
+  ],
+  "report.openIssues": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "report.prepare": [
+    {
+      "params": {
+        "description": "Borders vanish after waking from sleep.",
+        "refresh": true
+      },
+      "result": {
+        "body": "## What happened\n\nBorders vanish after waking from sleep.\n\n## Environment\n\nMac15,6, macOS 26.1",
+        "token": "2C1D7F5E-8A4B-4C3D-9E2F-1A0B3C4D5E6F"
+      }
+    },
+    {
+      "params": {
+        "description": "",
+        "refresh": false
+      },
+      "result": {
+        "body": "## What happened\n\n_Not described_\n\n## Environment\n\nMac15,6, macOS 26.1",
+        "token": "9A8B7C6D-5E4F-4A3B-8C2D-1E0F9A8B7C6D"
+      }
+    }
+  ],
+  "rules.addApplication": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "rules.getState": [
+    {
+      "params": {},
+      "result": {
+        "customRules": [
+          {
+            "app": "Finder",
+            "id": "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B",
+            "title": "^Copy$"
+          }
+        ],
+        "externalRules": [
+          {
+            "app": "System Settings",
+            "title": ""
+          }
+        ],
+        "floatingApps": [
+          "Calculator",
+          "Messages"
+        ],
+        "icons": {
+          "Calculator": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+          "Messages": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        },
+        "unavailableReason": null
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "customRules": [],
+        "externalRules": [],
+        "floatingApps": [
+          "Messages"
+        ],
+        "icons": {
+          "Messages": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        },
+        "unavailableReason": "yabai isn't responding, so these are your saved rules. Editing is off because rules apply through yabai."
+      }
+    }
+  ],
+  "rules.removeCustom": [
+    {
+      "params": {
+        "id": "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B"
+      },
+      "result": null
+    }
+  ],
+  "rules.removeFloating": [
+    {
+      "params": {
+        "app": "Calculator"
+      },
+      "result": null
+    }
+  ],
+  "rules.saveCustom": [
+    {
+      "params": {
+        "existing": true,
+        "rule": {
+          "app": "Finder",
+          "id": "6F1C2A3B-4D5E-4F60-8A7B-9C0D1E2F3A4B",
+          "title": "^Copy$"
+        }
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "existing": false,
+        "rule": {
+          "app": "Preview",
+          "id": "0B7E4C1D-2A3F-4E5B-9C6D-7E8F9A0B1C2D",
+          "title": ""
+        }
+      },
+      "result": null
+    }
+  ],
+  "setup.getPlan": [
+    {
+      "params": {
+        "existing": {},
+        "tools": [
+          "yabai",
+          "sketchybar",
+          "skhd"
+        ]
+      },
+      "result": {
+        "canClose": true,
+        "changes": [
+          {
+            "action": "create",
+            "detail": "Starts tiling with Macarchy's layout and rules",
+            "path": "~/Library/Application Support/Macarchy/config/yabairc"
+          },
+          {
+            "action": "adopt",
+            "detail": "Keeps your shortcuts and adds Macarchy's",
+            "path": "~/Library/Application Support/Macarchy/config/skhdrc"
+          }
+        ],
+        "extras": [
+          {
+            "description": "An app Macarchy uses when it is there.",
+            "id": "example-app",
+            "installed": false,
+            "name": "Example"
+          }
+        ],
+        "homebrew": true,
+        "tools": [
+          {
+            "chosen": true,
+            "description": "Tiles windows and moves them between desktops",
+            "id": "yabai",
+            "installed": true,
+            "name": "yabai",
+            "ownConfig": "~/.config/yabai/yabairc"
+          },
+          {
+            "chosen": false,
+            "description": "Outlines the focused window in the theme's colours",
+            "id": "borders",
+            "installed": true,
+            "name": "borders",
+            "ownConfig": null
+          },
+          {
+            "chosen": true,
+            "description": "Draws the menu bar with Macarchy's widgets",
+            "id": "sketchybar",
+            "installed": false,
+            "name": "SketchyBar",
+            "ownConfig": null
+          },
+          {
+            "chosen": true,
+            "description": "Runs the keyboard shortcuts",
+            "id": "skhd",
+            "installed": false,
+            "name": "skhd",
+            "ownConfig": "~/.skhdrc"
+          }
+        ]
+      }
+    },
+    {
+      "params": {
+        "existing": {
+          "skhd": "replace",
+          "yabai": "keep"
+        },
+        "tools": [
+          "yabai",
+          "skhd"
+        ]
+      },
+      "result": {
+        "canClose": false,
+        "changes": [
+          {
+            "action": "replace",
+            "detail": "Backs up your shortcuts and starts from Macarchy's defaults",
+            "path": "~/Library/Application Support/Macarchy/config/skhdrc"
+          }
+        ],
+        "extras": [
+          {
+            "description": "An app Macarchy uses when it is there.",
+            "id": "example-app",
+            "installed": true,
+            "name": "Example"
+          }
+        ],
+        "homebrew": false,
+        "tools": [
+          {
+            "chosen": true,
+            "description": "Tiles windows and moves them between desktops",
+            "id": "yabai",
+            "installed": true,
+            "name": "yabai",
+            "ownConfig": "~/.config/yabai/yabairc"
+          },
+          {
+            "chosen": false,
+            "description": "Outlines the focused window in the theme's colours",
+            "id": "borders",
+            "installed": true,
+            "name": "borders",
+            "ownConfig": null
+          },
+          {
+            "chosen": true,
+            "description": "Draws the menu bar with Macarchy's widgets",
+            "id": "sketchybar",
+            "installed": false,
+            "name": "SketchyBar",
+            "ownConfig": null
+          },
+          {
+            "chosen": true,
+            "description": "Runs the keyboard shortcuts",
+            "id": "skhd",
+            "installed": false,
+            "name": "skhd",
+            "ownConfig": "~/.skhdrc"
+          }
+        ]
+      }
+    }
+  ],
+  "setup.installHomebrew": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "setup.openAccessibility": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "setup.run": [
+    {
+      "params": {
+        "existing": {},
+        "tools": [
+          "yabai",
+          "sketchybar",
+          "skhd"
+        ]
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Installed themes",
+          "Prepared startup files"
+        ]
+      }
+    },
+    {
+      "params": {
+        "existing": {},
+        "extras": [
+          "example-app"
+        ],
+        "tools": [
+          "yabai"
+        ]
+      },
+      "result": {
+        "failure": null,
+        "failures": [],
+        "lines": [
+          "Installed themes",
+          "Prepared startup files"
+        ]
+      }
+    },
+    {
+      "params": {
+        "existing": {
+          "skhd": "replace",
+          "yabai": "keep"
+        },
+        "tools": [
+          "yabai",
+          "skhd"
+        ]
+      },
+      "result": {
+        "failure": "Setup did not finish; some files may already have changed. The menu bar file could not be written.",
+        "failures": [
+          "sketchybar --reload exited with status 1"
+        ],
+        "lines": [
+          "Installed themes",
+          "Installed default shortcuts"
+        ]
+      }
+    }
+  ],
+  "shell.clearLog": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "shell.getLog": [
+    {
+      "params": {},
+      "result": {
+        "entries": [
+          {
+            "at": 1792570500,
+            "category": "Menu Bar",
+            "command": "/opt/homebrew/bin/sketchybar --reload",
+            "detail": "",
+            "id": "3B2F1A0E-5C4D-4E6F-8A9B-0C1D2E3F4A5B",
+            "ok": true,
+            "status": 0
+          },
+          {
+            "at": 1792570502,
+            "category": "Borders",
+            "command": "borders appearance",
+            "detail": "",
+            "id": "4C3A2B1F-6D5E-4F7A-9B0C-1D2E3F4A5B6C",
+            "ok": true,
+            "status": 0
+          },
+          {
+            "at": 1792570504,
+            "category": "Themes",
+            "command": "theme lumon",
+            "detail": "Standard error:\nThe wallpaper could not be set.",
+            "id": "5D4B3C2A-7E6F-4A8B-8C1D-2E3F4A5B6C7D",
+            "ok": false,
+            "status": 1
+          },
+          {
+            "at": 1792570506,
+            "category": "Shortcuts",
+            "command": "open skhdrc",
+            "detail": "~/Library/Application Support/Macarchy/config/skhdrc",
+            "id": "6E5C4D3B-8F7A-4B9C-9D2E-3F4A5B6C7D8E",
+            "ok": true,
+            "status": null
+          },
+          {
+            "at": 1792570508,
+            "category": "Window Rules",
+            "command": "window rules",
+            "detail": "",
+            "id": "7F6D5E4C-9A8B-4C0D-8E3F-4A5B6C7D8E9F",
+            "ok": true,
+            "status": 0
+          },
+          {
+            "at": 1792570510,
+            "category": "Layout",
+            "command": "read layout",
+            "detail": "yabai-msg: failed to connect",
+            "id": "8A7E6F5D-0B9C-4D1E-9F4A-5B6C7D8E9F0A",
+            "ok": false,
+            "status": null
+          },
+          {
+            "at": 1792570512,
+            "category": "Backups",
+            "command": "restore backup",
+            "detail": "Completed",
+            "id": "9B8F7A6E-1C0D-4E2F-8A5B-6C7D8E9F0A1B",
+            "ok": true,
+            "status": null
+          },
+          {
+            "at": 1792570514,
+            "category": "System",
+            "command": "health check",
+            "detail": "18 checks completed",
+            "id": "0C9A8B7F-2D1E-4F3A-9B6C-7D8E9F0A1B2C",
+            "ok": true,
+            "status": null
+          }
+        ]
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "entries": []
+      }
+    }
+  ],
+  "shell.getState": [
+    {
+      "params": {},
+      "result": {
+        "appearance": {
+          "accent": "#61afef",
+          "mode": "system"
+        },
+        "selectedPane": "home",
+        "serviceList": [
+          {
+            "id": "yabai",
+            "name": "yabai",
+            "state": "running"
+          },
+          {
+            "id": "borders",
+            "name": "borders",
+            "state": "running"
+          },
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar",
+            "state": "running"
+          },
+          {
+            "id": "skhd",
+            "name": "skhd",
+            "state": "running"
+          }
+        ],
+        "services": {
+          "running": 4,
+          "total": 4
+        },
+        "setupRequired": false,
+        "sidebarVisible": true,
+        "version": "0.9.2"
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "appearance": {
+          "accent": "#0a84ff",
+          "mode": "dark"
+        },
+        "selectedPane": "layout",
+        "serviceList": [
+          {
+            "id": "yabai",
+            "name": "yabai",
+            "state": "stopped"
+          },
+          {
+            "id": "borders",
+            "name": "borders",
+            "state": "stopped"
+          },
+          {
+            "id": "sketchybar",
+            "name": "SketchyBar",
+            "state": "unknown"
+          },
+          {
+            "id": "skhd",
+            "name": "skhd",
+            "state": "stopped"
+          }
+        ],
+        "services": {
+          "running": 0,
+          "total": 4
+        },
+        "setupRequired": true,
+        "sidebarVisible": false,
+        "version": "development build"
+      }
+    }
+  ],
+  "shell.quit": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "shell.restartAll": [
+    {
+      "params": {},
+      "result": {
+        "outcome": "Restarted all 4 services."
+      }
+    },
+    {
+      "params": {},
+      "result": {
+        "outcome": "Restarted 3 of 4 services; skhd did not restart."
+      }
+    }
+  ],
+  "shell.revealSettings": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "shell.setPreferences": [
+    {
+      "params": {
+        "selectedPane": "borders",
+        "sidebarVisible": true
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "selectedPane": "rules"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "selectedPane": "shortcuts"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "selectedPane": "health"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "selectedPane": "advanced"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "selectedPane": "report",
+        "sidebarVisible": false
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "appearance": "light",
+        "selectedPane": "menuBar"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "appearance": "dark"
+      },
+      "result": null
+    },
+    {
+      "params": {
+        "appearance": "system"
+      },
+      "result": null
+    },
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "shell.setTitlebar": [
+    {
+      "params": {
+        "controls": [
+          {
+            "height": 44,
+            "width": 78,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "height": 32,
+            "width": 72,
+            "x": 912,
+            "y": 6
+          }
+        ],
+        "height": 44
+      },
+      "result": null
+    }
+  ],
+  "shortcuts.disable": [
+    {
+      "params": {
+        "id": 3,
+        "revision": "5d41402abc4b2a76"
+      },
+      "result": {
+        "state": {
+          "bindings": [
+            {
+              "activatesMode": null,
+              "appOverrides": [],
+              "caps": [
+                "⌃",
+                "⌥",
+                "↩"
+              ],
+              "command": "open -na Ghostty",
+              "disabled": false,
+              "id": 1,
+              "key": "return",
+              "modes": [],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": false,
+              "section": "Open a terminal"
+            },
+            {
+              "activatesMode": null,
+              "appOverrides": [
+                {
+                  "app": "Ghostty",
+                  "command": "skhd -k 'ctrl + alt - h'"
+                }
+              ],
+              "caps": [
+                "⌃",
+                "⌥",
+                "H"
+              ],
+              "command": "yabai -m window --focus west",
+              "disabled": true,
+              "id": 3,
+              "key": "h",
+              "modes": [
+                "resize"
+              ],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": true,
+              "section": null
+            }
+          ],
+          "desktops": 3,
+          "revision": "3c59dc048e885024"
+        },
+        "warning": "skhd: could not reload the configuration"
+      }
+    }
+  ],
+  "shortcuts.enable": [
+    {
+      "params": {
+        "id": 3,
+        "revision": "3c59dc048e885024"
+      },
+      "result": {
+        "state": {
+          "bindings": [
+            {
+              "activatesMode": null,
+              "appOverrides": [],
+              "caps": [
+                "⌃",
+                "⌥",
+                "↩"
+              ],
+              "command": "open -na Ghostty",
+              "disabled": false,
+              "id": 1,
+              "key": "return",
+              "modes": [],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": false,
+              "section": "Open a terminal"
+            },
+            {
+              "activatesMode": null,
+              "appOverrides": [
+                {
+                  "app": "Ghostty",
+                  "command": "skhd -k 'ctrl + alt - h'"
+                }
+              ],
+              "caps": [
+                "⌃",
+                "⌥",
+                "H"
+              ],
+              "command": "yabai -m window --focus west",
+              "disabled": false,
+              "id": 3,
+              "key": "h",
+              "modes": [
+                "resize"
+              ],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": true,
+              "section": null
+            }
+          ],
+          "desktops": 3,
+          "revision": "5d41402abc4b2a76"
+        },
+        "warning": ""
+      }
+    }
+  ],
+  "shortcuts.getState": [
+    {
+      "params": {},
+      "result": {
+        "bindings": [
+          {
+            "activatesMode": null,
+            "appOverrides": [],
+            "caps": [
+              "⌃",
+              "⌥",
+              "↩"
+            ],
+            "command": "open -na Ghostty",
+            "disabled": false,
+            "id": 1,
+            "key": "return",
+            "modes": [],
+            "modifiers": [
+              "ctrl",
+              "alt"
+            ],
+            "passthrough": false,
+            "section": "Open a terminal"
+          },
+          {
+            "activatesMode": null,
+            "appOverrides": [
+              {
+                "app": "Ghostty",
+                "command": "skhd -k 'ctrl + alt - h'"
+              }
+            ],
+            "caps": [
+              "⌃",
+              "⌥",
+              "H"
+            ],
+            "command": "yabai -m window --focus west",
+            "disabled": false,
+            "id": 3,
+            "key": "h",
+            "modes": [
+              "resize"
+            ],
+            "modifiers": [
+              "ctrl",
+              "alt"
+            ],
+            "passthrough": true,
+            "section": null
+          }
+        ],
+        "desktops": 3,
+        "revision": "5d41402abc4b2a76"
+      }
+    }
+  ],
+  "shortcuts.openConfiguration": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "shortcuts.rebind": [
+    {
+      "params": {
+        "chord": {
+          "key": "j",
+          "modifiers": [
+            "ctrl",
+            "alt"
+          ]
+        },
+        "id": 3,
+        "revision": "5d41402abc4b2a76"
+      },
+      "result": {
+        "state": {
+          "bindings": [
+            {
+              "activatesMode": null,
+              "appOverrides": [],
+              "caps": [
+                "⌃",
+                "⌥",
+                "↩"
+              ],
+              "command": "open -na Ghostty",
+              "disabled": false,
+              "id": 1,
+              "key": "return",
+              "modes": [],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": false,
+              "section": "Open a terminal"
+            }
+          ],
+          "desktops": null,
+          "revision": "7d793037a0760186"
+        },
+        "warning": ""
+      }
+    }
+  ],
+  "shortcuts.reset": [
+    {
+      "params": {
+        "revision": "7d793037a0760186"
+      },
+      "result": {
+        "state": {
+          "bindings": [
+            {
+              "activatesMode": null,
+              "appOverrides": [],
+              "caps": [
+                "⌃",
+                "⌥",
+                "↩"
+              ],
+              "command": "open -na Ghostty",
+              "disabled": false,
+              "id": 1,
+              "key": "return",
+              "modes": [],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": false,
+              "section": "Open a terminal"
+            },
+            {
+              "activatesMode": null,
+              "appOverrides": [
+                {
+                  "app": "Ghostty",
+                  "command": "skhd -k 'ctrl + alt - h'"
+                }
+              ],
+              "caps": [
+                "⌃",
+                "⌥",
+                "H"
+              ],
+              "command": "yabai -m window --focus west",
+              "disabled": false,
+              "id": 3,
+              "key": "h",
+              "modes": [
+                "resize"
+              ],
+              "modifiers": [
+                "ctrl",
+                "alt"
+              ],
+              "passthrough": true,
+              "section": null
+            }
+          ],
+          "desktops": 3,
+          "revision": "5d41402abc4b2a76"
+        },
+        "warning": ""
+      }
+    }
+  ],
+  "shortcuts.validate": [
+    {
+      "params": {
+        "chord": {
+          "key": "j",
+          "modifiers": [
+            "ctrl",
+            "alt"
+          ]
+        },
+        "id": 3
+      },
+      "result": {
+        "caps": [
+          "⌃",
+          "⌥",
+          "J"
+        ],
+        "conflicts": [],
+        "spec": "ctrl + alt - j"
+      }
+    },
+    {
+      "params": {
+        "chord": {
+          "key": "return",
+          "modifiers": [
+            "ctrl",
+            "alt"
+          ]
+        },
+        "id": 3
+      },
+      "result": {
+        "caps": [
+          "⌃",
+          "⌥",
+          "↩"
+        ],
+        "conflicts": [
+          1
+        ],
+        "spec": "ctrl + alt - return"
+      }
+    }
+  ],
+  "switcher.applyTheme": [
+    {
+      "params": {
+        "theme": "awakening"
+      },
+      "result": null
+    }
+  ],
+  "switcher.close": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "switcher.getState": [
+    {
+      "params": {},
+      "result": {
+        "current": "awakening",
+        "themes": [
+          {
+            "backgrounds": [
+              {
+                "name": "First Light",
+                "path": "backgrounds/1-first-light.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=700"
+              },
+              {
+                "name": "Hand Of Adam",
+                "path": "backgrounds/2-hand-of-adam.png",
+                "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/2-hand-of-adam.png?max=700"
+              }
+            ],
+            "colours": {
+              "background": "#11131a",
+              "blue": "#61afef",
+              "cyan": "#56b6c2",
+              "foreground": "#d7dae0",
+              "green": "#98c379",
+              "red": "#e06c75"
+            },
+            "currentBackground": "backgrounds/1-first-light.png",
+            "isDark": true,
+            "name": "awakening",
+            "preview": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=1400",
+            "ring": "#61afef",
+            "title": "Awakening"
+          },
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      }
+    }
+  ],
+  "switcher.openSettings": [
+    {
+      "params": {},
+      "result": null
+    }
+  ],
+  "switcher.refresh": [
+    {
+      "params": {},
+      "result": {
+        "current": null,
+        "themes": [
+          {
+            "backgrounds": [],
+            "colours": null,
+            "currentBackground": null,
+            "isDark": false,
+            "name": "paper",
+            "preview": null,
+            "ring": "#0a84ff",
+            "title": "Paper"
+          }
+        ]
+      }
+    }
+  ],
+  "switcher.useBackground": [
+    {
+      "params": {
+        "path": "backgrounds/2-hand-of-adam.png",
+        "theme": "awakening"
+      },
+      "result": null
+    }
+  ],
+  "themes.apply": [
+    {
+      "params": {
+        "theme": "paper"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ],
+  "themes.chooseWallpaper": [
+    {
+      "params": {
+        "path": "backgrounds/1-first-light.png",
+        "theme": "awakening"
+      },
+      "result": {
+        "colourschemes": [
+          "catppuccin",
+          "habamax",
+          "tokyonight"
+        ],
+        "current": "awakening",
+        "themes": [
+          {
+            "defaultColourscheme": "habamax",
+            "hasDefault": true,
+            "modified": true,
+            "summary": {
+              "backgrounds": [
+                {
+                  "name": "First Light",
+                  "path": "backgrounds/1-first-light.png",
+                  "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=700"
+                },
+                {
+                  "name": "Hand Of Adam",
+                  "path": "backgrounds/2-hand-of-adam.png",
+                  "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/2-hand-of-adam.png?max=700"
+                }
+              ],
+              "colours": {
+                "background": "#11131a",
+                "blue": "#61afef",
+                "cyan": "#56b6c2",
+                "foreground": "#d7dae0",
+                "green": "#98c379",
+                "red": "#e06c75"
+              },
+              "currentBackground": "backgrounds/1-first-light.png",
+              "isDark": true,
+              "name": "awakening",
+              "preview": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=1400",
+              "ring": "#61afef",
+              "title": "Awakening"
+            },
+            "terminal": {
+              "ansi": [
+                "#11131a",
+                "#e06c75",
+                "#98c379",
+                "#e5c07b",
+                "#61afef",
+                "#c678dd",
+                "#56b6c2",
+                "#d7dae0",
+                "#5c6370",
+                "#e06c75",
+                "#98c379",
+                "#e5c07b",
+                "#61afef",
+                "#c678dd",
+                "#56b6c2",
+                "#ffffff"
+              ],
+              "background": "#11131a",
+              "cursor": "#d7dae0",
+              "foreground": "#d7dae0"
+            },
+            "values": {
+              "borderActive": "0xff61afef",
+              "borderInactive": "0xff3b4048",
+              "dark": true,
+              "firefoxAccent": "#61afef",
+              "nvimColorscheme": "tokyonight",
+              "sketchybarBar": "0xf011131a",
+              "sketchybarText": "0xffd7dae0"
+            }
+          },
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "themes.exportFolder": [
+    {
+      "params": {
+        "theme": "awakening"
+      },
+      "result": null
+    }
+  ],
+  "themes.getState": [
+    {
+      "params": {},
+      "result": {
+        "colourschemes": [
+          "catppuccin",
+          "habamax",
+          "tokyonight"
+        ],
+        "current": "awakening",
+        "themes": [
+          {
+            "defaultColourscheme": "habamax",
+            "hasDefault": true,
+            "modified": true,
+            "summary": {
+              "backgrounds": [
+                {
+                  "name": "First Light",
+                  "path": "backgrounds/1-first-light.png",
+                  "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=700"
+                },
+                {
+                  "name": "Hand Of Adam",
+                  "path": "backgrounds/2-hand-of-adam.png",
+                  "thumbnail": "macarchy-app://media/theme/awakening/backgrounds/2-hand-of-adam.png?max=700"
+                }
+              ],
+              "colours": {
+                "background": "#11131a",
+                "blue": "#61afef",
+                "cyan": "#56b6c2",
+                "foreground": "#d7dae0",
+                "green": "#98c379",
+                "red": "#e06c75"
+              },
+              "currentBackground": "backgrounds/1-first-light.png",
+              "isDark": true,
+              "name": "awakening",
+              "preview": "macarchy-app://media/theme/awakening/backgrounds/1-first-light.png?max=1400",
+              "ring": "#61afef",
+              "title": "Awakening"
+            },
+            "terminal": {
+              "ansi": [
+                "#11131a",
+                "#e06c75",
+                "#98c379",
+                "#e5c07b",
+                "#61afef",
+                "#c678dd",
+                "#56b6c2",
+                "#d7dae0",
+                "#5c6370",
+                "#e06c75",
+                "#98c379",
+                "#e5c07b",
+                "#61afef",
+                "#c678dd",
+                "#56b6c2",
+                "#ffffff"
+              ],
+              "background": "#11131a",
+              "cursor": "#d7dae0",
+              "foreground": "#d7dae0"
+            },
+            "values": {
+              "borderActive": "0xff61afef",
+              "borderInactive": "0xff3b4048",
+              "dark": true,
+              "firefoxAccent": "#61afef",
+              "nvimColorscheme": "tokyonight",
+              "sketchybarBar": "0xf011131a",
+              "sketchybarText": "0xffd7dae0"
+            }
+          },
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "themes.importFolder": [
+    {
+      "params": {},
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ],
+  "themes.reset": [
+    {
+      "params": {
+        "theme": "paper"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ],
+  "themes.reveal": [
+    {
+      "params": {
+        "theme": "awakening"
+      },
+      "result": null
+    }
+  ],
+  "themes.setColour": [
+    {
+      "params": {
+        "colour": "borderActive",
+        "theme": "paper",
+        "value": "0xff2f6f9f"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    },
+    {
+      "params": {
+        "colour": "borderInactive",
+        "theme": "paper",
+        "value": "0xff8a8a8d"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    },
+    {
+      "params": {
+        "colour": "sketchybarBar",
+        "theme": "paper",
+        "value": "0xf0e8ecef"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    },
+    {
+      "params": {
+        "colour": "sketchybarText",
+        "theme": "paper",
+        "value": "0xff1f2a33"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    },
+    {
+      "params": {
+        "colour": "firefoxAccent",
+        "theme": "paper",
+        "value": "#2f6f9f"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ],
+  "themes.setColourscheme": [
+    {
+      "params": {
+        "theme": "paper",
+        "value": "habamax"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    },
+    {
+      "params": {
+        "theme": "paper",
+        "value": null
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ],
+  "themes.setDark": [
+    {
+      "params": {
+        "dark": true,
+        "theme": "paper"
+      },
+      "result": {
+        "colourschemes": [
+          "habamax"
+        ],
+        "current": null,
+        "themes": [
+          {
+            "defaultColourscheme": "default",
+            "hasDefault": false,
+            "modified": false,
+            "summary": {
+              "backgrounds": [],
+              "colours": null,
+              "currentBackground": null,
+              "isDark": false,
+              "name": "paper",
+              "preview": null,
+              "ring": "#0a84ff",
+              "title": "Paper"
+            },
+            "terminal": null,
+            "values": {
+              "borderActive": null,
+              "borderInactive": null,
+              "dark": false,
+              "firefoxAccent": null,
+              "nvimColorscheme": null,
+              "sketchybarBar": null,
+              "sketchybarText": null
+            }
+          }
+        ],
+        "warnings": [
+          "broken-theme has no readable theme.json, so it is not listed."
+        ]
+      }
+    }
+  ]
+}

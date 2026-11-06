@@ -1,0 +1,489 @@
+@import "tailwindcss";
+
+/* The glyphs SketchyBar draws for apps on the bar, so previews match it. */
+@font-face {
+  font-family: "sketchybar-app-font";
+  src: url("../assets/fonts/sketchybar-app-font.ttf") format("truetype");
+  font-display: block;
+}
+
+/*
+ * Colour, type and motion tokens for the Studio design (see the mockup in
+ * components/gallery/options/studio). Components use the role names below,
+ * never raw values. Values switch on the system appearance unless the page
+ * forces one with `data-theme` on the root (the shell's appearance setting;
+ * the switcher panel is always dark). `data-appearance` forces one on a
+ * subtree instead, for content drawn over artwork and for the gallery.
+ */
+:root,
+[data-appearance="light"] {
+  color-scheme: light;
+  /* Studio: zinc surfaces with a sparing indigo accent. */
+  --surface-page: #ffffff;
+  --surface-card: #ffffff;
+  --surface-side: #fafafa;
+  --surface-bar: #ffffff;
+  --surface-popover: #ffffff;
+  --surface-muted: #f4f4f5;
+  --surface-canvas: #f4f4f5;
+  --line-hairline: #e4e4e7;
+  --line-strong: #d4d4d8;
+  --fill-well: #f4f4f5;
+  --fill-hover: #f4f4f5;
+  --ink-primary: #09090b;
+  --ink-secondary: #52525b;
+  --ink-meta: #52525b;
+  --ink-tertiary: #a1a1aa;
+  --ui-accent: #6366f1;
+  --ui-accent-fg: #ffffff;
+  --ui-accent-soft: rgb(99 102 241 / 0.1);
+  --ui-accent-text: #4f46e5;
+  --status-success: #16a34a;
+  --status-success-soft: rgb(22 163 74 / 0.1);
+  --status-warning: #d97706;
+  --status-warning-soft: rgb(217 119 6 / 0.1);
+  --status-warning-row: rgb(217 119 6 / 0.06);
+  --status-danger: #dc2626;
+  --status-danger-soft: rgb(220 38 38 / 0.07);
+  --ink-strong: #18181b;
+  --ink-strong-fg: #fafafa;
+  --preview: #0f766e;
+  --preview-soft: rgb(20 184 166 / 0.11);
+  --preview-ring: rgb(13 148 136 / 0.16);
+  --tip-bg: #18181b;
+  --tip-fg: #fafafa;
+  --tip-border: #18181b;
+  --seg-track: #f4f4f5;
+  --seg-ring: rgb(9 9 11 / 0.04);
+  --seg-pill: #ffffff;
+  --seg-hover: rgb(255 255 255 / 0.55);
+  --elevation-card: 0 1px 2px rgb(9 9 11 / 0.05), 0 1px 1px rgb(9 9 11 / 0.03);
+  --elevation-pop: 0 16px 40px -12px rgb(9 9 11 / 0.28), 0 2px 6px -2px rgb(9 9 11 / 0.1);
+  --elevation-tip: 0 6px 16px -4px rgb(9 9 11 / 0.25), 0 1px 3px rgb(9 9 11 / 0.12);
+  --elevation-chart-tip: 0 4px 12px -4px rgb(9 9 11 / 0.18), 0 1px 2px rgb(9 9 11 / 0.06);
+  --elevation-seg-pill:
+    0 1px 2px rgb(9 9 11 / 0.08), 0 1px 1px rgb(9 9 11 / 0.04), 0 0 0 0.5px rgb(9 9 11 / 0.08);
+  /* Apple's system colours, for tinting icons and tiles by subject. */
+  --hue-blue: #007aff;
+  --hue-purple: #af52de;
+  --hue-pink: #ff2d55;
+  --hue-teal: #30b0c7;
+  --hue-orange: #ff9500;
+  --hue-green: #34c759;
+  --hue-red: #ff3b30;
+}
+
+/*
+ * The interface accent is Studio's indigo. The active theme's accent is
+ * written to `--theme-accent` on the root by the shell, for previews and
+ * swatches that show the theme itself; a subtree must not redeclare it.
+ */
+:root {
+  --theme-accent: #6366f1;
+  /* Transitional names for code not yet moved to the roles above. */
+  --accent: var(--ui-accent);
+  --accent-fg: var(--ui-accent-fg);
+  --accent-stroke: var(--ui-accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-page: #09090b;
+    --surface-card: #09090b;
+    --surface-side: #0c0c0e;
+    --surface-bar: #09090b;
+    --surface-popover: #09090b;
+    --surface-muted: #18181b;
+    --surface-canvas: #111113;
+    --line-hairline: #232327;
+    --line-strong: #2f2f35;
+    --fill-well: #18181b;
+    --fill-hover: #18181b;
+    --ink-primary: #fafafa;
+    --ink-secondary: #a1a1aa;
+    --ink-meta: #a1a1aa;
+    --ink-tertiary: #71717a;
+    --ui-accent: #818cf8;
+    --ui-accent-fg: #0b0b14;
+    --ui-accent-soft: rgb(129 140 248 / 0.14);
+    --ui-accent-text: #a5b4fc;
+    --status-success: #4ade80;
+    --status-success-soft: rgb(74 222 128 / 0.12);
+    --status-warning: #fbbf24;
+    --status-warning-soft: rgb(251 191 36 / 0.12);
+    --status-warning-row: rgb(251 191 36 / 0.06);
+    --status-danger: #f87171;
+    --status-danger-soft: rgb(248 113 113 / 0.09);
+    --ink-strong: #fafafa;
+    --ink-strong-fg: #09090b;
+    --preview: #5eead4;
+    --preview-soft: rgb(45 212 191 / 0.12);
+    --preview-ring: rgb(45 212 191 / 0.16);
+    --tip-bg: #18181b;
+    --tip-fg: #fafafa;
+    --tip-border: #2f2f35;
+    --seg-track: #18181b;
+    --seg-ring: rgb(255 255 255 / 0.04);
+    --seg-pill: #2a2a2f;
+    --seg-hover: rgb(255 255 255 / 0.04);
+    --elevation-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elevation-pop: 0 18px 44px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+    --elevation-tip: 0 8px 20px -6px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.3);
+    --elevation-chart-tip: 0 6px 16px -6px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.3);
+    --elevation-seg-pill:
+      0 1px 2px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 0 0 0.5px rgb(255 255 255 / 0.06);
+    --hue-blue: #0a84ff;
+    --hue-purple: #bf5af2;
+    --hue-pink: #ff375f;
+    --hue-teal: #40c8e0;
+    --hue-orange: #ff9f0a;
+    --hue-green: #30d158;
+    --hue-red: #ff453a;
+  }
+}
+
+:root[data-theme="dark"],
+[data-appearance="dark"] {
+  color-scheme: dark;
+  --surface-page: #09090b;
+  --surface-card: #09090b;
+  --surface-side: #0c0c0e;
+  --surface-bar: #09090b;
+  --surface-popover: #09090b;
+  --surface-muted: #18181b;
+  --surface-canvas: #111113;
+  --line-hairline: #232327;
+  --line-strong: #2f2f35;
+  --fill-well: #18181b;
+  --fill-hover: #18181b;
+  --ink-primary: #fafafa;
+  --ink-secondary: #a1a1aa;
+  --ink-meta: #a1a1aa;
+  --ink-tertiary: #71717a;
+  --ui-accent: #818cf8;
+  --ui-accent-fg: #0b0b14;
+  --ui-accent-soft: rgb(129 140 248 / 0.14);
+  --ui-accent-text: #a5b4fc;
+  --status-success: #4ade80;
+  --status-success-soft: rgb(74 222 128 / 0.12);
+  --status-warning: #fbbf24;
+  --status-warning-soft: rgb(251 191 36 / 0.12);
+  --status-warning-row: rgb(251 191 36 / 0.06);
+  --status-danger: #f87171;
+  --status-danger-soft: rgb(248 113 113 / 0.09);
+  --ink-strong: #fafafa;
+  --ink-strong-fg: #09090b;
+  --preview: #5eead4;
+  --preview-soft: rgb(45 212 191 / 0.12);
+  --preview-ring: rgb(45 212 191 / 0.16);
+  --tip-bg: #18181b;
+  --tip-fg: #fafafa;
+  --tip-border: #2f2f35;
+  --seg-track: #18181b;
+  --seg-ring: rgb(255 255 255 / 0.04);
+  --seg-pill: #2a2a2f;
+  --seg-hover: rgb(255 255 255 / 0.04);
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elevation-pop: 0 18px 44px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --elevation-tip: 0 8px 20px -6px rgb(0 0 0 / 0.6), 0 1px 3px rgb(0 0 0 / 0.3);
+  --elevation-chart-tip: 0 6px 16px -6px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-seg-pill:
+    0 1px 2px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 0.5px rgb(255 255 255 / 0.06);
+  --hue-blue: #0a84ff;
+  --hue-purple: #bf5af2;
+  --hue-pink: #ff375f;
+  --hue-teal: #40c8e0;
+  --hue-orange: #ff9f0a;
+  --hue-green: #30d158;
+  --hue-red: #ff453a;
+}
+
+@theme inline {
+  --font-sans: Inter, "SF Pro Text", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-page: var(--surface-page);
+  --color-card: var(--surface-card);
+  --color-side: var(--surface-side);
+  --color-bar: var(--surface-bar);
+  --color-popover: var(--surface-popover);
+  --color-muted: var(--surface-muted);
+  --color-canvas: var(--surface-canvas);
+  --color-hairline: var(--line-hairline);
+  --color-line-strong: var(--line-strong);
+  --color-well: var(--fill-well);
+  --color-hover: var(--fill-hover);
+  --color-fg: var(--ink-primary);
+  --color-fg-secondary: var(--ink-secondary);
+  --color-fg-meta: var(--ink-meta);
+  --color-fg-tertiary: var(--ink-tertiary);
+  --color-strong: var(--ink-strong);
+  --color-strong-fg: var(--ink-strong-fg);
+  --color-accent: var(--ui-accent);
+  --color-accent-fg: var(--ui-accent-fg);
+  --color-accent-soft: var(--ui-accent-soft);
+  --color-accent-text: var(--ui-accent-text);
+  --color-accent-stroke: var(--ui-accent);
+  --color-theme-accent: var(--theme-accent);
+  --color-success: var(--status-success);
+  --color-success-soft: var(--status-success-soft);
+  --color-warning: var(--status-warning);
+  --color-warning-soft: var(--status-warning-soft);
+  --color-warning-row: var(--status-warning-row);
+  --color-danger: var(--status-danger);
+  --color-danger-soft: var(--status-danger-soft);
+  --color-preview: var(--preview);
+  --color-preview-soft: var(--preview-soft);
+  --color-preview-ring: var(--preview-ring);
+  --color-tip: var(--tip-bg);
+  --color-tip-fg: var(--tip-fg);
+  --color-tip-border: var(--tip-border);
+  --color-seg-track: var(--seg-track);
+  --color-seg-ring: var(--seg-ring);
+  --color-seg-pill: var(--seg-pill);
+  --color-seg-hover: var(--seg-hover);
+  --color-tint-blue: var(--hue-blue);
+  --color-tint-purple: var(--hue-purple);
+  --color-tint-pink: var(--hue-pink);
+  --color-tint-teal: var(--hue-teal);
+  --color-tint-orange: var(--hue-orange);
+  --color-tint-green: var(--hue-green);
+  --color-tint-red: var(--hue-red);
+
+  --shadow-card: var(--elevation-card);
+  --shadow-pop: var(--elevation-pop);
+  --shadow-tip: var(--elevation-tip);
+  --shadow-chart-tip: var(--elevation-chart-tip);
+  --shadow-seg-pill: var(--elevation-seg-pill);
+}
+
+@theme {
+  /*
+   * Studio's type scale, by role. Weight is part of a role only where every
+   * use shares it; add `font-medium` or `font-semibold` otherwise. Nothing
+   * goes below the 10px floor. Register new roles in ~/lib/cn.ts too.
+   */
+  /* The current theme's name over its wallpaper on Home. */
+  --text-hero-title: 28px;
+  --text-hero-title--line-height: 32px;
+  --text-hero-title--font-weight: 600;
+  --text-hero-title--letter-spacing: -0.025em;
+  /* Large figures: a stat strip's values, Usage's total. */
+  --text-stat: 18px;
+  --text-stat--line-height: 22px;
+  --text-stat--font-weight: 600;
+  --text-stat--letter-spacing: -0.02em;
+  /* A dialog's or an empty page's title. */
+  --text-title: 15px;
+  --text-title--line-height: 20px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-card-title: 14px;
+  --text-card-title--line-height: 20px;
+  --text-card-title--font-weight: 600;
+  --text-card-title--letter-spacing: -0.01em;
+  /* A name that leads a block: an empty state's title, a theme card's name. */
+  --text-emphasis: 13.5px;
+  --text-emphasis--line-height: 19px;
+  --text-body: 13px;
+  --text-body--line-height: 18px;
+  /* A description under a card title or in a dialog. */
+  --text-detail: 12.5px;
+  --text-detail--line-height: 17px;
+  /* A row's hint, a field label, a small button. */
+  --text-small: 12px;
+  --text-small--line-height: 16px;
+  /* Badges, chips, tooltips, key caps, captions under a value. */
+  --text-meta: 11.5px;
+  --text-meta--line-height: 16px;
+  /* Stat labels, column headings, group titles in the sidebar. */
+  --text-caption: 11px;
+  --text-caption--line-height: 14px;
+  --text-axis: 10.5px;
+  --text-axis--line-height: 14px;
+  /* The smallest tag: Preview, a count in a pill. */
+  --text-tag: 10px;
+  --text-tag--line-height: 12px;
+  --text-tag--font-weight: 500;
+  /* Small caps grouping a run of cards. Pair with `uppercase`. */
+  --text-label: 11.5px;
+  --text-label--line-height: 14px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.04em;
+  /* Code, paths and logs. Pair with `font-mono`. */
+  --text-mono: 11.5px;
+  --text-mono--line-height: 18px;
+  /* A hex value or number set in a field. Pair with `font-mono`. */
+  --text-mono-value: 12px;
+  --text-mono-value--line-height: 16px;
+
+  /* Earlier names, kept so pages not yet migrated still compile. */
+  --text-page-title: 22px;
+  --text-page-title--line-height: 28px;
+  --text-page-title--font-weight: 600;
+  --text-page-title--letter-spacing: -0.02em;
+  --text-section-title: 15px;
+  --text-section-title--line-height: 20px;
+  --text-section-title--font-weight: 600;
+  --text-section-title--letter-spacing: -0.01em;
+  --text-row-title: 13px;
+  --text-row-title--line-height: 18px;
+  --text-row-detail: 12px;
+  --text-row-detail--line-height: 16px;
+  --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 14px;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 0.06em;
+  --text-badge: 11.5px;
+  --text-badge--line-height: 16px;
+  --text-badge--font-weight: 500;
+  --text-mono-detail: 11.5px;
+  --text-mono-detail--line-height: 16px;
+
+  /* Key caps, tags and swatches. */
+  --radius-key: 5px;
+  /* Badges, chips, menu items, tooltips. */
+  --radius-small: 6px;
+  /* Buttons, fields, segmented controls. */
+  --radius-control: 7px;
+  /* Icon tiles, chart tooltips, code blocks. */
+  --radius-tile: 8px;
+  --radius-card: 10px;
+  /* Popovers, dialogs, heroes. */
+  --radius-panel: 12px;
+
+  /* Spring approximations of Motion.snappy and Motion.smooth. */
+  --ease-snappy: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.85, 0.3, 1);
+  /* The segmented control's sliding pill. */
+  --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-hover: ease-out;
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: ease-out;
+
+  --animate-pop-in: pop-in 120ms ease-out;
+  --animate-tip-in: tip-in 100ms ease-out;
+  /* One animation on the dot itself, so a list of busy rows never stacks timers. */
+  --animate-status-pulse: status-pulse 1.4s ease-in-out infinite;
+  --animate-spin-slow: spin 1.2s linear infinite;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98) translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes status-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+@utility duration-snappy {
+  transition-duration: 320ms;
+  transition-timing-function: var(--ease-snappy);
+}
+
+@utility duration-smooth {
+  transition-duration: 420ms;
+  transition-timing-function: var(--ease-smooth);
+}
+
+/* The transparency tell behind a colour with alpha. */
+@utility bg-checkerboard {
+  background-color: #ffffff;
+  background-image: conic-gradient(
+    rgb(128 128 128 / 0.5) 25%,
+    transparent 0 50%,
+    rgb(128 128 128 / 0.5) 0 75%,
+    transparent 0
+  );
+  background-size: 10px 10px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 18px;
+    font-feature-settings: "cv11", "ss01";
+    color: var(--ink-primary);
+    -webkit-font-smoothing: antialiased;
+    /* WKWebView rubber-bands the whole page; a native window does not. */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    overflow: hidden;
+    cursor: default;
+    /* Chrome text is not selectable in a native window. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  button {
+    cursor: default;
+  }
+
+  /* Drawn inside the box, so a scrolling container's edge cannot clip it. */
+  :focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+  }
+
+  /* Inherited ink resolves where it is declared, so a forced subtree restates it. */
+  [data-appearance] {
+    color: var(--ink-primary);
+  }
+
+  /* The switcher panel's backdrop is native; the page must not paint over it. */
+  html[data-surface="switcher"],
+  html[data-surface="switcher"] body {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

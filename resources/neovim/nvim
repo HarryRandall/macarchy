@@ -1,0 +1,63 @@
+#!/bin/bash
+# Keep Neovim's configuration, downloads, state and cache inside Macarchy.
+set -euo pipefail
+TASK_HOME="${MACARCHY_HOME:-$HOME}"
+ROOT="$TASK_HOME/Library/Application Support/Macarchy"
+PLUGIN="$ROOT/plugins/neovim"
+SELF="$(realpath "$0")"
+HERE="$(dirname "$SELF")"
+MARKER="$(sed -n 2p "$SELF")"
+if [ ! -d "$PLUGIN/config/nvim" ]; then
+  echo 'Neovim configuration is missing. Run Macarchy setup first.' >&2
+  exit 1
+fi
+# A file in Macarchy's bin folder wins, then the first nvim on PATH that is
+# not a copy of this launcher, so Neovim from Homebrew, nix or ~/.local/bin
+# all work.
+NVIM=
+if [ -n "${MACARCHY_NVIM_BINARY:-}" ]; then
+  NVIM="$MACARCHY_NVIM_BINARY"
+elif [ -n "${MACARCHY_HOME:-}" ]; then
+  echo 'Set MACARCHY_NVIM_BINARY when running Neovim in an isolated home.' >&2
+  exit 1
+elif [ -x "$ROOT/bin/nvim" ]; then
+  NVIM="$ROOT/bin/nvim"
+else
+  IFS=: read -r -a SEARCH <<< "${PATH:-}"
+  for folder in "${SEARCH[@]}" /opt/homebrew/bin /usr/local/bin; do
+    [ -n "$folder" ] && [ -x "$folder/nvim" ] || continue
+    candidate="$(realpath "$folder/nvim")"
+    [ "$(sed -n 2p "$candidate" 2>/dev/null)" != "$MARKER" ] || continue
+    NVIM="$candidate"
+    break
+  done
+fi
+if [ -z "$NVIM" ]; then
+  echo 'Install Neovim with brew install neovim.' >&2
+  exit 1
+fi
+if [ "$NVIM" = "$SELF" ]; then
+  echo 'MACARCHY_NVIM_BINARY must name Neovim itself, not this launcher.' >&2
+  exit 1
+fi
+# The person's own values, which environment.lua puts back for everything
+# the editor starts: terminals, git and language servers.
+for name in XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME NVIM_APPNAME; do
+  if [ -n "${!name+set}" ]; then
+    export "MACARCHY_ORIGINAL_$name=${!name}"
+  else
+    unset "MACARCHY_ORIGINAL_$name"
+  fi
+done
+export XDG_CONFIG_HOME="$PLUGIN/config"
+export XDG_DATA_HOME="$PLUGIN/data"
+export XDG_STATE_HOME="$PLUGIN/state"
+export XDG_CACHE_HOME="$PLUGIN/cache"
+export NVIM_APPNAME=nvim
+for candidate in "$HERE/environment.lua" "$HERE/../Resources/plugins/neovim/environment.lua"; do
+  if [ -f "$candidate" ]; then
+    export MACARCHY_NVIM_ENVIRONMENT="$candidate"
+    exec "$NVIM" --cmd 'lua dofile(vim.env.MACARCHY_NVIM_ENVIRONMENT)' "$@"
+  fi
+done
+exec "$NVIM" "$@"

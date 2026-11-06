@@ -1,0 +1,13 @@
+{
+  "apps": {
+    "ghosttyConfig": "ghostty.conf",
+    "nvimColorscheme": "gruvbox"
+  },
+  "colors": {
+    "borderActive": "0xffe68e0d",
+    "borderInactive": "0x00000000"
+  },
+  "dark": true,
+  "name": "matte-black",
+  "schema": 1
+}
