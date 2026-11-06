@@ -91,6 +91,7 @@ extension SpaceSwitcher.Desktop {
         let minimized: Bool
         let hidden: Bool
         let focused: Bool
+        let reachable: Bool
 
         enum CodingKeys: String, CodingKey {
             case id, app, space, frame
@@ -99,11 +100,12 @@ extension SpaceSwitcher.Desktop {
             case minimized = "is-minimized"
             case hidden = "is-hidden"
             case focused = "has-focus"
+            case reachable = "has-ax-reference"
         }
 
         /// Sticky windows are on every desktop, and yabai cannot move
-        /// minimised or hidden ones.
-        var carried: Bool { !sticky && !minimized && !hidden }
+        /// minimised or hidden ones, or any it has no accessibility handle for.
+        var carried: Bool { !sticky && !minimized && !hidden && reachable }
 
         var placed: SpaceSwitcher.PlacedWindow {
             SpaceSwitcher.PlacedWindow(

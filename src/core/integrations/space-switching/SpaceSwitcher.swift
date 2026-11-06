@@ -82,7 +82,7 @@ public actor SpaceSwitcher {
         /// The index of the focused Space, as yabai reports it.
         var focusedSpace: @Sendable () async -> Int? = { nil }
         /// Every window a desktop swap carries: not sticky, minimised or
-        /// hidden. Nil when yabai cannot be asked.
+        /// hidden, and one yabai can move. Nil when yabai cannot be asked.
         var windows: @Sendable () async -> [PlacedWindow]? = { nil }
         var toggleFloat: @Sendable (_ window: Int) async -> Void = { _ in }
         /// Swaps two tiled windows' places on their Space.
